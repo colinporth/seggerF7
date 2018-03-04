@@ -9,7 +9,6 @@
 #include "common/stm32746g_audio.h"
 //}}}
 
-const bool kAud = false;
 const char* kVersion = "USB HID keyboard 4/3/18 joint";
 #define HID_IN_ENDPOINT       0x81
 #define HID_IN_ENDPOINT_SIZE  7
@@ -131,6 +130,7 @@ private:
   cLcd* mLcd = nullptr;
   cTouch* mTouch = nullptr;
   cPs2* mPs2 = nullptr;
+  bool mAud = false;
   };
 //}}}
 cApp* gApp;
@@ -1089,11 +1089,13 @@ void hidSendKeyboard (uint8_t modifier, uint8_t code) {
 //{{{
 void cApp::run (bool keyboard) {
 
+  mAud = BSP_PB_GetState (BUTTON_KEY);
+
   // init lcd
   mLcd = new cLcd (12);
   mLcd->init();
 
-  if (!kAud) {
+  if (!mAud) {
     //{{{  init ps2 keyboard
     mPs2 = new cPs2 (mLcd);
     if (keyboard)
@@ -1164,7 +1166,7 @@ void cApp::run (bool keyboard) {
   //}}}
 
   gUsbDevice.pClassData = NULL;
-  if (kAud) {
+  if (mAud) {
     USBD_Init (&gUsbDevice, &audDescriptor, 0);
     USBD_RegisterClass (&gUsbDevice, &audClass);
     }
@@ -1181,7 +1183,7 @@ void cApp::run (bool keyboard) {
 
     mLcd->show (kVersion);
 
-    if (kAud) {
+    if (mAud) {
       gPackets.show();
       show();
       }
