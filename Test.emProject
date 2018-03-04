@@ -35,6 +35,8 @@
         <file file_name="common/system.h" />
         <file file_name="common/usbd.h" />
       </folder>
+      <file file_name="common/ft5336.c" />
+      <file file_name="common/stm32746g_discovery_ts.c" />
     </folder>
     <folder Name="rtt">
       <file file_name="rtt/SEGGER_RTT.c" />

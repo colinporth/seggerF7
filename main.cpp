@@ -2,35 +2,33 @@
 //{{{  includes
 #include "common/system.h"
 #include "common/cLcd.h"
-//#include common/cTouch.h"
+#include "common/cTouch.h"
 #include "common/cPs2.h"
 #include "common/usbd.h"
 //}}}
-char* kVersion = "USB HID keyboard ps2 3/3/18 v2";
+const char* kVersion = "USB HID keyboard ps2 3/3/18 v2";
 #define HID_IN_ENDPOINT       0x81
 #define HID_IN_ENDPOINT_SIZE  7
 
 //{{{
-class cApp {
-//class cApp : public cTouch {
+class cApp : public cTouch {
 public:
-  //cApp (int x, int y) : cTouch (x,y) {}
-  cApp (int x, int y) {}
+  cApp (int x, int y) : cTouch (x,y) {}
   cLcd* getLcd() { return mLcd; }
   cPs2* getPs2() { return mPs2; }
 
   void run (bool keyboard);
 
 protected:
-  //virtual void onProx (int x, int y, int z);
-  //virtual void onPress (int x, int y);
-  //virtual void onMove (int x, int y, int z);
-  //virtual void onScroll (int x, int y, int z);
-  //virtual void onRelease (int x, int y);
+  virtual void onProx (int x, int y, int z);
+  virtual void onPress (int x, int y);
+  virtual void onMove (int x, int y, int z);
+  virtual void onScroll (int x, int y, int z);
+  virtual void onRelease (int x, int y);
 
 private:
   cLcd* mLcd = nullptr;
-  //cTouch* mTouch = nullptr;
+  cTouch* mTouch = nullptr;
   cPs2* mPs2 = nullptr;
   };
 //}}}
@@ -594,45 +592,45 @@ void cApp::run (bool keyboard) {
   }
 //}}}
 //{{{
-//void cApp::onProx (int x, int y, int z) {
+void cApp::onProx (int x, int y, int z) {
 
-  //if (x || y) {
-    ////uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
-    //// hidSendReport (&gUsbDevice, HID_Buffer);
-    //mLcd->debug (LCD_COLOR_MAGENTA, "onProx %d %d %d", x, y, z);
-    //}
-  //}
+  if (x || y) {
+    //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
+    // hidSendReport (&gUsbDevice, HID_Buffer);
+    mLcd->debug (LCD_COLOR_MAGENTA, "onProx %d %d %d", x, y, z);
+    }
+  }
 //}}}
 //{{{
-//void cApp::onPress (int x, int y) {
+void cApp::onPress (int x, int y) {
 
-  ////uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,0,0,0 };
-  ////hidSendReport (&gUsbDevice, HID_Buffer);
-  //mLcd->debug (LCD_COLOR_GREEN, "onPress %d %d", x, y);
-  //}
+  //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,0,0,0 };
+  //hidSendReport (&gUsbDevice, HID_Buffer);
+  mLcd->debug (LCD_COLOR_GREEN, "onPress %d %d", x, y);
+  }
 //}}}
 //{{{
-//void cApp::onMove (int x, int y, int z) {
+void cApp::onMove (int x, int y, int z) {
 
-  //if (x || y) {
-    ////uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
-    ////hidSendReport (&gUsbDevice, HID_Buffer);
-    //mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d", x, y, z);
-    //}
-  //}
+  if (x || y) {
+    //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
+    //hidSendReport (&gUsbDevice, HID_Buffer);
+    mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d", x, y, z);
+    }
+  }
 //}}}
 //{{{
-//void cApp::onScroll (int x, int y, int z) {
-  //mLcd->incScrollValue (y);
-  //}
+void cApp::onScroll (int x, int y, int z) {
+  mLcd->incScrollValue (y);
+  }
 //}}}
 //{{{
-//void cApp::onRelease (int x, int y) {
+void cApp::onRelease (int x, int y) {
 
-  ////uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
-  ////hidSendReport (&gUsbDevice, HID_Buffer);
-  //mLcd->debug (LCD_COLOR_GREEN, "onRelease %d %d", x, y);
-  //}
+  //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
+  //hidSendReport (&gUsbDevice, HID_Buffer);
+  mLcd->debug (LCD_COLOR_GREEN, "onRelease %d %d", x, y);
+  }
 //}}}
 
 //{{{

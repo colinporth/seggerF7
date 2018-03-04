@@ -42,7 +42,7 @@
 #endif
 //}}}
 #include "stm32746g_discovery.h"
-#include "../Components/ft5336/ft5336.h"
+#include "ft5336.h"
 
 // FT5336 : maximum 5 touches detected simultaneously
 #define TS_MAX_NB_TOUCH    ((uint32_t)FT5336_MAX_DETECTABLE_TOUCH)

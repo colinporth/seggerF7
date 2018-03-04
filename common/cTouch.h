@@ -1,7 +1,7 @@
 // cTouch.h
 #pragma once
 //{{{  includes
-#include "../../../cLcd.h"
+#include "cLcd.h"
 #include "stm32746g_discovery_ts.h"
 //}}}
 //{{{

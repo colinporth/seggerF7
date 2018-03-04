@@ -3,6 +3,8 @@
 "Output/usbHid Debug/Obj/system.o"
 "Output/usbHid Debug/Obj/wm8994.o"
 "Output/usbHid Debug/Obj/stm32746g_lcd.o"
+"Output/usbHid Debug/Obj/ft5336.o"
+"Output/usbHid Debug/Obj/stm32746g_discovery_ts.o"
 "Output/usbHid Debug/Obj/SEGGER_RTT.o"
 "Output/usbHid Debug/Obj/SEGGER_RTT_Syscalls_SES.o"
 "Output/usbHid Debug/Obj/SEGGER_HardFaultHandler.o"
