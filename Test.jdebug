@@ -16,6 +16,8 @@ void OnProjectLoad (void) {
   Project.SetHostIF ("USB", "");
   Project.SetTargetIF ("SWD");
   Project.SetTIFSpeed ("0");
+  Project.SetTraceSource ("SWO");
+  Project.ConfigSWO ("auto", "auto");
   File.Open ("C:/projects/segger/Output/Debug/Exe/usbHid.elf");
   //
   // User settings

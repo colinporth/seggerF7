@@ -553,6 +553,8 @@ void cApp::run (bool keyboard) {
   USBD_Start (&gUsbDevice);
 
   while (true) {
+    printf ("hello colin %d\n", HAL_GetTick());
+
     pollTouch();
 
     mLcd->show (kVersion);
