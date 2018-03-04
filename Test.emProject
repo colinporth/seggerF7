@@ -8,7 +8,7 @@
       arm_endian="Little"
       arm_fp_abi="Hard"
       arm_fpu_type="FPv5-SP-D16"
-      arm_linker_heap_size="1024"
+      arm_linker_heap_size="64384"
       arm_linker_process_stack_size="0"
       arm_linker_stack_size="1024"
       arm_simulator_memory_simulation_parameter="RX 08000000,00100000,FFFFFFFF;RWX 20010000,0003c000,CDCDCDCD"
@@ -47,22 +47,20 @@
       </folder>
     </folder>
     <folder Name="system">
-      <file file_name="system/SEGGER_HardFaultHandler.c" />
-      <file file_name="system/HardFaultHandler.S" />
-      <file file_name="system/Cortex_M_Startup.s" />
       <file file_name="system/thumb_crt0.s" />
+      <file file_name="system/Cortex_M_Startup.s" />
+      <file file_name="system/HardFaultHandler.S" />
+      <file file_name="system/SEGGER_HardFaultHandler.c" />
     </folder>
     <configuration
       Name="Debug"
       arm_library_optimization="Small"
-      arm_linker_heap_size="128000"
-      arm_linker_process_stack_size="1024"
       c_preprocessor_definitions="USE_HAL_DRIVER;STM32F746xx;USE_STM32746G_DISCO;USE_USB_FS"
       c_system_include_directories="$(StudioDir)/include;$(PackagesDir)/include"
       c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/Drivers/BSP/STM32746G-Discovery;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include"
       gcc_c_language_standard="gnu11"
       gcc_cplusplus_language_standard="gnu++11"
-      gcc_optimization_level="None"
+      gcc_optimization_level="Debug"
       linker_printf_width_precision_supported="Yes"
       speed="0" />
     <configuration

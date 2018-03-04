@@ -6,7 +6,7 @@
 #include "common/cPs2.h"
 #include "common/usbd.h"
 //}}}
-const char* kVersion = "USB HID keyboard ps2 3/3/18 v2";
+const char* kVersion = "USB HID keyboard 4/3/18 segger";
 #define HID_IN_ENDPOINT       0x81
 #define HID_IN_ENDPOINT_SIZE  7
 
@@ -513,10 +513,10 @@ void cApp::run (bool keyboard) {
 
   // init ps2 keyboard
   mPs2 = new cPs2 (mLcd);
-  //if (keyboard)
-  //  mPs2->initKeyboard();
-  //else
-  //  mPs2->initTouchpad();
+  if (keyboard)
+    mPs2->initKeyboard();
+  else
+    mPs2->initTouchpad();
 
   // init usb
   //{{{  hidClass
@@ -548,39 +548,31 @@ void cApp::run (bool keyboard) {
     interfaceStringDescriptor,
     };
   //}}}
-  //USBD_Init (&gUsbDevice, &hidDescriptor, 0);
-  //USBD_RegisterClass (&gUsbDevice, &hidClass);
-  //USBD_Start (&gUsbDevice);
-
-  int count = 9;
-  mLcd->debug (LCD_COLOR_GREEN,   "hello colin %d ", count++);
-  mLcd->debug (LCD_COLOR_YELLOW,  "hello colin %d ", count++);
-  mLcd->debug (LCD_COLOR_CYAN,    "hello colin %d ", count++);
-  mLcd->debug (LCD_COLOR_RED,     "hello colin %d ", count++);
-  mLcd->debug (LCD_COLOR_BLUE,    "hello colin %d ", count++);
-  mLcd->debug (LCD_COLOR_MAGENTA, "hello colin %d ", count++);
+  USBD_Init (&gUsbDevice, &hidDescriptor, 0);
+  USBD_RegisterClass (&gUsbDevice, &hidClass);
+  USBD_Start (&gUsbDevice);
 
   while (true) {
     pollTouch();
 
     mLcd->show (kVersion);
-   // if (keyboard)
-   //   mPs2->showChars();
-   // else
-   //   mPs2->showTouch();
-   // mPs2->showCodes();
-   // mPs2->showWave();
+    if (keyboard)
+      mPs2->showChars();
+    else
+      mPs2->showTouch();
+    mPs2->showCodes();
+    mPs2->showWave();
     mLcd->flip();
 
-   // if (keyboard) {
-  //    while (mPs2->hasRawChar())
-  //      mPs2->getRawChar();
-  //    while (mPs2->hasChar()) {
-  //      auto ch = mPs2->getChar();
-   //     hidSendKeyboard (ch >> 8, ch & 0xFF);
-    //    mLcd->debug (ch & 0x100 ? LCD_COLOR_GREEN : LCD_COLOR_YELLOW, "sendHid %02x:%02x", ch >> 8, ch & 0xFF);
-     //   }
-   //   }
+    if (keyboard) {
+      while (mPs2->hasRawChar())
+        mPs2->getRawChar();
+      while (mPs2->hasChar()) {
+        auto ch = mPs2->getChar();
+        hidSendKeyboard (ch >> 8, ch & 0xFF);
+        mLcd->debug (ch & 0x100 ? LCD_COLOR_GREEN : LCD_COLOR_YELLOW, "sendHid %02x:%02x", ch >> 8, ch & 0xFF);
+        }
+      }
     }
   }
 //}}}

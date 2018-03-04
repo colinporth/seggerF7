@@ -1,11 +1,11 @@
 OpenWindow="Memory Content1", DockArea=BOTTOM, x=1, y=0, w=586, h=316, FilterBarShown=0, 
-OpenWindow="Registers", DockArea=RIGHT, x=0, y=2, w=467, h=305, FilterBarShown=0, 
-OpenWindow="Console", DockArea=BOTTOM, x=2, y=0, w=661, h=316, FilterBarShown=0, 
-OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=462, h=644, FilterBarShown=1, 
-OpenWindow="Call Stack", DockArea=RIGHT, x=0, y=1, w=467, h=124, FilterBarShown=0, 
-OpenWindow="J-Link Control Panel", DockArea=BOTTOM, x=0, y=0, w=671, h=316, FilterBarShown=0, 
 OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=0, w=467, h=213, FilterBarShown=0, ExecCountersShown=0
+OpenWindow="Registers", DockArea=RIGHT, x=0, y=2, w=467, h=298, FilterBarShown=0, 
+OpenWindow="Console", DockArea=BOTTOM, x=2, y=0, w=661, h=316, FilterBarShown=0, 
+OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=546, h=644, FilterBarShown=1, 
+OpenWindow="Call Stack", DockArea=RIGHT, x=0, y=1, w=467, h=131, FilterBarShown=0, 
+OpenWindow="J-Link Control Panel", DockArea=BOTTOM, x=0, y=0, w=671, h=316, FilterBarShown=0, 
 OpenToolbar="Debug", Floating=0, x=0, y=0
 TableHeader="Registers", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Description"], ColWidths=[115;77;258]
-TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Class";"Source"], ColWidths=[142;64;44;57;50;193]
+TableHeader="Functions", SortCol="Address", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Class";"Source"], ColWidths=[142;64;32;57;50;193]
 TableHeader="Call Stack", SortCol="Function", SortOrder="ASCENDING", VisibleCols=["Function";"Stack Info";"Source"], ColWidths=[100;110;257]
