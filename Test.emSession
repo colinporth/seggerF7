@@ -4,6 +4,7 @@
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
   <BreakpointListItem trigger="" line="517" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="682" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
+  <Exceptions set="MemManage;UsageFault_Coprocessor;UsageFault_CheckingError;UsageFault_StateError;BusFault;ExceptionEntryReturnFault;HardFault"/>
  </Breakpoints>
  <ExecutionProfileWindow/>
  <FrameBufferWindow>
@@ -32,6 +33,8 @@
  <Project>
   <ProjectSessionItem path="usb"/>
   <ProjectSessionItem path="usb;usbHid"/>
+  <ProjectSessionItem path="usb;usbHid;bsp_drivers"/>
+  <ProjectSessionItem path="usb;usbHid;hal_drivers"/>
   <ProjectSessionItem path="usb;usbHid;main"/>
   <ProjectSessionItem path="usb;usbHid;rtt"/>
   <ProjectSessionItem path="usb;usbHid;system"/>
@@ -73,9 +76,8 @@
  </Watch4>
  <Files>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="common/ft5336.c" debugPath="common/ft5336.c" selected="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="common/stm32746g_lcd.cpp" debugPath="common/stm32746g_lcd.cpp" selected="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="common/stm32746g_discovery_ts.c" debugPath="common/stm32746g_discovery_ts.c" selected="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="system/Cortex_M_Startup.s" debugPath="system/Cortex_M_Startup.s" selected="1" top="53" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="1252" useTextEdit="1" useBinaryEdit="0" left="0" path="main.cpp" debugPath="main.cpp" selected="0" top="1234" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="381" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal.c" debugPath="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal.c" selected="1" top="363" codecName=""/>
  </Files>
  <ARMCrossStudioWindow activeProject="usbHid" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>
