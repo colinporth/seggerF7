@@ -513,8 +513,8 @@ void cApp::run (bool keyboard) {
 
   // init ps2 keyboard
   mPs2 = new cPs2 (mLcd);
-  if (keyboard)
-    mPs2->initKeyboard();
+  //if (keyboard)
+  //  mPs2->initKeyboard();
   //else
   //  mPs2->initTouchpad();
 
@@ -561,14 +561,7 @@ void cApp::run (bool keyboard) {
   mLcd->debug (LCD_COLOR_MAGENTA, "hello colin %d ", count++);
 
   while (true) {
-    //if (keyboard) {
-      //pollTouch();
-   //   }
-   // else {
-   //   int touch, x, y, z;
-   //   mPs2->getTouch (touch, x, y, z);
-      //handleTouch (x || y, x, y, z);
-   //   }
+    pollTouch();
 
     mLcd->show (kVersion);
    // if (keyboard)

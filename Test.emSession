@@ -2,8 +2,8 @@
 <session>
  <Bookmarks/>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
-  <BreakpointListItem trigger="" line="517" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="main.cpp" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="690" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="main.cpp" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="517" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="690" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
   <Exceptions set="MemManage;UsageFault_Coprocessor;UsageFault_CheckingError;UsageFault_StateError;BusFault;ExceptionEntryReturnFault;HardFault"/>
  </Breakpoints>
  <ExecutionProfileWindow/>
@@ -74,7 +74,11 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="646" useTextEdit="1" useBinaryEdit="0" left="0" path="common/cPs2.h" debugPath="common/cPs2.h" selected="1" top="621" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="646" useTextEdit="1" useBinaryEdit="0" left="0" path="common/cPs2.h" debugPath="common/cPs2.h" selected="0" top="621" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="629" useTextEdit="1" useBinaryEdit="0" left="0" path="main.cpp" debugPath="main.cpp" selected="0" top="611" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="319" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal.c" debugPath="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal.c" selected="0" top="301" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="998" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_dma2d.c" debugPath="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_dma2d.c" selected="0" top="980" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="627" useTextEdit="1" useBinaryEdit="0" left="0" path="common/stm32746g_lcd.cpp" debugPath="common/stm32746g_lcd.cpp" selected="1" top="609" codecName=""/>
  </Files>
  <ARMCrossStudioWindow activeProject="usbHid" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>
