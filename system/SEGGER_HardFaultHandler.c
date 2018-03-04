@@ -1,3 +1,4 @@
+//{{{
 /*********************************************************************
 *                SEGGER Microcontroller GmbH & Co. KG                *
 *                        The Embedded Experts                        *
@@ -14,13 +15,8 @@ File    : SEGGER_HardFaultHandler.c
 Purpose : Generic SEGGER HardFault handler for Cortex-M
 --------  END-OF-HEADER  ---------------------------------------------
 */
+//}}}
 
-/*********************************************************************
-*
-*       Defines
-*
-**********************************************************************
-*/
 #define SYSHND_CTRL  (*(volatile unsigned int*)  (0xE000ED24u))  // System Handler Control and State Register
 #define NVIC_MFSR    (*(volatile unsigned char*) (0xE000ED28u))  // Memory Management Fault Status Register
 #define NVIC_BFSR    (*(volatile unsigned char*) (0xE000ED29u))  // Bus Fault Status Register
@@ -30,15 +26,9 @@ Purpose : Generic SEGGER HardFault handler for Cortex-M
 #define NVIC_BFAR    (*(volatile unsigned int*)  (0xE000ED38u))  // Bus Fault Manage Address Register
 #define NVIC_AFSR    (*(volatile unsigned short*)(0xE000ED3Cu))  // Auxiliary Fault Status Register
 
-/*********************************************************************
-*
-*       Static data
-*
-**********************************************************************
-*/
-
 static volatile unsigned int _Continue;  // Set this variable to 1 to run further
 
+//{{{  struct hardFaultRegs
 static struct {
   struct {
     volatile unsigned int r0;            // Register R0
@@ -54,9 +44,9 @@ static struct {
         unsigned int IPSR : 8;           // Interrupt Program Status register (IPSR)
         unsigned int EPSR : 19;          // Execution Program Status register (EPSR)
         unsigned int APSR : 5;           // Application Program Status register (APSR)
-      } bits;
-    } psr;                               // Program status register.
-  } SavedRegs;
+        } bits;
+      } psr;                               // Program status register.
+    } SavedRegs;
 
   union {
     volatile unsigned int byte;
@@ -78,8 +68,8 @@ static struct {
       unsigned int MEMFAULTENA    : 1;   // Memory management fault handler enable
       unsigned int BUSFAULTENA    : 1;   // Bus fault handler enable
       unsigned int USGFAULTENA    : 1;   // Usage fault handler enable
-    } bits;
-  } syshndctrl;                          // System Handler Control and State Register (0xE000ED24)
+      } bits;
+    } syshndctrl;                          // System Handler Control and State Register (0xE000ED24)
 
   union {
     volatile unsigned char byte;
@@ -91,8 +81,8 @@ static struct {
       unsigned char MSTKERR     : 1;     // Stacking error
       unsigned char UnusedBits2 : 2;
       unsigned char MMARVALID   : 1;     // Indicates the MMAR is valid
-    } bits;
-  } mfsr;                                // Memory Management Fault Status Register (0xE000ED28)
+      } bits;
+    } mfsr;                                // Memory Management Fault Status Register (0xE000ED28)
 
   union {
     volatile unsigned int byte;
@@ -104,8 +94,8 @@ static struct {
       unsigned int STKERR     : 1;       // Stacking error
       unsigned int UnusedBits : 2;
       unsigned int BFARVALID  : 1;       // Indicates BFAR is valid
-    } bits;
-  } bfsr;                                // Bus Fault Status Register (0xE000ED29)
+      } bits;
+    } bfsr;                                // Bus Fault Status Register (0xE000ED29)
   volatile unsigned int bfar;            // Bus Fault Manage Address Register (0xE000ED38)
 
   union {
@@ -118,8 +108,8 @@ static struct {
       unsigned short UnusedBits : 4;
       unsigned short UNALIGNED  : 1;     // Indicates that an unaligned access fault has taken place
       unsigned short DIVBYZERO  : 1;     // Indicates a divide by zero has taken place (can be set only if DIV_0_TRP is set)
-    } bits;
-  } ufsr;                                // Usage Fault Status Register (0xE000ED2A)
+      } bits;
+    } ufsr;                                // Usage Fault Status Register (0xE000ED2A)
 
   union {
     volatile unsigned int byte;
@@ -129,8 +119,8 @@ static struct {
       unsigned int UnusedBits2 : 27;
       unsigned int FORCED      : 1;      // Indicates hard fault is taken because of bus fault/memory management fault/usage fault
       unsigned int DEBUGEVT    : 1;      // Indicates hard fault is triggered by debug event
-    } bits;
-  } hfsr;                                // Hard Fault Status Register (0xE000ED2C)
+      } bits;
+    } hfsr;                                // Hard Fault Status Register (0xE000ED2C)
 
   union {
     volatile unsigned int byte;
@@ -140,42 +130,25 @@ static struct {
       unsigned int DWTTRAP  : 1;         // DWT match occurred
       unsigned int VCATCH   : 1;         // Vector fetch occurred
       unsigned int EXTERNAL : 1;         // EDBGRQ signal asserted
-    } bits;
-  } dfsr;                                // Debug Fault Status Register (0xE000ED30)
+      } bits;
+    } dfsr;                                // Debug Fault Status Register (0xE000ED30)
 
   volatile unsigned int afsr;            // Auxiliary Fault Status Register (0xE000ED3C), Vendor controlled (optional)
-} HardFaultRegs;
+  } HardFaultRegs;
+//}}}
 
-/*********************************************************************
-*
-*       Global functions
-*
-**********************************************************************
-*/
-
-/*********************************************************************
-*
-*       HardFaultHandler()
-*
-*  Function description
-*    C part of the hard fault handler which is called by the assembler
-*    function HardFault_Handler
-*/
-void HardFaultHandler(unsigned int* pStack);
+//{{{
 void HardFaultHandler(unsigned int* pStack) {
-  //
-  // In case we received a hard fault because of a breakpoint
-  // instruction, we return. This may happen with the IAR compiler
-  // when using semihosting for printf outputs.
-  //
+// In case we received a hard fault because of a breakpoint
+// instruction, we return. This may happen with the IAR compiler when using semihosting for printf outputs.
+
   if (NVIC_HFSR & (1u << 31)) {
     NVIC_HFSR |=  (1u << 31);     // Reset Hard Fault status
     *(pStack + 6u) += 2u;         // PC is located on stack at SP + 24 bytes. Increment PC by 2 to skip break instruction.
     return;                       // Return to interrupted application
-  }
-  //
+    }
+
   // Read NVIC registers
-  //
   HardFaultRegs.syshndctrl.byte = SYSHND_CTRL;  // System Handler Control and State Register
   HardFaultRegs.mfsr.byte       = NVIC_MFSR;    // Memory Fault Status Register
   HardFaultRegs.bfsr.byte       = NVIC_BFSR;    // Bus Fault Status Register
@@ -184,16 +157,13 @@ void HardFaultHandler(unsigned int* pStack) {
   HardFaultRegs.hfsr.byte       = NVIC_HFSR;    // Hard Fault Status Register
   HardFaultRegs.dfsr.byte       = NVIC_DFSR;    // Debug Fault Status Register
   HardFaultRegs.afsr            = NVIC_AFSR;    // Auxiliary Fault Status Register
-  //
+
   // Halt execution
   // If NVIC registers indicate readable memory, change the variable value to != 0 to continue execution.
-  //
   _Continue = 0u;
-  while (_Continue == 0u) {
-  }
-  //
+  while (_Continue == 0u) {}
+
   // Read saved registers from the stack.
-  //
   HardFaultRegs.SavedRegs.r0       = pStack[0];  // Register R0
   HardFaultRegs.SavedRegs.r1       = pStack[1];  // Register R1
   HardFaultRegs.SavedRegs.r2       = pStack[2];  // Register R2
@@ -202,13 +172,9 @@ void HardFaultHandler(unsigned int* pStack) {
   HardFaultRegs.SavedRegs.lr       = pStack[5];  // Link register LR
   HardFaultRegs.SavedRegs.pc       = pStack[6];  // Program counter PC
   HardFaultRegs.SavedRegs.psr.byte = pStack[7];  // Program status word PSR
-  //
-  // Halt execution
-  // To step out of the HardFaultHandler, change the variable value to != 0.
-  //
-  _Continue = 0u;
-  while (_Continue == 0u) {
-  }
-}
 
-/*************************** End of file ****************************/
+  // Halt execution To step out of the HardFaultHandler, change the variable value to != 0.
+  _Continue = 0u;
+  while (_Continue == 0u) {}
+  }
+//}}}
