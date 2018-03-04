@@ -19,6 +19,7 @@
       gcc_c_language_standard="c11"
       gcc_cplusplus_language_standard="c++11"
       linker_output_format="hex"
+      linker_printf_width_precision_supported="Yes"
       linker_section_placement_file="$(ProjectDir)/flash_placement.xml"
       linker_section_placements_segments="FLASH RX 0x08000000 0x00100000;SRAM RWX 0x20010000 0x0003c000"
       project_directory=""
@@ -57,7 +58,6 @@
       c_system_include_directories="$(StudioDir)/include;$(PackagesDir)/include"
       c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/Drivers/BSP/STM32746G-Discovery;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include"
       gcc_optimization_level="Debug"
-      linker_printf_width_precision_supported="Yes"
       speed="0" />
     <configuration
       Name="Release"
