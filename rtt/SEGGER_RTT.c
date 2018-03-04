@@ -1,3 +1,4 @@
+//{{{
 /*********************************************************************
 *               SEGGER MICROCONTROLLER GmbH & Co. KG                 *
 *       Solutions for real time microcontroller applications         *
@@ -64,24 +65,16 @@ Additional information:
           WrOff == (RdOff - 1): Buffer is full
           WrOff >  RdOff:       Free space includes wrap-around
           WrOff <  RdOff:       Used space includes wrap-around
-          (WrOff == (SizeOfBuffer - 1)) && (RdOff == 0):  
+          (WrOff == (SizeOfBuffer - 1)) && (RdOff == 0):
                                 Buffer full and wrap-around after next byte
 
 
 ----------------------------------------------------------------------
 */
-
+//}}}
 #include "SEGGER_RTT.h"
-
 #include <string.h>                 // for memcpy
-
-/*********************************************************************
-*
-*       Configuration, default values
-*
-**********************************************************************
-*/
-
+//{{{  defines
 #ifndef   BUFFER_SIZE_UP
   #define BUFFER_SIZE_UP                                  1024  // Size of the buffer for terminal output of target, up to host
 #endif
@@ -131,31 +124,16 @@ Additional information:
 #ifndef   MAX
   #define MAX(a, b)         (((a) > (b)) ? (a) : (b))
 #endif
-//
+
 // For some environments, NULL may not be defined until certain headers are included
-//
 #ifndef NULL
   #define NULL 0
 #endif
-
-/*********************************************************************
-*
-*       Static const data
-*
-**********************************************************************
-*/
+//}}}
 
 static unsigned char _aTerminalId[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
-
-/*********************************************************************
-*
-*       Static data
-*
-**********************************************************************
-*/
-//
 // RTT Control Block and allocate buffers for channel 0
-//
+//{{{
 #ifdef SEGGER_RTT_SECTION
   #if (defined __GNUC__)
     __attribute__ ((section (SEGGER_RTT_SECTION))) SEGGER_RTT_CB _SEGGER_RTT;
@@ -170,7 +148,8 @@ static unsigned char _aTerminalId[16] = { '0', '1', '2', '3', '4', '5', '6', '7'
 #else
     SEGGER_RTT_CB _SEGGER_RTT;
 #endif
-
+//}}}
+//{{{
 #ifdef SEGGER_RTT_BUFFER_SECTION
   #if (defined __GNUC__)
     __attribute__ ((section (SEGGER_RTT_BUFFER_SECTION))) static char _acUpBuffer  [BUFFER_SIZE_UP];
@@ -191,28 +170,14 @@ static unsigned char _aTerminalId[16] = { '0', '1', '2', '3', '4', '5', '6', '7'
     static char _acUpBuffer  [BUFFER_SIZE_UP];
     static char _acDownBuffer[BUFFER_SIZE_DOWN];
 #endif
+//}}}
 
 static char _ActiveTerminal;
 
-/*********************************************************************
-*
-*       Static functions
-*
-**********************************************************************
-*/
-
-/*********************************************************************
-*
-*       _DoInit()
-*
-*  Function description
-*    Initializes the control block an buffers.
-*    May only be called via INIT() to avoid overriding settings.
-*
-*/
 #define INIT()  do {                                            \
                   if (_SEGGER_RTT.acID[0] == '\0') { _DoInit(); }  \
                 } while (0)
+//{{{
 static void _DoInit(void) {
   SEGGER_RTT_CB* p;
   //
@@ -248,7 +213,9 @@ static void _DoInit(void) {
   strcpy(&p->acID[0], "SEGGER");
   p->acID[6] = ' ';
 }
+//}}}
 
+//{{{
 /*********************************************************************
 *
 *       _WriteBlocking()
@@ -300,7 +267,8 @@ static unsigned _WriteBlocking(SEGGER_RTT_BUFFER_UP* pRing, const char* pBuffer,
   //
   return NumBytesWritten;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       _WriteNoCheck()
@@ -343,7 +311,9 @@ static void _WriteNoCheck(SEGGER_RTT_BUFFER_UP* pRing, const char* pData, unsign
     pRing->WrOff = NumBytesAtOnce;
   }
 }
+//}}}
 
+//{{{
 /*********************************************************************
 *
 *       _PostTerminalSwitch()
@@ -364,7 +334,9 @@ static void _PostTerminalSwitch(SEGGER_RTT_BUFFER_UP* pRing, unsigned char Termi
   ac[1] = _aTerminalId[TerminalId];  // Caller made already sure that TerminalId does not exceed our terminal limit
   _WriteBlocking(pRing, ac, 2u);
 }
+//}}}
 
+//{{{
 /*********************************************************************
 *
 *       _GetAvailWriteSpace()
@@ -396,13 +368,8 @@ static unsigned _GetAvailWriteSpace(SEGGER_RTT_BUFFER_UP* pRing) {
   }
   return r;
 }
-
-/*********************************************************************
-*
-*       Public code
-*
-**********************************************************************
-*/
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_ReadNoLock()
@@ -470,7 +437,8 @@ unsigned SEGGER_RTT_ReadNoLock(unsigned BufferIndex, void* pData, unsigned Buffe
   //
   return NumBytesRead;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_Read
@@ -502,7 +470,9 @@ unsigned SEGGER_RTT_Read(unsigned BufferIndex, void* pBuffer, unsigned BufferSiz
   //
   return NumBytesRead;
 }
+//}}}
 
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_WriteWithOverwriteNoLock
@@ -510,7 +480,7 @@ unsigned SEGGER_RTT_Read(unsigned BufferIndex, void* pBuffer, unsigned BufferSiz
 *  Function description
 *    Stores a specified number of characters in SEGGER RTT
 *    control block.
-*    SEGGER_RTT_WriteWithOverwriteNoLock does not lock the application 
+*    SEGGER_RTT_WriteWithOverwriteNoLock does not lock the application
 *    and overwrites data if the data does not fit into the buffer.
 *
 *  Parameters
@@ -523,7 +493,7 @@ unsigned SEGGER_RTT_Read(unsigned BufferIndex, void* pBuffer, unsigned BufferSiz
 *    (2) For performance reasons this function does not call Init()
 *        and may only be called after RTT has been initialized.
 *        Either by calling SEGGER_RTT_Init() or calling another RTT API function first.
-*    (3) Do not use SEGGER_RTT_WriteWithOverwriteNoLock if a J-Link 
+*    (3) Do not use SEGGER_RTT_WriteWithOverwriteNoLock if a J-Link
 *        connection reads RTT data.
 */
 void SEGGER_RTT_WriteWithOverwriteNoLock(unsigned BufferIndex, const void* pBuffer, unsigned NumBytes) {
@@ -585,6 +555,8 @@ void SEGGER_RTT_WriteWithOverwriteNoLock(unsigned BufferIndex, const void* pBuff
     }
   } while (NumBytes);
 }
+//}}}
+//{{{
 
 /*********************************************************************
 *
@@ -696,7 +668,8 @@ unsigned SEGGER_RTT_WriteSkipNoLock(unsigned BufferIndex, const void* pBuffer, u
   //
   return 0;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_WriteNoLock
@@ -771,7 +744,8 @@ unsigned SEGGER_RTT_WriteNoLock(unsigned BufferIndex, const void* pBuffer, unsig
   //
   return Status;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_Write
@@ -807,7 +781,8 @@ unsigned SEGGER_RTT_Write(unsigned BufferIndex, const void* pBuffer, unsigned Nu
   //
   return Status;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_WriteString
@@ -835,7 +810,9 @@ unsigned SEGGER_RTT_WriteString(unsigned BufferIndex, const char* s) {
   Len = STRLEN(s);
   return SEGGER_RTT_Write(BufferIndex, s, Len);
 }
+//}}}
 
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_GetKey
@@ -863,7 +840,8 @@ int SEGGER_RTT_GetKey(void) {
   }
   return r;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_WaitKey
@@ -887,7 +865,8 @@ int SEGGER_RTT_WaitKey(void) {
   } while (r < 0);
   return r;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_HasKey
@@ -915,7 +894,8 @@ int SEGGER_RTT_HasKey(void) {
   }
   return r;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_HasData
@@ -936,7 +916,9 @@ unsigned SEGGER_RTT_HasData(unsigned BufferIndex) {
   v = pRing->WrOff;
   return v - pRing->RdOff;
 }
+//}}}
 
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_AllocDownBuffer
@@ -981,7 +963,8 @@ int SEGGER_RTT_AllocDownBuffer(const char* sName, void* pBuffer, unsigned Buffer
   SEGGER_RTT_UNLOCK();
   return BufferIndex;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_AllocUpBuffer
@@ -1026,7 +1009,9 @@ int SEGGER_RTT_AllocUpBuffer(const char* sName, void* pBuffer, unsigned BufferSi
   SEGGER_RTT_UNLOCK();
   return BufferIndex;
 }
+//}}}
 
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_ConfigUpBuffer
@@ -1068,7 +1053,8 @@ int SEGGER_RTT_ConfigUpBuffer(unsigned BufferIndex, const char* sName, void* pBu
   }
   return r;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_ConfigDownBuffer
@@ -1110,7 +1096,9 @@ int SEGGER_RTT_ConfigDownBuffer(unsigned BufferIndex, const char* sName, void* p
   }
   return r;
 }
+//}}}
 
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_SetNameUpBuffer
@@ -1141,7 +1129,8 @@ int SEGGER_RTT_SetNameUpBuffer(unsigned BufferIndex, const char* sName) {
   }
   return r;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_SetNameDownBuffer
@@ -1172,7 +1161,9 @@ int SEGGER_RTT_SetNameDownBuffer(unsigned BufferIndex, const char* sName) {
   }
   return r;
 }
+//}}}
 
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_Init
@@ -1185,7 +1176,8 @@ int SEGGER_RTT_SetNameDownBuffer(unsigned BufferIndex, const char* sName) {
 void SEGGER_RTT_Init (void) {
   _DoInit();
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_SetTerminal
@@ -1232,7 +1224,8 @@ int SEGGER_RTT_SetTerminal (char TerminalId) {
   }
   return r;
 }
-
+//}}}
+//{{{
 /*********************************************************************
 *
 *       SEGGER_RTT_TerminalOut
@@ -1324,6 +1317,4 @@ int SEGGER_RTT_TerminalOut (char TerminalId, const char* s) {
   }
   return Status;
 }
-
-
-/*************************** End of file ****************************/
+//}}}

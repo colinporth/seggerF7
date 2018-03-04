@@ -1,3 +1,4 @@
+//{{{
 /*********************************************************************
 *               SEGGER MICROCONTROLLER GmbH & Co. KG                 *
 *       Solutions for real time microcontroller applications         *
@@ -47,29 +48,15 @@
 ---------------------------END-OF-HEADER------------------------------
 File    : SEGGER_RTT.h
 Purpose : Implementation of SEGGER real-time transfer which allows
-          real-time communication on targets which support debugger 
+          real-time communication on targets which support debugger
           memory accesses while the CPU is running.
 ----------------------------------------------------------------------
 */
-
+//}}}
 #ifndef SEGGER_RTT_H
 #define SEGGER_RTT_H
 
 #include "SEGGER_RTT_Conf.h"
-
-/*********************************************************************
-*
-*       Defines, fixed
-*
-**********************************************************************
-*/
-
-/*********************************************************************
-*
-*       Types
-*
-**********************************************************************
-*/
 
 //
 // Description for a circular buffer (also called "ring buffer")
@@ -110,20 +97,8 @@ typedef struct {
   SEGGER_RTT_BUFFER_DOWN  aDown[SEGGER_RTT_MAX_NUM_DOWN_BUFFERS];   // Down buffers, transferring information down from host via debug probe to target
 } SEGGER_RTT_CB;
 
-/*********************************************************************
-*
-*       Global data
-*
-**********************************************************************
-*/
 extern SEGGER_RTT_CB _SEGGER_RTT;
 
-/*********************************************************************
-*
-*       RTT API functions
-*
-**********************************************************************
-*/
 #ifdef __cplusplus
   extern "C" {
 #endif
@@ -150,32 +125,13 @@ void         SEGGER_RTT_WriteWithOverwriteNoLock(unsigned BufferIndex, const voi
 //
 #define      SEGGER_RTT_HASDATA(n)       (_SEGGER_RTT.aDown[n].WrOff - _SEGGER_RTT.aDown[n].RdOff)
 
-/*********************************************************************
-*
-*       RTT "Terminal" API functions
-*
-**********************************************************************
-*/
 int     SEGGER_RTT_SetTerminal        (char TerminalId);
 int     SEGGER_RTT_TerminalOut        (char TerminalId, const char* s);
 
-/*********************************************************************
-*
-*       RTT printf functions (require SEGGER_RTT_printf.c)
-*
-**********************************************************************
-*/
 int SEGGER_RTT_printf(unsigned BufferIndex, const char * sFormat, ...);
 #ifdef __cplusplus
   }
 #endif
-
-/*********************************************************************
-*
-*       Defines
-*
-**********************************************************************
-*/
 
 //
 // Operating modes. Define behavior if buffer is full (not enough space for entire message)
@@ -230,5 +186,3 @@ int SEGGER_RTT_printf(unsigned BufferIndex, const char * sFormat, ...);
 
 
 #endif
-
-/*************************** End of file ****************************/
