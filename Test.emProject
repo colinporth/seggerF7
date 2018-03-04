@@ -29,8 +29,6 @@
       <file file_name="main.cpp" />
       <file file_name="common/system.c" />
       <folder Name="includes">
-        <file file_name="common/stm32746g_audio.h" />
-        <file file_name="common/stm32746g_lcd.h" />
         <file file_name="common/cLcd.h" />
         <file file_name="common/cPs2.h" />
         <file file_name="common/cTouch.h" />
@@ -97,6 +95,13 @@
       <file file_name="common/stm32746g_lcd.cpp" />
       <file file_name="common/ft5336.c" />
       <file file_name="common/wm8994.c" />
+      <folder Name="includes">
+        <file file_name="common/stm32746g_audio.h" />
+        <file file_name="common/stm32746g_lcd.h" />
+        <file file_name="common/stm32746g_discovery_ts.h" />
+        <file file_name="common/ft5336.h" />
+        <file file_name="common/wm8994.h" />
+      </folder>
     </folder>
   </project>
   <configuration

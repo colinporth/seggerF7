@@ -35,6 +35,7 @@
   <ProjectSessionItem path="usb;usbHid;bsp_drivers"/>
   <ProjectSessionItem path="usb;usbHid;hal_drivers"/>
   <ProjectSessionItem path="usb;usbHid;main"/>
+  <ProjectSessionItem path="usb;usbHid;main;includes"/>
   <ProjectSessionItem path="usb;usbHid;rtt"/>
   <ProjectSessionItem path="usb;usbHid;system"/>
  </Project>
@@ -73,6 +74,10 @@
  <Watch4>
   <Watches active="0" update="Never"/>
  </Watch4>
- <Files/>
+ <Files>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="12" useTextEdit="1" useBinaryEdit="0" left="0" path="main.cpp" debugPath="main.cpp" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="common/system.h" debugPath="common/system.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="common/system.c" debugPath="common/system.c" selected="1" top="0" codecName="Default"/>
+ </Files>
  <ARMCrossStudioWindow activeProject="usbHid" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>
