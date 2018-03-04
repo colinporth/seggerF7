@@ -33,6 +33,7 @@
   <ProjectSessionItem path="usb"/>
   <ProjectSessionItem path="usb;usbHid"/>
   <ProjectSessionItem path="usb;usbHid;bsp_drivers"/>
+  <ProjectSessionItem path="usb;usbHid;bsp_drivers;includes"/>
   <ProjectSessionItem path="usb;usbHid;hal_drivers"/>
   <ProjectSessionItem path="usb;usbHid;main"/>
   <ProjectSessionItem path="usb;usbHid;main;includes"/>
@@ -77,7 +78,12 @@
  <Files>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="12" useTextEdit="1" useBinaryEdit="0" left="0" path="main.cpp" debugPath="main.cpp" selected="0" top="0" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="common/system.h" debugPath="common/system.h" selected="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="common/system.c" debugPath="common/system.c" selected="1" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="86" useTextEdit="1" useBinaryEdit="0" left="0" path="common/system.c" debugPath="common/system.c" selected="0" top="63" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="28" useTextEdit="1" useBinaryEdit="0" left="0" path="stm32f7xx_hal_conf.h" debugPath="stm32f7xx_hal_conf.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="6" y="1714" useTextEdit="1" useBinaryEdit="0" left="0" path="common/font16.c" debugPath="common/font16.c" selected="1" top="1691" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="16" useTextEdit="1" useBinaryEdit="0" left="0" path="common/fonts.h" debugPath="common/fonts.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="6" useTextEdit="1" useBinaryEdit="0" left="0" path="common/stm32746g_lcd.cpp" debugPath="common/stm32746g_lcd.cpp" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="9" useTextEdit="1" useBinaryEdit="0" left="0" path="common/stm32746g_lcd.h" debugPath="common/stm32746g_lcd.h" selected="0" top="0" codecName="Default"/>
  </Files>
  <ARMCrossStudioWindow activeProject="usbHid" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

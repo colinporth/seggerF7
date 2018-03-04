@@ -101,7 +101,13 @@
         <file file_name="common/stm32746g_discovery_ts.h" />
         <file file_name="common/ft5336.h" />
         <file file_name="common/wm8994.h" />
+        <file file_name="common/font.h" />
       </folder>
+      <file file_name="common/font16.c" />
+      <file file_name="common/font8.c" />
+      <file file_name="common/font12.c" />
+      <file file_name="common/font20.c" />
+      <file file_name="common/font24.c" />
     </folder>
   </project>
   <configuration

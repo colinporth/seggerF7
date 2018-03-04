@@ -2,7 +2,6 @@
 //{{{  includes
 #include "stm32746g_discovery.h"
 #include "stm32746g_discovery_sdram.h"
-#include "fonts.h"
 //}}}
 //{{{
 #ifdef __cplusplus

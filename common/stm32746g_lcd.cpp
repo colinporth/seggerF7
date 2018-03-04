@@ -1,7 +1,9 @@
 // stm32746g_lcd.cpp
 //{{{  includes
 #include "stm32746g_lcd.h"
-#include "font16.c"
+#include "font.h"
+
+extern const sFONT Font16;
 //}}}
 //{{{  defines
 #define POLY_X(Z)           ((int32_t)((Points + Z)->X))
@@ -254,7 +256,7 @@ void BSP_LCD_SetLayerAddress (uint32_t LayerIndex, uint32_t Address)
 }
 //}}}
 //{{{
-void BSP_LCD_SetLayerAddress_NoReload (uint32_t LayerIndex, uint32_t Address) { 
+void BSP_LCD_SetLayerAddress_NoReload (uint32_t LayerIndex, uint32_t Address) {
   HAL_LTDC_SetAddress_NoReload(&hLtdcHandler, Address, LayerIndex);
   }
 
@@ -296,20 +298,20 @@ void BSP_LCD_ClearStringLine (uint32_t Line) {
   // Draw rectangle with background color
   uint32_t color_backup = TextColor;
   TextColor = BackColor;
-  BSP_LCD_FillRect (0, Line * Font16.Height, BSP_LCD_GetXSize(), Font16.Height);
+  BSP_LCD_FillRect (0, Line * Font16.mHeight, BSP_LCD_GetXSize(), Font16.mHeight);
   TextColor = color_backup;
   }
 //}}}
 //{{{
 void BSP_LCD_DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
 
-  const uint16_t width = Font16.Width;
+  const uint16_t width = Font16.mWidth;
   const uint16_t byteAlignedWidth = (width+7)/8;
   const uint16_t offset = 8*(byteAlignedWidth) - width-1;
-  const uint8_t* fontChar = &Font16.table [(ascii-' ') * Font16.Height * byteAlignedWidth];
+  const uint8_t* fontChar = &Font16.mTable [(ascii-' ') * Font16.mHeight * byteAlignedWidth];
   auto fbPtr = ((uint32_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress) + (y * BSP_LCD_GetXSize()) + x;
 
-  for (auto fontLine = 0u; fontLine < Font16.Height; fontLine++) {
+  for (auto fontLine = 0u; fontLine < Font16.mHeight; fontLine++) {
     auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
     uint16_t fontLineBits = *fontPtr++;
     if (byteAlignedWidth == 2)
@@ -336,22 +338,22 @@ void BSP_LCD_DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignMode
   uint16_t column = 1;
   switch (mode) {
     case CENTER_MODE:  {
-      uint32_t xSize = BSP_LCD_GetXSize() / Font16.Width;
+      uint32_t xSize = BSP_LCD_GetXSize() / Font16.mWidth;
       char* ptr = text;
       uint32_t size = 0;
       while (*ptr++)
         size++;
-      column = x + ((xSize - size) * Font16.Width) / 2;
+      column = x + ((xSize - size) * Font16.mWidth) / 2;
       break;
       }
 
     case RIGHT_MODE: {
-      uint32_t xSize = BSP_LCD_GetXSize() / Font16.Width;
+      uint32_t xSize = BSP_LCD_GetXSize() / Font16.mWidth;
       char* ptr = text;
       uint32_t size = 0;
       while (*ptr++)
         size++;
-      column = -x + ((xSize - size) * Font16.Width);
+      column = -x + ((xSize - size) * Font16.mWidth);
       break;
       }
 
@@ -366,18 +368,18 @@ void BSP_LCD_DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignMode
 
   while (*text && (column < BSP_LCD_GetXSize())) {
     BSP_LCD_DisplayChar (column, y, *text++);
-    column += Font16.Width;
+    column += Font16.mWidth;
     }
   }
 //}}}
 //{{{
 void BSP_LCD_DisplayStringAtLine (uint16_t line, char* ptr) {
-  BSP_LCD_DisplayStringAt (0, line * Font16.Height, ptr, LEFT_MODE);
+  BSP_LCD_DisplayStringAt (0, line * Font16.mHeight, ptr, LEFT_MODE);
   }
 //}}}
 //{{{
 void BSP_LCD_DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr) {
-  BSP_LCD_DisplayStringAt (column * Font16.Width, line * Font16.Height, ptr, LEFT_MODE);
+  BSP_LCD_DisplayStringAt (column * Font16.mWidth, line * Font16.mHeight, ptr, LEFT_MODE);
   }
 //}}}
 
