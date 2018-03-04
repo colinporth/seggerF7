@@ -14,11 +14,11 @@ SECTIONS
   __SRAM_segment_end__ = 0x2004c000;
   __SRAM_segment_size__ = 0x0003c000;
 
-  __HEAPSIZE__ = 128000;
+  __HEAPSIZE__ = 1024;
   __STACKSIZE_ABT__ = 0;
   __STACKSIZE_FIQ__ = 0;
   __STACKSIZE_IRQ__ = 0;
-  __STACKSIZE_PROCESS__ = 1024;
+  __STACKSIZE_PROCESS__ = 0;
   __STACKSIZE_SVC__ = 0;
   __STACKSIZE_UND__ = 0;
   __STACKSIZE__ = 1024;
@@ -254,8 +254,8 @@ SECTIONS
 
   . = ASSERT(__heap_start__ == __heap_end__ || (__heap_end__ >= __SRAM_segment_start__ && __heap_end__ <= __SRAM_segment_end__) , "error: .heap is too large to fit in SRAM memory segment");
 
-  __stack_load_start__ = __SRAM_segment_end__ - 2048;
-  .stack __SRAM_segment_end__ - 2048 (NOLOAD) : AT(__SRAM_segment_end__ - 2048)
+  __stack_load_start__ = __SRAM_segment_end__ - 1024;
+  .stack __SRAM_segment_end__ - 1024 (NOLOAD) : AT(__SRAM_segment_end__ - 1024)
   {
     __stack_start__ = .;
     *(.stack .stack.*)

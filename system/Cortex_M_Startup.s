@@ -63,7 +63,7 @@ DEFAULT_ISR_HANDLER     TAMP_STAMP_IRQHandler             /* Tamper and TimeStam
 DEFAULT_ISR_HANDLER     RTC_WKUP_IRQHandler               /* RTC Wakeup through the EXTI line */
 DEFAULT_ISR_HANDLER     FLASH_IRQHandler                  /* FLASH                        */
 DEFAULT_ISR_HANDLER     RCC_IRQHandler                    /* RCC                          */
-DEFAULT_ISR_HANDLER      EXTI0_IRQHandler                  /* EXTI Line0                   */
+DEFAULT_ISR_HANDLER     EXTI0_IRQHandler                  /* EXTI Line0                   */
 DEFAULT_ISR_HANDLER     EXTI1_IRQHandler                  /* EXTI Line1                   */
 DEFAULT_ISR_HANDLER     EXTI2_IRQHandler                  /* EXTI Line2                   */
 DEFAULT_ISR_HANDLER     EXTI3_IRQHandler                  /* EXTI Line3                   */
@@ -80,7 +80,7 @@ DEFAULT_ISR_HANDLER     CAN1_TX_IRQHandler                /* CAN1 TX            
 DEFAULT_ISR_HANDLER     CAN1_RX0_IRQHandler               /* CAN1 RX0                     */
 DEFAULT_ISR_HANDLER     CAN1_RX1_IRQHandler               /* CAN1 RX1                     */
 DEFAULT_ISR_HANDLER     CAN1_SCE_IRQHandler               /* CAN1 SCE                     */
-DEFAULT_ISR_HANDLER     EXTI9_5_IRQHandler                /* External Line[9:5]s          */
+ISR_HANDLER     EXTI9_5_IRQHandler                /* External Line[9:5]s          */
 DEFAULT_ISR_HANDLER     TIM1_BRK_TIM9_IRQHandler          /* TIM1 Break and TIM9          */
 DEFAULT_ISR_HANDLER     TIM1_UP_TIM10_IRQHandler          /* TIM1 Update and TIM10        */
 DEFAULT_ISR_HANDLER     TIM1_TRG_COM_TIM11_IRQHandler     /* TIM1 Trigger and Commutation and TIM11 */

@@ -515,8 +515,8 @@ void cApp::run (bool keyboard) {
 
   // init ps2 keyboard
   mPs2 = new cPs2 (mLcd);
-  //if (keyboard)
-  //  mPs2->initKeyboard();
+  if (keyboard)
+    mPs2->initKeyboard();
   //else
   //  mPs2->initTouchpad();
 

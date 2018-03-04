@@ -15,11 +15,11 @@ void OnProjectLoad (void) {
   Project.SetDevice ("STM32F746NG");
   Project.SetHostIF ("USB", "");
   Project.SetTargetIF ("SWD");
-  Project.SetTIFSpeed ("4000");
+  Project.SetTIFSpeed ("0");
+  File.Open ("C:/projects/segger/Output/Debug/Exe/usbHid.elf");
   //
   // User settings
   //
-  File.Open ("C:/Users/colin/Desktop/seggerTest/Output/Debug/Exe/Test.elf");
 }
 
 /*********************************************************************
