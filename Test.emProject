@@ -45,10 +45,10 @@
       </folder>
     </folder>
     <folder Name="System Files">
-      <file file_name="Cortex_M_Startup.s" />
-      <file file_name="thumb_crt0.s" />
-      <file file_name="HardFaultHandler.S" />
-      <file file_name="SEGGER_HardFaultHandler.c" />
+      <file file_name="system/SEGGER_HardFaultHandler.c" />
+      <file file_name="system/HardFaultHandler.S" />
+      <file file_name="system/Cortex_M_Startup.s" />
+      <file file_name="system/thumb_crt0.s" />
     </folder>
     <configuration
       Name="Debug"
