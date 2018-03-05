@@ -4,8 +4,9 @@
 #include "../common/cLcd.h"
 #include "../common/cTouch.h"
 #include "../common/stm32746g_discovery_sd.h"
-//}}}
+
 #include "usbd_msc.h"
+//}}}
 
 PCD_HandleTypeDef hpcd;
 USBD_HandleTypeDef USBD_Device;
@@ -42,7 +43,6 @@ private:
   bool mAud = false;
   };
 //}}}
-
 cApp* gApp;
 
 //{{{  usbd
@@ -116,6 +116,7 @@ void HAL_PCD_MspInit (PCD_HandleTypeDef* hpcd) {
 //}}}
 //{{{
 void HAL_PCD_MspDeInit (PCD_HandleTypeDef* hpcd) {
+
   /* Disable USB HS Clocks */
   __HAL_RCC_USB_OTG_HS_CLK_DISABLE();
   __HAL_RCC_SYSCFG_CLK_DISABLE();
