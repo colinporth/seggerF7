@@ -96,21 +96,21 @@ static void Get_SerialNum()
 }
 //}}}
 //{{{
-uint8_t *USBD_MSC_DeviceDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
+uint8_t* USBD_MSC_DeviceDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
 {
   *length = sizeof(USBD_DeviceDesc);
   return (uint8_t*)USBD_DeviceDesc;
 }
 //}}}
 //{{{
-uint8_t *USBD_MSC_LangIDStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
+uint8_t* USBD_MSC_LangIDStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
 {
   *length = sizeof(USBD_LangIDDesc);
   return (uint8_t*)USBD_LangIDDesc;
 }
 //}}}
 //{{{
-uint8_t *USBD_MSC_ProductStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
+uint8_t* USBD_MSC_ProductStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
 {
   if(speed == USBD_SPEED_HIGH)
   {
@@ -124,14 +124,14 @@ uint8_t *USBD_MSC_ProductStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *lengt
 }
 //}}}
 //{{{
-uint8_t *USBD_MSC_ManufacturerStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
+uint8_t* USBD_MSC_ManufacturerStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
 {
   USBD_GetString((uint8_t *)USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
   return USBD_StrDesc;
 }
 //}}}
 //{{{
-uint8_t *USBD_MSC_SerialStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
+uint8_t* USBD_MSC_SerialStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
 {
   *length = USB_SIZ_STRING_SERIAL;
 
@@ -142,7 +142,7 @@ uint8_t *USBD_MSC_SerialStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length
 }
 //}}}
 //{{{
-uint8_t *USBD_MSC_ConfigStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
+uint8_t* USBD_MSC_ConfigStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
 {
   if(speed == USBD_SPEED_HIGH)
   {
@@ -156,7 +156,7 @@ uint8_t *USBD_MSC_ConfigStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length
 }
 //}}}
 //{{{
-uint8_t *USBD_MSC_InterfaceStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
+uint8_t* USBD_MSC_InterfaceStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *length)
 {
   if(speed == USBD_SPEED_HIGH)
   {
