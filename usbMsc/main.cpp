@@ -3,9 +3,20 @@
 #include "../common/system.h"
 #include "../common/cLcd.h"
 #include "../common/cTouch.h"
+#include "../common/stm32746g_discovery_sd.h"
 //}}}
 #include "usbd_msc.h"
 
+extern SD_HandleTypeDef uSdHandle;
+PCD_HandleTypeDef hpcd;
+USBD_HandleTypeDef USBD_Device;
+
+void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler(&hpcd); }
+void BSP_SDMMC_IRQHandler() { HAL_SD_IRQHandler(&uSdHandle); }
+void BSP_SDMMC_DMA_Tx_IRQHandler() { HAL_DMA_IRQHandler(uSdHandle.hdmatx); }
+void BSP_SDMMC_DMA_Rx_IRQHandler() { HAL_DMA_IRQHandler(uSdHandle.hdmarx); }
+
+__IO uint32_t writestatus, readstatus = 0;
 const char* kHidVersion = "USB Msc 5/3/18";
 #define HID_IN_ENDPOINT       0x81
 #define HID_IN_ENDPOINT_SIZE  7
@@ -432,7 +443,7 @@ int8_t getMaxLun() { return 0; }
 
 //{{{
 //  USB Mass storage Standard Inquiry Data
-int8_t kInquirydata[] = { /* 36 */
+uint8_t kInquirydata[] = { /* 36 */
   /* LUN 0 */
   0x00,
   0x80,
@@ -457,7 +468,7 @@ USBD_StorageTypeDef USBD_DISK_fops = {
   read,
   write,
   getMaxLun,
-  kInquirydata,
+  (int8_t*)kInquirydata,
   };
 //}}}
 //}}}
