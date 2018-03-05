@@ -15,6 +15,8 @@
       arm_simulator_memory_simulation_parameter="RX 08000000,00100000,FFFFFFFF;RWX 20010000,0003c000,CDCDCDCD"
       arm_target_device_name="STM32F746NG"
       arm_target_interface_type="SWD"
+      c_preprocessor_definitions="USE_HAL_DRIVER;STM32F746xx;USE_STM32746G_DISCO;USE_USB_FS"
+      c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/Drivers/BSP/STM32746G-Discovery;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include."
       debug_target_connection="J-Link"
       gcc_c_language_standard="c11"
       gcc_cplusplus_language_standard="c++11"
@@ -54,15 +56,15 @@
     <configuration
       Name="Debug"
       arm_library_optimization="Small"
-      c_preprocessor_definitions="USE_HAL_DRIVER;STM32F746xx;USE_STM32746G_DISCO;USE_USB_FS"
+      c_preprocessor_definitions=""
       c_system_include_directories="$(StudioDir)/include;$(PackagesDir)/include"
-      c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/Drivers/BSP/STM32746G-Discovery;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include"
+      c_user_include_directories=""
       gcc_optimization_level="Debug"
       speed="0" />
     <configuration
       Name="Release"
-      c_preprocessor_definitions="USE_HAL_DRIVER;STM32F746xx;USE_STM32746G_DISCO;USE_USB_FS"
-      c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/Drivers/BSP/STM32746G-Discovery;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include"
+      c_preprocessor_definitions=""
+      c_user_include_directories=""
       gcc_c_language_standard="gnu11"
       gcc_cplusplus_language_standard="gnu++14"
       gcc_optimization_level="Level 3" />
@@ -121,4 +123,84 @@
     gcc_debugging_level="None"
     gcc_omit_frame_pointer="Yes"
     gcc_optimization_level="Level 1" />
+  <project Name="usbMsc">
+    <configuration
+      Name="Common"
+      arm_architecture="v7EM"
+      arm_core_type="Cortex-M7"
+      arm_endian="Little"
+      arm_fp_abi="Hard"
+      arm_fpu_type="FPv5-SP-D16"
+      arm_linker_heap_size="64384"
+      arm_linker_process_stack_size="0"
+      arm_linker_stack_size="1024"
+      arm_simulator_memory_simulation_parameter="RX 08000000,00100000,FFFFFFFF;RWX 20010000,0003c000,CDCDCDCD"
+      arm_target_device_name="STM32F746NG"
+      arm_target_interface_type="SWD"
+      c_preprocessor_definitions="USE_HAL_DRIVER;STM32F746xx;USE_STM32746G_DISCO;USE_USB_FS"
+      c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/Drivers/BSP/STM32746G-Discovery;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include."
+      debug_target_connection="J-Link"
+      gcc_c_language_standard="c11"
+      gcc_cplusplus_language_standard="c++11"
+      linker_output_format="hex"
+      linker_printf_width_precision_supported="Yes"
+      linker_section_placement_file="$(ProjectDir)/flash_placement.xml"
+      linker_section_placements_segments="FLASH RX 0x08000000 0x00100000;SRAM RWX 0x20010000 0x0003c000"
+      project_directory="usbMsc"
+      project_type="Executable"
+      speed="0" />
+    <folder Name="main">
+      <file file_name="main.cpp" />
+      <file file_name="../common/system.c" />
+    </folder>
+    <folder Name="bsp_drivers">
+      <file file_name="../common/font8.c" />
+      <file file_name="../common/font12.c" />
+      <file file_name="../common/font16.c" />
+      <file file_name="../common/font20.c" />
+      <file file_name="../common/font24.c" />
+      <file file_name="../common/ft5336.c" />
+      <file file_name="../common/stm32746g_discovery_ts.c" />
+      <file file_name="../common/stm32746g_lcd.cpp" />
+      <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.c" />
+      <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.c" />
+      <file file_name="usbd_core.c" />
+      <file file_name="usbd_ctlreq.c" />
+      <file file_name="usbd_ioreq.c" />
+      <file file_name="usbd_msc.c" />
+    </folder>
+    <folder Name="hal_drivers">
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_usb.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_cortex.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_dma.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_dma2d.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_flash.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_flash_ex.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_gpio.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_i2c.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_ltdc.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pcd.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pcd_ex.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pwr.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pwr_ex.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc_ex.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sd.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sdram.c" />
+    </folder>
+    <folder Name="rtt">
+      <file file_name="../rtt/SEGGER_RTT.c" />
+      <file file_name="../rtt/SEGGER_RTT_Syscalls_SES.c" />
+      <file file_name="../rtt/SEGGER_RTT.h" />
+      <file file_name="../rtt/SEGGER_RTT_Conf.h" />
+    </folder>
+    <folder Name="system">
+      <file file_name="../system/Cortex_M_Startup.s" />
+      <file file_name="../system/HardFaultHandler.S" />
+      <file file_name="../system/SEGGER_HardFaultHandler.c" />
+      <file file_name="../system/thumb_crt0.s" />
+    </folder>
+  </project>
 </solution>
