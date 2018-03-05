@@ -20,8 +20,6 @@ extern "C" {
   }
 
 const char* kVersion = "USB Msc 5/3/18";
-#define HID_IN_ENDPOINT       0x81
-#define HID_IN_ENDPOINT_SIZE  7
 
 //{{{
 class cApp : public cTouch {
@@ -40,7 +38,7 @@ protected:
 
 private:
   cLcd* mLcd = nullptr;
-  bool mAud = false;
+  bool mButton = false;
   };
 //}}}
 cApp* gApp;
@@ -416,13 +414,14 @@ int8_t isWriteProtected (uint8_t lun) { return 0; }
 int8_t read (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    BSP_SD_ReadBlocks_DMA ((uint32_t *)buf, blk_addr, blk_len);
-    while (!readstatus) {}
-    readstatus = 0;
+    BSP_SD_ReadBlocks ((uint32_t *)buf, blk_addr, blk_len, 100);
+    //while (!readstatus) {}
+    //readstatus = 0;
 
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
 
-    gApp->getLcd()->debug (LCD_COLOR_WHITE, "read %x:%d:%d", (unsigned)buf, (int)blk_addr, blk_len);
+    //gApp->getLcd()->debug (LCD_COLOR_WHITE, "read %x", blk_addr);
+    printf ("read %d\n", blk_addr);
     return 0;
     }
 
@@ -433,14 +432,14 @@ int8_t read (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 int8_t write (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    BSP_SD_WriteBlocks_DMA((uint32_t *)buf, blk_addr, blk_len);
-    while (!writestatus) {}
-    writestatus = 0;
+    BSP_SD_WriteBlocks ((uint32_t *)buf, blk_addr, blk_len, 100);
+    //while (!writestatus) {}
+    //writestatus = 0;
 
     // Wait until SD card is ready to use for new operation
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
 
-    gApp->getLcd()->debug (LCD_COLOR_WHITE, "write buf:%x:%d:%d", (unsigned)buf, (int)blk_addr, blk_len);
+    gApp->getLcd()->debug (LCD_COLOR_WHITE, "write buf");
     return 0;
     }
 
@@ -452,9 +451,9 @@ int8_t getMaxLun() { return 0; }
 
 //{{{
 //  USB Mass storage Standard Inquiry Data
-uint8_t kInquirydata[] = { /* 36 */
-  /* LUN 0 */
-  0x00,
+const uint8_t kInquirydata[] = {
+  // 36 bytes
+  0x00,  // LUN 0
   0x80,
   0x02,
   0x02,
@@ -468,7 +467,7 @@ uint8_t kInquirydata[] = { /* 36 */
   '0', '.', '0','1',                      /* Version     : 4 Bytes  */
   };
 //}}}
-//{{{
+
 USBD_StorageTypeDef USBD_DISK_fops = {
   init,
   getCapacity,
@@ -480,13 +479,12 @@ USBD_StorageTypeDef USBD_DISK_fops = {
   (int8_t*)kInquirydata,
   };
 //}}}
-//}}}
 
 // init usbDevice library
 //{{{
 void cApp::run (bool keyboard) {
 
-  mAud = BSP_PB_GetState (BUTTON_KEY);
+  mButton = BSP_PB_GetState (BUTTON_KEY);
 
   // init lcd
   mLcd = new cLcd (12);
@@ -498,11 +496,9 @@ void cApp::run (bool keyboard) {
   USBD_Start (&USBD_Device);
 
   while (true) {
-    //printf ("hello colin %d\n", HAL_GetTick());
     pollTouch();
     mLcd->show (kVersion);
     mLcd->flip();
-    HAL_Delay (20);
     }
   }
 //}}}
