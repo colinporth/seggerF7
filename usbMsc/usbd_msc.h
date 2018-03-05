@@ -5,9 +5,7 @@
 #endif
 //}}}
 
-#include "usbd_def.h"
-#include "usbd_core.h"
-#include "usbd_ioreq.h"
+#include "usbd.h"
 
 extern USBD_DescriptorsTypeDef MSC_Desc;
 extern USBD_ClassTypeDef USBD_MSC;

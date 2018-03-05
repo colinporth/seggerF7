@@ -1,6 +1,5 @@
 // usbd_msc.c
 #include "usbd_msc.h"
-#include "usbd_desc.h"
 
 // msc descriptors
 //{{{  defines
