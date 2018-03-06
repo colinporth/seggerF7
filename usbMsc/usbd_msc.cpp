@@ -1,37 +1,136 @@
 // usbd_msc.cpp
+//{{{  includes
 #include "usbd_msc.h"
 #include "../common/cLcd.h"
 #include "../common/stm32746g_discovery_sd.h"
+//}}}
 
-PCD_HandleTypeDef hpcd;
-USBD_HandleTypeDef USBD_Device;
-extern SD_HandleTypeDef uSdHandle;
 cLcd* gLcd = nullptr;
-
+PCD_HandleTypeDef hpcd;
+USBD_HandleTypeDef gUsbdDevice;
+extern SD_HandleTypeDef uSdHandle;
+//{{{  interrupts
 extern "C" {
   void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&hpcd); }
   void BSP_SDMMC_IRQHandler() { HAL_SD_IRQHandler (&uSdHandle); }
   void BSP_SDMMC_DMA_Tx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmatx); }
   void BSP_SDMMC_DMA_Rx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmarx); }
   }
-
-#define STANDARD_INQUIRY_DATA_LEN  0x24
-//{{{  struct USBD_StorageTypeDef
-typedef struct _USBD_STORAGE {
-  int8_t (*Init) (uint8_t lun);
-  int8_t (*GetCapacity) (uint8_t lun, uint32_t* block_num, uint16_t* block_size);
-  int8_t (*IsReady) (uint8_t lun);
-  int8_t (*IsWriteProtected) (uint8_t lun);
-  int8_t (*Read) (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len);
-  int8_t (*Write)(uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len);
-  int8_t (*GetMaxLun)(void);
-  } USBD_StorageTypeDef;
 //}}}
 
 __IO uint32_t readstatus = 0;
 __IO uint32_t writestatus = 0;
 int gReads = 0;
-//{{{  sd card
+//{{{  sd handlers
+#define STANDARD_INQUIRY_DATA_LEN  36
+const uint8_t kSdInquiryData[STANDARD_INQUIRY_DATA_LEN] = {
+  0x00,  // LUN 0
+  0x80,
+  0x02,
+  0x02,
+  (STANDARD_INQUIRY_DATA_LEN - 5),
+  0x00,
+  0x00,
+  0x00,
+  'S', 'T', 'M', ' ', ' ', ' ', ' ', ' ', /* Manufacturer: 8 bytes  */
+  'P', 'r', 'o', 'd', 'u', 'c', 't', ' ', /* Product     : 16 Bytes */
+  ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+  '0', '.', '0','1',                      /* Version     : 4 Bytes  */
+  };
+
+//{{{
+void sdInit (uint8_t lun) {
+
+  gLcd->debug (LCD_COLOR_WHITE, "sd init");
+  BSP_SD_Init();
+  }
+//}}}
+
+//{{{
+int8_t sdGetMaxLun() {
+  return 0;
+  }
+//}}}
+//{{{
+bool sdGetCapacity (uint8_t lun, uint32_t* block_num, uint16_t* block_size) {
+
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    HAL_SD_CardInfoTypeDef info;
+    BSP_SD_GetCardInfo (&info);
+    *block_num = info.LogBlockNbr - 1;
+    *block_size = info.LogBlockSize;
+    gLcd->debug (LCD_COLOR_YELLOW, "getCapacity %dk blocks size:%d", int(*block_num)/1024, int(*block_size));
+    return true;
+    }
+  else
+    gLcd->debug (LCD_COLOR_RED, "getCapacity SD_NOT_PRESENT");
+
+  return false;
+  }
+//}}}
+//{{{
+bool sdIsReady (uint8_t lun) {
+
+  static int8_t prev_status = 0;
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    if (prev_status < 0) {
+      BSP_SD_Init();
+      prev_status = 0;
+      }
+    if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
+      return true;
+    }
+  else if (prev_status == 0)
+    prev_status = -1;
+
+  return false;
+  }
+//}}}
+//{{{
+bool sdIsWriteProtected (uint8_t lun) {
+  return false;
+  }
+//}}}
+
+//{{{
+bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
+
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+
+    //BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
+    //while (!readstatus) {}
+    //readstatus = 0;
+
+    BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 100);
+
+    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
+
+    gLcd->debug (LCD_COLOR_CYAN, "read %d %p %d %d", gReads++, buf, (int)blk_addr, (int)blk_len);
+    return true;
+    }
+
+  return false;
+  }
+//}}}
+//{{{
+bool sdWrite (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
+
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 100);
+    //while (!writestatus) {}
+    //writestatus = 0;
+
+    // Wait until SD card is ready to use for new operation
+    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
+
+    gLcd->debug (LCD_COLOR_WHITE, "write %d", (int)blk_addr);
+    return true;
+    }
+
+  return false;
+  }
+//}}}
+
 //{{{
 void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
 
@@ -110,118 +209,6 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
 //}}}
 void BSP_SD_ReadCpltCallback() { readstatus = 1; }
 void BSP_SD_WriteCpltCallback() { writestatus = 1; }
-
-//{{{
-int8_t sdInit (uint8_t lun) {
-
-  gLcd->debug (LCD_COLOR_WHITE, "sd init");
-  BSP_SD_Init();
-  return 0;
-  }
-//}}}
-//{{{
-int8_t sdGetCapacity (uint8_t lun, uint32_t* block_num, uint16_t* block_size) {
-
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    HAL_SD_CardInfoTypeDef info;
-    BSP_SD_GetCardInfo (&info);
-    *block_num = info.LogBlockNbr - 1;
-    *block_size = info.LogBlockSize;
-    gLcd->debug (LCD_COLOR_YELLOW, "getCapacity %dk blocks size:%d", int(*block_num)/1024, int(*block_size));
-    return 0;
-    }
-  else
-    gLcd->debug (LCD_COLOR_RED, "getCapacity SD_NOT_PRESENT");
-
-  return -1;
-  }
-//}}}
-//{{{
-int8_t sdIsReady (uint8_t lun) {
-
-  static int8_t prev_status = 0;
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    if (prev_status < 0) {
-      BSP_SD_Init();
-      prev_status = 0;
-      }
-    if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
-      return 0;
-    }
-  else if (prev_status == 0)
-    prev_status = -1;
-
-  return -1;
-  }
-//}}}
-int8_t sdIsWriteProtected (uint8_t lun) { return 0; }
-//{{{
-int8_t sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
-
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-
-    //BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
-    //while (!readstatus) {}
-    //readstatus = 0;
-
-    BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 100);
-
-    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
-
-    gLcd->debug (LCD_COLOR_CYAN, "read %d %p %d %d", gReads++, buf, (int)blk_addr, (int)blk_len);
-    return 0;
-    }
-
-  return -1;
-  }
-//}}}
-//{{{
-int8_t sdWrite (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
-
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 100);
-    //while (!writestatus) {}
-    //writestatus = 0;
-
-    // Wait until SD card is ready to use for new operation
-    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
-
-    gLcd->debug (LCD_COLOR_WHITE, "write %d", (int)blk_addr);
-    return 0;
-    }
-
-  return -1;
-  }
-//}}}
-int8_t sdGetMaxLun() { return 0; }
-//{{{
-//  USB Mass storage Standard Inquiry Data
-const uint8_t kSdInquiryData[] = {
-  // 36 bytes
-  0x00,  // LUN 0
-  0x80,
-  0x02,
-  0x02,
-  (STANDARD_INQUIRY_DATA_LEN - 5),
-  0x00,
-  0x00,
-  0x00,
-  'S', 'T', 'M', ' ', ' ', ' ', ' ', ' ', /* Manufacturer: 8 bytes  */
-  'P', 'r', 'o', 'd', 'u', 'c', 't', ' ', /* Product     : 16 Bytes */
-  ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-  '0', '.', '0','1',                      /* Version     : 4 Bytes  */
-  };
-//}}}
-
-USBD_StorageTypeDef kUsbdSd = {
-  sdInit,
-  sdGetCapacity,
-  sdIsReady,
-  sdIsWriteProtected,
-  sdRead,
-  sdWrite,
-  sdGetMaxLun,
-  };
 //}}}
 
 // msc common descriptors
@@ -725,6 +712,7 @@ void SCSI_SenseCode (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t sKey, 
 
   mscData->scsi_sense[mscData->scsi_sense_tail].Skey  = sKey;
   mscData->scsi_sense[mscData->scsi_sense_tail].w.ASC = ASC << 8;
+
   mscData->scsi_sense_tail++;
   if (mscData->scsi_sense_tail == SENSE_LIST_DEPTH)
     mscData->scsi_sense_tail = 0;
@@ -736,8 +724,8 @@ int8_t SCSI_Read (USBD_HandleTypeDef* usbdHandle, uint8_t lun) {
   auto mscData = (sMscData*)usbdHandle->pClassData;
   uint32_t len = MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET);
 
-  if (((USBD_StorageTypeDef*)usbdHandle->pUserData)->Read (lun ,
-      mscData->bot_data, mscData->scsi_blk_addr / mscData->scsi_blk_size, (len/mscData->scsi_blk_size)*CHUNKS) < 0) {
+  if (!sdRead (lun, mscData->bot_data, 
+               mscData->scsi_blk_addr / mscData->scsi_blk_size, (len/mscData->scsi_blk_size)*CHUNKS)) {
     SCSI_SenseCode (usbdHandle, lun, HARDWARE_ERROR, UNRECOVERED_READ_ERROR);
     return -1;
     }
@@ -761,8 +749,8 @@ int8_t SCSI_Write (USBD_HandleTypeDef* usbdHandle, uint8_t lun) {
   auto mscData = (sMscData*) usbdHandle->pClassData;
   uint32_t len = MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET);
 
-  if (((USBD_StorageTypeDef*)usbdHandle->pUserData)->Write (
-    lun , mscData->bot_data, mscData->scsi_blk_addr / mscData->scsi_blk_size, len / mscData->scsi_blk_size) < 0) {
+  if (!sdWrite (lun , mscData->bot_data, 
+                mscData->scsi_blk_addr / mscData->scsi_blk_size, len / mscData->scsi_blk_size) < 0) {
     SCSI_SenseCode (usbdHandle, lun, HARDWARE_ERROR, WRITE_FAULT);
     return -1;
     }
@@ -794,7 +782,7 @@ int8_t SCSI_TestUnitReady (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t*
     return -1;
     }
 
-  if (((USBD_StorageTypeDef *)usbdHandle->pUserData)->IsReady(lun) !=0 ) {
+  if (!sdIsReady (lun)) {
     SCSI_SenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
     mscData->bot_state = USBD_BOT_NO_DATA;
     return -1;
@@ -812,7 +800,7 @@ int8_t SCSI_Inquiry (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* param
   const uint8_t* pPage;
   uint16_t len;
   if (params[1] & 0x01) {
-    // Evpd 
+    // Evpd
     pPage = (uint8_t*)MSC_Page00_Inquiry_Data;
     len = LENGTH_INQUIRY_PAGE00;
     }
@@ -837,7 +825,7 @@ int8_t SCSI_ReadCapacity10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
-  if (((USBD_StorageTypeDef*)usbdHandle->pUserData)->GetCapacity(lun, &mscData->scsi_blk_nbr, &mscData->scsi_blk_size) != 0) {
+  if (!sdGetCapacity (lun, &mscData->scsi_blk_nbr, &mscData->scsi_blk_size)) {
     SCSI_SenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
     return -1;
     }
@@ -865,7 +853,7 @@ int8_t SCSI_ReadFormatCapacity (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uin
 
   uint16_t blk_size;
   uint32_t blk_nbr;
-  if (((USBD_StorageTypeDef*)usbdHandle->pUserData)->GetCapacity (lun, &blk_nbr, &blk_size) != 0) {
+  if (sdGetCapacity (lun, &blk_nbr, &blk_size) != 0) {
     SCSI_SenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
     return -1;
     }
@@ -973,7 +961,7 @@ int8_t SCSI_Read10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params
       return -1;
       }
 
-    if(((USBD_StorageTypeDef*)usbdHandle->pUserData)->IsReady (lun) !=0 ) {
+    if (!sdIsReady (lun)) {
       // error
       SCSI_SenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
       return -1;
@@ -1014,14 +1002,14 @@ int8_t SCSI_Write10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* param
       }
 
     // Check whether Media is ready */
-    if (((USBD_StorageTypeDef*)usbdHandle->pUserData)->IsReady(lun) !=0 ) {
+    if (!sdIsReady (lun)) {
       // error
       SCSI_SenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
       return -1;
       }
 
     // Check If media is write-protected */
-    if (((USBD_StorageTypeDef*)usbdHandle->pUserData)->IsWriteProtected(lun) !=0 ) {
+    if (sdIsWriteProtected (lun)) {
       // error
       SCSI_SenseCode (usbdHandle, lun, NOT_READY, WRITE_PROTECTED);
       return -1;
@@ -1165,7 +1153,7 @@ void MSC_BOT_CBW_Decode (USBD_HandleTypeDef* usbdHandle) {
 //{{{
 void MSC_BOT_Init (USBD_HandleTypeDef* usbdHandle) {
 
-  ((USBD_StorageTypeDef*)usbdHandle->pUserData)->Init(0);
+  sdInit (0);
 
   USBD_LL_FlushEP (usbdHandle, MSC_EPOUT_ADDR);
   USBD_LL_FlushEP (usbdHandle, MSC_EPIN_ADDR);
@@ -1301,7 +1289,7 @@ uint8_t USBD_MSC_Setup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *re
         //{{{
         case BOT_GET_MAX_LUN :
           if((req->wValue  == 0) && (req->wLength == 1) && ((req->bmRequest & 0x80) == 0x80)) {
-            mscData->max_lun = ((USBD_StorageTypeDef *)usbdHandle->pUserData)->GetMaxLun();
+            mscData->max_lun = sdGetMaxLun();
             USBD_CtlSendData (usbdHandle, (uint8_t*)&mscData->max_lun, 1);
             }
           else {
@@ -1415,13 +1403,6 @@ uint8_t* USBD_MSC_GetDeviceQualifierDescriptor (uint16_t* length) {
 
   *length = sizeof (USBD_MSC_DeviceQualifierDesc);
   return (uint8_t*)USBD_MSC_DeviceQualifierDesc;
-  }
-//}}}
-//{{{
-uint8_t USBD_MSC_RegisterStorage (USBD_HandleTypeDef* usbdHandle, USBD_StorageTypeDef* storageHandler) {
-
-  usbdHandle->pUserData = storageHandler;
-  return 0;
   }
 //}}}
 //{{{
@@ -1717,10 +1698,10 @@ void USBD_LL_Delay (uint32_t Delay) {
 
 //{{{
 void initMsc (cLcd* lcd) {
+
   gLcd = lcd;
-  USBD_Init (&USBD_Device, &kMscDesc, 0);
-  USBD_RegisterClass (&USBD_Device, &kUsbdMsc);
-  USBD_MSC_RegisterStorage (&USBD_Device, &kUsbdSd);
-  USBD_Start (&USBD_Device);
+  USBD_Init (&gUsbdDevice, &kMscDesc, 0);
+  USBD_RegisterClass (&gUsbdDevice, &kUsbdMsc);
+  USBD_Start (&gUsbdDevice);
   }
 //}}}
