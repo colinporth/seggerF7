@@ -37,9 +37,6 @@ public:
     BSP_LCD_SetTransparency (1, 0);
 
     BSP_LCD_DisplayOn();
-
-    for (auto i = 0u; i < kDebugMaxLines; i++)
-      mLines[i].mStr = (char*)malloc (40+1);
     }
   //}}}
   //{{{
@@ -111,7 +108,7 @@ public:
 
     va_list args;
     va_start (args, format);
-    vsnprintf (mLines[line].mStr, 40, format, args);
+    vsnprintf (mLines[line].mStr, kMaxStrSize-1, format, args);
     va_end (args);
 
     mLines[line].mTicks = HAL_GetTick();
@@ -121,7 +118,8 @@ public:
   //}}}
 
 private:
-  static const int kDebugMaxLines = 200;
+  static const int kMaxStrSize = 40;
+  static const int kDebugMaxLines = 100;
   //{{{
   class cDebugItem {
   public:
@@ -133,7 +131,7 @@ private:
       }
     //}}}
 
-    char* mStr = nullptr;
+    char* mStr = (char*)malloc (kMaxStrSize);
     uint32_t mTicks = 0;
     uint32_t mColour = 0;
     };
