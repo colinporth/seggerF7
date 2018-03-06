@@ -411,9 +411,12 @@ int8_t isWriteProtected (uint8_t lun) { return 0; }
 int8_t read (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    BSP_SD_ReadBlocks ((uint32_t *)buf, blk_addr, blk_len, 100);
+
+    //BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
     //while (!readstatus) {}
     //readstatus = 0;
+
+    BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 100);
 
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
 
@@ -428,7 +431,7 @@ int8_t read (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 int8_t write (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    BSP_SD_WriteBlocks ((uint32_t *)buf, blk_addr, blk_len, 100);
+    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 100);
     //while (!writestatus) {}
     //writestatus = 0;
 

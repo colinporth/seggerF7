@@ -310,7 +310,7 @@ __ALIGN_BEGIN const uint8_t USBD_MSC_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_D
 
 // msc_scsi
 #define MSC_MEDIA_PACKET 512
-#define CHUNKS 4
+#define CHUNKS 1
 //{{{  defines
 #define BOT_GET_MAX_LUN          0xFE
 #define BOT_RESET                0xFF
@@ -973,7 +973,7 @@ void MSC_BOT_Init (USBD_HandleTypeDef* usbdHandle) {
   USBD_LL_FlushEP (usbdHandle, MSC_EPOUT_ADDR);
   USBD_LL_FlushEP (usbdHandle, MSC_EPIN_ADDR);
 
-  // Prapare EP to Receive First BOT Cmd 
+  // Prapare EP to Receive First BOT Cmd
   auto mscData = (sMscData*)usbdHandle->pClassData;
   mscData->bot_state = USBD_BOT_IDLE;
   mscData->bot_status = USBD_BOT_STATUS_NORMAL;
@@ -1086,7 +1086,7 @@ uint8_t USBD_MSC_DeInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
   // De-Init the BOT layer
   MSC_BOT_DeInit (usbdHandle);
 
-  // Free MSC Class Resources 
+  // Free MSC Class Resources
   free (usbdHandle->pClassData);
   usbdHandle->pClassData  = NULL;
 
