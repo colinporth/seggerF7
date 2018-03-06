@@ -1,7 +1,7 @@
 // usbd_msc.cpp
 #include "usbd_msc.h"
 
-// msc descriptors
+// msc common descriptors
 //{{{  defines
 #define USBD_VID                      0x0483
 #define USBD_PID                      0x5720
@@ -16,21 +16,16 @@
 #define USBD_INTERFACE_FS_STRING      "MSC Interface"
 //}}}
 //{{{
-__ALIGN_BEGIN const uint8_t USBD_DeviceDesc[USB_LEN_DEV_DESC] __ALIGN_END = {
-  0x12,                       /* bLength */
-  USB_DESC_TYPE_DEVICE,       /* bDescriptorType */
-  0x00,                       /* bcdUSB */
-  0x02,
+const uint8_t USBD_DeviceDesc[USB_LEN_DEV_DESC] __attribute__((aligned(4))) = {
+  0x12, USB_DESC_TYPE_DEVICE,
+  0x00, 0x02,                 /* bcdUSB */
   0x00,                       /* bDeviceClass */
   0x00,                       /* bDeviceSubClass */
   0x00,                       /* bDeviceProtocol */
   USB_MAX_EP0_SIZE,           /* bMaxPacketSize */
-  LOBYTE(USBD_VID),           /* idVendor */
-  HIBYTE(USBD_VID),           /* idVendor */
-  LOBYTE(USBD_PID),           /* idVendor */
-  HIBYTE(USBD_PID),           /* idVendor */
-  0x00,                       /* bcdDevice rel. 2.00 */
-  0x02,
+  LOBYTE(USBD_VID), HIBYTE(USBD_VID),
+  LOBYTE(USBD_PID), HIBYTE(USBD_PID),
+  0x00, 0x02,                 /* bcdDevice rel. 2.00 */
   USBD_IDX_MFC_STR,           /* Index of manufacturer string */
   USBD_IDX_PRODUCT_STR,       /* Index of product string */
   USBD_IDX_SERIAL_STR,        /* Index of serial number string */
@@ -39,7 +34,7 @@ __ALIGN_BEGIN const uint8_t USBD_DeviceDesc[USB_LEN_DEV_DESC] __ALIGN_END = {
 //}}}
 //{{{
 /* USB Standard Device Descriptor */
-__ALIGN_BEGIN const uint8_t USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] __ALIGN_END = {
+const uint8_t USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] __attribute__((aligned(4))) = {
   USB_LEN_LANGID_STR_DESC,
   USB_DESC_TYPE_STRING,
   LOBYTE(USBD_LANGID_STRING),
@@ -52,7 +47,7 @@ uint8_t USBD_StringSerial[USB_SIZ_STRING_SERIAL] = {
   USB_DESC_TYPE_STRING,
   };
 //}}}
-__ALIGN_BEGIN uint8_t USBD_StrDesc[USBD_MAX_STR_DESC_SIZ] __ALIGN_END;
+uint8_t USBD_StrDesc[USBD_MAX_STR_DESC_SIZ] __attribute__((aligned(4)));
 //{{{
 void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len) {
 
@@ -166,9 +161,8 @@ USBD_DescriptorsTypeDef kMscDesc = {
 //{{{
 /* USB Mass storage device Configuration Descriptor */
 /*   All Descriptors (Configuration, Interface, Endpoint, Class, Vendor */
-__ALIGN_BEGIN const uint8_t USBD_MSC_CfgHSDesc[USB_MSC_CONFIG_DESC_SIZ] __ALIGN_END = {
-  0x09,   /* bLength: Configuation Descriptor size */
-  USB_DESC_TYPE_CONFIGURATION,   /* bDescriptorType: Configuration */
+const uint8_t USBD_MSC_CfgHSDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__((aligned(4))) = {
+  0x09, USB_DESC_TYPE_CONFIGURATION,
   USB_MSC_CONFIG_DESC_SIZ,
 
   0x00,
@@ -178,9 +172,8 @@ __ALIGN_BEGIN const uint8_t USBD_MSC_CfgHSDesc[USB_MSC_CONFIG_DESC_SIZ] __ALIGN_
   0xC0,   /* bmAttributes: */
   0x32,   /* MaxPower 100 mA */
 
-  /********************  Mass Storage interface ********************/
-  0x09,   /* bLength: Interface Descriptor size */
-  0x04,   /* bDescriptorType: */
+  // Mass Storage interface
+  0x09, 0x04,   /* bDescriptorType: */
   0x00,   /* bInterfaceNumber: Number of Interface */
   0x00,   /* bAlternateSetting: Alternate setting */
   0x02,   /* bNumEndpoints*/
@@ -189,114 +182,97 @@ __ALIGN_BEGIN const uint8_t USBD_MSC_CfgHSDesc[USB_MSC_CONFIG_DESC_SIZ] __ALIGN_
   0x50,   /* nInterfaceProtocol */
   0x05,          /* iInterface: */
 
-  /********************  Mass Storage Endpoints ********************/
-  0x07,   /*Endpoint descriptor length = 7*/
-  0x05,   /*Endpoint descriptor type */
-  MSC_EPIN_ADDR,   /*Endpoint address (IN, address 1) */
-  0x02,   /*Bulk endpoint type */
-  LOBYTE(MSC_MAX_HS_PACKET),
-  HIBYTE(MSC_MAX_HS_PACKET),
-  0x00,   /*Polling interval in milliseconds */
+  // Mass Storage Endpoints
+  0x07, 0x05,     /*Endpoint descriptor type */
+  MSC_EPIN_ADDR,  /*Endpoint address (IN, address 1) */
+  0x02,           /*Bulk endpoint type */
+  LOBYTE(MSC_MAX_HS_PACKET), HIBYTE(MSC_MAX_HS_PACKET),
+  0x00,           /*Polling interval in milliseconds */
 
-  0x07,   /*Endpoint descriptor length = 7 */
-  0x05,   /*Endpoint descriptor type */
-  MSC_EPOUT_ADDR,   /*Endpoint address (OUT, address 1) */
-  0x02,   /*Bulk endpoint type */
-  LOBYTE(MSC_MAX_HS_PACKET),
-  HIBYTE(MSC_MAX_HS_PACKET),
-  0x00     /*Polling interval in milliseconds*/
+  0x07, 0x05,     /*Endpoint descriptor type */
+  MSC_EPOUT_ADDR, /*Endpoint address (OUT, address 1) */
+  0x02,           /*Bulk endpoint type */
+  LOBYTE(MSC_MAX_HS_PACKET), HIBYTE(MSC_MAX_HS_PACKET),
+  0x00            /*Polling interval in milliseconds*/
   };
 //}}}
 //{{{
 /* USB Mass storage device Configuration Descriptor */
 /*   All Descriptors (Configuration, Interface, Endpoint, Class, Vendor */
-__ALIGN_BEGIN const uint8_t USBD_MSC_CfgFSDesc[USB_MSC_CONFIG_DESC_SIZ] __ALIGN_END = {
-  0x09,   /* bLength: Configuation Descriptor size */
-  USB_DESC_TYPE_CONFIGURATION,   /* bDescriptorType: Configuration */
+const uint8_t USBD_MSC_CfgFSDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__((aligned(4))) = {
+  0x09, USB_DESC_TYPE_CONFIGURATION,   /* bDescriptorType: Configuration */
   USB_MSC_CONFIG_DESC_SIZ,
-
   0x00,
-  0x01,   /* bNumInterfaces: 1 interface */
-  0x01,   /* bConfigurationValue: */
-  0x04,   /* iConfiguration: */
-  0xC0,   /* bmAttributes: */
-  0x32,   /* MaxPower 100 mA */
+  0x01,  /* bNumInterfaces: 1 interface */
+  0x01,  /* bConfigurationValue: */
+  0x04,  /* iConfiguration: */
+  0xC0,  /* bmAttributes: */
+  0x32,  /* MaxPower 100 mA */
 
-  /********************  Mass Storage interface ********************/
-  0x09,   /* bLength: Interface Descriptor size */
-  0x04,   /* bDescriptorType: */
-  0x00,   /* bInterfaceNumber: Number of Interface */
-  0x00,   /* bAlternateSetting: Alternate setting */
-  0x02,   /* bNumEndpoints*/
-  0x08,   /* bInterfaceClass: MSC Class */
-  0x06,   /* bInterfaceSubClass : SCSI transparent*/
-  0x50,   /* nInterfaceProtocol */
-  0x05,          /* iInterface: */
+  //  Mass Storage interface
+  0x09, 0x04,  /* bDescriptorType: */
+  0x00,  /* bInterfaceNumber: Number of Interface */
+  0x00,  /* bAlternateSetting: Alternate setting */
+  0x02,  /* bNumEndpoints*/
+  0x08,  /* bInterfaceClass: MSC Class */
+  0x06,  /* bInterfaceSubClass : SCSI transparent*/
+  0x50,  /* nInterfaceProtocol */
+  0x05,  /* iInterface: */
 
-  /********************  Mass Storage Endpoints ********************/
-  0x07,   /*Endpoint descriptor length = 7*/
-  0x05,   /*Endpoint descriptor type */
-  MSC_EPIN_ADDR,   /*Endpoint address (IN, address 1) */
-  0x02,   /*Bulk endpoint type */
-  LOBYTE(MSC_MAX_FS_PACKET),
-  HIBYTE(MSC_MAX_FS_PACKET),
-  0x00,   /*Polling interval in milliseconds */
+  //  Mass Storage Endpoints
+  0x07, 0x05,     /*Endpoint descriptor type */
+  MSC_EPIN_ADDR,  /*Endpoint address (IN, address 1) */
+  0x02,           /*Bulk endpoint type */
+  LOBYTE(MSC_MAX_FS_PACKET), HIBYTE(MSC_MAX_FS_PACKET),
+  0x00,           /*Polling interval in milliseconds */
 
-  0x07,   /*Endpoint descriptor length = 7 */
-  0x05,   /*Endpoint descriptor type */
-  MSC_EPOUT_ADDR,   /*Endpoint address (OUT, address 1) */
-  0x02,   /*Bulk endpoint type */
-  LOBYTE(MSC_MAX_FS_PACKET),
-  HIBYTE(MSC_MAX_FS_PACKET),
-  0x00     /*Polling interval in milliseconds*/
+  0x07, 0x05,     /*Endpoint descriptor type */
+  MSC_EPOUT_ADDR, /*Endpoint address (OUT, address 1) */
+  0x02,           /*Bulk endpoint type */
+  LOBYTE(MSC_MAX_FS_PACKET), HIBYTE(MSC_MAX_FS_PACKET),
+  0x00            /*Polling interval in milliseconds*/
   };
 //}}}
 //{{{
-__ALIGN_BEGIN const uint8_t USBD_MSC_OtherSpeedCfgDesc[USB_MSC_CONFIG_DESC_SIZ]  __ALIGN_END  = {
+const uint8_t USBD_MSC_OtherSpeedCfgDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__((aligned(4)))  = {
   0x09,   /* bLength: Configuation Descriptor size */
   USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION,
   USB_MSC_CONFIG_DESC_SIZ,
 
   0x00,
-  0x01,   /* bNumInterfaces: 1 interface */
-  0x01,   /* bConfigurationValue: */
-  0x04,   /* iConfiguration: */
-  0xC0,   /* bmAttributes: */
-  0x32,   /* MaxPower 100 mA */
+  0x01,  /* bNumInterfaces: 1 interface */
+  0x01,  /* bConfigurationValue: */
+  0x04,  /* iConfiguration: */
+  0xC0,  /* bmAttributes: */
+  0x32,  /* MaxPower 100 mA */
 
-  /********************  Mass Storage interface ********************/
-  0x09,   /* bLength: Interface Descriptor size */
-  0x04,   /* bDescriptorType: */
-  0x00,   /* bInterfaceNumber: Number of Interface */
-  0x00,   /* bAlternateSetting: Alternate setting */
-  0x02,   /* bNumEndpoints*/
-  0x08,   /* bInterfaceClass: MSC Class */
-  0x06,   /* bInterfaceSubClass : SCSI transparent command set*/
-  0x50,   /* nInterfaceProtocol */
-  0x05,          /* iInterface: */
+  // Mass Storage interface
+  0x09, 0x04,  /* bDescriptorType: */
+  0x00,  /* bInterfaceNumber: Number of Interface */
+  0x00,  /* bAlternateSetting: Alternate setting */
+  0x02,  /* bNumEndpoints*/
+  0x08,  /* bInterfaceClass: MSC Class */
+  0x06,  /* bInterfaceSubClass : SCSI transparent command set*/
+  0x50,  /* nInterfaceProtocol */
+  0x05,  /* iInterface: */
 
-  /********************  Mass Storage Endpoints ********************/
-  0x07,   /*Endpoint descriptor length = 7*/
-  0x05,   /*Endpoint descriptor type */
-  MSC_EPIN_ADDR,   /*Endpoint address (IN, address 1) */
-  0x02,   /*Bulk endpoint type */
-  0x40,
-  0x00,
-  0x00,   /*Polling interval in milliseconds */
+  // Mass Storage Endpoints
+  0x07, 0x05,     /*Endpoint descriptor type */
+  MSC_EPIN_ADDR,  /*Endpoint address (IN, address 1) */
+  0x02,           /*Bulk endpoint type */
+  0x40, 0x00,
+  0x00,           /*Polling interval in milliseconds */
 
-  0x07,   /*Endpoint descriptor length = 7 */
-  0x05,   /*Endpoint descriptor type */
-  MSC_EPOUT_ADDR,   /*Endpoint address (OUT, address 1) */
-  0x02,   /*Bulk endpoint type */
-  0x40,
-  0x00,
-  0x00     /*Polling interval in milliseconds*/
+  0x07, 0x05,     /*Endpoint descriptor type */
+  MSC_EPOUT_ADDR, /*Endpoint address (OUT, address 1) */
+  0x02,           /*Bulk endpoint type */
+  0x40, 0x00,
+  0x00            /*Polling interval in milliseconds*/
   };
 //}}}
 //{{{
-__ALIGN_BEGIN const uint8_t USBD_MSC_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALIGN_END = {
-  USB_LEN_DEV_QUALIFIER_DESC,
-  USB_DESC_TYPE_DEVICE_QUALIFIER,
+const uint8_t USBD_MSC_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __attribute__((aligned(4))) = {
+  USB_LEN_DEV_QUALIFIER_DESC, USB_DESC_TYPE_DEVICE_QUALIFIER,
   0x00,
   0x02,
   0x00,
@@ -936,13 +912,13 @@ void MSC_BOT_CBW_Decode (USBD_HandleTypeDef* usbdHandle) {
   mscData->csw.dDataResidue = mscData->cbw.dDataLength;
 
   if ((USBD_LL_GetRxDataSize (usbdHandle ,MSC_EPOUT_ADDR) != USBD_BOT_CBW_LENGTH) ||
-      (mscData->cbw.dSignature != USBD_BOT_CBW_SIGNATURE)||
+      (mscData->cbw.dSignature != USBD_BOT_CBW_SIGNATURE) ||
         (mscData->cbw.bLUN > 1) ||
           (mscData->cbw.bCBLength < 1) ||
             (mscData->cbw.bCBLength > 16)) {
-    SCSI_SenseCode(usbdHandle, mscData->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
+    SCSI_SenseCode (usbdHandle, mscData->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
     mscData->bot_status = USBD_BOT_STATUS_ERROR;
-    MSC_BOT_Abort(usbdHandle);
+    MSC_BOT_Abort (usbdHandle);
     }
 
   else {

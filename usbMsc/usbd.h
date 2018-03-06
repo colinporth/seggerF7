@@ -21,7 +21,6 @@
 #define __weak   __attribute__((weak))
 #define __packed  __attribute__((__packed__))
 #define __ALIGN_END  __attribute__ ((aligned (4)))
-#define __ALIGN_BEGIN
 
 #define DEVICE_ID1  (0x1FFF7A10)
 #define DEVICE_ID2  (0x1FFF7A14)
