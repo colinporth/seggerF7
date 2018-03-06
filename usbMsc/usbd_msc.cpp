@@ -164,7 +164,6 @@ USBD_DescriptorsTypeDef kMscDesc = {
 const uint8_t USBD_MSC_CfgHSDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__((aligned(4))) = {
   0x09, USB_DESC_TYPE_CONFIGURATION,
   USB_MSC_CONFIG_DESC_SIZ,
-
   0x00,
   0x01,   /* bNumInterfaces: 1 interface */
   0x01,   /* bConfigurationValue: */
@@ -235,10 +234,8 @@ const uint8_t USBD_MSC_CfgFSDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__((aligned
 //}}}
 //{{{
 const uint8_t USBD_MSC_OtherSpeedCfgDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__((aligned(4)))  = {
-  0x09,   /* bLength: Configuation Descriptor size */
-  USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION,
+  0x09, USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION,
   USB_MSC_CONFIG_DESC_SIZ,
-
   0x00,
   0x01,  /* bNumInterfaces: 1 interface */
   0x01,  /* bConfigurationValue: */
@@ -257,17 +254,17 @@ const uint8_t USBD_MSC_OtherSpeedCfgDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__(
   0x05,  /* iInterface: */
 
   // Mass Storage Endpoints
-  0x07, 0x05,     /*Endpoint descriptor type */
-  MSC_EPIN_ADDR,  /*Endpoint address (IN, address 1) */
-  0x02,           /*Bulk endpoint type */
+  0x07, 0x05,     /* Endpoint descriptor type */
+  MSC_EPIN_ADDR,  /* Endpoint address (IN, address 1) */
+  0x02,           /* Bulk endpoint type */
   0x40, 0x00,
-  0x00,           /*Polling interval in milliseconds */
+  0x00,           /* Polling interval in milliseconds */
 
-  0x07, 0x05,     /*Endpoint descriptor type */
-  MSC_EPOUT_ADDR, /*Endpoint address (OUT, address 1) */
-  0x02,           /*Bulk endpoint type */
+  0x07, 0x05,     /* Endpoint descriptor type */
+  MSC_EPOUT_ADDR, /* Endpoint address (OUT, address 1) */
+  0x02,           /* Bulk endpoint type */
   0x40, 0x00,
-  0x00            /*Polling interval in milliseconds*/
+  0x00            /* Polling interval in milliseconds*/
   };
 //}}}
 //{{{

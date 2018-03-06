@@ -620,7 +620,7 @@ USBD_StatusTypeDef USBD_LL_DataInStage (USBD_HandleTypeDef* usbdHandle, uint8_t 
         USBD_LL_PrepareReceive (usbdHandle, 0, NULL, 0);
         }
 
-      else { 
+      else {
         // last packet is MPS multiple, so send ZLP packet
         if ((pep->total_length % pep->maxpacket == 0) &&
             (pep->total_length >= pep->maxpacket) &&
@@ -633,7 +633,7 @@ USBD_StatusTypeDef USBD_LL_DataInStage (USBD_HandleTypeDef* usbdHandle, uint8_t 
           }
         else {
           if ((usbdHandle->pClass->EP0_TxSent != NULL)&&
-              (usbdHandle->dev_state == USBD_STATE_CONFIGURED)) 
+              (usbdHandle->dev_state == USBD_STATE_CONFIGURED))
             usbdHandle->pClass->EP0_TxSent(usbdHandle);
           USBD_CtlReceiveStatus(usbdHandle);
           }
@@ -711,7 +711,7 @@ USBD_StatusTypeDef USBD_LL_DevConnected (USBD_HandleTypeDef* usbdHandle) { retur
 //{{{
 USBD_StatusTypeDef USBD_LL_DevDisconnected (USBD_HandleTypeDef* usbdHandle) {
 
-  // Free Class Resources 
+  // Free Class Resources
   usbdHandle->dev_state = USBD_STATE_DEFAULT;
   usbdHandle->pClass->DeInit(usbdHandle, usbdHandle->dev_config);
 
@@ -797,7 +797,6 @@ USBD_StatusTypeDef USBD_Stop (USBD_HandleTypeDef* usbdHandle) {
   return USBD_OK;
   }
 //}}}
-USBD_StatusTypeDef USBD_RunTestMode (USBD_HandleTypeDef* usbdHandle) { return USBD_OK; }
 //{{{
 USBD_StatusTypeDef USBD_SetClassConfig (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
 
@@ -817,3 +816,4 @@ USBD_StatusTypeDef USBD_ClrClassConfig (USBD_HandleTypeDef* usbdHandle, uint8_t 
   return USBD_OK;
   }
 //}}}
+USBD_StatusTypeDef USBD_RunTestMode (USBD_HandleTypeDef* usbdHandle) { return USBD_OK; }

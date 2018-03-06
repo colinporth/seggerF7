@@ -126,6 +126,7 @@
   <project Name="usbMsc">
     <configuration
       Name="Common"
+      STLport="Yes"
       arm_architecture="v7EM"
       arm_core_type="Cortex-M7"
       arm_endian="Little"
@@ -140,6 +141,7 @@
       c_preprocessor_definitions="USE_HAL_DRIVER;STM32F746xx;USE_STM32746G_DISCO;USE_USB_HS"
       c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/Drivers/BSP/STM32746G-Discovery;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include."
       debug_target_connection="J-Link"
+      debug_type_file="$(StudioDir)/bin/STLport.xml"
       gcc_c_language_standard="c11"
       gcc_cplusplus_language_standard="c++11"
       linker_output_format="hex"

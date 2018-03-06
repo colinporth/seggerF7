@@ -1,5 +1,7 @@
 // main.cpp - hid class usb
 //{{{  includes
+#include <map>
+
 #include "../common/system.h"
 #include "../common/cLcd.h"
 #include "../common/cTouch.h"
@@ -315,7 +317,8 @@ void USBD_LL_Delay (uint32_t Delay) {
   }
 //}}}
 //}}}
-__IO uint32_t writestatus, readstatus = 0;
+__IO uint32_t readstatus = 0;
+__IO uint32_t writestatus = 0;
 int gReads = 0;
 //{{{  sd card
 //{{{
@@ -394,8 +397,8 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   HAL_NVIC_EnableIRQ(SD_DMAx_Tx_IRQn);
   }
 //}}}
-void BSP_SD_WriteCpltCallback() { writestatus = 1; }
 void BSP_SD_ReadCpltCallback() { readstatus = 1; }
+void BSP_SD_WriteCpltCallback() { writestatus = 1; }
 
 //{{{
 int8_t sdInit (uint8_t lun) {
