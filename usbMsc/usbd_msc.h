@@ -7,8 +7,8 @@
 
 #include "usbd.h"
 
-extern USBD_DescriptorsTypeDef MSC_Desc;
-extern USBD_ClassTypeDef USBD_MSC;
+extern USBD_DescriptorsTypeDef kMscDesc;
+extern USBD_ClassTypeDef kUsbdMsc;
 
 #define STANDARD_INQUIRY_DATA_LEN  0x24
 
@@ -24,7 +24,6 @@ typedef struct _USBD_STORAGE {
   int8_t *pInquiry;
   } USBD_StorageTypeDef;
 //}}}
-#define USBD_MSC_CLASS &USBD_MSC
 
 int8_t SCSI_ProcessCmd (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* cmd);
 uint8_t USBD_MSC_RegisterStorage (USBD_HandleTypeDef* pdev, USBD_StorageTypeDef* fops);

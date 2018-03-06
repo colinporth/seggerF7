@@ -155,14 +155,14 @@
     </folder>
     <folder Name="bsp_drivers">
       <file file_name="../common/font16.c" />
-      <file file_name="../common/ft5336.c" />
       <file file_name="../common/stm32746g_discovery_ts.c" />
       <file file_name="../common/stm32746g_lcd.cpp" />
       <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.c" />
       <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.c" />
-      <file file_name="usbd_msc.c" />
       <file file_name="../common/stm32746g_discovery_sd.c" />
-      <file file_name="usbd.c" />
+      <file file_name="usbd_msc.cpp" />
+      <file file_name="usbd.cpp" />
+      <file file_name="../common/ft5336.cpp" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />

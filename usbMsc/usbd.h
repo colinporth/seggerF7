@@ -10,7 +10,25 @@
 #include <stdlib.h>
 #include <string.h>
 //}}}
-//{{{  defines
+//{{{  usbd defines
+#define  SWAPBYTE(addr)        (((uint16_t)(*((uint8_t *)(addr)))) + \
+                               (((uint16_t)(*(((uint8_t *)(addr)) + 1))) << 8))
+
+#define LOBYTE(x)  ((uint8_t)(x & 0x00FF))
+#define HIBYTE(x)  ((uint8_t)((x & 0xFF00) >>8))
+#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
+#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
+
+#define __weak  __attribute__((weak))
+#define __packed __attribute__((__packed__))
+#define __ALIGN_END  __attribute__ ((aligned (4)))
+#define __ALIGN_BEGIN
+
+#define         DEVICE_ID1          (0x1FFF7A10)
+#define         DEVICE_ID2          (0x1FFF7A14)
+#define         DEVICE_ID3          (0x1FFF7A18)
+#define  USB_SIZ_STRING_SERIAL       0x1A
+
 #define USBD_MAX_NUM_INTERFACES               1
 #define USBD_MAX_NUM_CONFIGURATION            1
 #define USBD_MAX_STR_DESC_SIZ                 0x100
@@ -19,38 +37,6 @@
 #define USBD_DEBUG_LEVEL                      0
 
 #define MSC_MEDIA_PACKET                      512
-
-#define USBD_malloc               malloc
-#define USBD_free                 free
-#define USBD_memset               memset
-#define USBD_memcpy               memcpy
-
-#if (USBD_DEBUG_LEVEL > 0)
-#define  USBD_UsrLog(...)   printf(__VA_ARGS__);\
-                            printf("\n");
-#else
-#define USBD_UsrLog(...)
-#endif
-
-#if (USBD_DEBUG_LEVEL > 1)
-
-#define  USBD_ErrLog(...)   printf("ERROR: ") ;\
-                            printf(__VA_ARGS__);\
-                            printf("\n");
-#else
-#define USBD_ErrLog(...)
-#endif
-
-#if (USBD_DEBUG_LEVEL > 2)
-#define  USBD_DbgLog(...)   printf("DEBUG : ") ;\
-                            printf(__VA_ARGS__);\
-                            printf("\n");
-#endif
-
-//{{{
-#ifndef NULL
-#define NULL  0
-#endif
 
 #define  USB_LEN_DEV_QUALIFIER_DESC                     0x0A
 #define  USB_LEN_DEV_DESC                               0x12
@@ -132,31 +118,21 @@
 #define USBD_EP_TYPE_ISOC                                 1
 #define USBD_EP_TYPE_BULK                                 2
 #define USBD_EP_TYPE_INTR                                 3
-
-
-/**
-  * @}
-  */
-
-
-/** @defgroup USBD_DEF_Exported_TypesDefinitions
-  * @{
-  */
-
-typedef  struct  usb_setup_req
-{
-
-    uint8_t   bmRequest;
-    uint8_t   bRequest;
-    uint16_t  wValue;
-    uint16_t  wIndex;
-    uint16_t  wLength;
-}USBD_SetupReqTypedef;
-
+//}}}
+typedef enum { USBD_SPEED_HIGH = 0, USBD_SPEED_FULL  = 1, USBD_SPEED_LOW   = 2, } USBD_SpeedTypeDef;
+typedef enum { USBD_OK = 0, USBD_BUSY, USBD_FAIL, } USBD_StatusTypeDef;
+//{{{  struct  USBD_SetupReqTypedef
+typedef struct usb_setup_req {
+  uint8_t   bmRequest;
+  uint8_t   bRequest;
+  uint16_t  wValue;
+  uint16_t  wIndex;
+  uint16_t  wLength;
+  } USBD_SetupReqTypedef;
+//}}}
 struct _USBD_HandleTypeDef;
-
-typedef struct _Device_cb
-{
+//{{{  struct USBD_ClassTypeDef
+typedef struct _Device_cb {
   uint8_t  (*Init)             (struct _USBD_HandleTypeDef *pdev , uint8_t cfgidx);
   uint8_t  (*DeInit)           (struct _USBD_HandleTypeDef *pdev , uint8_t cfgidx);
  /* Control Endpoints*/
@@ -177,27 +153,10 @@ typedef struct _Device_cb
 #if (USBD_SUPPORT_USER_STRING == 1)
   uint8_t  *(*GetUsrStrDescriptor)(struct _USBD_HandleTypeDef *pdev ,uint8_t index,  uint16_t *length);
 #endif
-
-} USBD_ClassTypeDef;
-
-/* Following USB Device Speed */
-typedef enum
-{
-  USBD_SPEED_HIGH  = 0,
-  USBD_SPEED_FULL  = 1,
-  USBD_SPEED_LOW   = 2,
-}USBD_SpeedTypeDef;
-
-/* Following USB Device status */
-typedef enum {
-  USBD_OK   = 0,
-  USBD_BUSY,
-  USBD_FAIL,
-}USBD_StatusTypeDef;
-
-/* USB Device descriptors structure */
-typedef struct
-{
+  } USBD_ClassTypeDef;
+//}}}
+//{{{  struct USBD_DescriptorsTypeDef
+typedef struct {
   uint8_t  *(*GetDeviceDescriptor)( USBD_SpeedTypeDef speed , uint16_t *length);
   uint8_t  *(*GetLangIDStrDescriptor)( USBD_SpeedTypeDef speed , uint16_t *length);
   uint8_t  *(*GetManufacturerStrDescriptor)( USBD_SpeedTypeDef speed , uint16_t *length);
@@ -208,20 +167,18 @@ typedef struct
 #if (USBD_LPM_ENABLED == 1)
   uint8_t  *(*GetBOSDescriptor)( USBD_SpeedTypeDef speed , uint16_t *length);
 #endif
-} USBD_DescriptorsTypeDef;
-
-/* USB Device handle structure */
-typedef struct
-{
+  } USBD_DescriptorsTypeDef;
+//}}}
+//{{{  struct USBD_EndpointTypeDef
+typedef struct {
   uint32_t                status;
   uint32_t                total_length;
   uint32_t                rem_length;
   uint32_t                maxpacket;
-} USBD_EndpointTypeDef;
-
-/* USB Device handle structure */
-typedef struct _USBD_HandleTypeDef
-{
+  } USBD_EndpointTypeDef;
+//}}}
+//{{{  struct USBD_HandleTypeDef
+typedef struct _USBD_HandleTypeDef {
   uint8_t                 id;
   uint32_t                dev_config;
   uint32_t                dev_default_config;
@@ -244,67 +201,13 @@ typedef struct _USBD_HandleTypeDef
   void                    *pClassData;
   void                    *pUserData;
   void                    *pData;
-} USBD_HandleTypeDef;
-
-/**
-  * @}
-  */
-
-
-
-/** @defgroup USBD_DEF_Exported_Macros
-  * @{
-  */
-#define  SWAPBYTE(addr)        (((uint16_t)(*((uint8_t *)(addr)))) + \
-                               (((uint16_t)(*(((uint8_t *)(addr)) + 1))) << 8))
-
-#define LOBYTE(x)  ((uint8_t)(x & 0x00FF))
-#define HIBYTE(x)  ((uint8_t)((x & 0xFF00) >>8))
-#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
-#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
-
-
-#if  defined ( __GNUC__ )
-  #ifndef __weak
-    #define __weak   __attribute__((weak))
-  #endif /* __weak */
-  #ifndef __packed
-    #define __packed __attribute__((__packed__))
-  #endif /* __packed */
-#endif /* __GNUC__ */
-
-
-/* In HS mode and when the DMA is used, all variables and data structures dealing
-   with the DMA during the transaction process should be 4-bytes aligned */
-
-#if defined   (__GNUC__)        /* GNU Compiler */
-  #define __ALIGN_END    __attribute__ ((aligned (4)))
-  #define __ALIGN_BEGIN
-#else
-  #define __ALIGN_END
-  #if defined   (__CC_ARM)      /* ARM Compiler */
-    #define __ALIGN_BEGIN    __align(4)
-  #elif defined (__ICCARM__)    /* IAR Compiler */
-    #define __ALIGN_BEGIN
-  #elif defined  (__TASKING__)  /* TASKING Compiler */
-    #define __ALIGN_BEGIN    __align(4)
-  #endif /* __CC_ARM */
-#endif /* __GNUC__ */
+  } USBD_HandleTypeDef;
 //}}}
 
-#define         DEVICE_ID1          (0x1FFF7A10)
-#define         DEVICE_ID2          (0x1FFF7A14)
-#define         DEVICE_ID3          (0x1FFF7A18)
-#define  USB_SIZ_STRING_SERIAL       0x1A
-extern USBD_DescriptorsTypeDef MSC_Desc;
-
-#define USBD_SOF          USBD_LL_SOF
-//}}}
-
-USBD_StatusTypeDef USBD_Init(USBD_HandleTypeDef *pdev, USBD_DescriptorsTypeDef *pdesc, uint8_t id);
+USBD_StatusTypeDef USBD_Init (USBD_HandleTypeDef *pdev, USBD_DescriptorsTypeDef *pdesc, uint8_t id);
 USBD_StatusTypeDef USBD_DeInit(USBD_HandleTypeDef *pdev);
-USBD_StatusTypeDef USBD_Start  (USBD_HandleTypeDef *pdev);
-USBD_StatusTypeDef USBD_Stop   (USBD_HandleTypeDef *pdev);
+USBD_StatusTypeDef USBD_Start (USBD_HandleTypeDef *pdev);
+USBD_StatusTypeDef USBD_Stop (USBD_HandleTypeDef *pdev);
 USBD_StatusTypeDef USBD_RegisterClass(USBD_HandleTypeDef *pdev, USBD_ClassTypeDef *pclass);
 USBD_StatusTypeDef USBD_RunTestMode (USBD_HandleTypeDef  *pdev);
 USBD_StatusTypeDef USBD_SetClassConfig(USBD_HandleTypeDef  *pdev, uint8_t cfgidx);
@@ -337,13 +240,8 @@ USBD_StatusTypeDef USBD_LL_SetUSBAddress (USBD_HandleTypeDef *pdev, uint8_t dev_
 USBD_StatusTypeDef USBD_LL_Transmit (USBD_HandleTypeDef *pdev, uint8_t  ep_addr, uint8_t  *pbuf, uint16_t  size);
 USBD_StatusTypeDef USBD_LL_PrepareReceive(USBD_HandleTypeDef *pdev, uint8_t  ep_addr, uint8_t  *pbuf, uint16_t  size);
 uint32_t USBD_LL_GetRxDataSize  (USBD_HandleTypeDef *pdev, uint8_t  ep_addr);
-void  USBD_LL_Delay (uint32_t Delay);
 
-USBD_StatusTypeDef USBD_StdDevReq (USBD_HandleTypeDef  *pdev, USBD_SetupReqTypedef  *req);
-USBD_StatusTypeDef USBD_StdItfReq (USBD_HandleTypeDef  *pdev, USBD_SetupReqTypedef  *req);
-USBD_StatusTypeDef USBD_StdEPReq  (USBD_HandleTypeDef  *pdev, USBD_SetupReqTypedef  *req);
 void USBD_CtlError (USBD_HandleTypeDef  *pdev, USBD_SetupReqTypedef *req);
-void USBD_ParseSetupRequest (USBD_SetupReqTypedef *req, uint8_t *pdata);
 void USBD_GetString (uint8_t *desc, uint8_t *unicode, uint16_t *len);
 
 USBD_StatusTypeDef USBD_CtlSendData (USBD_HandleTypeDef  *pdev, uint8_t *buf, uint16_t len);

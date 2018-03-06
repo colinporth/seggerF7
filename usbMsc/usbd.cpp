@@ -82,7 +82,7 @@ uint16_t USBD_GetRxCount (USBD_HandleTypeDef  *pdev , uint8_t ep_addr)
 //}}}
 
 //{{{
-static void USBD_SetConfig (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
+void USBD_SetConfig (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
 {
 
   static uint8_t  cfgidx;
@@ -152,7 +152,7 @@ static void USBD_SetConfig (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req
 }
 //}}}
 //{{{
-static void USBD_GetConfig (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
+void USBD_GetConfig (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
 {
 
   if (req->wLength != 1)
@@ -185,7 +185,7 @@ static void USBD_GetConfig (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req
 }
 //}}}
 //{{{
-static void USBD_GetStatus (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
+void USBD_GetStatus (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
 {
 
 
@@ -217,7 +217,7 @@ static void USBD_GetStatus (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req
 }
 //}}}
 //{{{
-static void USBD_SetFeature (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
+void USBD_SetFeature (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
 {
 
   if (req->wValue == USB_FEATURE_REMOTE_WAKEUP)
@@ -231,7 +231,7 @@ static void USBD_SetFeature (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *re
 
 //}}}
 //{{{
-static void USBD_ClrFeature (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
+void USBD_ClrFeature (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
 {
   switch (pdev->dev_state)
   {
@@ -252,7 +252,7 @@ static void USBD_ClrFeature (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *re
 }
 //}}}
 //{{{
-static void USBD_GetDescriptor (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
+void USBD_GetDescriptor (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
 {
   uint16_t len;
   uint8_t *pbuf;
@@ -363,7 +363,7 @@ static void USBD_GetDescriptor (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef 
 }
 //}}}
 //{{{
-static void USBD_SetAddress (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
+void USBD_SetAddress (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *req)
 {
   uint8_t  dev_addr;
 
@@ -398,7 +398,7 @@ static void USBD_SetAddress (USBD_HandleTypeDef *pdev , USBD_SetupReqTypedef *re
 }
 //}}}
 //{{{
-static uint8_t USBD_GetLen (uint8_t *buf)
+uint8_t USBD_GetLen (uint8_t *buf)
 {
     uint8_t  len = 0;
 
@@ -651,7 +651,6 @@ USBD_StatusTypeDef USBD_Init (USBD_HandleTypeDef *pdev, USBD_DescriptorsTypeDef 
   /* Check whether the USB Host handle is valid */
   if(pdev == NULL)
   {
-    USBD_ErrLog("Invalid Device handle");
     return USBD_FAIL;
   }
 
@@ -706,7 +705,7 @@ USBD_StatusTypeDef USBD_RegisterClass (USBD_HandleTypeDef *pdev, USBD_ClassTypeD
   }
   else
   {
-    USBD_ErrLog("Invalid Class handle");
+    
     status = USBD_FAIL;
   }
 

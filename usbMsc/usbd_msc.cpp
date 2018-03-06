@@ -1,4 +1,4 @@
-// usbd_msc.c
+// usbd_msc.cpp
 #include "usbd_msc.h"
 
 // msc descriptors
@@ -16,7 +16,7 @@
 #define USBD_INTERFACE_FS_STRING      "MSC Interface"
 //}}}
 //{{{
-__ALIGN_BEGIN uint8_t USBD_DeviceDesc[USB_LEN_DEV_DESC] __ALIGN_END = {
+__ALIGN_BEGIN const uint8_t USBD_DeviceDesc[USB_LEN_DEV_DESC] __ALIGN_END = {
   0x12,                       /* bLength */
   USB_DESC_TYPE_DEVICE,       /* bDescriptorType */
   0x00,                       /* bcdUSB */
@@ -35,30 +35,28 @@ __ALIGN_BEGIN uint8_t USBD_DeviceDesc[USB_LEN_DEV_DESC] __ALIGN_END = {
   USBD_IDX_PRODUCT_STR,       /* Index of product string */
   USBD_IDX_SERIAL_STR,        /* Index of serial number string */
   USBD_MAX_NUM_CONFIGURATION  /* bNumConfigurations */
-}; /* USB_DeviceDescriptor */
+  };
 //}}}
 //{{{
 /* USB Standard Device Descriptor */
-__ALIGN_BEGIN uint8_t USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] __ALIGN_END = {
+__ALIGN_BEGIN const uint8_t USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] __ALIGN_END = {
   USB_LEN_LANGID_STR_DESC,
   USB_DESC_TYPE_STRING,
   LOBYTE(USBD_LANGID_STRING),
   HIBYTE(USBD_LANGID_STRING),
-};
+  };
 //}}}
 //{{{
-uint8_t USBD_StringSerial[USB_SIZ_STRING_SERIAL] =
-{
+uint8_t USBD_StringSerial[USB_SIZ_STRING_SERIAL] = {
   USB_SIZ_STRING_SERIAL,
   USB_DESC_TYPE_STRING,
-};
+  };
 //}}}
 __ALIGN_BEGIN uint8_t USBD_StrDesc[USBD_MAX_STR_DESC_SIZ] __ALIGN_END;
 //{{{
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
-{
-  uint8_t idx = 0;
+void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len) {
 
+  uint8_t idx = 0;
   for( idx = 0; idx < len; idx ++)
   {
     if( ((value >> 28)) < 0xA )
@@ -77,7 +75,7 @@ static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
 }
 //}}}
 //{{{
-static void Get_SerialNum()
+void Get_SerialNum()
 {
   uint32_t deviceserial0, deviceserial1, deviceserial2;
 
@@ -169,7 +167,7 @@ uint8_t* USBD_MSC_InterfaceStrDescriptor (USBD_SpeedTypeDef speed, uint16_t *len
 }
 //}}}
 //{{{
-USBD_DescriptorsTypeDef MSC_Desc = {
+USBD_DescriptorsTypeDef kMscDesc = {
   USBD_MSC_DeviceDescriptor,
   USBD_MSC_LangIDStrDescriptor,
   USBD_MSC_ManufacturerStrDescriptor,
@@ -529,7 +527,7 @@ typedef struct {
 //{{{
 void MSC_BOT_SendCSW (USBD_HandleTypeDef* pdev, uint8_t CSW_Status) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
 
   hmsc->csw.dSignature = USBD_BOT_CSW_SIGNATURE;
   hmsc->csw.bStatus = CSW_Status;
@@ -554,9 +552,9 @@ void SCSI_SenseCode (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t sKey, uint8_
   }
 //}}}
 //{{{
-static int8_t SCSI_TestUnitReady (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
+int8_t SCSI_TestUnitReady (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
 
   /* case 9 : Hi > D0 */
   if (hmsc->cbw.dDataLength != 0) {
@@ -575,11 +573,11 @@ static int8_t SCSI_TestUnitReady (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t
   }
 //}}}
 //{{{
-static int8_t SCSI_Inquiry (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
+int8_t SCSI_Inquiry (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
 
   uint8_t* pPage;
   uint16_t len;
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
 
   if (params[1] & 0x01) {/*Evpd is set*/
     pPage = (uint8_t *)MSC_Page00_Inquiry_Data;
@@ -601,9 +599,9 @@ static int8_t SCSI_Inquiry (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* para
   }
 //}}}
 //{{{
-static int8_t SCSI_ReadCapacity10 (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
+int8_t SCSI_ReadCapacity10 (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
 
   if(((USBD_StorageTypeDef *)pdev->pUserData)->GetCapacity(lun, &hmsc->scsi_blk_nbr, &hmsc->scsi_blk_size) != 0) {
     SCSI_SenseCode(pdev, lun, NOT_READY, MEDIUM_NOT_PRESENT);
@@ -626,9 +624,9 @@ static int8_t SCSI_ReadCapacity10 (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_
   }
 //}}}
 //{{{
-static int8_t SCSI_ReadFormatCapacity (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
+int8_t SCSI_ReadFormatCapacity (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
 
   uint16_t blk_size;
   uint32_t blk_nbr;
@@ -659,9 +657,9 @@ static int8_t SCSI_ReadFormatCapacity (USBD_HandleTypeDef* pdev, uint8_t lun, ui
   }
 //}}}
 //{{{
-static int8_t SCSI_ModeSense6 (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
+int8_t SCSI_ModeSense6 (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
   uint16_t len = 8 ;
   hmsc->bot_data_length = len;
 
@@ -673,10 +671,10 @@ static int8_t SCSI_ModeSense6 (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* p
   }
 //}}}
 //{{{
-static int8_t SCSI_ModeSense10 (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
+int8_t SCSI_ModeSense10 (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
 
   uint16_t len = 8;
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
 
   hmsc->bot_data_length = len;
 
@@ -688,10 +686,10 @@ static int8_t SCSI_ModeSense10 (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* 
   }
 //}}}
 //{{{
-static int8_t SCSI_RequestSense (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
+int8_t SCSI_RequestSense (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
 
   uint8_t i;
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
 
   for(i=0 ; i < REQUEST_SENSE_DATA_LEN ; i++)
     hmsc->bot_data[i] = 0;
@@ -718,31 +716,29 @@ static int8_t SCSI_RequestSense (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t*
   }
 //}}}
 //{{{
-static int8_t SCSI_StartStopUnit (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
+int8_t SCSI_StartStopUnit (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t* params) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*) pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*) pdev->pClassData;
   hmsc->bot_data_length = 0;
   return 0;
   }
 //}}}
 //{{{
-static int8_t SCSI_ProcessRead (USBD_HandleTypeDef* pdev, uint8_t lun) {
+int8_t SCSI_ProcessRead (USBD_HandleTypeDef* pdev, uint8_t lun) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
-  uint32_t len;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
+  uint32_t len = MIN(hmsc->scsi_blk_len , MSC_MEDIA_PACKET);
 
-  len = MIN(hmsc->scsi_blk_len , MSC_MEDIA_PACKET);
-
-  if( ((USBD_StorageTypeDef *)pdev->pUserData)->Read(
-    lun , hmsc->bot_data, hmsc->scsi_blk_addr / hmsc->scsi_blk_size, len / hmsc->scsi_blk_size) < 0) {
-    SCSI_SenseCode(pdev, lun, HARDWARE_ERROR, UNRECOVERED_READ_ERROR);
+  if (((USBD_StorageTypeDef *)pdev->pUserData)->Read (
+      lun , hmsc->bot_data, hmsc->scsi_blk_addr / hmsc->scsi_blk_size, len / hmsc->scsi_blk_size) < 0) {
+    SCSI_SenseCode (pdev, lun, HARDWARE_ERROR, UNRECOVERED_READ_ERROR);
     return -1;
     }
 
   USBD_LL_Transmit (pdev, MSC_EPIN_ADDR, hmsc->bot_data, len);
 
-  hmsc->scsi_blk_addr   += len;
-  hmsc->scsi_blk_len    -= len;
+  hmsc->scsi_blk_addr += len;
+  hmsc->scsi_blk_len -= len;
 
   /* case 6 : Hi = Di */
   hmsc->csw.dDataResidue -= len;
@@ -753,16 +749,14 @@ static int8_t SCSI_ProcessRead (USBD_HandleTypeDef* pdev, uint8_t lun) {
   }
 //}}}
 //{{{
-static int8_t SCSI_ProcessWrite (USBD_HandleTypeDef* pdev, uint8_t lun) {
+int8_t SCSI_ProcessWrite (USBD_HandleTypeDef* pdev, uint8_t lun) {
 
-  uint32_t len;
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*) pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*) pdev->pClassData;
+  uint32_t len = MIN(hmsc->scsi_blk_len , MSC_MEDIA_PACKET);
 
-  len = MIN(hmsc->scsi_blk_len , MSC_MEDIA_PACKET);
-
-  if(((USBD_StorageTypeDef *)pdev->pUserData)->Write (
+  if (((USBD_StorageTypeDef *)pdev->pUserData)->Write (
     lun , hmsc->bot_data, hmsc->scsi_blk_addr / hmsc->scsi_blk_size, len / hmsc->scsi_blk_size) < 0) {
-    SCSI_SenseCode(pdev, lun, HARDWARE_ERROR, WRITE_FAULT);
+    SCSI_SenseCode (pdev, lun, HARDWARE_ERROR, WRITE_FAULT);
     return -1;
     }
 
@@ -782,97 +776,84 @@ static int8_t SCSI_ProcessWrite (USBD_HandleTypeDef* pdev, uint8_t lun) {
   }
 //}}}
 //{{{
-static int8_t SCSI_CheckAddressRange (USBD_HandleTypeDef* pdev, uint8_t lun , uint32_t blk_offset ,uint16_t blk_nbr) {
+int8_t SCSI_CheckAddressRange (USBD_HandleTypeDef* pdev, uint8_t lun , uint32_t blk_offset ,uint16_t blk_nbr) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*) pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*) pdev->pClassData;
 
   if ((blk_offset + blk_nbr) > hmsc->scsi_blk_nbr ) {
-    SCSI_SenseCode(pdev, lun, ILLEGAL_REQUEST, ADDRESS_OUT_OF_RANGE);
+    SCSI_SenseCode (pdev, lun, ILLEGAL_REQUEST, ADDRESS_OUT_OF_RANGE);
     return -1;
     }
   return 0;
   }
 //}}}
 //{{{
-static int8_t SCSI_Read10 (USBD_HandleTypeDef* pdev, uint8_t lun , uint8_t* params) {
+int8_t SCSI_Read10 (USBD_HandleTypeDef* pdev, uint8_t lun , uint8_t* params) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*) pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
 
-  if(hmsc->bot_state == USBD_BOT_IDLE) { /* Idle */
+  if (hmsc->bot_state == USBD_BOT_IDLE) { /* Idle */
     /* case 10 : Ho <> Di */
-
     if ((hmsc->cbw.bmFlags & 0x80) != 0x80) {
-      SCSI_SenseCode(pdev, hmsc->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
+      SCSI_SenseCode (pdev, hmsc->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
       return -1;
       }
 
-    if(((USBD_StorageTypeDef *)pdev->pUserData)->IsReady(lun) !=0 ) {
-      SCSI_SenseCode(pdev, lun, NOT_READY, MEDIUM_NOT_PRESENT);
+    if(((USBD_StorageTypeDef*)pdev->pUserData)->IsReady(lun) !=0 ) {
+      SCSI_SenseCode (pdev, lun, NOT_READY, MEDIUM_NOT_PRESENT);
       return -1;
       }
 
-    hmsc->scsi_blk_addr = (params[2] << 24) | \
-      (params[3] << 16) | \
-        (params[4] <<  8) | \
-          params[5];
-
-    hmsc->scsi_blk_len =  (params[7] <<  8) | \
-      params[8];
-
-
-
-    if( SCSI_CheckAddressRange(pdev, lun, hmsc->scsi_blk_addr, hmsc->scsi_blk_len) < 0)
+    hmsc->scsi_blk_addr = (params[2] << 24) | (params[3] << 16) | (params[4] <<  8) | params[5];
+    hmsc->scsi_blk_len =  (params[7] <<  8) | params[8];
+    if (SCSI_CheckAddressRange (pdev, lun, hmsc->scsi_blk_addr, hmsc->scsi_blk_len) < 0)
       return -1; /* error */
 
     hmsc->bot_state = USBD_BOT_DATA_IN;
     hmsc->scsi_blk_addr *= hmsc->scsi_blk_size;
-    hmsc->scsi_blk_len  *= hmsc->scsi_blk_size;
+    hmsc->scsi_blk_len *= hmsc->scsi_blk_size;
 
     /* cases 4,5 : Hi <> Dn */
     if (hmsc->cbw.dDataLength != hmsc->scsi_blk_len) {
-      SCSI_SenseCode(pdev, hmsc->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
+      SCSI_SenseCode (pdev, hmsc->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
       return -1;
       }
     }
 
   hmsc->bot_data_length = MSC_MEDIA_PACKET;
-  return SCSI_ProcessRead(pdev, lun);
+  return SCSI_ProcessRead (pdev, lun);
   }
 //}}}
 //{{{
-static int8_t SCSI_Write10 (USBD_HandleTypeDef* pdev, uint8_t lun , uint8_t* params) {
+int8_t SCSI_Write10 (USBD_HandleTypeDef* pdev, uint8_t lun , uint8_t* params) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*) pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*) pdev->pClassData;
 
   if (hmsc->bot_state == USBD_BOT_IDLE) { /* Idle */
     /* case 8 : Hi <> Do */
     if ((hmsc->cbw.bmFlags & 0x80) == 0x80) {
-      SCSI_SenseCode(pdev, hmsc->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
+      SCSI_SenseCode (pdev, hmsc->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
       return -1;
       }
 
     /* Check whether Media is ready */
-    if(((USBD_StorageTypeDef *)pdev->pUserData)->IsReady(lun) !=0 ) {
-      SCSI_SenseCode(pdev, lun, NOT_READY, MEDIUM_NOT_PRESENT);
+    if(((USBD_StorageTypeDef*)pdev->pUserData)->IsReady(lun) !=0 ) {
+      SCSI_SenseCode (pdev, lun, NOT_READY, MEDIUM_NOT_PRESENT);
       return -1;
       }
 
     /* Check If media is write-protected */
-    if(((USBD_StorageTypeDef *)pdev->pUserData)->IsWriteProtected(lun) !=0 ) {
-      SCSI_SenseCode(pdev, lun, NOT_READY, WRITE_PROTECTED);
+    if(((USBD_StorageTypeDef*)pdev->pUserData)->IsWriteProtected(lun) !=0 ) {
+      SCSI_SenseCode (pdev, lun, NOT_READY, WRITE_PROTECTED);
       return -1;
     }
 
 
-    hmsc->scsi_blk_addr = (params[2] << 24) | \
-      (params[3] << 16) | \
-        (params[4] <<  8) | \
-          params[5];
-    hmsc->scsi_blk_len = (params[7] <<  8) | \
-      params[8];
+    hmsc->scsi_blk_addr = (params[2] << 24) | (params[3] << 16) | (params[4] <<  8) | params[5];
+    hmsc->scsi_blk_len = (params[7] <<  8) | params[8];
 
     /* check if LBA address is in the right range */
-    if(SCSI_CheckAddressRange(pdev, lun, hmsc->scsi_blk_addr, hmsc->scsi_blk_len) < 0)
+    if(SCSI_CheckAddressRange (pdev, lun, hmsc->scsi_blk_addr, hmsc->scsi_blk_len) < 0)
       return -1; /* error */
 
     hmsc->scsi_blk_addr *= hmsc->scsi_blk_size;
@@ -880,7 +861,7 @@ static int8_t SCSI_Write10 (USBD_HandleTypeDef* pdev, uint8_t lun , uint8_t* par
 
     /* cases 3,11,13 : Hn,Ho <> D0 */
     if (hmsc->cbw.dDataLength != hmsc->scsi_blk_len) {
-      SCSI_SenseCode(pdev, hmsc->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
+      SCSI_SenseCode (pdev, hmsc->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
       return -1;
       }
 
@@ -889,22 +870,22 @@ static int8_t SCSI_Write10 (USBD_HandleTypeDef* pdev, uint8_t lun , uint8_t* par
     USBD_LL_PrepareReceive (pdev, MSC_EPOUT_ADDR, hmsc->bot_data, MIN (hmsc->scsi_blk_len, MSC_MEDIA_PACKET));
     }
   else /* Write Process ongoing */
-    return SCSI_ProcessWrite(pdev, lun);
+    return SCSI_ProcessWrite (pdev, lun);
 
   return 0;
   }
 //}}}
 //{{{
-static int8_t SCSI_Verify10 (USBD_HandleTypeDef* pdev, uint8_t lun , uint8_t* params) {
+int8_t SCSI_Verify10 (USBD_HandleTypeDef* pdev, uint8_t lun , uint8_t* params) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*) pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*) pdev->pClassData;
 
   if ((params[1]& 0x02) == 0x02) {
     SCSI_SenseCode (pdev, lun, ILLEGAL_REQUEST, INVALID_FIELED_IN_COMMAND);
     return -1; /* Error, Verify Mode Not supported*/
     }
 
-  if(SCSI_CheckAddressRange(pdev, lun, hmsc->scsi_blk_addr, hmsc->scsi_blk_len) < 0)
+  if(SCSI_CheckAddressRange (pdev, lun, hmsc->scsi_blk_addr, hmsc->scsi_blk_len) < 0)
     return -1; /* error */
   hmsc->bot_data_length = 0;
   return 0;
@@ -915,7 +896,7 @@ int8_t SCSI_ProcessCmd (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t *params) 
 
   switch (params[0]) {
     case SCSI_TEST_UNIT_READY:
-      return SCSI_TestUnitReady(pdev, lun, params);
+      return SCSI_TestUnitReady (pdev, lun, params);
 
     case SCSI_REQUEST_SENSE:
       return SCSI_RequestSense (pdev, lun, params);
@@ -924,10 +905,10 @@ int8_t SCSI_ProcessCmd (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t *params) 
       return SCSI_Inquiry(pdev, lun, params);
 
     case SCSI_START_STOP_UNIT:
-      return SCSI_StartStopUnit(pdev, lun, params);
+      return SCSI_StartStopUnit (pdev, lun, params);
 
     case SCSI_ALLOW_MEDIUM_REMOVAL:
-      return SCSI_StartStopUnit(pdev, lun, params);
+      return SCSI_StartStopUnit (pdev, lun, params);
 
     case SCSI_MODE_SENSE6:
       return SCSI_ModeSense6 (pdev, lun, params);
@@ -936,29 +917,29 @@ int8_t SCSI_ProcessCmd (USBD_HandleTypeDef* pdev, uint8_t lun, uint8_t *params) 
       return SCSI_ModeSense10 (pdev, lun, params);
 
     case SCSI_READ_FORMAT_CAPACITIES:
-      return SCSI_ReadFormatCapacity(pdev, lun, params);
+      return SCSI_ReadFormatCapacity (pdev, lun, params);
 
     case SCSI_READ_CAPACITY10:
-      return SCSI_ReadCapacity10(pdev, lun, params);
+      return SCSI_ReadCapacity10 (pdev, lun, params);
 
     case SCSI_READ10:
-      return SCSI_Read10(pdev, lun, params);
+      return SCSI_Read10 (pdev, lun, params);
 
     case SCSI_WRITE10:
-      return SCSI_Write10(pdev, lun, params);
+      return SCSI_Write10 (pdev, lun, params);
 
     case SCSI_VERIFY10:
-      return SCSI_Verify10(pdev, lun, params);
+      return SCSI_Verify10 (pdev, lun, params);
 
     default:
-      SCSI_SenseCode(pdev, lun, ILLEGAL_REQUEST, INVALID_CDB);
+      SCSI_SenseCode (pdev, lun, ILLEGAL_REQUEST, INVALID_CDB);
       return -1;
     }
   }
 //}}}
 
 //{{{
-static void MSC_BOT_Abort (USBD_HandleTypeDef* pdev) {
+void MSC_BOT_Abort (USBD_HandleTypeDef* pdev) {
 
   USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
 
@@ -974,9 +955,9 @@ static void MSC_BOT_Abort (USBD_HandleTypeDef* pdev) {
   }
 //}}}
 //{{{
-static void MSC_BOT_SendData(USBD_HandleTypeDef* pdev, uint8_t* buf, uint16_t len) {
+void MSC_BOT_SendData(USBD_HandleTypeDef* pdev, uint8_t* buf, uint16_t len) {
 
-  USBD_MSC_BOT_HandleTypeDef  *hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
+  USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
 
   len = MIN (hmsc->cbw.dDataLength, len);
   hmsc->csw.dDataResidue -= len;
@@ -987,7 +968,7 @@ static void MSC_BOT_SendData(USBD_HandleTypeDef* pdev, uint8_t* buf, uint16_t le
   }
 //}}}
 //{{{
-static void MSC_BOT_CBW_Decode (USBD_HandleTypeDef* pdev) {
+void MSC_BOT_CBW_Decode (USBD_HandleTypeDef* pdev) {
 
   USBD_MSC_BOT_HandleTypeDef* hmsc = (USBD_MSC_BOT_HandleTypeDef*)pdev->pClassData;
 
@@ -1121,30 +1102,22 @@ void MSC_BOT_CplClrFeature (USBD_HandleTypeDef* pdev, uint8_t epnum) {
 //{{{
 uint8_t USBD_MSC_Init (USBD_HandleTypeDef* pdev, uint8_t cfgidx) {
 
-  int16_t ret = 0;
-
-  if(pdev->dev_speed == USBD_SPEED_HIGH  ) {
-    /* Open EP OUT */
+  if (pdev->dev_speed == USBD_SPEED_HIGH  ) {
     USBD_LL_OpenEP (pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
-    /* Open EP IN */
     USBD_LL_OpenEP (pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
     }
   else {
-    /* Open EP OUT */
     USBD_LL_OpenEP (pdev, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
-    /* Open EP IN */
     USBD_LL_OpenEP (pdev, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
     }
-  pdev->pClassData = USBD_malloc(sizeof (USBD_MSC_BOT_HandleTypeDef));
+  pdev->pClassData = malloc(sizeof (USBD_MSC_BOT_HandleTypeDef));
 
-  if (pdev->pClassData == NULL)
-    ret = 1;
-  else {
+  if (pdev->pClassData) {
     MSC_BOT_Init (pdev);
-    ret = 0;
+    return 0;
     }
 
-  return ret;
+  return 1;
   }
 //}}}
 //{{{
@@ -1161,7 +1134,7 @@ uint8_t USBD_MSC_DeInit (USBD_HandleTypeDef* pdev, uint8_t cfgidx) {
 
   /* Free MSC Class Resources */
   if (pdev->pClassData != NULL) {
-    USBD_free(pdev->pClassData);
+    free(pdev->pClassData);
     pdev->pClassData  = NULL;
     }
 
@@ -1299,13 +1272,13 @@ uint8_t* USBD_MSC_GetDeviceQualifierDescriptor (uint16_t* length) {
 //{{{
 uint8_t USBD_MSC_RegisterStorage  (USBD_HandleTypeDef* pdev, USBD_StorageTypeDef* fops) {
 
-  if(fops != NULL)
+  if (fops != NULL)
     pdev->pUserData= fops;
   return 0;
   }
 //}}}
 //{{{
-USBD_ClassTypeDef USBD_MSC = {
+USBD_ClassTypeDef kUsbdMsc = {
   USBD_MSC_Init,
   USBD_MSC_DeInit,
   USBD_MSC_Setup,

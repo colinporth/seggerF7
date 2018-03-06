@@ -7,6 +7,7 @@
 
 #include "usbd_msc.h"
 //}}}
+const char* kVersion = "USB Msc 5/3/18";
 
 PCD_HandleTypeDef hpcd;
 USBD_HandleTypeDef USBD_Device;
@@ -18,8 +19,6 @@ extern "C" {
   void BSP_SDMMC_DMA_Tx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmatx); }
   void BSP_SDMMC_DMA_Rx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmarx); }
   }
-
-const char* kVersion = "USB Msc 5/3/18";
 
 //{{{
 class cApp : public cTouch {
@@ -468,7 +467,7 @@ const uint8_t kInquirydata[] = {
   };
 //}}}
 
-USBD_StorageTypeDef USBD_DISK_fops = {
+USBD_StorageTypeDef kUsbdDisk = {
   init,
   getCapacity,
   isReady,
@@ -490,9 +489,9 @@ void cApp::run (bool keyboard) {
   mLcd = new cLcd (12);
   mLcd->init();
 
-  USBD_Init (&USBD_Device, &MSC_Desc, 0);
-  USBD_RegisterClass (&USBD_Device, USBD_MSC_CLASS);
-  USBD_MSC_RegisterStorage (&USBD_Device, &USBD_DISK_fops);
+  USBD_Init (&USBD_Device, &kMscDesc, 0);
+  USBD_RegisterClass (&USBD_Device, &kUsbdMsc);
+  USBD_MSC_RegisterStorage (&USBD_Device, &kUsbdDisk);
   USBD_Start (&USBD_Device);
 
   while (true) {
