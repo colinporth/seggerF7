@@ -23,7 +23,7 @@ typedef struct _USBD_STORAGE {
   const uint8_t* pInquiry;
   } USBD_StorageTypeDef;
 
-uint8_t USBD_MSC_RegisterStorage (USBD_HandleTypeDef* pdev, USBD_StorageTypeDef* fops);
+uint8_t USBD_MSC_RegisterStorage (USBD_HandleTypeDef* usbdHandle, USBD_StorageTypeDef* fops);
 
 //{{{
 #ifdef __cplusplus
