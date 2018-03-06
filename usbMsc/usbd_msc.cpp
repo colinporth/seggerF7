@@ -7,7 +7,7 @@
 #include "../common/stm32746g_discovery_sd.h"
 //}}}
 cLcd* gLcd = nullptr;
-USBD_HandleTypeDef gUsbdDevice;
+USBD_HandleTypeDef gUsbDevice;
 PCD_HandleTypeDef gPcdHandle;
 extern "C" { void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); } }
 
@@ -927,7 +927,7 @@ int8_t SCSI_StartStopUnit (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t*
   }
 //}}}
 //{{{
-int8_t SCSI_CheckAddressRange (USBD_HandleTypeDef* usbdHandle, uint8_t lun , uint32_t blk_offset ,uint16_t blk_nbr) {
+int8_t SCSI_CheckAddressRange (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint32_t blk_offset, uint16_t blk_nbr) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -1034,7 +1034,7 @@ int8_t SCSI_Write10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* param
   }
 //}}}
 //{{{
-int8_t SCSI_Verify10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun , uint8_t* params) {
+int8_t SCSI_Verify10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -1090,19 +1090,6 @@ void mscBotAbort (USBD_HandleTypeDef* usbdHandle) {
   }
 //}}}
 //{{{
-void mscBotSendData (USBD_HandleTypeDef* usbdHandle, uint8_t* buf, uint16_t len) {
-
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-
-  len = MIN (mscData->cbw.dDataLength, len);
-  mscData->csw.dDataResidue -= len;
-  mscData->csw.bStatus = USBD_CSW_CMD_PASSED;
-  mscData->bot_state = USBD_BOT_SEND_DATA;
-
-  USBD_LL_Transmit (usbdHandle, MSC_EPIN_ADDR, buf, len);
-  }
-//}}}
-//{{{
 void mscBotCBW_Decode (USBD_HandleTypeDef* usbdHandle) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
@@ -1123,95 +1110,26 @@ void mscBotCBW_Decode (USBD_HandleTypeDef* usbdHandle) {
   else {
     if (SCSI_Cmd (usbdHandle, mscData->cbw.bLUN, &mscData->cbw.CB[0]) < 0) {
       if (mscData->bot_state == USBD_BOT_NO_DATA)
-       mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
+        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
       else
-        mscBotAbort(usbdHandle);
+        mscBotAbort (usbdHandle);
       }
 
     // Burst xfer handled internally
     else if ((mscData->bot_state != USBD_BOT_DATA_IN) &&
              (mscData->bot_state != USBD_BOT_DATA_OUT) &&
              (mscData->bot_state != USBD_BOT_LAST_DATA_IN)) {
-      if (mscData->bot_data_length > 0)
-        mscBotSendData (usbdHandle, mscData->bot_data, mscData->bot_data_length);
+      if (mscData->bot_data_length > 0) {
+        auto mscData = (sMscData*)usbdHandle->pClassData;
+        uint16_t len = MIN (mscData->cbw.dDataLength, mscData->bot_data_length);
+        mscData->csw.dDataResidue -= len;
+        mscData->csw.bStatus = USBD_CSW_CMD_PASSED;
+        mscData->bot_state = USBD_BOT_SEND_DATA;
+        USBD_LL_Transmit (usbdHandle, MSC_EPIN_ADDR, mscData->bot_data, len);
+        }
       else if (mscData->bot_data_length == 0)
         mscBotSendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
       }
-    }
-  }
-//}}}
-//{{{
-void mscBotInit (USBD_HandleTypeDef* usbdHandle) {
-
-  sdInit (0);
-
-  USBD_LL_FlushEP (usbdHandle, MSC_EPOUT_ADDR);
-  USBD_LL_FlushEP (usbdHandle, MSC_EPIN_ADDR);
-
-  // Prapare EP to Receive First BOT Cmd
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-  mscData->bot_state = USBD_BOT_IDLE;
-  mscData->bot_status = USBD_BOT_STATUS_NORMAL;
-  mscData->scsi_sense_tail = 0;
-  mscData->scsi_sense_head = 0;
-  USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
-  }
-//}}}
-//{{{
-void mscBotReset (USBD_HandleTypeDef* usbdHandle) {
-
-  // Prepare EP to Receive First BOT Cmd
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-  mscData->bot_state = USBD_BOT_IDLE;
-  mscData->bot_status = USBD_BOT_STATUS_RECOVERY;
-  USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
-  }
-//}}}
-//{{{
-void mscBotDeInit (USBD_HandleTypeDef* usbdHandle) {
-
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-  mscData->bot_state = USBD_BOT_IDLE;
-  }
-//}}}
-//{{{
-void mscBotDataIn (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
-
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-
-  switch (mscData->bot_state) {
-    case USBD_BOT_DATA_IN:
-      if (SCSI_Cmd (usbdHandle, mscData->cbw.bLUN, &mscData->cbw.CB[0]) < 0)
-        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
-      break;
-
-    case USBD_BOT_SEND_DATA:
-    case USBD_BOT_LAST_DATA_IN:
-      mscBotSendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
-      break;
-
-    default:
-      break;
-    }
-  }
-//}}}
-//{{{
-void mscBotDataOut (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
-
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-
-  switch (mscData->bot_state) {
-    case USBD_BOT_IDLE:
-      mscBotCBW_Decode (usbdHandle);
-      break;
-
-    case USBD_BOT_DATA_OUT:
-      if (SCSI_Cmd (usbdHandle, mscData->cbw.bLUN, &mscData->cbw.CB[0]) < 0)
-        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
-      break;
-
-    default:
-      break;
     }
   }
 //}}}
@@ -1244,7 +1162,19 @@ uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
   usbdHandle->pClassData = malloc (sizeof (sMscData));
 
   if (usbdHandle->pClassData) {
-    mscBotInit (usbdHandle);
+    sdInit (0);
+
+    USBD_LL_FlushEP (usbdHandle, MSC_EPOUT_ADDR);
+    USBD_LL_FlushEP (usbdHandle, MSC_EPIN_ADDR);
+
+    // Prapare EP to Receive First BOT Cmd
+    auto mscData = (sMscData*)usbdHandle->pClassData;
+    mscData->bot_state = USBD_BOT_IDLE;
+    mscData->bot_status = USBD_BOT_STATUS_NORMAL;
+    mscData->scsi_sense_tail = 0;
+    mscData->scsi_sense_head = 0;
+    USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
+
     return 0;
     }
 
@@ -1258,8 +1188,8 @@ uint8_t mscDeInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
   USBD_LL_CloseEP (usbdHandle, MSC_EPOUT_ADDR);
   USBD_LL_CloseEP (usbdHandle, MSC_EPIN_ADDR);
 
-  // De-Init the BOT layer
-  mscBotDeInit (usbdHandle);
+  auto mscData = (sMscData*)usbdHandle->pClassData;
+  mscData->bot_state = USBD_BOT_IDLE;
 
   // Free MSC Class Resources
   free (usbdHandle->pClassData);
@@ -1290,8 +1220,13 @@ uint8_t mscSetup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *req) {
         //}}}
         //{{{
         case BOT_RESET :
-          if ((req->wValue  == 0) && (req->wLength == 0) && ((req->bmRequest & 0x80) != 0x80))
-             mscBotReset (usbdHandle);
+          if ((req->wValue  == 0) && (req->wLength == 0) && ((req->bmRequest & 0x80) != 0x80)) {
+            // Prepare EP to Receive First BOT Cmd
+            auto mscData = (sMscData*)usbdHandle->pClassData;
+            mscData->bot_state = USBD_BOT_IDLE;
+            mscData->bot_status = USBD_BOT_STATUS_RECOVERY;
+            USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
+            }
           else {
             USBD_CtlError (usbdHandle , req);
             return USBD_FAIL;
@@ -1321,25 +1256,25 @@ uint8_t mscSetup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *req) {
         //}}}
         //{{{
         case USB_REQ_CLEAR_FEATURE:
-          /* Flush the FIFO and Clear the stall status */
+          // Flush the FIFO and Clear the stall status
           USBD_LL_FlushEP (usbdHandle, (uint8_t)req->wIndex);
 
-          /* Reactivate the EP */
+          // Reactivate the EP
           USBD_LL_CloseEP (usbdHandle , (uint8_t)req->wIndex);
           if ((((uint8_t)req->wIndex) & 0x80) == 0x80) {
-            if(usbdHandle->dev_speed == USBD_SPEED_HIGH  ) /* Open EP IN */
+            if (usbdHandle->dev_speed == USBD_SPEED_HIGH) // Open EP IN
               USBD_LL_OpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
-            else /* Open EP IN */
+            else // Open EP IN
               USBD_LL_OpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
             }
           else {
-            if (usbdHandle->dev_speed == USBD_SPEED_HIGH  ) /* Open EP IN */
+            if (usbdHandle->dev_speed == USBD_SPEED_HIGH) // Open EP IN
               USBD_LL_OpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
-            else /* Open EP IN */
+            else // Open EP IN
               USBD_LL_OpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
             }
 
-          /* Handle BOT error */
+          // Handle BOT error
           mscBotCplClrFeature (usbdHandle, (uint8_t)req->wIndex);
           break;
         //}}}
@@ -1356,14 +1291,45 @@ uint8_t mscSetup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *req) {
 //{{{
 uint8_t mscDataIn (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
 
-  mscBotDataIn (usbdHandle , epnum);
+  auto mscData = (sMscData*)usbdHandle->pClassData;
+
+  switch (mscData->bot_state) {
+    case USBD_BOT_DATA_IN:
+      if (SCSI_Cmd (usbdHandle, mscData->cbw.bLUN, &mscData->cbw.CB[0]) < 0)
+        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
+      break;
+
+    case USBD_BOT_SEND_DATA:
+    case USBD_BOT_LAST_DATA_IN:
+      mscBotSendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
+      break;
+
+    default:
+      break;
+    }
+
   return 0;
   }
 //}}}
 //{{{
 uint8_t mscDataOut (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
 
-  mscBotDataOut (usbdHandle , epnum);
+  auto mscData = (sMscData*)usbdHandle->pClassData;
+
+  switch (mscData->bot_state) {
+    case USBD_BOT_IDLE:
+      mscBotCBW_Decode (usbdHandle);
+      break;
+
+    case USBD_BOT_DATA_OUT:
+      if (SCSI_Cmd (usbdHandle, mscData->cbw.bLUN, &mscData->cbw.CB[0]) < 0)
+        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
+      break;
+
+    default:
+      break;
+    }
+
   return 0;
   }
 //}}}
@@ -1396,7 +1362,7 @@ uint8_t* mscGetDeviceQualifierDescriptor (uint16_t* length) {
   }
 //}}}
 //{{{
-USBD_ClassTypeDef kUsbdMscHandlers = {
+USBD_ClassTypeDef kMscHandlers = {
   mscInit,
   mscDeInit,
   mscSetup,
@@ -1690,8 +1656,8 @@ void USBD_LL_Delay (uint32_t Delay) {
 void initMsc (cLcd* lcd) {
 
   gLcd = lcd;
-  USBD_Init (&gUsbdDevice, &kMscDescriptors, 0);
-  USBD_RegisterClass (&gUsbdDevice, &kUsbdMscHandlers);
-  USBD_Start (&gUsbdDevice);
+  USBD_Init (&gUsbDevice, &kMscDescriptors, 0);
+  USBD_RegisterClass (&gUsbDevice, &kMscHandlers);
+  USBD_Start (&gUsbDevice);
   }
 //}}}
