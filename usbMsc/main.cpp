@@ -417,7 +417,7 @@ int8_t read (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
 
-    gApp->getLcd()->debug (LCD_COLOR_WHITE, "read %p %d", buf, (int)blk_addr);
+    gApp->getLcd()->debug (LCD_COLOR_CYAN, "read %p %d %d", buf, (int)blk_addr, (int)blk_len);
     return 0;
     }
 
