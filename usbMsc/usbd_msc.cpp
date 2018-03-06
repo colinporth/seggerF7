@@ -682,7 +682,7 @@ typedef struct {
 //}}}
 
 //{{{
-void mscBotSendCSW (USBD_HandleTypeDef* usbdHandle, uint8_t CSW_Status) {
+void mscBotSendCsw (USBD_HandleTypeDef* usbdHandle, uint8_t CSW_Status) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -709,6 +709,37 @@ void SCSI_SenseCode (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t sKey, 
     mscData->scsi_sense_tail = 0;
   }
 //}}}
+//{{{
+void mscBotAbort (USBD_HandleTypeDef* usbdHandle) {
+
+  auto mscData = (sMscData*)usbdHandle->pClassData;
+
+  if ((mscData->cbw.bmFlags == 0) &&
+      (mscData->cbw.dDataLength != 0) &&
+      (mscData->bot_status == USBD_BOT_STATUS_NORMAL))
+    USBD_LL_StallEP (usbdHandle, MSC_EPOUT_ADDR);
+
+  USBD_LL_StallEP (usbdHandle, MSC_EPIN_ADDR);
+
+  if (mscData->bot_status == USBD_BOT_STATUS_ERROR)
+    USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
+  }
+//}}}
+//{{{
+void mscBotCplClrFeature (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
+
+  auto mscData = (sMscData*)usbdHandle->pClassData;
+
+  if (mscData->bot_status == USBD_BOT_STATUS_ERROR ) {
+    /* Bad CBW Signature */
+    USBD_LL_StallEP (usbdHandle, MSC_EPIN_ADDR);
+    mscData->bot_status = USBD_BOT_STATUS_NORMAL;
+    }
+  else if (((epnum & 0x80) == 0x80) && (mscData->bot_status != USBD_BOT_STATUS_RECOVERY))
+    mscBotSendCsw (usbdHandle, USBD_CSW_CMD_FAILED);
+  }
+//}}}
+
 //{{{
 int8_t SCSI_Read (USBD_HandleTypeDef* usbdHandle, uint8_t lun) {
 
@@ -754,7 +785,7 @@ int8_t SCSI_Write (USBD_HandleTypeDef* usbdHandle, uint8_t lun) {
   mscData->csw.dDataResidue -= len;
 
   if (mscData->scsi_blk_len == 0)
-    mscBotSendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
+    mscBotSendCsw (usbdHandle, USBD_CSW_CMD_PASSED);
   else
     // Prepare EP to Receive next packet */
     USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, mscData->bot_data, MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET));
@@ -1072,25 +1103,8 @@ int8_t SCSI_Cmd (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
     }
   }
 //}}}
-
 //{{{
-void mscBotAbort (USBD_HandleTypeDef* usbdHandle) {
-
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-
-  if ((mscData->cbw.bmFlags == 0) &&
-      (mscData->cbw.dDataLength != 0) &&
-      (mscData->bot_status == USBD_BOT_STATUS_NORMAL))
-    USBD_LL_StallEP (usbdHandle, MSC_EPOUT_ADDR);
-
-  USBD_LL_StallEP (usbdHandle, MSC_EPIN_ADDR);
-
-  if (mscData->bot_status == USBD_BOT_STATUS_ERROR)
-    USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
-  }
-//}}}
-//{{{
-void mscBotCBW_Decode (USBD_HandleTypeDef* usbdHandle) {
+void mscBotCbwDecode (USBD_HandleTypeDef* usbdHandle) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -1110,7 +1124,7 @@ void mscBotCBW_Decode (USBD_HandleTypeDef* usbdHandle) {
   else {
     if (SCSI_Cmd (usbdHandle, mscData->cbw.bLUN, &mscData->cbw.CB[0]) < 0) {
       if (mscData->bot_state == USBD_BOT_NO_DATA)
-        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
+        mscBotSendCsw (usbdHandle, USBD_CSW_CMD_FAILED);
       else
         mscBotAbort (usbdHandle);
       }
@@ -1128,23 +1142,9 @@ void mscBotCBW_Decode (USBD_HandleTypeDef* usbdHandle) {
         USBD_LL_Transmit (usbdHandle, MSC_EPIN_ADDR, mscData->bot_data, len);
         }
       else if (mscData->bot_data_length == 0)
-        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
+        mscBotSendCsw (usbdHandle, USBD_CSW_CMD_PASSED);
       }
     }
-  }
-//}}}
-//{{{
-void mscBotCplClrFeature (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
-
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-
-  if (mscData->bot_status == USBD_BOT_STATUS_ERROR ) {
-    /* Bad CBW Signature */
-    USBD_LL_StallEP (usbdHandle, MSC_EPIN_ADDR);
-    mscData->bot_status = USBD_BOT_STATUS_NORMAL;
-    }
-  else if (((epnum & 0x80) == 0x80) && (mscData->bot_status != USBD_BOT_STATUS_RECOVERY))
-    mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
   }
 //}}}
 
@@ -1159,8 +1159,8 @@ uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
     USBD_LL_OpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
     USBD_LL_OpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
     }
-  usbdHandle->pClassData = malloc (sizeof (sMscData));
 
+  usbdHandle->pClassData = malloc (sizeof (sMscData));
   if (usbdHandle->pClassData) {
     sdInit (0);
 
@@ -1296,12 +1296,12 @@ uint8_t mscDataIn (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
   switch (mscData->bot_state) {
     case USBD_BOT_DATA_IN:
       if (SCSI_Cmd (usbdHandle, mscData->cbw.bLUN, &mscData->cbw.CB[0]) < 0)
-        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
+        mscBotSendCsw (usbdHandle, USBD_CSW_CMD_FAILED);
       break;
 
     case USBD_BOT_SEND_DATA:
     case USBD_BOT_LAST_DATA_IN:
-      mscBotSendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
+      mscBotSendCsw (usbdHandle, USBD_CSW_CMD_PASSED);
       break;
 
     default:
@@ -1318,12 +1318,12 @@ uint8_t mscDataOut (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
 
   switch (mscData->bot_state) {
     case USBD_BOT_IDLE:
-      mscBotCBW_Decode (usbdHandle);
+      mscBotCbwDecode (usbdHandle);
       break;
 
     case USBD_BOT_DATA_OUT:
       if (SCSI_Cmd (usbdHandle, mscData->cbw.bLUN, &mscData->cbw.CB[0]) < 0)
-        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
+        mscBotSendCsw (usbdHandle, USBD_CSW_CMD_FAILED);
       break;
 
     default:
