@@ -1,28 +1,19 @@
 // usbd_msc.cpp
 //{{{  includes
+#include <map>
+
 #include "usbd_msc.h"
 #include "../common/cLcd.h"
 #include "../common/stm32746g_discovery_sd.h"
 //}}}
-
 cLcd* gLcd = nullptr;
-PCD_HandleTypeDef hpcd;
 USBD_HandleTypeDef gUsbdDevice;
-extern SD_HandleTypeDef uSdHandle;
-//{{{  interrupts
-extern "C" {
-  void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&hpcd); }
-  void BSP_SDMMC_IRQHandler() { HAL_SD_IRQHandler (&uSdHandle); }
-  void BSP_SDMMC_DMA_Tx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmatx); }
-  void BSP_SDMMC_DMA_Rx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmarx); }
-  }
-//}}}
+PCD_HandleTypeDef gPcdHandle;
+extern "C" { void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); } }
 
-__IO uint32_t readstatus = 0;
-__IO uint32_t writestatus = 0;
-int gReads = 0;
-//{{{  sd handlers
+//{{{  sd card handlers
 #define STANDARD_INQUIRY_DATA_LEN  36
+//{{{
 const uint8_t kSdInquiryData[STANDARD_INQUIRY_DATA_LEN] = {
   0x00,  // LUN 0
   0x80,
@@ -37,11 +28,14 @@ const uint8_t kSdInquiryData[STANDARD_INQUIRY_DATA_LEN] = {
   ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
   '0', '.', '0','1',                      /* Version     : 4 Bytes  */
   };
+//}}}
+
+int gReads = 0;
+__IO uint32_t readstatus = 0;
+__IO uint32_t writestatus = 0;
 
 //{{{
 void sdInit (uint8_t lun) {
-
-  gLcd->debug (LCD_COLOR_WHITE, "sd init");
   BSP_SD_Init();
   }
 //}}}
@@ -52,14 +46,14 @@ int8_t sdGetMaxLun() {
   }
 //}}}
 //{{{
-bool sdGetCapacity (uint8_t lun, uint32_t* block_num, uint16_t* block_size) {
+bool sdGetCapacity (uint8_t lun, uint32_t& block_num, uint16_t& block_size) {
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
     HAL_SD_CardInfoTypeDef info;
     BSP_SD_GetCardInfo (&info);
-    *block_num = info.LogBlockNbr - 1;
-    *block_size = info.LogBlockSize;
-    gLcd->debug (LCD_COLOR_YELLOW, "getCapacity %dk blocks size:%d", int(*block_num)/1024, int(*block_size));
+    block_num = info.LogBlockNbr - 1;
+    block_size = info.LogBlockSize;
+    gLcd->debug (LCD_COLOR_YELLOW, "getCapacity %dk blocks size:%d", int(block_num)/1024, int(block_size));
     return true;
     }
   else
@@ -96,13 +90,11 @@ bool sdIsWriteProtected (uint8_t lun) {
 bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-
     //BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
     //while (!readstatus) {}
     //readstatus = 0;
 
-    BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 100);
-
+    BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
 
     gLcd->debug (LCD_COLOR_CYAN, "read %d %p %d %d", gReads++, buf, (int)blk_addr, (int)blk_len);
@@ -116,7 +108,7 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 bool sdWrite (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 100);
+    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
     //while (!writestatus) {}
     //writestatus = 0;
 
@@ -226,7 +218,7 @@ void BSP_SD_WriteCpltCallback() { writestatus = 1; }
 #define USBD_INTERFACE_FS_STRING      "MSC Interface"
 //}}}
 //{{{
-const uint8_t USBD_DeviceDesc[USB_LEN_DEV_DESC] __attribute__((aligned(4))) = {
+const uint8_t kMscDeviceDesc[] __attribute__((aligned(4))) = {
   0x12, USB_DESC_TYPE_DEVICE,
   0x00, 0x02,                 /* bcdUSB */
   0x00,                       /* bDeviceClass */
@@ -244,7 +236,7 @@ const uint8_t USBD_DeviceDesc[USB_LEN_DEV_DESC] __attribute__((aligned(4))) = {
 //}}}
 //{{{
 /* USB Standard Device Descriptor */
-const uint8_t USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] __attribute__((aligned(4))) = {
+const uint8_t kMscLangIDDesc[] __attribute__((aligned(4))) = {
   USB_LEN_LANGID_STR_DESC,
   USB_DESC_TYPE_STRING,
   LOBYTE(USBD_LANGID_STRING),
@@ -252,14 +244,15 @@ const uint8_t USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] __attribute__((aligned(4)
   };
 //}}}
 //{{{
-uint8_t USBD_StringSerial[USB_SIZ_STRING_SERIAL] = {
+uint8_t mscStringSerial[USB_SIZ_STRING_SERIAL] = {
   USB_SIZ_STRING_SERIAL,
   USB_DESC_TYPE_STRING,
   };
 //}}}
-uint8_t USBD_StrDesc[USBD_MAX_STR_DESC_SIZ] __attribute__((aligned(4)));
+uint8_t mscStrDesc[USBD_MAX_STR_DESC_SIZ] __attribute__((aligned(4)));
+
 //{{{
-void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len) {
+void intToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len) {
 
   uint8_t idx = 0;
   for (idx = 0; idx < len; idx ++) {
@@ -274,104 +267,104 @@ void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len) {
   }
 //}}}
 //{{{
-void Get_SerialNum() {
+void getSerialNum() {
 
   auto deviceserial0 = *(uint32_t*)DEVICE_ID1;
   auto deviceserial1 = *(uint32_t*)DEVICE_ID2;
   auto deviceserial2 = *(uint32_t*)DEVICE_ID3;
   deviceserial0 += deviceserial2;
   if (deviceserial0 != 0) {
-    IntToUnicode (deviceserial0, (uint8_t*)&USBD_StringSerial[2] ,8);
-    IntToUnicode (deviceserial1, (uint8_t*)&USBD_StringSerial[18] ,4);
+    intToUnicode (deviceserial0, (uint8_t*)&mscStringSerial[2] ,8);
+    intToUnicode (deviceserial1, (uint8_t*)&mscStringSerial[18] ,4);
     }
   }
 //}}}
 //{{{
-uint8_t* USBD_MSC_DeviceDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
+uint8_t* mscDeviceDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
 
-  *length = sizeof(USBD_DeviceDesc);
-  return (uint8_t*)USBD_DeviceDesc;
+  *length = sizeof(kMscDeviceDesc);
+  return (uint8_t*)kMscDeviceDesc;
   }
 //}}}
 //{{{
-uint8_t* USBD_MSC_LangIDStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
+uint8_t* mscLangIDStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
 
-  *length = sizeof(USBD_LangIDDesc);
-  return (uint8_t*)USBD_LangIDDesc;
+  *length = sizeof(kMscLangIDDesc);
+  return (uint8_t*)kMscLangIDDesc;
   }
 //}}}
 //{{{
-uint8_t* USBD_MSC_ProductStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
-
-  if(speed == USBD_SPEED_HIGH)
-    USBD_GetString((uint8_t *)USBD_PRODUCT_HS_STRING, USBD_StrDesc, length);
-  else
-    USBD_GetString((uint8_t *)USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);
-  return USBD_StrDesc;
-  }
-//}}}
-//{{{
-uint8_t* USBD_MSC_ManufacturerStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
-
-  USBD_GetString((uint8_t *)USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
-  return USBD_StrDesc;
-  }
-//}}}
-//{{{
-uint8_t* USBD_MSC_SerialStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
-
-  *length = USB_SIZ_STRING_SERIAL;
-  Get_SerialNum();
-  return (uint8_t*)USBD_StringSerial;
-  }
-//}}}
-//{{{
-uint8_t* USBD_MSC_ConfigStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
-
-  if(speed == USBD_SPEED_HIGH)
-    USBD_GetString((uint8_t *)USBD_CONFIGURATION_HS_STRING, USBD_StrDesc, length);
-  else
-    USBD_GetString((uint8_t *)USBD_CONFIGURATION_FS_STRING, USBD_StrDesc, length);
-
-  return USBD_StrDesc;
-  }
-//}}}
-//{{{
-uint8_t* USBD_MSC_InterfaceStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
+uint8_t* mscProductStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
 
   if (speed == USBD_SPEED_HIGH)
-    USBD_GetString((uint8_t *)USBD_INTERFACE_HS_STRING, USBD_StrDesc, length);
+    USBD_GetString ((uint8_t*)USBD_PRODUCT_HS_STRING, mscStrDesc, length);
   else
-    USBD_GetString((uint8_t *)USBD_INTERFACE_FS_STRING, USBD_StrDesc, length);
-  return USBD_StrDesc;
+    USBD_GetString ((uint8_t*)USBD_PRODUCT_FS_STRING, mscStrDesc, length);
+  return mscStrDesc;
   }
 //}}}
 //{{{
-USBD_DescriptorsTypeDef kMscDesc = {
-  USBD_MSC_DeviceDescriptor,
-  USBD_MSC_LangIDStrDescriptor,
-  USBD_MSC_ManufacturerStrDescriptor,
-  USBD_MSC_ProductStrDescriptor,
-  USBD_MSC_SerialStrDescriptor,
-  USBD_MSC_ConfigStrDescriptor,
-  USBD_MSC_InterfaceStrDescriptor,
+uint8_t* mscManufacturerStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
+
+  USBD_GetString ((uint8_t*)USBD_MANUFACTURER_STRING, mscStrDesc, length);
+  return mscStrDesc;
+  }
+//}}}
+//{{{
+uint8_t* mscSerialStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
+
+  *length = USB_SIZ_STRING_SERIAL;
+  getSerialNum();
+  return (uint8_t*)mscStringSerial;
+  }
+//}}}
+//{{{
+uint8_t* mscConfigStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
+
+  if (speed == USBD_SPEED_HIGH)
+    USBD_GetString ((uint8_t*)USBD_CONFIGURATION_HS_STRING, mscStrDesc, length);
+  else
+    USBD_GetString ((uint8_t*)USBD_CONFIGURATION_FS_STRING, mscStrDesc, length);
+
+  return mscStrDesc;
+  }
+//}}}
+//{{{
+uint8_t* mscInterfaceStrDescriptor (USBD_SpeedTypeDef speed, uint16_t* length) {
+
+  if (speed == USBD_SPEED_HIGH)
+    USBD_GetString ((uint8_t*)USBD_INTERFACE_HS_STRING, mscStrDesc, length);
+  else
+    USBD_GetString ((uint8_t*)USBD_INTERFACE_FS_STRING, mscStrDesc, length);
+  return mscStrDesc;
+  }
+//}}}
+//{{{
+USBD_DescriptorsTypeDef kMscDescriptors = {
+  mscDeviceDescriptor,
+  mscLangIDStrDescriptor,
+  mscManufacturerStrDescriptor,
+  mscProductStrDescriptor,
+  mscSerialStrDescriptor,
+  mscConfigStrDescriptor,
+  mscInterfaceStrDescriptor,
   };
 //}}}
 
 // msc class descriptors
 //{{{  defines
-#define MSC_MAX_FS_PACKET        0x40
-#define MSC_MAX_HS_PACKET        0x200
+#define MSC_MAX_FS_PACKET  0x40
+#define MSC_MAX_HS_PACKET  0x200
 
-#define MSC_EPIN_ADDR            0x81
-#define MSC_EPOUT_ADDR           0x01
+#define MSC_EPIN_ADDR   0x81
+#define MSC_EPOUT_ADDR  0x01
 
 #define USB_MSC_CONFIG_DESC_SIZ  32
 //}}}
 //{{{
 /* USB Mass storage device Configuration Descriptor */
 /*   All Descriptors (Configuration, Interface, Endpoint, Class, Vendor */
-const uint8_t USBD_MSC_CfgHSDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__((aligned(4))) = {
+const uint8_t kMscHighSpeedConfigDesc[] __attribute__((aligned(4))) = {
   0x09, USB_DESC_TYPE_CONFIGURATION,
   USB_MSC_CONFIG_DESC_SIZ,
   0x00,
@@ -408,7 +401,7 @@ const uint8_t USBD_MSC_CfgHSDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__((aligned
 //{{{
 /* USB Mass storage device Configuration Descriptor */
 /*   All Descriptors (Configuration, Interface, Endpoint, Class, Vendor */
-const uint8_t USBD_MSC_CfgFSDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__((aligned(4))) = {
+const uint8_t kMscFullSpeedConfigDesc[] __attribute__((aligned(4))) = {
   0x09, USB_DESC_TYPE_CONFIGURATION,   /* bDescriptorType: Configuration */
   USB_MSC_CONFIG_DESC_SIZ,
   0x00,
@@ -443,7 +436,7 @@ const uint8_t USBD_MSC_CfgFSDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__((aligned
   };
 //}}}
 //{{{
-const uint8_t USBD_MSC_OtherSpeedCfgDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__((aligned(4)))  = {
+const uint8_t kMscOtherSpeedConfigDesc[] __attribute__((aligned(4)))  = {
   0x09, USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION,
   USB_MSC_CONFIG_DESC_SIZ,
   0x00,
@@ -478,7 +471,7 @@ const uint8_t USBD_MSC_OtherSpeedCfgDesc[USB_MSC_CONFIG_DESC_SIZ] __attribute__(
   };
 //}}}
 //{{{
-const uint8_t USBD_MSC_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __attribute__((aligned(4))) = {
+const uint8_t kMscDeviceQualifierDesc[] __attribute__((aligned(4))) = {
   USB_LEN_DEV_QUALIFIER_DESC, USB_DESC_TYPE_DEVICE_QUALIFIER,
   0x00,
   0x02,
@@ -492,8 +485,7 @@ const uint8_t USBD_MSC_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __attribu
 //}}}
 
 // msc_scsi
-#define MSC_MEDIA_PACKET 512
-#define CHUNKS 1
+#define MSC_MEDIA_PACKET 32 * 1024
 //{{{  defines
 #define BOT_GET_MAX_LUN          0xFE
 #define BOT_RESET                0xFF
@@ -528,7 +520,6 @@ const uint8_t USBD_MSC_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __attribu
 
 #define MODE_SENSE6_LEN          8
 #define MODE_SENSE10_LEN         8
-#define LENGTH_INQUIRY_PAGE00    7
 #define LENGTH_FORMAT_CAPACITIES 20
 
 #define SENSE_LIST_DEPTH         4
@@ -599,19 +590,18 @@ const uint8_t USBD_MSC_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __attribu
 #define BLKVFY                            0x04
 //}}}
 //{{{
-const uint8_t MSC_Page00_Inquiry_Data[] = {
-  // 7
+const uint8_t kMscPage00InquiryData[] = {
   0x00,
   0x00,
   0x00,
-  (LENGTH_INQUIRY_PAGE00 - 4),
+  0x03, // (LENGTH_INQUIRY_PAGE00 - 4) = 7-4
   0x00,
   0x80,
   0x83
   };
 //}}}
 //{{{
-const uint8_t MSC_Mode_Sense6_data[] = {
+const uint8_t kMscModeSense6Data[] = {
   0x00,
   0x00,
   0x00,
@@ -623,7 +613,7 @@ const uint8_t MSC_Mode_Sense6_data[] = {
   };
 //}}}
 //{{{
-const uint8_t MSC_Mode_Sense10_data[] = {
+const uint8_t kMscModeSense10Data[] = {
   0x00,
   0x06,
   0x00,
@@ -634,7 +624,8 @@ const uint8_t MSC_Mode_Sense10_data[] = {
   0x00
   };
 //}}}
-//{{{  struct USBD_SCSI_SenseTypeDef
+
+//{{{  struct sUsbdScsiSenseTypeDef
 typedef struct _SENSE_ITEM {
   char Skey;
   union {
@@ -642,12 +633,12 @@ typedef struct _SENSE_ITEM {
       char ASC;
       char ASCQ;
       } b;
-    unsigned int  ASC;
+    unsigned int ASC;
     char* pData;
     } w;
-  } USBD_SCSI_SenseTypeDef;
+  } sUsbdScsiSenseTypeDef;
 //}}}
-//{{{  struct USBD_MSC_BOT_CBWTypeDef
+//{{{  struct sMscBotCbwTypeDef
 typedef struct {
   uint32_t dSignature;
   uint32_t dTag;
@@ -657,41 +648,41 @@ typedef struct {
   uint8_t  bCBLength;
   uint8_t  CB[16];
   uint8_t  ReservedForAlign;
-  } USBD_MSC_BOT_CBWTypeDef;
+  } sMscBotCbwTypeDef;
 //}}}
-//{{{  struct USBD_MSC_BOT_CSWTypeDef
+//{{{  struct sMscBotCswTypeDef
 typedef struct {
   uint32_t dSignature;
   uint32_t dTag;
   uint32_t dDataResidue;
   uint8_t  bStatus;
   uint8_t  ReservedForAlign[3];
-  } USBD_MSC_BOT_CSWTypeDef;
+  } sMscBotCswTypeDef;
 //}}}
 //{{{  struct sMscData
 typedef struct {
-  uint32_t                max_lun;
-  uint32_t                interface;
+  uint32_t              max_lun;
+  uint32_t              interface;
 
-  uint8_t                 bot_state;
-  uint8_t                 bot_status;
-  uint16_t                bot_data_length;
-  uint8_t                 bot_data[MSC_MEDIA_PACKET * CHUNKS];
-  USBD_MSC_BOT_CBWTypeDef cbw;
-  USBD_MSC_BOT_CSWTypeDef csw;
+  uint8_t               bot_state;
+  uint8_t               bot_status;
+  uint16_t              bot_data_length;
+  uint8_t               bot_data[MSC_MEDIA_PACKET];
+  sMscBotCbwTypeDef     cbw;
+  sMscBotCswTypeDef     csw;
 
-  USBD_SCSI_SenseTypeDef  scsi_sense [SENSE_LIST_DEPTH];
-  uint8_t                 scsi_sense_head;
-  uint8_t                 scsi_sense_tail;
-  uint16_t                scsi_blk_size;
-  uint32_t                scsi_blk_nbr;
-  uint32_t                scsi_blk_addr;
-  uint32_t                scsi_blk_len;
+  sUsbdScsiSenseTypeDef scsi_sense [SENSE_LIST_DEPTH];
+  uint8_t               scsi_sense_head;
+  uint8_t               scsi_sense_tail;
+  uint16_t              scsi_blk_size;
+  uint32_t              scsi_blk_nbr;
+  uint32_t              scsi_blk_addr;
+  uint32_t              scsi_blk_len;
   } sMscData;
 //}}}
 
 //{{{
-void MSC_BOT_SendCSW (USBD_HandleTypeDef* usbdHandle, uint8_t CSW_Status) {
+void mscBotSendCSW (USBD_HandleTypeDef* usbdHandle, uint8_t CSW_Status) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -724,8 +715,8 @@ int8_t SCSI_Read (USBD_HandleTypeDef* usbdHandle, uint8_t lun) {
   auto mscData = (sMscData*)usbdHandle->pClassData;
   uint32_t len = MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET);
 
-  if (!sdRead (lun, mscData->bot_data, 
-               mscData->scsi_blk_addr / mscData->scsi_blk_size, (len/mscData->scsi_blk_size)*CHUNKS)) {
+  if (!sdRead (lun, mscData->bot_data,
+               mscData->scsi_blk_addr / mscData->scsi_blk_size, len / mscData->scsi_blk_size)) {
     SCSI_SenseCode (usbdHandle, lun, HARDWARE_ERROR, UNRECOVERED_READ_ERROR);
     return -1;
     }
@@ -740,6 +731,7 @@ int8_t SCSI_Read (USBD_HandleTypeDef* usbdHandle, uint8_t lun) {
 
   if (mscData->scsi_blk_len == 0)
     mscData->bot_state = USBD_BOT_LAST_DATA_IN;
+
   return 0;
   }
 //}}}
@@ -749,20 +741,20 @@ int8_t SCSI_Write (USBD_HandleTypeDef* usbdHandle, uint8_t lun) {
   auto mscData = (sMscData*) usbdHandle->pClassData;
   uint32_t len = MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET);
 
-  if (!sdWrite (lun , mscData->bot_data, 
+  if (!sdWrite (lun , mscData->bot_data,
                 mscData->scsi_blk_addr / mscData->scsi_blk_size, len / mscData->scsi_blk_size) < 0) {
     SCSI_SenseCode (usbdHandle, lun, HARDWARE_ERROR, WRITE_FAULT);
     return -1;
     }
 
-  mscData->scsi_blk_addr  += len;
-  mscData->scsi_blk_len   -= len;
+  mscData->scsi_blk_addr += len;
+  mscData->scsi_blk_len -= len;
 
   // case 12 : Ho = Do
   mscData->csw.dDataResidue -= len;
 
   if (mscData->scsi_blk_len == 0)
-    MSC_BOT_SendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
+    mscBotSendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
   else
     // Prepare EP to Receive next packet */
     USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, mscData->bot_data, MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET));
@@ -801,8 +793,8 @@ int8_t SCSI_Inquiry (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* param
   uint16_t len;
   if (params[1] & 0x01) {
     // Evpd
-    pPage = (uint8_t*)MSC_Page00_Inquiry_Data;
-    len = LENGTH_INQUIRY_PAGE00;
+    pPage = kMscPage00InquiryData;
+    len = sizeof (kMscPage00InquiryData);
     }
   else {
     pPage = kSdInquiryData;
@@ -825,22 +817,21 @@ int8_t SCSI_ReadCapacity10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
-  if (!sdGetCapacity (lun, &mscData->scsi_blk_nbr, &mscData->scsi_blk_size)) {
-    SCSI_SenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
-    return -1;
-    }
-  else {
-    mscData->bot_data[0] = (uint8_t)((mscData->scsi_blk_nbr - 1) >> 24);
-    mscData->bot_data[1] = (uint8_t)((mscData->scsi_blk_nbr - 1) >> 16);
-    mscData->bot_data[2] = (uint8_t)((mscData->scsi_blk_nbr - 1) >>  8);
-    mscData->bot_data[3] = (uint8_t)(mscData->scsi_blk_nbr - 1);
-    mscData->bot_data[4] = (uint8_t)(mscData->scsi_blk_size >>  24);
-    mscData->bot_data[5] = (uint8_t)(mscData->scsi_blk_size >>  16);
-    mscData->bot_data[6] = (uint8_t)(mscData->scsi_blk_size >>  8);
+  if (sdGetCapacity (lun, mscData->scsi_blk_nbr, mscData->scsi_blk_size)) {
+    mscData->bot_data[0] = (uint8_t)((mscData->scsi_blk_nbr-1) >> 24);
+    mscData->bot_data[1] = (uint8_t)((mscData->scsi_blk_nbr-1) >> 16);
+    mscData->bot_data[2] = (uint8_t)((mscData->scsi_blk_nbr-1) >> 8);
+    mscData->bot_data[3] = (uint8_t)(mscData->scsi_blk_nbr-1);
+    mscData->bot_data[4] = (uint8_t)(mscData->scsi_blk_size >> 24);
+    mscData->bot_data[5] = (uint8_t)(mscData->scsi_blk_size >> 16);
+    mscData->bot_data[6] = (uint8_t)(mscData->scsi_blk_size >> 8);
     mscData->bot_data[7] = (uint8_t)(mscData->scsi_blk_size);
     mscData->bot_data_length = 8;
     return 0;
     }
+
+  SCSI_SenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
+  return -1;
   }
 //}}}
 //{{{
@@ -848,16 +839,12 @@ int8_t SCSI_ReadFormatCapacity (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uin
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
-  for (uint16_t i = 0 ; i < 12 ; i++)
-    mscData->bot_data[i] = 0;
-
-  uint16_t blk_size;
   uint32_t blk_nbr;
-  if (sdGetCapacity (lun, &blk_nbr, &blk_size) != 0) {
-    SCSI_SenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
-    return -1;
-    }
-  else {
+  uint16_t blk_size;
+  if (sdGetCapacity (lun, blk_nbr, blk_size) != 0) {
+    mscData->bot_data[0] = 0;
+    mscData->bot_data[1] = 0;
+    mscData->bot_data[2] = 0;
     mscData->bot_data[3] = 0x08;
     mscData->bot_data[4] = (uint8_t)((blk_nbr - 1) >> 24);
     mscData->bot_data[5] = (uint8_t)((blk_nbr - 1) >> 16);
@@ -870,6 +857,9 @@ int8_t SCSI_ReadFormatCapacity (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uin
     mscData->bot_data_length = 12;
     return 0;
     }
+
+  SCSI_SenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
+  return -1;
   }
 //}}}
 //{{{
@@ -881,7 +871,7 @@ int8_t SCSI_ModeSense6 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* pa
   mscData->bot_data_length = len;
   while (len) {
     len--;
-    mscData->bot_data[len] = MSC_Mode_Sense6_data[len];
+    mscData->bot_data[len] = kMscModeSense6Data[len];
     }
   return 0;
   }
@@ -895,7 +885,7 @@ int8_t SCSI_ModeSense10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* p
   mscData->bot_data_length = len;
   while (len) {
     len--;
-    mscData->bot_data[len] = MSC_Mode_Sense10_data[len];
+    mscData->bot_data[len] = kMscModeSense10Data[len];
     }
   return 0;
   }
@@ -1001,14 +991,14 @@ int8_t SCSI_Write10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* param
       return -1;
       }
 
-    // Check whether Media is ready */
+    // Check whether Media is ready
     if (!sdIsReady (lun)) {
       // error
       SCSI_SenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
       return -1;
       }
 
-    // Check If media is write-protected */
+    // Check If media is write-protected
     if (sdIsWriteProtected (lun)) {
       // error
       SCSI_SenseCode (usbdHandle, lun, NOT_READY, WRITE_PROTECTED);
@@ -1024,9 +1014,9 @@ int8_t SCSI_Write10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* param
       return -1;
 
     mscData->scsi_blk_addr *= mscData->scsi_blk_size;
-    mscData->scsi_blk_len  *= mscData->scsi_blk_size;
+    mscData->scsi_blk_len *= mscData->scsi_blk_size;
 
-    // cases 3,11,13 : Hn,Ho <> D0 */
+    // cases 3,11,13 : Hn,Ho <> D0
     if (mscData->cbw.dDataLength != mscData->scsi_blk_len) {
       // error
       SCSI_SenseCode (usbdHandle, mscData->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
@@ -1084,7 +1074,7 @@ int8_t SCSI_Cmd (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
 //}}}
 
 //{{{
-void MSC_BOT_Abort (USBD_HandleTypeDef* usbdHandle) {
+void mscBotAbort (USBD_HandleTypeDef* usbdHandle) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -1100,7 +1090,7 @@ void MSC_BOT_Abort (USBD_HandleTypeDef* usbdHandle) {
   }
 //}}}
 //{{{
-void MSC_BOT_SendData (USBD_HandleTypeDef* usbdHandle, uint8_t* buf, uint16_t len) {
+void mscBotSendData (USBD_HandleTypeDef* usbdHandle, uint8_t* buf, uint16_t len) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -1113,7 +1103,7 @@ void MSC_BOT_SendData (USBD_HandleTypeDef* usbdHandle, uint8_t* buf, uint16_t le
   }
 //}}}
 //{{{
-void MSC_BOT_CBW_Decode (USBD_HandleTypeDef* usbdHandle) {
+void mscBotCBW_Decode (USBD_HandleTypeDef* usbdHandle) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -1127,31 +1117,31 @@ void MSC_BOT_CBW_Decode (USBD_HandleTypeDef* usbdHandle) {
             (mscData->cbw.bCBLength > 16)) {
     SCSI_SenseCode (usbdHandle, mscData->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
     mscData->bot_status = USBD_BOT_STATUS_ERROR;
-    MSC_BOT_Abort (usbdHandle);
+    mscBotAbort (usbdHandle);
     }
 
   else {
     if (SCSI_Cmd (usbdHandle, mscData->cbw.bLUN, &mscData->cbw.CB[0]) < 0) {
       if (mscData->bot_state == USBD_BOT_NO_DATA)
-       MSC_BOT_SendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
+       mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
       else
-        MSC_BOT_Abort(usbdHandle);
+        mscBotAbort(usbdHandle);
       }
 
-    /*Burst xfer handled internally*/
+    // Burst xfer handled internally
     else if ((mscData->bot_state != USBD_BOT_DATA_IN) &&
              (mscData->bot_state != USBD_BOT_DATA_OUT) &&
              (mscData->bot_state != USBD_BOT_LAST_DATA_IN)) {
       if (mscData->bot_data_length > 0)
-        MSC_BOT_SendData (usbdHandle, mscData->bot_data, mscData->bot_data_length);
+        mscBotSendData (usbdHandle, mscData->bot_data, mscData->bot_data_length);
       else if (mscData->bot_data_length == 0)
-        MSC_BOT_SendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
+        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
       }
     }
   }
 //}}}
 //{{{
-void MSC_BOT_Init (USBD_HandleTypeDef* usbdHandle) {
+void mscBotInit (USBD_HandleTypeDef* usbdHandle) {
 
   sdInit (0);
 
@@ -1168,7 +1158,7 @@ void MSC_BOT_Init (USBD_HandleTypeDef* usbdHandle) {
   }
 //}}}
 //{{{
-void MSC_BOT_Reset (USBD_HandleTypeDef* usbdHandle) {
+void mscBotReset (USBD_HandleTypeDef* usbdHandle) {
 
   // Prepare EP to Receive First BOT Cmd
   auto mscData = (sMscData*)usbdHandle->pClassData;
@@ -1178,26 +1168,26 @@ void MSC_BOT_Reset (USBD_HandleTypeDef* usbdHandle) {
   }
 //}}}
 //{{{
-void MSC_BOT_DeInit (USBD_HandleTypeDef* usbdHandle) {
+void mscBotDeInit (USBD_HandleTypeDef* usbdHandle) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
   mscData->bot_state = USBD_BOT_IDLE;
   }
 //}}}
 //{{{
-void MSC_BOT_DataIn (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
+void mscBotDataIn (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
   switch (mscData->bot_state) {
     case USBD_BOT_DATA_IN:
       if (SCSI_Cmd (usbdHandle, mscData->cbw.bLUN, &mscData->cbw.CB[0]) < 0)
-        MSC_BOT_SendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
+        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
       break;
 
     case USBD_BOT_SEND_DATA:
     case USBD_BOT_LAST_DATA_IN:
-      MSC_BOT_SendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
+      mscBotSendCSW (usbdHandle, USBD_CSW_CMD_PASSED);
       break;
 
     default:
@@ -1206,18 +1196,18 @@ void MSC_BOT_DataIn (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
   }
 //}}}
 //{{{
-void MSC_BOT_DataOut (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
+void mscBotDataOut (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
   switch (mscData->bot_state) {
     case USBD_BOT_IDLE:
-      MSC_BOT_CBW_Decode (usbdHandle);
+      mscBotCBW_Decode (usbdHandle);
       break;
 
     case USBD_BOT_DATA_OUT:
       if (SCSI_Cmd (usbdHandle, mscData->cbw.bLUN, &mscData->cbw.CB[0]) < 0)
-        MSC_BOT_SendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
+        mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
       break;
 
     default:
@@ -1226,7 +1216,7 @@ void MSC_BOT_DataOut (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
   }
 //}}}
 //{{{
-void MSC_BOT_CplClrFeature (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
+void mscBotCplClrFeature (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -1236,14 +1226,14 @@ void MSC_BOT_CplClrFeature (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
     mscData->bot_status = USBD_BOT_STATUS_NORMAL;
     }
   else if (((epnum & 0x80) == 0x80) && (mscData->bot_status != USBD_BOT_STATUS_RECOVERY))
-    MSC_BOT_SendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
+    mscBotSendCSW (usbdHandle, USBD_CSW_CMD_FAILED);
   }
 //}}}
 
 //{{{
-uint8_t USBD_MSC_Init (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
+uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
 
-  if (usbdHandle->dev_speed == USBD_SPEED_HIGH  ) {
+  if (usbdHandle->dev_speed == USBD_SPEED_HIGH) {
     USBD_LL_OpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
     USBD_LL_OpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
     }
@@ -1254,7 +1244,7 @@ uint8_t USBD_MSC_Init (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
   usbdHandle->pClassData = malloc (sizeof (sMscData));
 
   if (usbdHandle->pClassData) {
-    MSC_BOT_Init (usbdHandle);
+    mscBotInit (usbdHandle);
     return 0;
     }
 
@@ -1262,14 +1252,14 @@ uint8_t USBD_MSC_Init (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
   }
 //}}}
 //{{{
-uint8_t USBD_MSC_DeInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
+uint8_t mscDeInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
 
   // Close MSC EPs
   USBD_LL_CloseEP (usbdHandle, MSC_EPOUT_ADDR);
   USBD_LL_CloseEP (usbdHandle, MSC_EPIN_ADDR);
 
   // De-Init the BOT layer
-  MSC_BOT_DeInit (usbdHandle);
+  mscBotDeInit (usbdHandle);
 
   // Free MSC Class Resources
   free (usbdHandle->pClassData);
@@ -1279,7 +1269,7 @@ uint8_t USBD_MSC_DeInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
   }
 //}}}
 //{{{
-uint8_t USBD_MSC_Setup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *req) {
+uint8_t mscSetup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *req) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -1301,7 +1291,7 @@ uint8_t USBD_MSC_Setup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *re
         //{{{
         case BOT_RESET :
           if ((req->wValue  == 0) && (req->wLength == 0) && ((req->bmRequest & 0x80) != 0x80))
-             MSC_BOT_Reset (usbdHandle);
+             mscBotReset (usbdHandle);
           else {
             USBD_CtlError (usbdHandle , req);
             return USBD_FAIL;
@@ -1321,7 +1311,7 @@ uint8_t USBD_MSC_Setup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *re
       switch (req->bRequest) {
         //{{{
         case USB_REQ_GET_INTERFACE :
-          USBD_CtlSendData (usbdHandle, (uint8_t *)&mscData->interface, 1);
+          USBD_CtlSendData (usbdHandle, (uint8_t*)&mscData->interface, 1);
           break;
         //}}}
         //{{{
@@ -1350,7 +1340,7 @@ uint8_t USBD_MSC_Setup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *re
             }
 
           /* Handle BOT error */
-          MSC_BOT_CplClrFeature (usbdHandle, (uint8_t)req->wIndex);
+          mscBotCplClrFeature (usbdHandle, (uint8_t)req->wIndex);
           break;
         //}}}
         }
@@ -1364,68 +1354,68 @@ uint8_t USBD_MSC_Setup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *re
   }
 //}}}
 //{{{
-uint8_t USBD_MSC_DataIn (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
+uint8_t mscDataIn (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
 
-  MSC_BOT_DataIn (usbdHandle , epnum);
+  mscBotDataIn (usbdHandle , epnum);
   return 0;
   }
 //}}}
 //{{{
-uint8_t USBD_MSC_DataOut (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
+uint8_t mscDataOut (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
 
-  MSC_BOT_DataOut (usbdHandle , epnum);
+  mscBotDataOut (usbdHandle , epnum);
   return 0;
   }
 //}}}
 //{{{
-uint8_t* USBD_MSC_GetHSCfgDesc (uint16_t* length) {
+uint8_t* mscGetHighSpeedConfigDesc (uint16_t* length) {
 
-  *length = sizeof (USBD_MSC_CfgHSDesc);
-  return (uint8_t*)USBD_MSC_CfgHSDesc;
+  *length = sizeof (kMscHighSpeedConfigDesc);
+  return (uint8_t*)kMscHighSpeedConfigDesc;
   }
 //}}}
 //{{{
-uint8_t* USBD_MSC_GetFSCfgDesc (uint16_t* length) {
+uint8_t* mscGetFullSpeedConfigDesc (uint16_t* length) {
 
-  *length = sizeof (USBD_MSC_CfgFSDesc);
-  return (uint8_t*)USBD_MSC_CfgFSDesc;
+  *length = sizeof (kMscFullSpeedConfigDesc);
+  return (uint8_t*)kMscFullSpeedConfigDesc;
   }
 //}}}
 //{{{
-uint8_t* USBD_MSC_GetOtherSpeedCfgDesc (uint16_t* length) {
+uint8_t* mscGetOtherSpeedConfigDesc (uint16_t* length) {
 
-  *length = sizeof (USBD_MSC_OtherSpeedCfgDesc);
-  return (uint8_t*)USBD_MSC_OtherSpeedCfgDesc;
+  *length = sizeof (kMscOtherSpeedConfigDesc);
+  return (uint8_t*)kMscOtherSpeedConfigDesc;
   }
 //}}}
 //{{{
-uint8_t* USBD_MSC_GetDeviceQualifierDescriptor (uint16_t* length) {
+uint8_t* mscGetDeviceQualifierDescriptor (uint16_t* length) {
 
-  *length = sizeof (USBD_MSC_DeviceQualifierDesc);
-  return (uint8_t*)USBD_MSC_DeviceQualifierDesc;
+  *length = sizeof (kMscDeviceQualifierDesc);
+  return (uint8_t*)kMscDeviceQualifierDesc;
   }
 //}}}
 //{{{
-USBD_ClassTypeDef kUsbdMsc = {
-  USBD_MSC_Init,
-  USBD_MSC_DeInit,
-  USBD_MSC_Setup,
+USBD_ClassTypeDef kUsbdMscHandlers = {
+  mscInit,
+  mscDeInit,
+  mscSetup,
   NULL, /*EP0_TxSent*/
   NULL, /*EP0_RxReady*/
-  USBD_MSC_DataIn,
-  USBD_MSC_DataOut,
+  mscDataIn,
+  mscDataOut,
   NULL, /*SOF */
   NULL,
   NULL,
-  USBD_MSC_GetHSCfgDesc,
-  USBD_MSC_GetFSCfgDesc,
-  USBD_MSC_GetOtherSpeedCfgDesc,
-  USBD_MSC_GetDeviceQualifierDescriptor,
+  mscGetHighSpeedConfigDesc,
+  mscGetFullSpeedConfigDesc,
+  mscGetOtherSpeedConfigDesc,
+  mscGetDeviceQualifierDescriptor,
   };
 //}}}
 
 //{{{
-void HAL_PCD_MspInit (PCD_HandleTypeDef* hpcd) {
+void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
 
   /* Configure USB FS GPIOs */
   __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -1492,7 +1482,7 @@ void HAL_PCD_MspInit (PCD_HandleTypeDef* hpcd) {
   }
 //}}}
 //{{{
-void HAL_PCD_MspDeInit (PCD_HandleTypeDef* hpcd) {
+void HAL_PCD_MspDeInit (PCD_HandleTypeDef* pcdHandle) {
 
   /* Disable USB HS Clocks */
   __HAL_RCC_USB_OTG_HS_CLK_DISABLE();
@@ -1500,32 +1490,32 @@ void HAL_PCD_MspDeInit (PCD_HandleTypeDef* hpcd) {
   }
 //}}}
 //{{{
-void HAL_PCD_SetupStageCallback (PCD_HandleTypeDef* hpcd) {
-  USBD_LL_SetupStage ((USBD_HandleTypeDef*)(hpcd->pData), (uint8_t*)hpcd->Setup);
+void HAL_PCD_SetupStageCallback (PCD_HandleTypeDef* pcdHandle) {
+  USBD_LL_SetupStage ((USBD_HandleTypeDef*)(pcdHandle->pData), (uint8_t*)pcdHandle->Setup);
   }
 //}}}
 //{{{
-void HAL_PCD_DataOutStageCallback (PCD_HandleTypeDef* hpcd, uint8_t epnum) {
-  USBD_LL_DataOutStage ((USBD_HandleTypeDef*)(hpcd->pData), epnum, hpcd->OUT_ep[epnum].xfer_buff);
+void HAL_PCD_DataOutStageCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
+  USBD_LL_DataOutStage ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum, pcdHandle->OUT_ep[epnum].xfer_buff);
   }
 //}}}
 //{{{
-void HAL_PCD_DataInStageCallback (PCD_HandleTypeDef* hpcd, uint8_t epnum) {
-  USBD_LL_DataInStage ((USBD_HandleTypeDef*)(hpcd->pData), epnum, hpcd->IN_ep[epnum].xfer_buff);
+void HAL_PCD_DataInStageCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
+  USBD_LL_DataInStage ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum, pcdHandle->IN_ep[epnum].xfer_buff);
   }
 //}}}
 //{{{
-void HAL_PCD_SOFCallback (PCD_HandleTypeDef* hpcd) {
-  USBD_LL_SOF((USBD_HandleTypeDef*)(hpcd->pData));
+void HAL_PCD_SOFCallback (PCD_HandleTypeDef* pcdHandle) {
+  USBD_LL_SOF((USBD_HandleTypeDef*)(pcdHandle->pData));
   }
 //}}}
 //{{{
-void HAL_PCD_ResetCallback (PCD_HandleTypeDef* hpcd) {
+void HAL_PCD_ResetCallback (PCD_HandleTypeDef* pcdHandle) {
 
   USBD_SpeedTypeDef speed = USBD_SPEED_FULL;
 
   // Set USB Current Speed
-  switch (hpcd->Init.speed) {
+  switch (pcdHandle->Init.speed) {
     case PCD_SPEED_HIGH:
       speed = USBD_SPEED_HIGH;
       break;
@@ -1540,154 +1530,154 @@ void HAL_PCD_ResetCallback (PCD_HandleTypeDef* hpcd) {
     }
 
   // Reset Device
-  USBD_LL_Reset ((USBD_HandleTypeDef*)(hpcd->pData));
-  USBD_LL_SetSpeed ((USBD_HandleTypeDef*)(hpcd->pData), speed);
+  USBD_LL_Reset ((USBD_HandleTypeDef*)(pcdHandle->pData));
+  USBD_LL_SetSpeed ((USBD_HandleTypeDef*)(pcdHandle->pData), speed);
   }
 //}}}
 //{{{
-void HAL_PCD_SuspendCallback (PCD_HandleTypeDef* hpcd) {
-  USBD_LL_Suspend ((USBD_HandleTypeDef*)(hpcd->pData));
+void HAL_PCD_SuspendCallback (PCD_HandleTypeDef* pcdHandle) {
+  USBD_LL_Suspend ((USBD_HandleTypeDef*)(pcdHandle->pData));
   }
 //}}}
 //{{{
-void HAL_PCD_ResumeCallback (PCD_HandleTypeDef* hpcd) {
-  USBD_LL_Resume ((USBD_HandleTypeDef*)(hpcd->pData));
+void HAL_PCD_ResumeCallback (PCD_HandleTypeDef* pcdHandle) {
+  USBD_LL_Resume ((USBD_HandleTypeDef*)(pcdHandle->pData));
   }
 //}}}
 //{{{
-void HAL_PCD_ISOOUTIncompleteCallback (PCD_HandleTypeDef* hpcd, uint8_t epnum) {
-  USBD_LL_IsoOUTIncomplete ((USBD_HandleTypeDef*)(hpcd->pData), epnum);
+void HAL_PCD_ISOOUTIncompleteCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
+  USBD_LL_IsoOUTIncomplete ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum);
   }
 //}}}
 //{{{
-void HAL_PCD_ISOINIncompleteCallback( PCD_HandleTypeDef* hpcd, uint8_t epnum) {
-  USBD_LL_IsoINIncomplete ((USBD_HandleTypeDef*)(hpcd->pData), epnum);
+void HAL_PCD_ISOINIncompleteCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
+  USBD_LL_IsoINIncomplete ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum);
   }
 //}}}
 //{{{
-void HAL_PCD_ConnectCallback (PCD_HandleTypeDef* hpcd) {
-  USBD_LL_DevConnected ((USBD_HandleTypeDef*)(hpcd->pData));
+void HAL_PCD_ConnectCallback (PCD_HandleTypeDef* pcdHandle) {
+  USBD_LL_DevConnected ((USBD_HandleTypeDef*)(pcdHandle->pData));
   }
 //}}}
 //{{{
-void HAL_PCD_DisconnectCallback (PCD_HandleTypeDef* hpcd) {
-  USBD_LL_DevDisconnected ((USBD_HandleTypeDef*)(hpcd->pData));
+void HAL_PCD_DisconnectCallback (PCD_HandleTypeDef* pcdHandle) {
+  USBD_LL_DevDisconnected ((USBD_HandleTypeDef*)(pcdHandle->pData));
   }
 //}}}
 
 //{{{
-USBD_StatusTypeDef USBD_LL_Init (USBD_HandleTypeDef* pdev) {
+USBD_StatusTypeDef USBD_LL_Init (USBD_HandleTypeDef* usbdHandle) {
 
   /* Set LL Driver parameters */
-  hpcd.Instance = USB_OTG_HS;
-  hpcd.Init.dev_endpoints = 6;
-  hpcd.Init.use_dedicated_ep1 = 0;
-  hpcd.Init.ep0_mps = 0x40;
+  gPcdHandle.Instance = USB_OTG_HS;
+  gPcdHandle.Init.dev_endpoints = 6;
+  gPcdHandle.Init.use_dedicated_ep1 = 0;
+  gPcdHandle.Init.ep0_mps = 0x40;
 
   // Be aware that enabling DMA mode will result in data being sent only by
   //multiple of 4 packet sizes. This is due to the fact that USB DMA does
   //not allow sending data from non word-aligned addresses.
   //For this specific application, it is advised to not enable this option unless required
-  hpcd.Init.dma_enable = 0;
-  hpcd.Init.low_power_enable = 0;
-  hpcd.Init.lpm_enable = 0;
-  hpcd.Init.phy_itface = PCD_PHY_ULPI;
-  hpcd.Init.Sof_enable = 0;
-  hpcd.Init.speed = PCD_SPEED_HIGH;
-  hpcd.Init.vbus_sensing_enable = 1;
+  gPcdHandle.Init.dma_enable = 0;
+  gPcdHandle.Init.low_power_enable = 0;
+  gPcdHandle.Init.lpm_enable = 0;
+  gPcdHandle.Init.phy_itface = PCD_PHY_ULPI;
+  gPcdHandle.Init.Sof_enable = 0;
+  gPcdHandle.Init.speed = PCD_SPEED_HIGH;
+  gPcdHandle.Init.vbus_sensing_enable = 1;
 
   /* Link The driver to the stack */
-  hpcd.pData = pdev;
-  pdev->pData = &hpcd;
+  gPcdHandle.pData = usbdHandle;
+  usbdHandle->pData = &gPcdHandle;
 
   /* Initialize LL Driver */
-  HAL_PCD_Init (&hpcd);
-  HAL_PCDEx_SetRxFiFo( &hpcd, 0x200);
-  HAL_PCDEx_SetTxFiFo (&hpcd, 0, 0x80);
-  HAL_PCDEx_SetTxFiFo (&hpcd, 1, 0x174);
+  HAL_PCD_Init (&gPcdHandle);
+  HAL_PCDEx_SetRxFiFo (&gPcdHandle, 0x200);
+  HAL_PCDEx_SetTxFiFo (&gPcdHandle, 0, 0x80);
+  HAL_PCDEx_SetTxFiFo (&gPcdHandle, 1, 0x174);
 
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_DeInit (USBD_HandleTypeDef* pdev) {
-  HAL_PCD_DeInit((PCD_HandleTypeDef*)(pdev->pData));
+USBD_StatusTypeDef USBD_LL_DeInit (USBD_HandleTypeDef* usbdHandle) {
+  HAL_PCD_DeInit ((PCD_HandleTypeDef*)(usbdHandle->pData));
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_Start (USBD_HandleTypeDef* pdev) {
-  HAL_PCD_Start((PCD_HandleTypeDef*)(pdev->pData));
+USBD_StatusTypeDef USBD_LL_Start (USBD_HandleTypeDef* usbdHandle) {
+  HAL_PCD_Start ((PCD_HandleTypeDef*)(usbdHandle->pData));
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_Stop( USBD_HandleTypeDef* pdev) {
-  HAL_PCD_Stop((PCD_HandleTypeDef*)(pdev->pData));
+USBD_StatusTypeDef USBD_LL_Stop (USBD_HandleTypeDef* usbdHandle) {
+  HAL_PCD_Stop ((PCD_HandleTypeDef*)(usbdHandle->pData));
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_OpenEP( USBD_HandleTypeDef* pdev, uint8_t ep_addr, uint8_t ep_type, uint16_t ep_mps) {
-  HAL_PCD_EP_Open((PCD_HandleTypeDef*)(pdev->pData), ep_addr, ep_mps, ep_type);
+USBD_StatusTypeDef USBD_LL_OpenEP( USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t ep_type, uint16_t ep_mps) {
+  HAL_PCD_EP_Open ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr, ep_mps, ep_type);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_CloseEP (USBD_HandleTypeDef* pdev, uint8_t ep_addr) {
-  HAL_PCD_EP_Close((PCD_HandleTypeDef*)(pdev->pData), ep_addr);
+USBD_StatusTypeDef USBD_LL_CloseEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  HAL_PCD_EP_Close ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_FlushEP (USBD_HandleTypeDef* pdev, uint8_t ep_addr) {
-  HAL_PCD_EP_Flush((PCD_HandleTypeDef*)(pdev->pData), ep_addr);
+USBD_StatusTypeDef USBD_LL_FlushEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  HAL_PCD_EP_Flush ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_StallEP (USBD_HandleTypeDef* pdev, uint8_t ep_addr) {
-  HAL_PCD_EP_SetStall((PCD_HandleTypeDef*)(pdev->pData), ep_addr);
+USBD_StatusTypeDef USBD_LL_StallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  HAL_PCD_EP_SetStall ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_ClearStallEP (USBD_HandleTypeDef* pdev, uint8_t ep_addr) {
-  HAL_PCD_EP_ClrStall((PCD_HandleTypeDef*)(pdev->pData), ep_addr);
+USBD_StatusTypeDef USBD_LL_ClearStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  HAL_PCD_EP_ClrStall ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
-uint8_t USBD_LL_IsStallEP (USBD_HandleTypeDef* pdev, uint8_t ep_addr) {
+uint8_t USBD_LL_IsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
 
-  PCD_HandleTypeDef *hpcd = (PCD_HandleTypeDef*)(pdev->pData);
+  auto pcdHandle = (PCD_HandleTypeDef*)(usbdHandle->pData);
   if ((ep_addr & 0x80) == 0x80)
-    return hpcd->IN_ep[ep_addr & 0xF].is_stall;
+    return pcdHandle->IN_ep[ep_addr & 0xF].is_stall;
   else
-    return hpcd->OUT_ep[ep_addr & 0xF].is_stall;
+    return pcdHandle->OUT_ep[ep_addr & 0xF].is_stall;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_SetUSBAddress (USBD_HandleTypeDef* pdev, uint8_t dev_addr) {
-  HAL_PCD_SetAddress((PCD_HandleTypeDef*)(pdev->pData), dev_addr);
+USBD_StatusTypeDef USBD_LL_SetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t dev_addr) {
+  HAL_PCD_SetAddress ((PCD_HandleTypeDef*)(usbdHandle->pData), dev_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_Transmit (USBD_HandleTypeDef* pdev, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
-  HAL_PCD_EP_Transmit((PCD_HandleTypeDef*)(pdev->pData), ep_addr, pbuf, size);
+USBD_StatusTypeDef USBD_LL_Transmit (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
+  HAL_PCD_EP_Transmit ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr, pbuf, size);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_PrepareReceive (USBD_HandleTypeDef* pdev, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
-  HAL_PCD_EP_Receive((PCD_HandleTypeDef*)(pdev->pData), ep_addr, pbuf, size);
+USBD_StatusTypeDef USBD_LL_PrepareReceive (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
+  HAL_PCD_EP_Receive ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr, pbuf, size);
   return USBD_OK;
   }
 //}}}
 //{{{
-uint32_t USBD_LL_GetRxDataSize (USBD_HandleTypeDef* pdev, uint8_t ep_addr) {
-  return HAL_PCD_EP_GetRxCount((PCD_HandleTypeDef*)(pdev->pData), ep_addr);
+uint32_t USBD_LL_GetRxDataSize (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  return HAL_PCD_EP_GetRxCount((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr);
   }
 //}}}
 //{{{
@@ -1700,8 +1690,8 @@ void USBD_LL_Delay (uint32_t Delay) {
 void initMsc (cLcd* lcd) {
 
   gLcd = lcd;
-  USBD_Init (&gUsbdDevice, &kMscDesc, 0);
-  USBD_RegisterClass (&gUsbdDevice, &kUsbdMsc);
+  USBD_Init (&gUsbdDevice, &kMscDescriptors, 0);
+  USBD_RegisterClass (&gUsbdDevice, &kUsbdMscHandlers);
   USBD_Start (&gUsbdDevice);
   }
 //}}}

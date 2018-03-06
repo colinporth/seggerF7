@@ -80,6 +80,10 @@ SD_HandleTypeDef uSdHandle;
 static DMA_HandleTypeDef dma_rx_handle;
 static DMA_HandleTypeDef dma_tx_handle;
 
+  void BSP_SDMMC_IRQHandler() { HAL_SD_IRQHandler (&uSdHandle); }
+  void BSP_SDMMC_DMA_Tx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmatx); }
+  void BSP_SDMMC_DMA_Rx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmarx); }
+
 //{{{
 uint8_t BSP_SD_Init()
 {
@@ -314,7 +318,7 @@ __weak void BSP_SD_Detect_MspInit (SD_HandleTypeDef *hsd, void *Params) {
   SD_DETECT_GPIO_CLK_ENABLE();
 
   /* GPIO configuration in input for uSD_Detect signal */
-  
+
   gpio_init_structure.Pin       = SD_DETECT_PIN;
   gpio_init_structure.Mode      = GPIO_MODE_INPUT;
   gpio_init_structure.Pull      = GPIO_PULLUP;

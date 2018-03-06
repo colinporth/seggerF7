@@ -1,7 +1,5 @@
 // main.cpp - hid class usb
 //{{{  includes
-#include <map>
-
 #include "../common/system.h"
 #include "../common/cLcd.h"
 #include "../common/cTouch.h"
