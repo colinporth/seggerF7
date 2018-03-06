@@ -18,7 +18,7 @@
 
 class cLcd {
 public:
-  cLcd (int displayLines) : mDisplayLines (displayLines) {}
+  cLcd (int lines) : mDisplayLines(lines) {}
   //{{{
   void init() {
 
@@ -37,6 +37,9 @@ public:
     BSP_LCD_SetTransparency (1, 0);
 
     BSP_LCD_DisplayOn();
+
+    for (auto i = 0u; i < kDebugMaxLines; i++)
+      mLines[i].mStr = (char*)malloc (40+1);
     }
   //}}}
   //{{{
@@ -104,15 +107,15 @@ public:
   //{{{
   void debug (uint32_t colour, const char* format, ... ) {
 
+    auto line = mDebugLine % kDebugMaxLines;
+
     va_list args;
     va_start (args, format);
-    auto str = (char*)malloc (40+1);
-    vsnprintf (str, 40, format, args);
+    vsnprintf (mLines[line].mStr, 40, format, args);
     va_end (args);
 
-    mLines[mDebugLine % kDebugMaxLines].mStr = str;
-    mLines[mDebugLine % kDebugMaxLines].mTicks = HAL_GetTick();
-    mLines[mDebugLine % kDebugMaxLines].mColour = colour;
+    mLines[line].mTicks = HAL_GetTick();
+    mLines[line].mColour = colour;
     mDebugLine++;
     }
   //}}}

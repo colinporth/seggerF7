@@ -7,7 +7,7 @@
 
 #include "usbd_msc.h"
 //}}}
-const char* kVersion = "USB Msc 5/3/18";
+const char* kVersion = "USB Msc 6/3/18";
 
 PCD_HandleTypeDef hpcd;
 USBD_HandleTypeDef USBD_Device;
@@ -290,32 +290,31 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   static DMA_HandleTypeDef dma_rx_handle;
   static DMA_HandleTypeDef dma_tx_handle;
 
-  GPIO_InitTypeDef gpio_init_structure;
-
   __HAL_RCC_SDMMC1_CLK_ENABLE();
   __DMAx_TxRx_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
-  /* Common GPIO configuration */
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
-  gpio_init_structure.Pull      = GPIO_PULLUP;
-  gpio_init_structure.Speed     = GPIO_SPEED_HIGH;
+  // Common GPIO configuration
+  GPIO_InitTypeDef gpio_init_structure;
+  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
+  gpio_init_structure.Pull = GPIO_PULLUP;
+  gpio_init_structure.Speed = GPIO_SPEED_HIGH;
   gpio_init_structure.Alternate = GPIO_AF12_SDMMC1;
 
-  /* GPIOC configuration */
+  // GPIOC configuration
   gpio_init_structure.Pin = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12;
-  HAL_GPIO_Init(GPIOC, &gpio_init_structure);
+  HAL_GPIO_Init (GPIOC, &gpio_init_structure);
 
-  /* GPIOD configuration */
+  // GPIOD configuration
   gpio_init_structure.Pin = GPIO_PIN_2;
-  HAL_GPIO_Init(GPIOD, &gpio_init_structure);
+  HAL_GPIO_Init (GPIOD, &gpio_init_structure);
 
-  /* NVIC configuration for SDIO interrupts */
-  HAL_NVIC_SetPriority(SDMMC1_IRQn, 0x05, 0);
-  HAL_NVIC_EnableIRQ(SDMMC1_IRQn);
+  // NVIC configuration for SDIO interrupts
+  HAL_NVIC_SetPriority (SDMMC1_IRQn, 0x05, 0);
+  HAL_NVIC_EnableIRQ (SDMMC1_IRQn);
 
-  /* Configure DMA Rx parameters */
+  //{{{  Configure DMA Rx parameters
   dma_rx_handle.Init.Channel             = SD_DMAx_Rx_CHANNEL;
   dma_rx_handle.Init.Direction           = DMA_PERIPH_TO_MEMORY;
   dma_rx_handle.Init.PeriphInc           = DMA_PINC_DISABLE;
@@ -332,8 +331,8 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   __HAL_LINKDMA(hsd, hdmarx, dma_rx_handle);
   HAL_DMA_DeInit(&dma_rx_handle);
   HAL_DMA_Init(&dma_rx_handle);
-
-  /* Configure DMA Tx parameters */
+  //}}}
+  //{{{  Configure DMA Tx parameters
   dma_tx_handle.Init.Channel             = SD_DMAx_Tx_CHANNEL;
   dma_tx_handle.Init.Direction           = DMA_MEMORY_TO_PERIPH;
   dma_tx_handle.Init.PeriphInc           = DMA_PINC_DISABLE;
@@ -350,12 +349,13 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   __HAL_LINKDMA(hsd, hdmatx, dma_tx_handle);
   HAL_DMA_DeInit(&dma_tx_handle);
   HAL_DMA_Init(&dma_tx_handle);
+  //}}}
 
-  /* NVIC configuration for DMA transfer complete interrupt */
-  HAL_NVIC_SetPriority(SD_DMAx_Rx_IRQn, 0x06, 0);
-  HAL_NVIC_EnableIRQ(SD_DMAx_Rx_IRQn);
+  // NVIC configuration for DMA transfer complete interrupt
+  HAL_NVIC_SetPriority (SD_DMAx_Rx_IRQn, 0x06, 0);
+  HAL_NVIC_EnableIRQ (SD_DMAx_Rx_IRQn);
 
-  /* NVIC configuration for DMA transfer complete interrupt */
+  // NVIC configuration for DMA transfer complete interrupt
   HAL_NVIC_SetPriority(SD_DMAx_Tx_IRQn, 0x06, 0);
   HAL_NVIC_EnableIRQ(SD_DMAx_Tx_IRQn);
   }
@@ -367,7 +367,6 @@ void BSP_SD_ReadCpltCallback() { readstatus = 1; }
 int8_t init (uint8_t lun) {
 
   gApp->getLcd()->debug (LCD_COLOR_WHITE, "sd init");
-
   BSP_SD_Init();
   return 0;
   }
@@ -380,11 +379,11 @@ int8_t getCapacity (uint8_t lun, uint32_t* block_num, uint16_t* block_size) {
     BSP_SD_GetCardInfo (&info);
     *block_num = info.LogBlockNbr - 1;
     *block_size = info.LogBlockSize;
-    //gApp->getLcd()->debug (LCD_COLOR_WHITE, "sd getCapacity %d %d", (int)block_num, (int)block_size);
+    gApp->getLcd()->debug (LCD_COLOR_YELLOW, "getCapacity %dk blocks size:%d", int(*block_num)/1024, int(*block_size));
     return 0;
     }
   else
-    gApp->getLcd()->debug (LCD_COLOR_WHITE, "sd getCapacity SD_NOT_PRESENT");
+    gApp->getLcd()->debug (LCD_COLOR_RED, "getCapacity SD_NOT_PRESENT");
 
   return -1;
   }
@@ -408,7 +407,6 @@ int8_t isReady (uint8_t lun) {
   }
 //}}}
 int8_t isWriteProtected (uint8_t lun) { return 0; }
-
 //{{{
 int8_t read (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
@@ -419,8 +417,7 @@ int8_t read (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
 
-    //gApp->getLcd()->debug (LCD_COLOR_WHITE, "read %x", blk_addr);
-    printf ("read %d\n", blk_addr);
+    gApp->getLcd()->debug (LCD_COLOR_WHITE, "read %p %d", buf, (int)blk_addr);
     return 0;
     }
 
@@ -438,16 +435,14 @@ int8_t write (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
     // Wait until SD card is ready to use for new operation
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
 
-    gApp->getLcd()->debug (LCD_COLOR_WHITE, "write buf");
+    gApp->getLcd()->debug (LCD_COLOR_WHITE, "write %d", (int)blk_addr);
     return 0;
     }
 
   return -1;
   }
 //}}}
-
 int8_t getMaxLun() { return 0; }
-
 //{{{
 //  USB Mass storage Standard Inquiry Data
 const uint8_t kInquirydata[] = {
@@ -475,7 +470,7 @@ USBD_StorageTypeDef kUsbdDisk = {
   read,
   write,
   getMaxLun,
-  (int8_t*)kInquirydata,
+  kInquirydata,
   };
 //}}}
 
@@ -486,7 +481,7 @@ void cApp::run (bool keyboard) {
   mButton = BSP_PB_GetState (BUTTON_KEY);
 
   // init lcd
-  mLcd = new cLcd (12);
+  mLcd = new cLcd (15);
   mLcd->init();
 
   USBD_Init (&USBD_Device, &kMscDesc, 0);
