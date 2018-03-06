@@ -81,8 +81,10 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="14" y="2" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="1" top="125" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="15" y="44" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="0" top="15" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="579" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/usbd.cpp" debugPath="usbMsc/usbd.cpp" selected="0" top="555" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="8" y="175" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/usbd_msc.cpp" debugPath="usbMsc/usbd_msc.cpp" selected="0" top="140" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="17" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/usbd_msc.h" debugPath="usbMsc/usbd_msc.h" selected="1" top="0" codecName="Default"/>
  </Files>
- <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Release" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3199"/>
+ <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>
