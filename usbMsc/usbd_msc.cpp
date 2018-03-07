@@ -690,10 +690,10 @@ void mscBotSendCsw (USBD_HandleTypeDef* usbdHandle, uint8_t CSW_Status) {
   mscData->csw.bStatus = CSW_Status;
   mscData->bot_state = USBD_BOT_IDLE;
 
-  USBD_LL_Transmit (usbdHandle, MSC_EPIN_ADDR, (uint8_t*)&mscData->csw, USBD_BOT_CSW_LENGTH);
+  usbdLowLevelTransmit (usbdHandle, MSC_EPIN_ADDR, (uint8_t*)&mscData->csw, USBD_BOT_CSW_LENGTH);
 
   // Prepare EP to Receive next Cmd
-  USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
+  usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
   }
 //}}}
 //{{{
@@ -717,12 +717,12 @@ void mscBotAbort (USBD_HandleTypeDef* usbdHandle) {
   if ((mscData->cbw.bmFlags == 0) &&
       (mscData->cbw.dDataLength != 0) &&
       (mscData->bot_status == USBD_BOT_STATUS_NORMAL))
-    USBD_LL_StallEP (usbdHandle, MSC_EPOUT_ADDR);
+    usbdLowLevelStallEP (usbdHandle, MSC_EPOUT_ADDR);
 
-  USBD_LL_StallEP (usbdHandle, MSC_EPIN_ADDR);
+  usbdLowLevelStallEP (usbdHandle, MSC_EPIN_ADDR);
 
   if (mscData->bot_status == USBD_BOT_STATUS_ERROR)
-    USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
+    usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
   }
 //}}}
 //{{{
@@ -732,7 +732,7 @@ void mscBotCplClrFeature (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
 
   if (mscData->bot_status == USBD_BOT_STATUS_ERROR ) {
     /* Bad CBW Signature */
-    USBD_LL_StallEP (usbdHandle, MSC_EPIN_ADDR);
+    usbdLowLevelStallEP (usbdHandle, MSC_EPIN_ADDR);
     mscData->bot_status = USBD_BOT_STATUS_NORMAL;
     }
   else if (((epnum & 0x80) == 0x80) && (mscData->bot_status != USBD_BOT_STATUS_RECOVERY))
@@ -752,7 +752,7 @@ int8_t SCSI_Read (USBD_HandleTypeDef* usbdHandle, uint8_t lun) {
     return -1;
     }
 
-  USBD_LL_Transmit (usbdHandle, MSC_EPIN_ADDR, mscData->bot_data, len);
+  usbdLowLevelTransmit (usbdHandle, MSC_EPIN_ADDR, mscData->bot_data, len);
 
   mscData->scsi_blk_addr += len;
   mscData->scsi_blk_len -= len;
@@ -788,7 +788,7 @@ int8_t SCSI_Write (USBD_HandleTypeDef* usbdHandle, uint8_t lun) {
     mscBotSendCsw (usbdHandle, USBD_CSW_CMD_PASSED);
   else
     // Prepare EP to Receive next packet */
-    USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, mscData->bot_data, MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET));
+    usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, mscData->bot_data, MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET));
 
   return 0;
   }
@@ -1056,7 +1056,7 @@ int8_t SCSI_Write10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* param
 
     // Prepare EP to receive first data packet
     mscData->bot_state = USBD_BOT_DATA_OUT;
-    USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, mscData->bot_data, MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET));
+    usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, mscData->bot_data, MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET));
     }
   else // Write Process ongoing
     return SCSI_Write (usbdHandle, lun);
@@ -1111,7 +1111,7 @@ void mscBotCbwDecode (USBD_HandleTypeDef* usbdHandle) {
   mscData->csw.dTag = mscData->cbw.dTag;
   mscData->csw.dDataResidue = mscData->cbw.dDataLength;
 
-  if ((USBD_LL_GetRxDataSize (usbdHandle ,MSC_EPOUT_ADDR) != USBD_BOT_CBW_LENGTH) ||
+  if ((usbdLowLevelGetRxDataSize (usbdHandle ,MSC_EPOUT_ADDR) != USBD_BOT_CBW_LENGTH) ||
       (mscData->cbw.dSignature != USBD_BOT_CBW_SIGNATURE) ||
         (mscData->cbw.bLUN > 1) ||
           (mscData->cbw.bCBLength < 1) ||
@@ -1139,7 +1139,7 @@ void mscBotCbwDecode (USBD_HandleTypeDef* usbdHandle) {
         mscData->csw.dDataResidue -= len;
         mscData->csw.bStatus = USBD_CSW_CMD_PASSED;
         mscData->bot_state = USBD_BOT_SEND_DATA;
-        USBD_LL_Transmit (usbdHandle, MSC_EPIN_ADDR, mscData->bot_data, len);
+        usbdLowLevelTransmit (usbdHandle, MSC_EPIN_ADDR, mscData->bot_data, len);
         }
       else if (mscData->bot_data_length == 0)
         mscBotSendCsw (usbdHandle, USBD_CSW_CMD_PASSED);
@@ -1152,20 +1152,20 @@ void mscBotCbwDecode (USBD_HandleTypeDef* usbdHandle) {
 uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
 
   if (usbdHandle->dev_speed == USBD_SPEED_HIGH) {
-    USBD_LL_OpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
-    USBD_LL_OpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
+    usbdLowLevelOpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
+    usbdLowLevelOpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
     }
   else {
-    USBD_LL_OpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
-    USBD_LL_OpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
+    usbdLowLevelOpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
+    usbdLowLevelOpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
     }
 
   usbdHandle->pClassData = malloc (sizeof (sMscData));
   if (usbdHandle->pClassData) {
     sdInit (0);
 
-    USBD_LL_FlushEP (usbdHandle, MSC_EPOUT_ADDR);
-    USBD_LL_FlushEP (usbdHandle, MSC_EPIN_ADDR);
+    usbdLowLevelFlushEP (usbdHandle, MSC_EPOUT_ADDR);
+    usbdLowLevelFlushEP (usbdHandle, MSC_EPIN_ADDR);
 
     // Prapare EP to Receive First BOT Cmd
     auto mscData = (sMscData*)usbdHandle->pClassData;
@@ -1173,7 +1173,7 @@ uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
     mscData->bot_status = USBD_BOT_STATUS_NORMAL;
     mscData->scsi_sense_tail = 0;
     mscData->scsi_sense_head = 0;
-    USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
+    usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
 
     return 0;
     }
@@ -1185,8 +1185,8 @@ uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
 uint8_t mscDeInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
 
   // Close MSC EPs
-  USBD_LL_CloseEP (usbdHandle, MSC_EPOUT_ADDR);
-  USBD_LL_CloseEP (usbdHandle, MSC_EPIN_ADDR);
+  usbdLowLevelCloseEP (usbdHandle, MSC_EPOUT_ADDR);
+  usbdLowLevelCloseEP (usbdHandle, MSC_EPIN_ADDR);
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
   mscData->bot_state = USBD_BOT_IDLE;
@@ -1225,7 +1225,7 @@ uint8_t mscSetup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *req) {
             auto mscData = (sMscData*)usbdHandle->pClassData;
             mscData->bot_state = USBD_BOT_IDLE;
             mscData->bot_status = USBD_BOT_STATUS_RECOVERY;
-            USBD_LL_PrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
+            usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
             }
           else {
             USBD_CtlError (usbdHandle , req);
@@ -1257,21 +1257,21 @@ uint8_t mscSetup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef *req) {
         //{{{
         case USB_REQ_CLEAR_FEATURE:
           // Flush the FIFO and Clear the stall status
-          USBD_LL_FlushEP (usbdHandle, (uint8_t)req->wIndex);
+          usbdLowLevelFlushEP (usbdHandle, (uint8_t)req->wIndex);
 
           // Reactivate the EP
-          USBD_LL_CloseEP (usbdHandle , (uint8_t)req->wIndex);
+          usbdLowLevelCloseEP (usbdHandle , (uint8_t)req->wIndex);
           if ((((uint8_t)req->wIndex) & 0x80) == 0x80) {
             if (usbdHandle->dev_speed == USBD_SPEED_HIGH) // Open EP IN
-              USBD_LL_OpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
+              usbdLowLevelOpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
             else // Open EP IN
-              USBD_LL_OpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
+              usbdLowLevelOpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
             }
           else {
             if (usbdHandle->dev_speed == USBD_SPEED_HIGH) // Open EP IN
-              USBD_LL_OpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
+              usbdLowLevelOpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
             else // Open EP IN
-              USBD_LL_OpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
+              usbdLowLevelOpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
             }
 
           // Handle BOT error
@@ -1457,22 +1457,22 @@ void HAL_PCD_MspDeInit (PCD_HandleTypeDef* pcdHandle) {
 //}}}
 //{{{
 void HAL_PCD_SetupStageCallback (PCD_HandleTypeDef* pcdHandle) {
-  USBD_LL_SetupStage ((USBD_HandleTypeDef*)(pcdHandle->pData), (uint8_t*)pcdHandle->Setup);
+  usbdLowLevelSetupStage ((USBD_HandleTypeDef*)(pcdHandle->pData), (uint8_t*)pcdHandle->Setup);
   }
 //}}}
 //{{{
 void HAL_PCD_DataOutStageCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
-  USBD_LL_DataOutStage ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum, pcdHandle->OUT_ep[epnum].xfer_buff);
+  usbdLowLevelDataOutStage ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum, pcdHandle->OUT_ep[epnum].xfer_buff);
   }
 //}}}
 //{{{
 void HAL_PCD_DataInStageCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
-  USBD_LL_DataInStage ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum, pcdHandle->IN_ep[epnum].xfer_buff);
+  usbdLowLevelDataInStage ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum, pcdHandle->IN_ep[epnum].xfer_buff);
   }
 //}}}
 //{{{
 void HAL_PCD_SOFCallback (PCD_HandleTypeDef* pcdHandle) {
-  USBD_LL_SOF((USBD_HandleTypeDef*)(pcdHandle->pData));
+  usbdLowLevelSOF((USBD_HandleTypeDef*)(pcdHandle->pData));
   }
 //}}}
 //{{{
@@ -1496,43 +1496,43 @@ void HAL_PCD_ResetCallback (PCD_HandleTypeDef* pcdHandle) {
     }
 
   // Reset Device
-  USBD_LL_Reset ((USBD_HandleTypeDef*)(pcdHandle->pData));
-  USBD_LL_SetSpeed ((USBD_HandleTypeDef*)(pcdHandle->pData), speed);
+  usbdLowLevelReset ((USBD_HandleTypeDef*)(pcdHandle->pData));
+  usbdLowLevelSetSpeed ((USBD_HandleTypeDef*)(pcdHandle->pData), speed);
   }
 //}}}
 //{{{
 void HAL_PCD_SuspendCallback (PCD_HandleTypeDef* pcdHandle) {
-  USBD_LL_Suspend ((USBD_HandleTypeDef*)(pcdHandle->pData));
+  usbdLowLevelSuspend ((USBD_HandleTypeDef*)(pcdHandle->pData));
   }
 //}}}
 //{{{
 void HAL_PCD_ResumeCallback (PCD_HandleTypeDef* pcdHandle) {
-  USBD_LL_Resume ((USBD_HandleTypeDef*)(pcdHandle->pData));
+  usbdLowLevelResume ((USBD_HandleTypeDef*)(pcdHandle->pData));
   }
 //}}}
 //{{{
 void HAL_PCD_ISOOUTIncompleteCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
-  USBD_LL_IsoOUTIncomplete ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum);
+  usbdLowLevelIsoOUTIncomplete ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum);
   }
 //}}}
 //{{{
 void HAL_PCD_ISOINIncompleteCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
-  USBD_LL_IsoINIncomplete ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum);
+  usbdLowLevelIsoINIncomplete ((USBD_HandleTypeDef*)(pcdHandle->pData), epnum);
   }
 //}}}
 //{{{
 void HAL_PCD_ConnectCallback (PCD_HandleTypeDef* pcdHandle) {
-  USBD_LL_DevConnected ((USBD_HandleTypeDef*)(pcdHandle->pData));
+  usbdLowLevelDevConnected ((USBD_HandleTypeDef*)(pcdHandle->pData));
   }
 //}}}
 //{{{
 void HAL_PCD_DisconnectCallback (PCD_HandleTypeDef* pcdHandle) {
-  USBD_LL_DevDisconnected ((USBD_HandleTypeDef*)(pcdHandle->pData));
+  usbdLowLevelDevDisconnected ((USBD_HandleTypeDef*)(pcdHandle->pData));
   }
 //}}}
 
 //{{{
-USBD_StatusTypeDef USBD_LL_Init (USBD_HandleTypeDef* usbdHandle) {
+USBD_StatusTypeDef usbdLowLevelInit (USBD_HandleTypeDef* usbdHandle) {
 
   /* Set LL Driver parameters */
   gPcdHandle.Instance = USB_OTG_HS;
@@ -1566,55 +1566,55 @@ USBD_StatusTypeDef USBD_LL_Init (USBD_HandleTypeDef* usbdHandle) {
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_DeInit (USBD_HandleTypeDef* usbdHandle) {
+USBD_StatusTypeDef usbdLowLevelDeInit (USBD_HandleTypeDef* usbdHandle) {
   HAL_PCD_DeInit ((PCD_HandleTypeDef*)(usbdHandle->pData));
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_Start (USBD_HandleTypeDef* usbdHandle) {
+USBD_StatusTypeDef usbdLowLevelStart (USBD_HandleTypeDef* usbdHandle) {
   HAL_PCD_Start ((PCD_HandleTypeDef*)(usbdHandle->pData));
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_Stop (USBD_HandleTypeDef* usbdHandle) {
+USBD_StatusTypeDef usbdLowLevelStop (USBD_HandleTypeDef* usbdHandle) {
   HAL_PCD_Stop ((PCD_HandleTypeDef*)(usbdHandle->pData));
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_OpenEP( USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t ep_type, uint16_t ep_mps) {
+USBD_StatusTypeDef usbdLowLevelOpenEP( USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t ep_type, uint16_t ep_mps) {
   HAL_PCD_EP_Open ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr, ep_mps, ep_type);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_CloseEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+USBD_StatusTypeDef usbdLowLevelCloseEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
   HAL_PCD_EP_Close ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_FlushEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+USBD_StatusTypeDef usbdLowLevelFlushEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
   HAL_PCD_EP_Flush ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_StallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+USBD_StatusTypeDef usbdLowLevelStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
   HAL_PCD_EP_SetStall ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_ClearStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+USBD_StatusTypeDef usbdLowLevelClearStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
   HAL_PCD_EP_ClrStall ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
-uint8_t USBD_LL_IsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+uint8_t usbdLowLevelIsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
 
   auto pcdHandle = (PCD_HandleTypeDef*)(usbdHandle->pData);
   if ((ep_addr & 0x80) == 0x80)
@@ -1624,31 +1624,26 @@ uint8_t USBD_LL_IsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_SetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t dev_addr) {
+USBD_StatusTypeDef usbdLowLevelSetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t dev_addr) {
   HAL_PCD_SetAddress ((PCD_HandleTypeDef*)(usbdHandle->pData), dev_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_Transmit (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
+USBD_StatusTypeDef usbdLowLevelTransmit (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
   HAL_PCD_EP_Transmit ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr, pbuf, size);
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef USBD_LL_PrepareReceive (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
+USBD_StatusTypeDef usbdLowLevelPrepareReceive (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
   HAL_PCD_EP_Receive ((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr, pbuf, size);
   return USBD_OK;
   }
 //}}}
 //{{{
-uint32_t USBD_LL_GetRxDataSize (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+uint32_t usbdLowLevelGetRxDataSize (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
   return HAL_PCD_EP_GetRxCount((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr);
-  }
-//}}}
-//{{{
-void USBD_LL_Delay (uint32_t Delay) {
-  HAL_Delay(Delay);
   }
 //}}}
 
