@@ -60,11 +60,11 @@ void cApp::readDirectory (char* path) {
         } while (fno.fname[j++]);
 
       if (fno.fattrib & AM_DIR) {
-        mLcd->debug (LCD_COLOR_WHITE, "dir %s", path);
+        mLcd->debug (LCD_COLOR_GREEN, "%s", path);
         readDirectory (path);
         }
       else
-        mLcd->debug (LCD_COLOR_WHITE, "file %s", path);
+        mLcd->debug (LCD_COLOR_WHITE, "- %s", path);
       }
 
     path[--i] = '\0';
@@ -94,20 +94,12 @@ void cApp::run (bool keyboard) {
     if (res == FR_OK) {
       mLcd->debug (LCD_COLOR_WHITE, "mounted");
 
-      char buff[256]; 
-      strcpy (buff, "/");  /* Directory to be emptied */
-      readDirectory(buff);
+      char buff[256] = "/";
+      readDirectory (buff);
       }
     else
       mLcd->debug (LCD_COLOR_RED, "not mounted");
     }
-
-  //initMsc (mLcd);
-      //if(f_open (&MyFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)
-      //  if(f_open (&MyFile, "STM32.TXT", FA_READ) != FR_OK)
-      //    res = f_read (&MyFile, rtext, sizeof(rtext), (void *)&bytesread);
-      //      f_close (&MyFile);
-
 
   while (true) {
     pollTouch();

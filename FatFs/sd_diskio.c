@@ -1,10 +1,10 @@
+// sd_diskio.c
 #include "ff_gen_drv.h"
 #include "sd_diskio.h"
 
-
-#if defined(SDMMC_DATATIMEOUT)
+#if defined (SDMMC_DATATIMEOUT)
   #define SD_TIMEOUT SDMMC_DATATIMEOUT
-#elif defined(SD_DATATIMEOUT)
+#elif define d(SD_DATATIMEOUT)
   #define SD_TIMEOUT SD_DATATIMEOUT
 #else
   #define SD_TIMEOUT 30 * 1000
@@ -40,71 +40,62 @@ DSTATUS SD_status (BYTE lun) {
 //{{{
 DRESULT SD_read (BYTE lun, BYTE *buff, DWORD sector, UINT count) {
 
-  DRESULT res = RES_ERROR;
-
   if (BSP_SD_ReadBlocks ((uint32_t*)buff, (uint32_t) (sector), count, SD_TIMEOUT) == MSD_OK) {
     /* wait until the read operation is finished */
     while (BSP_SD_GetCardState()!= MSD_OK) { }
-    res = RES_OK;
+    return RES_OK;
     }
 
-  return res;
+  return RES_ERROR;
   }
 //}}}
 //{{{
 DRESULT SD_write (BYTE lun, const BYTE *buff, DWORD sector, UINT count) {
 
-  DRESULT res = RES_ERROR;
   if (BSP_SD_WriteBlocks ((uint32_t*)buff, (uint32_t)(sector), count, SD_TIMEOUT) == MSD_OK) {
     /* wait until the Write operation is finished */
     while(BSP_SD_GetCardState() != MSD_OK) { }
-    res = RES_OK;
+    return RES_OK;
     }
 
-  return res;
+  return RES_ERROR;
   }
 //}}}
 //{{{
 DRESULT SD_ioctl (BYTE lun, BYTE cmd, void *buff) {
 
-  DRESULT res = RES_ERROR;
-  BSP_SD_CardInfo CardInfo;
-
   if (Stat & STA_NOINIT)
     return RES_NOTRDY;
 
+  BSP_SD_CardInfo CardInfo;
   switch (cmd) {
-    // Make sure that no pending write process */
+    // Make sure that no pending write process
     case CTRL_SYNC :
-      res = RES_OK;
-      break;
+      return RES_OK;
 
-    // Get number of sectors on the disk (DWORD) */
+    // Get number of sectors on the disk (DWORD)
     case GET_SECTOR_COUNT :
-      BSP_SD_GetCardInfo(&CardInfo);
+      BSP_SD_GetCardInfo (&CardInfo);
       *(DWORD*)buff = CardInfo.LogBlockNbr;
-      res = RES_OK;
-      break;
+      return RES_OK;
 
-    // Get R/W sector size (WORD) */
+    // Get R/W sector size (WORD)
     case GET_SECTOR_SIZE :
-      BSP_SD_GetCardInfo(&CardInfo);
+      BSP_SD_GetCardInfo (&CardInfo);
       *(WORD*)buff = CardInfo.LogBlockSize;
-      res = RES_OK;
-      break;
+      return RES_OK;
 
-    // Get erase block size in unit of sector (DWORD) */
+    // Get erase block size in unit of sector (DWORD)
     case GET_BLOCK_SIZE :
-      BSP_SD_GetCardInfo(&CardInfo);
+      BSP_SD_GetCardInfo (&CardInfo);
       *(DWORD*)buff = CardInfo.LogBlockSize / SD_DEFAULT_BLOCK_SIZE;
-      res = RES_OK;
-      break;
+      return RES_OK;
 
     default:
-      res = RES_PARERR;
+      return RES_PARERR;
     }
 
-  return res;
+  return RES_ERROR;
   }
 //}}}
 

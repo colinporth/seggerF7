@@ -341,6 +341,7 @@
       <file file_name="../FatFs/sd_diskio.c" />
       <file file_name="../FatFs/syscall.c" />
       <file file_name="../FatFs/ff.c" />
+      <file file_name="../FatFs/ccsbcs.c" />
     </folder>
   </project>
 </solution>
