@@ -366,17 +366,17 @@ USBD_StatusTypeDef USBD_StdEPReq (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqT
         //{{{
         case USBD_STATE_ADDRESSED:
           if ((ep_addr != 0x00) && (ep_addr != 0x80))
-            usbdLowLevelStallEP(usbdHandle , ep_addr);
+            usbdLowLevelStallEP (usbdHandle, ep_addr);
           break;
         //}}}
         //{{{
         case USBD_STATE_CONFIGURED:
           if (req->wValue == USB_FEATURE_EP_HALT) {
             if ((ep_addr != 0x00) && (ep_addr != 0x80))
-              usbdLowLevelStallEP(usbdHandle , ep_addr);
+              usbdLowLevelStallEP (usbdHandle , ep_addr);
           }
           usbdHandle->pClass->Setup (usbdHandle, req);
-          USBD_CtlSendStatus(usbdHandle);
+          USBD_CtlSendStatus (usbdHandle);
 
           break;
 
@@ -394,7 +394,7 @@ USBD_StatusTypeDef USBD_StdEPReq (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqT
         //{{{
         case USBD_STATE_ADDRESSED:
           if ((ep_addr != 0x00) && (ep_addr != 0x80))
-            usbdLowLevelStallEP(usbdHandle , ep_addr);
+            usbdLowLevelStallEP (usbdHandle , ep_addr);
           break;
         //}}}
         //{{{
@@ -421,7 +421,7 @@ USBD_StatusTypeDef USBD_StdEPReq (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqT
       //{{{
       case USBD_STATE_ADDRESSED:
         if ((ep_addr & 0x7F) != 0x00)
-          usbdLowLevelStallEP(usbdHandle , ep_addr);
+          usbdLowLevelStallEP (usbdHandle , ep_addr);
         break;
       //}}}
       //{{{
@@ -753,10 +753,10 @@ USBD_StatusTypeDef USBD_DeInit (USBD_HandleTypeDef* usbdHandle) {
   usbdHandle->pClass->DeInit(usbdHandle, usbdHandle->dev_config);
 
   // Stop the low level driver
-  usbdLowLevelStop(usbdHandle);
+  usbdLowLevelStop (usbdHandle);
 
   // Initialize low level driver
-  usbdLowLevelDeInit(usbdHandle);
+  usbdLowLevelDeInit (usbdHandle);
 
   return USBD_OK;
   }
@@ -765,7 +765,7 @@ USBD_StatusTypeDef USBD_DeInit (USBD_HandleTypeDef* usbdHandle) {
 USBD_StatusTypeDef USBD_RegisterClass (USBD_HandleTypeDef* usbdHandle, USBD_ClassTypeDef* pclass) {
 
   USBD_StatusTypeDef status = USBD_OK;
-  if (pclass != 0) {
+  if (pclass) {
     // link the class to the USB Device handle
     usbdHandle->pClass = pclass;
     status = USBD_OK;
@@ -779,7 +779,7 @@ USBD_StatusTypeDef USBD_RegisterClass (USBD_HandleTypeDef* usbdHandle, USBD_Clas
 //{{{
 USBD_StatusTypeDef USBD_Start (USBD_HandleTypeDef* usbdHandle) {
 
-  // Start the low level driver
+  // Start low level driver
   usbdLowLevelStart (usbdHandle);
   return USBD_OK;
   }
@@ -798,20 +798,20 @@ USBD_StatusTypeDef USBD_Stop (USBD_HandleTypeDef* usbdHandle) {
 //}}}
 //{{{
 USBD_StatusTypeDef USBD_SetClassConfig (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
+// Set configuration  and Start the Class
 
-  USBD_StatusTypeDef   ret = USBD_FAIL;
-  if (usbdHandle->pClass != NULL)
-    // Set configuration  and Start the Class
+  if (usbdHandle->pClass)
     if (usbdHandle->pClass->Init (usbdHandle, cfgidx) == 0)
-      ret = USBD_OK;
-  return ret;
+      return USBD_OK;
+
+  return USBD_FAIL;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef USBD_ClrClassConfig (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
+// Clear configuration  and De-initialize the Class process
 
-  // Clear configuration  and De-initialize the Class process*/
-  usbdHandle->pClass->DeInit(usbdHandle, cfgidx);
+  usbdHandle->pClass->DeInit (usbdHandle, cfgidx);
   return USBD_OK;
   }
 //}}}

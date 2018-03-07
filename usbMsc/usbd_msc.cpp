@@ -30,21 +30,6 @@ const uint8_t kSdInquiryData[STANDARD_INQUIRY_DATA_LEN] = {
   };
 //}}}
 
-int gReads = 0;
-__IO uint32_t readstatus = 0;
-__IO uint32_t writestatus = 0;
-
-//{{{
-void sdInit (uint8_t lun) {
-  BSP_SD_Init();
-  }
-//}}}
-
-//{{{
-int8_t sdGetMaxLun() {
-  return 0;
-  }
-//}}}
 //{{{
 bool sdGetCapacity (uint8_t lun, uint32_t& block_num, uint16_t& block_size) {
 
@@ -99,7 +84,7 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
     auto took = HAL_GetTick() - ticks;
 
-    gLcd->debug (LCD_COLOR_CYAN, "read %d %p %7d %2d %d", gReads++, buf, (int)blk_addr, (int)blk_len, took);
+    gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
     return true;
     }
 
@@ -118,7 +103,7 @@ bool sdWrite (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
     auto took = HAL_GetTick() - ticks;
 
-    gLcd->debug (LCD_COLOR_WHITE, "write %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
+    gLcd->debug (LCD_COLOR_WHITE, "w %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
     return true;
     }
 
@@ -126,6 +111,11 @@ bool sdWrite (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
   }
 //}}}
 
+// BSP
+__IO uint32_t readstatus = 0;
+void BSP_SD_ReadCpltCallback() { readstatus = 1; }
+__IO uint32_t writestatus = 0;
+void BSP_SD_WriteCpltCallback() { writestatus = 1; }
 //{{{
 void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
 
@@ -202,8 +192,6 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   HAL_NVIC_EnableIRQ(SD_DMAx_Tx_IRQn);
   }
 //}}}
-void BSP_SD_ReadCpltCallback() { readstatus = 1; }
-void BSP_SD_WriteCpltCallback() { writestatus = 1; }
 //}}}
 //{{{  msc common descriptors
 //{{{  defines
@@ -663,7 +651,6 @@ typedef struct {
 //}}}
 //{{{  struct sMscData
 typedef struct {
-  uint32_t              max_lun;
   uint32_t              interface;
 
   uint8_t               bot_state;
@@ -733,7 +720,7 @@ void mscBotCplClrFeature (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
   if (mscData->bot_status == USBD_BOT_STATUS_ERROR ) {
-    /* Bad CBW Signature */
+    // Bad CBW Signature
     usbdLowLevelStallEP (usbdHandle, MSC_EPIN_ADDR);
     mscData->bot_status = USBD_BOT_STATUS_NORMAL;
     }
@@ -1165,8 +1152,6 @@ uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
 
   usbdHandle->pClassData = malloc (sizeof (sMscData));
   if (usbdHandle->pClassData) {
-    sdInit (0);
-
     usbdLowLevelFlushEP (usbdHandle, MSC_EPOUT_ADDR);
     usbdLowLevelFlushEP (usbdHandle, MSC_EPIN_ADDR);
 
@@ -1211,10 +1196,9 @@ uint8_t mscSetup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) {
       switch (req->bRequest) {
         //{{{
         case BOT_GET_MAX_LUN :
-          if((req->wValue  == 0) && (req->wLength == 1) && ((req->bmRequest & 0x80) == 0x80)) {
-            mscData->max_lun = sdGetMaxLun();
-            USBD_CtlSendData (usbdHandle, (uint8_t*)&mscData->max_lun, 1);
-            }
+          if((req->wValue  == 0) && (req->wLength == 1) && ((req->bmRequest & 0x80) == 0x80))
+            // maxLun = 0
+            USBD_CtlSendData (usbdHandle, 0, 1);
           else {
             USBD_CtlError(usbdHandle, req);
             return USBD_FAIL;
@@ -1388,13 +1372,13 @@ USBD_ClassTypeDef kMscHandlers = {
 //{{{
 void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
 
-  /* Configure USB FS GPIOs */
+  // Configure USB FS GPIOs */
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
 
-  /* CLK */
+  // CLK */
   GPIO_InitTypeDef GPIO_InitStruct;
   GPIO_InitStruct.Pin = GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -1403,7 +1387,7 @@ void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
 
-  /* D0 */
+  // D0 */
   GPIO_InitStruct.Pin = GPIO_PIN_3;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -1411,7 +1395,7 @@ void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
 
-  /* D1 D2 D3 D4 D5 D6 D7 */
+  // D1 D2 D3 D4 D5 D6 D7 */
   GPIO_InitStruct.Pin = GPIO_PIN_0  | GPIO_PIN_1  | GPIO_PIN_5 |\
     GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -1419,21 +1403,21 @@ void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init (GPIOB, &GPIO_InitStruct);
 
-  /* STP */
+  // STP */
   GPIO_InitStruct.Pin = GPIO_PIN_0;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
 
-  /* NXT */
+  // NXT */
   GPIO_InitStruct.Pin = GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init (GPIOH, &GPIO_InitStruct);
 
-  /* DIR */
+  // DIR */
   GPIO_InitStruct.Pin = GPIO_PIN_2;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -1442,20 +1426,20 @@ void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
 
   __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
 
-  /* Enable USB HS Clocks */
+  // Enable USB HS Clocks */
   __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
 
-  /* Set USBHS Interrupt to the lowest priority */
+  // Set USBHS Interrupt to the lowest priority */
   HAL_NVIC_SetPriority (OTG_HS_IRQn, 7, 0);
 
-  /* Enable USBHS Interrupt */
+  // Enable USBHS Interrupt */
   HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
   }
 //}}}
 //{{{
 void HAL_PCD_MspDeInit (PCD_HandleTypeDef* pcdHandle) {
 
-  /* Disable USB HS Clocks */
+  // Disable USB HS Clocks */
   __HAL_RCC_USB_OTG_HS_CLK_DISABLE();
   __HAL_RCC_SYSCFG_CLK_DISABLE();
   }
@@ -1540,16 +1524,16 @@ void HAL_PCD_DisconnectCallback (PCD_HandleTypeDef* pcdHandle) {
 //{{{
 USBD_StatusTypeDef usbdLowLevelInit (USBD_HandleTypeDef* usbdHandle) {
 
-  /* Set LL Driver parameters */
+  // Set LL Driver parameters */
   gPcdHandle.Instance = USB_OTG_HS;
   gPcdHandle.Init.dev_endpoints = 6;
   gPcdHandle.Init.use_dedicated_ep1 = 0;
   gPcdHandle.Init.ep0_mps = 0x40;
 
   // Be aware that enabling DMA mode will result in data being sent only by
-  //multiple of 4 packet sizes. This is due to the fact that USB DMA does
-  //not allow sending data from non word-aligned addresses.
-  //For this specific application, it is advised to not enable this option unless required
+  // multiple of 4 packet sizes. This is due to the fact that USB DMA does
+  // not allow sending data from non word-aligned addresses.
+  // For this specific application, it is advised to not enable this option unless required
   gPcdHandle.Init.dma_enable = 0;
   gPcdHandle.Init.low_power_enable = 0;
   gPcdHandle.Init.lpm_enable = 0;
@@ -1558,11 +1542,11 @@ USBD_StatusTypeDef usbdLowLevelInit (USBD_HandleTypeDef* usbdHandle) {
   gPcdHandle.Init.speed = PCD_SPEED_HIGH;
   gPcdHandle.Init.vbus_sensing_enable = 1;
 
-  /* Link The driver to the stack */
+  // Link The driver to the stack */
   gPcdHandle.pData = usbdHandle;
   usbdHandle->pData = &gPcdHandle;
 
-  /* Initialize LL Driver */
+  // Initialize LL Driver */
   HAL_PCD_Init (&gPcdHandle);
   HAL_PCDEx_SetRxFiFo (&gPcdHandle, 0x200);
   HAL_PCDEx_SetTxFiFo (&gPcdHandle, 0, 0x80);
@@ -1573,6 +1557,7 @@ USBD_StatusTypeDef usbdLowLevelInit (USBD_HandleTypeDef* usbdHandle) {
 //}}}
 //{{{
 USBD_StatusTypeDef usbdLowLevelDeInit (USBD_HandleTypeDef* usbdHandle) {
+
   HAL_PCD_DeInit ((PCD_HandleTypeDef*)usbdHandle->pData);
   return USBD_OK;
   }
@@ -1581,7 +1566,7 @@ USBD_StatusTypeDef usbdLowLevelDeInit (USBD_HandleTypeDef* usbdHandle) {
 //{{{
 uint8_t usbdLowLevelIsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
 
-  auto pcdHandle = (PCD_HandleTypeDef*)(usbdHandle->pData);
+  auto pcdHandle = (PCD_HandleTypeDef*)usbdHandle->pData;
   if ((ep_addr & 0x80) == 0x80)
     return pcdHandle->IN_ep[ep_addr & 0xF].is_stall;
   else
@@ -1590,7 +1575,7 @@ uint8_t usbdLowLevelIsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) 
 //}}}
 //{{{
 uint32_t usbdLowLevelGetRxDataSize (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
-  return HAL_PCD_EP_GetRxCount((PCD_HandleTypeDef*)(usbdHandle->pData), ep_addr);
+  return HAL_PCD_EP_GetRxCount ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
   }
 //}}}
 
@@ -1611,30 +1596,35 @@ USBD_StatusTypeDef usbdLowLevelStop (USBD_HandleTypeDef* usbdHandle) {
 
 //{{{
 USBD_StatusTypeDef usbdLowLevelOpenEP( USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t ep_type, uint16_t ep_mps) {
+
   HAL_PCD_EP_Open ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr, ep_mps, ep_type);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdLowLevelCloseEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+
   HAL_PCD_EP_Close ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdLowLevelFlushEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+
   HAL_PCD_EP_Flush ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdLowLevelStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+
   HAL_PCD_EP_SetStall ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdLowLevelClearStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+
   HAL_PCD_EP_ClrStall ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
   return USBD_OK;
   }
@@ -1642,18 +1632,21 @@ USBD_StatusTypeDef usbdLowLevelClearStallEP (USBD_HandleTypeDef* usbdHandle, uin
 
 //{{{
 USBD_StatusTypeDef usbdLowLevelSetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t dev_addr) {
+
   HAL_PCD_SetAddress ((PCD_HandleTypeDef*)usbdHandle->pData, dev_addr);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdLowLevelTransmit (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
+
   HAL_PCD_EP_Transmit ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr, pbuf, size);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdLowLevelPrepareReceive (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
+
   HAL_PCD_EP_Receive ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr, pbuf, size);
   return USBD_OK;
   }
@@ -1663,6 +1656,9 @@ USBD_StatusTypeDef usbdLowLevelPrepareReceive (USBD_HandleTypeDef* usbdHandle, u
 void initMsc (cLcd* lcd) {
 
   gLcd = lcd;
+
+  BSP_SD_Init();
+
   USBD_Init (&gUsbDevice, &kMscDescriptors, 0);
   USBD_RegisterClass (&gUsbDevice, &kMscHandlers);
   USBD_Start (&gUsbDevice);

@@ -6,7 +6,7 @@
 
 #include "usbd_msc.h"
 //}}}
-const char* kVersion = "USB Msc 6/3/18";
+const char* kVersion = "USB Msc 7/3/18";
 
 //{{{
 class cApp : public cTouch {
