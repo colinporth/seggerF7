@@ -327,5 +327,21 @@
     </folder>
     <configuration Name="Debug" gcc_optimization_level="Debug" />
     <configuration Name="Release" gcc_optimization_level="Level 3" />
+    <folder Name="FatFs">
+      <file file_name="../FatFs/diskio.c" />
+      <file file_name="../FatFs/ff_gen_drv.c" />
+      <folder Name="includes">
+        <file file_name="../FatFs/diskio.h" />
+        <file file_name="../FatFs/ff.h" />
+        <file file_name="../FatFs/ffconf.h" />
+        <file file_name="../FatFs/integer.h" />
+        <file file_name="../FatFs/ff_gen_drv.h" />
+        <file file_name="../FatFs/sd_diskio.h" />
+      </folder>
+      <file file_name="../FatFs/sd_diskio.c" />
+      <file file_name="../FatFs/syscall.c" />
+      <file file_name="../FatFs/ff.c" />
+      <file file_name="../FatFs/ccsbcs.c" />
+    </folder>
   </project>
 </solution>

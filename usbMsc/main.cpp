@@ -5,6 +5,10 @@
 #include "../common/cTouch.h"
 
 #include "usbd_msc.h"
+
+#include "../FatFs/ff_gen_drv.h"
+#include "../FatFs/ff.h"
+#include "../FatFs/sd_diskio.h"
 //}}}
 const char* kVersion = "USB Msc 7/3/18";
 
@@ -41,6 +45,23 @@ void cApp::run (bool keyboard) {
   mLcd->init();
 
   initMsc (mLcd);
+
+  FATFS sdFatFs; // File system object for USB disk logical drive
+  char sdPath[40];
+
+  if (FATFS_LinkDriver (&SD_Driver, sdPath) == 0) {
+    mLcd->debug (LCD_COLOR_WHITE, "FATFS linked %s", sdPath);
+    if (f_mount (&sdFatFs, (TCHAR const*)sdPath, 0) != FR_OK) {
+      mLcd->debug (LCD_COLOR_WHITE, "mounted");
+      }
+    else
+      mLcd->debug (LCD_COLOR_RED, "not mounted");
+    }
+      //if(f_open(&MyFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)
+      //  if(f_open(&MyFile, "STM32.TXT", FA_READ) != FR_OK)
+      //    res = f_read(&MyFile, rtext, sizeof(rtext), (void *)&bytesread);
+      //      f_close(&MyFile);
+
 
   while (true) {
     pollTouch();
