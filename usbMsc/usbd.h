@@ -216,24 +216,25 @@ uint32_t usbdGetRxDataSize  (USBD_HandleTypeDef* usbdHandle, uint8_t  endPointAd
 USBD_StatusTypeDef usbdStart(USBD_HandleTypeDef* usbdHandle);
 USBD_StatusTypeDef usbdStop (USBD_HandleTypeDef* usbdHandle);
 
-USBD_StatusTypeDef usbdOpenEP  (USBD_HandleTypeDef* usbdHandle, uint8_t  endPointAddress, uint8_t  ep_type, uint16_t ep_mps);
+//{{{
+USBD_StatusTypeDef usbdOpenEP  (USBD_HandleTypeDef* usbdHandle, uint8_t  endPointAddress, uint8_t endPointType, uint16_t endPointMps);
 USBD_StatusTypeDef usbdCloseEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress);
 USBD_StatusTypeDef usbdFlushEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress);
 USBD_StatusTypeDef usbdStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress);
 USBD_StatusTypeDef usbdClearStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress);
 
-USBD_StatusTypeDef usbdSetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t dev_addr);
-USBD_StatusTypeDef usbdTransmit (USBD_HandleTypeDef* usbdHandle, uint8_t  endPointAddress, uint8_t * pbuf, uint16_t  size);
-USBD_StatusTypeDef usbdPrepareReceive(USBD_HandleTypeDef* usbdHandle, uint8_t  endPointAddress, uint8_t * pbuf, uint16_t  size);
+USBD_StatusTypeDef usbdSetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t deviceAddress);
+USBD_StatusTypeDef usbdTransmit (USBD_HandleTypeDef* usbdHandle, uint8_t  endPointAddress, uint8_t* buf, uint16_t  size);
+USBD_StatusTypeDef usbdPrepareReceive(USBD_HandleTypeDef* usbdHandle, uint8_t  endPointAddress, uint8_t* buf, uint16_t  size);
 
 //
 void USBD_CtlError (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req);
 void USBD_GetString (uint8_t* desc, uint8_t* unicode, uint16_t* len);
 
 USBD_StatusTypeDef USBD_CtlSendData (USBD_HandleTypeDef* usbdHandle, uint8_t* buf, uint16_t len);
-USBD_StatusTypeDef USBD_CtlContinueSendData (USBD_HandleTypeDef* usbdHandle, uint8_t* pbuf, uint16_t len);
-USBD_StatusTypeDef USBD_CtlPrepareRx (USBD_HandleTypeDef* usbdHandle, uint8_t* pbuf, uint16_t len);
-USBD_StatusTypeDef USBD_CtlContinueRx (USBD_HandleTypeDef* usbdHandle, uint8_t* pbuf, uint16_t len);
+USBD_StatusTypeDef USBD_CtlContinueSendData (USBD_HandleTypeDef* usbdHandle, uint8_t* buf, uint16_t len);
+USBD_StatusTypeDef USBD_CtlPrepareRx (USBD_HandleTypeDef* usbdHandle, uint8_t* buf, uint16_t len);
+USBD_StatusTypeDef USBD_CtlContinueRx (USBD_HandleTypeDef* usbdHandle, uint8_t* buf, uint16_t len);
 USBD_StatusTypeDef USBD_CtlSendStatus (USBD_HandleTypeDef* usbdHandle);
 USBD_StatusTypeDef USBD_CtlReceiveStatus (USBD_HandleTypeDef* usbdHandle);
 uint16_t USBD_GetRxCount (USBD_HandleTypeDef* usbdHandle , uint8_t endPointNum);

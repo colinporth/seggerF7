@@ -1550,16 +1550,16 @@ void HAL_PCD_DisconnectCallback (PCD_HandleTypeDef* pcdHandle) {
 //{{{
 USBD_StatusTypeDef usbdInit (USBD_HandleTypeDef* usbdHandle) {
 
-  /* Set LL Driver parameters */
+  // Set LL Driver parameters
   gPcdHandle.Instance = USB_OTG_HS;
   gPcdHandle.Init.dev_endpoints = 6;
   gPcdHandle.Init.use_dedicated_ep1 = 0;
   gPcdHandle.Init.ep0_mps = 0x40;
 
   // Be aware that enabling DMA mode will result in data being sent only by
-  //multiple of 4 packet sizes. This is due to the fact that USB DMA does
-  //not allow sending data from non word-aligned addresses.
-  //For this specific application, it is advised to not enable this option unless required
+  // multiple of 4 packet sizes. This is due to the fact that USB DMA does
+  //n ot allow sending data from non word-aligned addresses.
+  // For this specific application, it is advised to not enable this option unless required
   gPcdHandle.Init.dma_enable = 0;
   gPcdHandle.Init.low_power_enable = 0;
   gPcdHandle.Init.lpm_enable = 0;
@@ -1568,11 +1568,11 @@ USBD_StatusTypeDef usbdInit (USBD_HandleTypeDef* usbdHandle) {
   gPcdHandle.Init.speed = PCD_SPEED_HIGH;
   gPcdHandle.Init.vbus_sensing_enable = 1;
 
-  /* Link The driver to the stack */
+  // Link The driver to the stack
   gPcdHandle.pData = usbdHandle;
   usbdHandle->pData = &gPcdHandle;
 
-  /* Initialize LL Driver */
+  // Initialize LL Driver
   HAL_PCD_Init (&gPcdHandle);
   HAL_PCDEx_SetRxFiFo (&gPcdHandle, 0x200);
   HAL_PCDEx_SetTxFiFo (&gPcdHandle, 0, 0x80);
@@ -1583,6 +1583,7 @@ USBD_StatusTypeDef usbdInit (USBD_HandleTypeDef* usbdHandle) {
 //}}}
 //{{{
 USBD_StatusTypeDef usbdDeInit (USBD_HandleTypeDef* usbdHandle) {
+
   HAL_PCD_DeInit ((PCD_HandleTypeDef*)usbdHandle->pData);
   return USBD_OK;
   }
@@ -1606,62 +1607,72 @@ uint32_t usbdGetRxDataSize (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddr
 
 //{{{
 USBD_StatusTypeDef usbdStart (USBD_HandleTypeDef* usbdHandle) {
+
   HAL_PCD_Start ((PCD_HandleTypeDef*)usbdHandle->pData);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdStop (USBD_HandleTypeDef* usbdHandle) {
+
   HAL_PCD_Stop ((PCD_HandleTypeDef*)usbdHandle->pData);
   return USBD_OK;
   }
 //}}}
 
 //{{{
-USBD_StatusTypeDef usbdOpenEP( USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress, uint8_t ep_type, uint16_t ep_mps) {
-  HAL_PCD_EP_Open ((PCD_HandleTypeDef*)usbdHandle->pData, endPointAddress, ep_mps, ep_type);
+USBD_StatusTypeDef usbdOpenEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress, uint8_t endPointType, uint16_t endPointMps) {
+
+  HAL_PCD_EP_Open ((PCD_HandleTypeDef*)usbdHandle->pData, endPointAddress, endPointType, endPointMps);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdCloseEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress) {
+
   HAL_PCD_EP_Close ((PCD_HandleTypeDef*)usbdHandle->pData, endPointAddress);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdFlushEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress) {
+
   HAL_PCD_EP_Flush ((PCD_HandleTypeDef*)usbdHandle->pData, endPointAddress);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress) {
+
   HAL_PCD_EP_SetStall ((PCD_HandleTypeDef*)usbdHandle->pData, endPointAddress);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdClearStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress) {
+
   HAL_PCD_EP_ClrStall ((PCD_HandleTypeDef*)usbdHandle->pData, endPointAddress);
   return USBD_OK;
   }
 //}}}
 
 //{{{
-USBD_StatusTypeDef usbdSetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t dev_addr) {
-  HAL_PCD_SetAddress ((PCD_HandleTypeDef*)usbdHandle->pData, dev_addr);
+USBD_StatusTypeDef usbdSetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t deviceAddress) {
+
+  HAL_PCD_SetAddress ((PCD_HandleTypeDef*)usbdHandle->pData, deviceAddress);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdTransmit (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress, uint8_t* pbuf, uint16_t size) {
+
   HAL_PCD_EP_Transmit ((PCD_HandleTypeDef*)usbdHandle->pData, endPointAddress, pbuf, size);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdPrepareReceive (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress, uint8_t* pbuf, uint16_t size) {
+
   HAL_PCD_EP_Receive ((PCD_HandleTypeDef*)usbdHandle->pData, endPointAddress, pbuf, size);
   return USBD_OK;
   }
