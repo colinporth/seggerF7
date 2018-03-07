@@ -94,10 +94,12 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
     //while (!readstatus) {}
     //readstatus = 0;
 
+    auto ticks = HAL_GetTick();
     BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
+    auto took = HAL_GetTick() - ticks;
 
-    gLcd->debug (LCD_COLOR_CYAN, "read %d %p %d %d", gReads++, buf, (int)blk_addr, (int)blk_len);
+    gLcd->debug (LCD_COLOR_CYAN, "read %d %p %7d %2d %d", gReads++, buf, (int)blk_addr, (int)blk_len, took);
     return true;
     }
 
@@ -108,14 +110,15 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 bool sdWrite (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+    //BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
     //while (!writestatus) {}
     //writestatus = 0;
-
-    // Wait until SD card is ready to use for new operation
+    auto ticks = HAL_GetTick();
+    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
+    auto took = HAL_GetTick() - ticks;
 
-    gLcd->debug (LCD_COLOR_WHITE, "write %d", (int)blk_addr);
+    gLcd->debug (LCD_COLOR_WHITE, "write %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
     return true;
     }
 
