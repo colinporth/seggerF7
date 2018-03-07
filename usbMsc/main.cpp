@@ -7,8 +7,8 @@
 #include "usbd_msc.h"
 
 #include "../FatFs/ff_gen_drv.h"
-#include "../FatFs/ff.h"
 #include "../FatFs/sd_diskio.h"
+#include "../FatFs/ff.h"
 //}}}
 const char* kVersion = "USB Msc 7/3/18";
 
@@ -28,11 +28,50 @@ protected:
   virtual void onRelease (int x, int y);
 
 private:
+  void readDirectory (char* path);
+
   cLcd* mLcd = nullptr;
   bool mButton = false;
   };
 //}}}
 cApp* gApp;
+
+//{{{
+void cApp::readDirectory (char* path) {
+
+  FILINFO fno;
+  DIR dir;
+  int i, j;
+  auto fr = f_opendir (&dir, path);
+  if (fr == FR_OK) {
+    for (i = 0; path[i]; i++);
+    path[i++] = '/';
+
+    while (true) {
+      auto fr = f_readdir (&dir, &fno);
+      if (fr != FR_OK || !fno.fname[0])
+        break;
+      if (_FS_RPATH && fno.fname[0] == '.')
+        continue;
+
+      j = 0;
+      do {
+        path[i+j] = fno.fname[j];
+        } while (fno.fname[j++]);
+
+      if (fno.fattrib & AM_DIR) {
+        mLcd->debug (LCD_COLOR_WHITE, "dir %s", path);
+        readDirectory (path);
+        }
+      else
+        mLcd->debug (LCD_COLOR_WHITE, "file %s", path);
+      }
+
+    path[--i] = '\0';
+    f_closedir (&dir);
+    }
+  }
+//}}}
 
 // init usbDevice library
 //{{{
@@ -44,23 +83,30 @@ void cApp::run (bool keyboard) {
   mLcd = new cLcd (15);
   mLcd->init();
 
-  initMsc (mLcd);
+  BSP_SD_Init();
 
-  FATFS sdFatFs; // File system object for USB disk logical drive
-  char sdPath[40];
+  char sdPath[80];
+  FATFS sdFatFs;
 
   if (FATFS_LinkDriver (&SD_Driver, sdPath) == 0) {
     mLcd->debug (LCD_COLOR_WHITE, "FATFS linked %s", sdPath);
-    if (f_mount (&sdFatFs, (TCHAR const*)sdPath, 0) != FR_OK) {
+    auto res = f_mount (&sdFatFs, (TCHAR const*)sdPath, 0);
+    if (res == FR_OK) {
       mLcd->debug (LCD_COLOR_WHITE, "mounted");
+
+      char buff[256]; 
+      strcpy (buff, "/");  /* Directory to be emptied */
+      readDirectory(buff);
       }
     else
       mLcd->debug (LCD_COLOR_RED, "not mounted");
     }
-      //if(f_open(&MyFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)
-      //  if(f_open(&MyFile, "STM32.TXT", FA_READ) != FR_OK)
-      //    res = f_read(&MyFile, rtext, sizeof(rtext), (void *)&bytesread);
-      //      f_close(&MyFile);
+
+  //initMsc (mLcd);
+      //if(f_open (&MyFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)
+      //  if(f_open (&MyFile, "STM32.TXT", FA_READ) != FR_OK)
+      //    res = f_read (&MyFile, rtext, sizeof(rtext), (void *)&bytesread);
+      //      f_close (&MyFile);
 
 
   while (true) {

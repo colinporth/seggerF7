@@ -2,8 +2,9 @@
 <session>
  <Bookmarks/>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
-  <BreakpointListItem trigger="" line="413" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="413" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="517" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="54" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="682" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
  </Breakpoints>
  <ExecutionProfileWindow/>
@@ -37,7 +38,8 @@
  <Project>
   <ProjectSessionItem path="usb"/>
   <ProjectSessionItem path="usb;usbMsc"/>
-  <ProjectSessionItem path="usb;usbMsc;bsp_drivers"/>
+  <ProjectSessionItem path="usb;usbMsc;FatFs"/>
+  <ProjectSessionItem path="usb;usbMsc;FatFs;includes"/>
   <ProjectSessionItem path="usb;usbMsc;main"/>
  </Project>
  <Register1>
@@ -80,7 +82,18 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="15" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/usbd_msc.cpp" debugPath="usbMsc/usbd_msc.cpp" selected="1" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="199" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/ffconf.h" debugPath="FatFs/ffconf.h" selected="0" top="176" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/drivers/sd_diskio.c" debugPath="FatFs/drivers/sd_diskio.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/syscall.c" debugPath="FatFs/syscall.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="40" y="3" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/sd_diskio.h" debugPath="FatFs/sd_diskio.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="6" y="25" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/sd_diskio.c" debugPath="FatFs/sd_diskio.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="53" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="0" top="35" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="36" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/ff_gen_drv.h" debugPath="FatFs/ff_gen_drv.h" selected="0" top="6" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="30" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/ff_gen_drv.c" debugPath="FatFs/ff_gen_drv.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="428" useTextEdit="1" useBinaryEdit="0" left="0" path="drivers/cmsis/include/cmsis_gcc.h" debugPath="drivers/cmsis/include/cmsis_gcc.h" selected="0" top="410" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="2144" useTextEdit="1" useBinaryEdit="0" left="0" path="drivers/cmsis/include/core_cm7.h" debugPath="drivers/cmsis/include/core_cm7.h" selected="0" top="2111" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="25" y="3261" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/ff.c" debugPath="FatFs/ff.c" selected="0" top="3244" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="17" y="20" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/ccsbcs.c" debugPath="FatFs/ccsbcs.c" selected="1" top="0" codecName="Default"/>
  </Files>
  <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

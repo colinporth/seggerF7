@@ -14,36 +14,20 @@
 
 static volatile DSTATUS Stat = STA_NOINIT;
 
-static DSTATUS SD_CheckStatus(BYTE lun);
-DSTATUS SD_initialize (BYTE);
-DSTATUS SD_status (BYTE);
-
-DRESULT SD_read (BYTE, BYTE*, DWORD, UINT);
-DRESULT SD_write (BYTE, const BYTE*, DWORD, UINT);
-DRESULT SD_ioctl (BYTE, BYTE, void*);
-
 //{{{
-const Diskio_drvTypeDef SD_Driver = {
-  SD_initialize,
-  SD_status,
-  SD_read,
-  SD_write,
-  SD_ioctl,
-  };
-//}}}
-
-//{{{
-static DSTATUS SD_CheckStatus(BYTE lun) {
+static DSTATUS SD_CheckStatus (BYTE lun) {
 
   Stat = STA_NOINIT;
   if (BSP_SD_GetCardState() == MSD_OK)
     Stat &= ~STA_NOINIT;
+
   return Stat;
   }
 //}}}
 
 //{{{
 DSTATUS SD_initialize (BYTE lun) {
+
   Stat = SD_CheckStatus (lun);
   return Stat;
   }
@@ -53,14 +37,40 @@ DSTATUS SD_status (BYTE lun) {
   return SD_CheckStatus(lun);
   }
 //}}}
+//{{{
+DRESULT SD_read (BYTE lun, BYTE *buff, DWORD sector, UINT count) {
 
+  DRESULT res = RES_ERROR;
+
+  if (BSP_SD_ReadBlocks ((uint32_t*)buff, (uint32_t) (sector), count, SD_TIMEOUT) == MSD_OK) {
+    /* wait until the read operation is finished */
+    while (BSP_SD_GetCardState()!= MSD_OK) { }
+    res = RES_OK;
+    }
+
+  return res;
+  }
+//}}}
+//{{{
+DRESULT SD_write (BYTE lun, const BYTE *buff, DWORD sector, UINT count) {
+
+  DRESULT res = RES_ERROR;
+  if (BSP_SD_WriteBlocks ((uint32_t*)buff, (uint32_t)(sector), count, SD_TIMEOUT) == MSD_OK) {
+    /* wait until the Write operation is finished */
+    while(BSP_SD_GetCardState() != MSD_OK) { }
+    res = RES_OK;
+    }
+
+  return res;
+  }
+//}}}
 //{{{
 DRESULT SD_ioctl (BYTE lun, BYTE cmd, void *buff) {
 
   DRESULT res = RES_ERROR;
   BSP_SD_CardInfo CardInfo;
 
-  if (Stat & STA_NOINIT) 
+  if (Stat & STA_NOINIT)
     return RES_NOTRDY;
 
   switch (cmd) {
@@ -98,30 +108,10 @@ DRESULT SD_ioctl (BYTE lun, BYTE cmd, void *buff) {
   }
 //}}}
 
-//{{{
-DRESULT SD_read (BYTE lun, BYTE *buff, DWORD sector, UINT count) {
-
-  DRESULT res = RES_ERROR;
-
-  if (BSP_SD_ReadBlocks ((uint32_t*)buff, (uint32_t) (sector), count, SD_TIMEOUT) == MSD_OK) {
-    /* wait until the read operation is finished */
-    while(BSP_SD_GetCardState()!= MSD_OK) { }
-    res = RES_OK;
-    }
-
-  return res;
-  }
-//}}}
-//{{{
-DRESULT SD_write (BYTE lun, const BYTE *buff, DWORD sector, UINT count) {
-
-  DRESULT res = RES_ERROR;
-  if (BSP_SD_WriteBlocks((uint32_t*)buff, (uint32_t)(sector), count, SD_TIMEOUT) == MSD_OK) {
-    /* wait until the Write operation is finished */
-    while(BSP_SD_GetCardState() != MSD_OK) { }
-    res = RES_OK;
-    }
-
-  return res;
-  }
-//}}}
+const Diskio_drvTypeDef SD_Driver = {
+  SD_initialize,
+  SD_status,
+  SD_read,
+  SD_write,
+  SD_ioctl,
+  };
