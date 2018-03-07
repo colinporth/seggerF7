@@ -206,25 +206,22 @@ typedef struct _USBD_HandleTypeDef {
   } USBD_HandleTypeDef;
 //}}}
 
-// usbd low level driver
-USBD_StatusTypeDef usbdInit (USBD_HandleTypeDef* usbdHandle);
-USBD_StatusTypeDef usbdDeInit (USBD_HandleTypeDef* usbdHandle);
-
-uint8_t usbdIsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress);
-uint32_t usbdGetRxDataSize  (USBD_HandleTypeDef* usbdHandle, uint8_t  endPointAddress);
-
-USBD_StatusTypeDef usbdStart(USBD_HandleTypeDef* usbdHandle);
-USBD_StatusTypeDef usbdStop (USBD_HandleTypeDef* usbdHandle);
-
-USBD_StatusTypeDef usbdOpenEP  (USBD_HandleTypeDef* usbdHandle, uint8_t  endPointAddress, uint8_t  ep_type, uint16_t ep_mps);
-USBD_StatusTypeDef usbdCloseEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress);
-USBD_StatusTypeDef usbdFlushEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress);
-USBD_StatusTypeDef usbdStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress);
-USBD_StatusTypeDef usbdClearStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t endPointAddress);
-
-USBD_StatusTypeDef usbdSetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t dev_addr);
-USBD_StatusTypeDef usbdTransmit (USBD_HandleTypeDef* usbdHandle, uint8_t  endPointAddress, uint8_t * pbuf, uint16_t  size);
-USBD_StatusTypeDef usbdPrepareReceive(USBD_HandleTypeDef* usbdHandle, uint8_t  endPointAddress, uint8_t * pbuf, uint16_t  size);
+// USBD Low Level Driver
+USBD_StatusTypeDef USBD_LL_Init (USBD_HandleTypeDef* usbdHandle);
+USBD_StatusTypeDef USBD_LL_DeInit (USBD_HandleTypeDef* usbdHandle);
+USBD_StatusTypeDef USBD_LL_Start(USBD_HandleTypeDef* usbdHandle);
+USBD_StatusTypeDef USBD_LL_Stop (USBD_HandleTypeDef* usbdHandle);
+USBD_StatusTypeDef USBD_LL_OpenEP  (USBD_HandleTypeDef* usbdHandle, uint8_t  ep_addr, uint8_t  ep_type, uint16_t ep_mps);
+USBD_StatusTypeDef USBD_LL_CloseEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr);
+USBD_StatusTypeDef USBD_LL_FlushEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr);
+USBD_StatusTypeDef USBD_LL_StallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr);
+USBD_StatusTypeDef USBD_LL_ClearStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr);
+uint8_t            USBD_LL_IsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr);
+USBD_StatusTypeDef USBD_LL_SetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t dev_addr);
+USBD_StatusTypeDef USBD_LL_Transmit (USBD_HandleTypeDef* usbdHandle, uint8_t  ep_addr, uint8_t * pbuf, uint16_t  size);
+USBD_StatusTypeDef USBD_LL_PrepareReceive(USBD_HandleTypeDef* usbdHandle, uint8_t  ep_addr, uint8_t * pbuf, uint16_t  size);
+uint32_t USBD_LL_GetRxDataSize  (USBD_HandleTypeDef* usbdHandle, uint8_t  ep_addr);
+void USBD_LL_Delay (uint32_t Delay);
 
 //
 void USBD_CtlError (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req);
@@ -238,18 +235,18 @@ USBD_StatusTypeDef USBD_CtlSendStatus (USBD_HandleTypeDef* usbdHandle);
 USBD_StatusTypeDef USBD_CtlReceiveStatus (USBD_HandleTypeDef* usbdHandle);
 uint16_t USBD_GetRxCount (USBD_HandleTypeDef* usbdHandle , uint8_t endPointNum);
 
-USBD_StatusTypeDef usbdSetupStage (USBD_HandleTypeDef* usbdHandle, uint8_t* psetup);
-USBD_StatusTypeDef usbdDataOutStage (USBD_HandleTypeDef* usbdHandle , uint8_t endPointNum, uint8_t* data);
-USBD_StatusTypeDef usbdDataInStage (USBD_HandleTypeDef* usbdHandle , uint8_t endPointNum, uint8_t* data);
-USBD_StatusTypeDef usbdReset (USBD_HandleTypeDef* usbdHandle);
-USBD_StatusTypeDef usbdSetSpeed (USBD_HandleTypeDef* usbdHandle, USBD_SpeedTypeDef speed);
-USBD_StatusTypeDef usbdSuspend (USBD_HandleTypeDef* usbdHandle);
-USBD_StatusTypeDef usbdResume (USBD_HandleTypeDef* usbdHandle);
-USBD_StatusTypeDef usbdSOF (USBD_HandleTypeDef* usbdHandle);
-USBD_StatusTypeDef usbdIsoINIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum);
-USBD_StatusTypeDef usbdIsoOUTIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum);
-USBD_StatusTypeDef usbdDevConnected (USBD_HandleTypeDef* usbdHandle);
-USBD_StatusTypeDef usbdDevDisconnected (USBD_HandleTypeDef* usbdHandle);
+USBD_StatusTypeDef USBD_LL_SetupStage (USBD_HandleTypeDef* usbdHandle, uint8_t* psetup);
+USBD_StatusTypeDef USBD_LL_DataOutStage (USBD_HandleTypeDef* usbdHandle , uint8_t endPointNum, uint8_t* data);
+USBD_StatusTypeDef USBD_LL_DataInStage (USBD_HandleTypeDef* usbdHandle , uint8_t endPointNum, uint8_t* data);
+USBD_StatusTypeDef USBD_LL_Reset (USBD_HandleTypeDef* usbdHandle);
+USBD_StatusTypeDef USBD_LL_SetSpeed (USBD_HandleTypeDef* usbdHandle, USBD_SpeedTypeDef speed);
+USBD_StatusTypeDef USBD_LL_Suspend (USBD_HandleTypeDef* usbdHandle);
+USBD_StatusTypeDef USBD_LL_Resume (USBD_HandleTypeDef* usbdHandle);
+USBD_StatusTypeDef USBD_LL_SOF (USBD_HandleTypeDef* usbdHandle);
+USBD_StatusTypeDef USBD_LL_IsoINIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum);
+USBD_StatusTypeDef USBD_LL_IsoOUTIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum);
+USBD_StatusTypeDef USBD_LL_DevConnected (USBD_HandleTypeDef* usbdHandle);
+USBD_StatusTypeDef USBD_LL_DevDisconnected (USBD_HandleTypeDef* usbdHandle);
 
 USBD_StatusTypeDef USBD_Init (USBD_HandleTypeDef* usbdHandle, USBD_DescriptorsTypeDef* descriptors, uint8_t id);
 USBD_StatusTypeDef USBD_DeInit (USBD_HandleTypeDef* usbdHandle);
