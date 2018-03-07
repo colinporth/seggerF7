@@ -15,7 +15,7 @@
 static volatile DSTATUS Stat = STA_NOINIT;
 
 //{{{
-static DSTATUS SD_CheckStatus (BYTE lun) {
+static DSTATUS sdCheckStatus (BYTE lun) {
 
   Stat = STA_NOINIT;
   if (BSP_SD_GetCardState() == MSD_OK)
@@ -26,19 +26,19 @@ static DSTATUS SD_CheckStatus (BYTE lun) {
 //}}}
 
 //{{{
-DSTATUS SD_initialize (BYTE lun) {
+DSTATUS sdInitialize (BYTE lun) {
 
-  Stat = SD_CheckStatus (lun);
+  Stat = sdCheckStatus (lun);
   return Stat;
   }
 //}}}
 //{{{
-DSTATUS SD_status (BYTE lun) {
-  return SD_CheckStatus(lun);
+DSTATUS sdStatus (BYTE lun) {
+  return sdCheckStatus(lun);
   }
 //}}}
 //{{{
-DRESULT SD_read (BYTE lun, BYTE *buff, DWORD sector, UINT count) {
+DRESULT sdRead (BYTE lun, BYTE *buff, DWORD sector, UINT count) {
 
   if (BSP_SD_ReadBlocks ((uint32_t*)buff, (uint32_t) (sector), count, SD_TIMEOUT) == MSD_OK) {
     /* wait until the read operation is finished */
@@ -50,7 +50,7 @@ DRESULT SD_read (BYTE lun, BYTE *buff, DWORD sector, UINT count) {
   }
 //}}}
 //{{{
-DRESULT SD_write (BYTE lun, const BYTE *buff, DWORD sector, UINT count) {
+DRESULT sdWrite (BYTE lun, const BYTE *buff, DWORD sector, UINT count) {
 
   if (BSP_SD_WriteBlocks ((uint32_t*)buff, (uint32_t)(sector), count, SD_TIMEOUT) == MSD_OK) {
     /* wait until the Write operation is finished */
@@ -62,7 +62,7 @@ DRESULT SD_write (BYTE lun, const BYTE *buff, DWORD sector, UINT count) {
   }
 //}}}
 //{{{
-DRESULT SD_ioctl (BYTE lun, BYTE cmd, void *buff) {
+DRESULT sdIoctl (BYTE lun, BYTE cmd, void *buff) {
 
   if (Stat & STA_NOINIT)
     return RES_NOTRDY;
@@ -100,9 +100,9 @@ DRESULT SD_ioctl (BYTE lun, BYTE cmd, void *buff) {
 //}}}
 
 const Diskio_drvTypeDef SD_Driver = {
-  SD_initialize,
-  SD_status,
-  SD_read,
-  SD_write,
-  SD_ioctl,
+  sdInitialize,
+  sdStatus,
+  sdRead,
+  sdWrite,
+  sdIoctl,
   };
