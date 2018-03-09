@@ -1,8 +1,7 @@
 // usbd_msc.cpp
 //{{{  includes
-#include <map>
-
 #include "usbd_msc.h"
+
 #include "../common/cLcd.h"
 #include "../common/stm32746g_discovery_sd.h"
 //}}}

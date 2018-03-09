@@ -6,9 +6,11 @@
 
 #include "usbd_msc.h"
 
-#include "../FatFs/ff_gen_drv.h"
-#include "../FatFs/sd_diskio.h"
 #include "../FatFs/ff.h"
+#include "../FatFs/diskio.h"
+
+#include "../common/stm32746g_discovery_sd.h"
+#include "../common/cLcd.h"
 //}}}
 const char* kVersion = "USB Msc 7/3/18";
 
@@ -80,18 +82,15 @@ void cApp::run (bool keyboard) {
   mButton = BSP_PB_GetState (BUTTON_KEY);
 
   // init lcd
-  mLcd = new cLcd (15);
+  mLcd = new cLcd (16);
   mLcd->init();
 
   BSP_SD_Init();
 
-  char sdPath[80];
+  char sdPath[40] = "0:/";
   FATFS sdFatFs;
 
-  if (FATFS_LinkDriver (&SD_Driver, sdPath) == 0) {
-    mLcd->debug (LCD_COLOR_WHITE, "FATFS linked %s", sdPath);
-    auto res = f_mount (&sdFatFs, (TCHAR const*)sdPath, 0);
-    if (res == FR_OK) {
+  if (f_mount (&sdFatFs, (TCHAR const*)sdPath, 0) == FR_OK) {
       mLcd->debug (LCD_COLOR_WHITE, "mounted");
 
       char buff[256] = "/";
@@ -99,7 +98,7 @@ void cApp::run (bool keyboard) {
       }
     else
       mLcd->debug (LCD_COLOR_RED, "not mounted");
-    }
+    
 
   while (true) {
     pollTouch();

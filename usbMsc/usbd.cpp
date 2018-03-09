@@ -1,6 +1,5 @@
 // usbd.cpp
 #include "usbd.h"
-#include "../common/stm32746g_discovery_sd.h"
 
 //{{{
 void USBD_SetConfig (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) {
