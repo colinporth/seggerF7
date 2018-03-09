@@ -185,7 +185,7 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
     auto took = HAL_GetTick() - ticks;
 
-    gLcd->debug (LCD_COLOR_WHITE, "w %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
+    //gLcd->debug (LCD_COLOR_WHITE, "w %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
     return true;
     }
 

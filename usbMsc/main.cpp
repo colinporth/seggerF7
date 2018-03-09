@@ -87,17 +87,25 @@ void cApp::run (bool keyboard) {
 
   mscInit (mLcd);
 
-  char sdPath[40] = "0:/";
   FATFS sdFatFs;
-
+  char sdPath[40] = "0:/";
   if (f_mount (&sdFatFs, (TCHAR const*)sdPath, 0) == FR_OK) {
       mLcd->debug (LCD_COLOR_WHITE, "mounted");
-
       char buff[256] = "/";
       readDirectory (buff);
       }
     else
       mLcd->debug (LCD_COLOR_RED, "not mounted");
+
+  DWORD numFreeClusters;
+  FATFS* fatFs;
+  if (f_getfree ("0:", &numFreeClusters, &fatFs) != FR_OK)
+    mLcd->debug (LCD_COLOR_WHITE, "f_getfree failed");
+  else {
+    int freeSectors = numFreeClusters * fatFs->csize;
+    int totalSectors = (fatFs->n_fatent - 2) * fatFs->csize;
+    mLcd->debug (LCD_COLOR_WHITE, "%d free of %d total", freeSectors/2, totalSectors/2);
+    }
 
   mscStart();
 
