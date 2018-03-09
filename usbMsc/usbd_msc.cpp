@@ -1427,6 +1427,7 @@ USBD_ClassTypeDef kMscHandlers = {
 //{{{
 void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
 
+  //{{{  setup gpio for usb HS
   // Configure USB FS GPIOs
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -1478,16 +1479,14 @@ void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
+  //}}}
 
+  // Enable usb HS Clocks
   __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
-
-  // Enable USB HS Clocks
   __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
 
-  // Set USBHS Interrupt to the lowest priority
+  // Set usb HS Interrupt to the lowest priority, enable
   HAL_NVIC_SetPriority (OTG_HS_IRQn, 7, 0);
-
-  // Enable USBHS Interrupt
   HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
   }
 //}}}
