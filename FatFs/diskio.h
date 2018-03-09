@@ -1,4 +1,5 @@
 #pragma once
+#include "stdint.h"
 #include "integer.h"
 //{{{
 #ifdef __cplusplus
@@ -19,11 +20,11 @@ typedef enum {
   } DRESULT;
 
 /* Prototypes for disk control functions */
-DSTATUS disk_initialize (BYTE pdrv);
-DSTATUS disk_status (BYTE pdrv);
-DRESULT disk_read (BYTE pdrv, BYTE* buff, DWORD sector, UINT count);
-DRESULT disk_write (BYTE pdrv, const BYTE* buff, DWORD sector, UINT count);
-DRESULT disk_ioctl (BYTE pdrv, BYTE cmd, void* buff);
+DSTATUS disk_initialize (uint8_t pdrv);
+DSTATUS disk_status (uint8_t pdrv);
+DRESULT disk_read (uint8_t pdrv, BYTE* buff, uint32_t sector, uint16_t count);
+DRESULT disk_write (uint8_t pdrv, const BYTE* buff, uint32_t sector, uint16_t count);
+DRESULT disk_ioctl (uint8_t pdrv, BYTE cmd, void* buff);
 DWORD get_fattime();
 
 /* Disk Status Bits (DSTATUS) */

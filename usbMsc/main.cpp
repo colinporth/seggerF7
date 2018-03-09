@@ -12,7 +12,7 @@
 #include "../common/stm32746g_discovery_sd.h"
 #include "../common/cLcd.h"
 //}}}
-const char* kVersion = "USB Msc 7/3/18";
+const char* kVersion = "USB Msc 9/3/18";
 
 //{{{
 class cApp : public cTouch {
@@ -98,7 +98,8 @@ void cApp::run (bool keyboard) {
       }
     else
       mLcd->debug (LCD_COLOR_RED, "not mounted");
-    
+
+  initMsc (mLcd);
 
   while (true) {
     pollTouch();

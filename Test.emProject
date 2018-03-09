@@ -339,7 +339,6 @@
       <file file_name="../FatFs/syscall.c" />
       <file file_name="../FatFs/ff.c" />
       <file file_name="../FatFs/ccsbcs.c" />
-      <file file_name="../FatFs/diskio.c" />
     </folder>
   </project>
 </solution>
