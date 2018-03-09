@@ -738,10 +738,10 @@ typedef struct {
   sUsbdScsiSenseTypeDef scsi_sense [SENSE_LIST_DEPTH];
   uint8_t               scsi_sense_head;
   uint8_t               scsi_sense_tail;
-  uint16_t              scsi_blk_size;
-  uint32_t              scsi_blk_nbr;
-  uint32_t              scsi_blk_addr;
-  uint32_t              scsi_blk_len;
+  uint16_t              scsiBlocksize;
+  uint32_t              scsiBlocknbr;
+  uint32_t              scsiBlockaddr;
+  uint32_t              scsiBlocklen;
   } sMscData;
 //}}}
 
@@ -804,60 +804,7 @@ void mscBotCplClrFeature (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
   }
 //}}}
 
-//{{{
-int8_t scsiRead (USBD_HandleTypeDef* usbdHandle, uint8_t lun) {
-
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-  uint32_t len = MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET);
-
-  if (!sdRead (lun, mscData->bot_data,
-               mscData->scsi_blk_addr / mscData->scsi_blk_size, len / mscData->scsi_blk_size)) {
-    scsiSenseCode (usbdHandle, lun, HARDWARE_ERROR, UNRECOVERED_READ_ERROR);
-    return -1;
-    }
-
-  usbdLowLevelTransmit (usbdHandle, MSC_EPIN_ADDR, mscData->bot_data, len);
-
-  mscData->scsi_blk_addr += len;
-  mscData->scsi_blk_len -= len;
-
-  // case 6 : Hi = Di
-  mscData->csw.dDataResidue -= len;
-
-  if (mscData->scsi_blk_len == 0)
-    mscData->bot_state = USBD_BOT_LAST_DATA_IN;
-
-  return 0;
-  }
-//}}}
-//{{{
-int8_t scsiWrite (USBD_HandleTypeDef* usbdHandle, uint8_t lun) {
-
-  auto mscData = (sMscData*) usbdHandle->pClassData;
-  uint32_t len = MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET);
-
-  if (!sdWrite (lun , mscData->bot_data,
-                mscData->scsi_blk_addr / mscData->scsi_blk_size, len / mscData->scsi_blk_size) < 0) {
-    scsiSenseCode (usbdHandle, lun, HARDWARE_ERROR, WRITE_FAULT);
-    return -1;
-    }
-
-  mscData->scsi_blk_addr += len;
-  mscData->scsi_blk_len -= len;
-
-  // case 12 : Ho = Do
-  mscData->csw.dDataResidue -= len;
-
-  if (mscData->scsi_blk_len == 0)
-    mscBotSendCsw (usbdHandle, USBD_CSW_CMD_PASSED);
-  else
-    // Prepare EP to Receive next packet
-    usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, mscData->bot_data, MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET));
-
-  return 0;
-  }
-//}}}
-
+// scsi cmds
 //{{{
 int8_t scsiTestUnitReady (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
 
@@ -876,6 +823,34 @@ int8_t scsiTestUnitReady (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* 
     }
 
   mscData->bot_data_length = 0;
+  return 0;
+  }
+//}}}
+//{{{
+int8_t scsiRequestSense (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
+
+  auto mscData = (sMscData*)usbdHandle->pClassData;
+
+  for (uint8_t i = 0 ; i < REQUEST_SENSE_DATA_LEN ; i++)
+    mscData->bot_data[i] = 0;
+
+  mscData->bot_data[0] = 0x70;
+  mscData->bot_data[7] = REQUEST_SENSE_DATA_LEN - 6;
+
+  if ((mscData->scsi_sense_head != mscData->scsi_sense_tail)) {
+    mscData->bot_data[2] = mscData->scsi_sense[mscData->scsi_sense_head].Skey;
+    mscData->bot_data[12] = mscData->scsi_sense[mscData->scsi_sense_head].w.b.ASCQ;
+    mscData->bot_data[13] = mscData->scsi_sense[mscData->scsi_sense_head].w.b.ASC;
+    mscData->scsi_sense_head++;
+
+    if (mscData->scsi_sense_head == SENSE_LIST_DEPTH)
+      mscData->scsi_sense_head = 0;
+    }
+  mscData->bot_data_length = REQUEST_SENSE_DATA_LEN;
+
+  if (params[4] <= REQUEST_SENSE_DATA_LEN)
+    mscData->bot_data_length = params[4];
+
   return 0;
   }
 //}}}
@@ -908,19 +883,59 @@ int8_t scsiInquiry (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params
   }
 //}}}
 //{{{
+int8_t scsiStartStopUnit (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
+
+  auto mscData = (sMscData*)usbdHandle->pClassData;
+  mscData->bot_data_length = 0;
+  return 0;
+  }
+//}}}
+
+//{{{
+int8_t scsiModeSense6 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
+
+  auto mscData = (sMscData*)usbdHandle->pClassData;
+
+  uint16_t len = 8 ;
+  mscData->bot_data_length = len;
+  while (len) {
+    len--;
+    mscData->bot_data[len] = kMscModeSense6Data[len];
+    }
+
+  return 0;
+  }
+//}}}
+//{{{
+int8_t scsiModeSense10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
+
+  auto mscData = (sMscData*)usbdHandle->pClassData;
+
+  uint16_t len = 8;
+  mscData->bot_data_length = len;
+  while (len) {
+    len--;
+    mscData->bot_data[len] = kMscModeSense10Data[len];
+    }
+
+  return 0;
+  }
+//}}}
+
+//{{{
 int8_t scsiReadCapacity10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
-  if (sdGetCapacity (lun, mscData->scsi_blk_nbr, mscData->scsi_blk_size)) {
-    mscData->bot_data[0] = (uint8_t)((mscData->scsi_blk_nbr-1) >> 24);
-    mscData->bot_data[1] = (uint8_t)((mscData->scsi_blk_nbr-1) >> 16);
-    mscData->bot_data[2] = (uint8_t)((mscData->scsi_blk_nbr-1) >> 8);
-    mscData->bot_data[3] = (uint8_t)(mscData->scsi_blk_nbr-1);
-    mscData->bot_data[4] = (uint8_t)(mscData->scsi_blk_size >> 24);
-    mscData->bot_data[5] = (uint8_t)(mscData->scsi_blk_size >> 16);
-    mscData->bot_data[6] = (uint8_t)(mscData->scsi_blk_size >> 8);
-    mscData->bot_data[7] = (uint8_t)mscData->scsi_blk_size;
+  if (sdGetCapacity (lun, mscData->scsiBlocknbr, mscData->scsiBlocksize)) {
+    mscData->bot_data[0] = (uint8_t)((mscData->scsiBlocknbr-1) >> 24);
+    mscData->bot_data[1] = (uint8_t)((mscData->scsiBlocknbr-1) >> 16);
+    mscData->bot_data[2] = (uint8_t)((mscData->scsiBlocknbr-1) >> 8);
+    mscData->bot_data[3] = (uint8_t)(mscData->scsiBlocknbr-1);
+    mscData->bot_data[4] = (uint8_t)(mscData->scsiBlocksize >> 24);
+    mscData->bot_data[5] = (uint8_t)(mscData->scsiBlocksize >> 16);
+    mscData->bot_data[6] = (uint8_t)(mscData->scsiBlocksize >> 8);
+    mscData->bot_data[7] = (uint8_t)mscData->scsiBlocksize;
     mscData->bot_data_length = 8;
     return 0;
     }
@@ -957,82 +972,7 @@ int8_t scsiReadFormatCapacity (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint
   return -1;
   }
 //}}}
-//{{{
-int8_t scsiModeSense6 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
 
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-
-  uint16_t len = 8 ;
-  mscData->bot_data_length = len;
-  while (len) {
-    len--;
-    mscData->bot_data[len] = kMscModeSense6Data[len];
-    }
-  return 0;
-  }
-//}}}
-//{{{
-int8_t scsiModeSense10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
-
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-
-  uint16_t len = 8;
-  mscData->bot_data_length = len;
-  while (len) {
-    len--;
-    mscData->bot_data[len] = kMscModeSense10Data[len];
-    }
-  return 0;
-  }
-//}}}
-//{{{
-int8_t scsiRequestSense (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
-
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-
-  for (uint8_t i = 0 ; i < REQUEST_SENSE_DATA_LEN ; i++)
-    mscData->bot_data[i] = 0;
-
-  mscData->bot_data[0] = 0x70;
-  mscData->bot_data[7] = REQUEST_SENSE_DATA_LEN - 6;
-
-  if ((mscData->scsi_sense_head != mscData->scsi_sense_tail)) {
-    mscData->bot_data[2] = mscData->scsi_sense[mscData->scsi_sense_head].Skey;
-    mscData->bot_data[12] = mscData->scsi_sense[mscData->scsi_sense_head].w.b.ASCQ;
-    mscData->bot_data[13] = mscData->scsi_sense[mscData->scsi_sense_head].w.b.ASC;
-    mscData->scsi_sense_head++;
-
-    if (mscData->scsi_sense_head == SENSE_LIST_DEPTH)
-      mscData->scsi_sense_head = 0;
-    }
-  mscData->bot_data_length = REQUEST_SENSE_DATA_LEN;
-
-  if (params[4] <= REQUEST_SENSE_DATA_LEN)
-    mscData->bot_data_length = params[4];
-
-  return 0;
-  }
-//}}}
-//{{{
-int8_t scsiStartStopUnit (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
-
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-  mscData->bot_data_length = 0;
-  return 0;
-  }
-//}}}
-//{{{
-int8_t scsiCheckAddressRange (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint32_t blk_offset, uint16_t blk_nbr) {
-
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-
-  if ((blk_offset + blk_nbr) > mscData->scsi_blk_nbr ) {
-    scsiSenseCode (usbdHandle, lun, ILLEGAL_REQUEST, ADDRESS_OUT_OF_RANGE);
-    return -1;
-    }
-  return 0;
-  }
-//}}}
 //{{{
 int8_t scsiRead10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
 
@@ -1041,36 +981,58 @@ int8_t scsiRead10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params)
   if (mscData->bot_state == USBD_BOT_IDLE) {
     // case 10 : Ho <> Di
     if ((mscData->cbw.bmFlags & 0x80) != 0x80) {
-      // error
+      //{{{  error
       scsiSenseCode (usbdHandle, mscData->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
       return -1;
       }
-
+      //}}}
     if (!sdIsReady (lun)) {
-      // error
+      //{{{  error
       scsiSenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
       return -1;
       }
+      //}}}
 
-    mscData->scsi_blk_addr = (params[2] << 24) | (params[3] << 16) | (params[4] <<  8) | params[5];
-    mscData->scsi_blk_len = (params[7] <<  8) | params[8];
-    if (scsiCheckAddressRange (usbdHandle, lun, mscData->scsi_blk_addr, mscData->scsi_blk_len) < 0)
-      // error
+    // load addr,len check in range
+    mscData->scsiBlockaddr = (params[2] << 24) | (params[3] << 16) | (params[4] << 8) | params[5];
+    mscData->scsiBlocklen = (params[7] << 8) | params[8];
+    if ((mscData->scsiBlockaddr + mscData->scsiBlocklen) > mscData->scsiBlocknbr) {
+      //{{{  error
+      scsiSenseCode (usbdHandle, lun, ILLEGAL_REQUEST, ADDRESS_OUT_OF_RANGE);
       return -1;
-
-    mscData->bot_state = USBD_BOT_DATA_IN;
-    mscData->scsi_blk_addr *= mscData->scsi_blk_size;
-    mscData->scsi_blk_len *= mscData->scsi_blk_size;
+      }
+      //}}}
 
     // cases 4,5 : Hi <> Dn
-    if (mscData->cbw.dDataLength != mscData->scsi_blk_len) {
+    mscData->bot_state = USBD_BOT_DATA_IN;
+    mscData->scsiBlockaddr *= mscData->scsiBlocksize;
+    mscData->scsiBlocklen *= mscData->scsiBlocksize;
+    if (mscData->cbw.dDataLength != mscData->scsiBlocklen) {
+      //{{{  error
       scsiSenseCode (usbdHandle, mscData->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
       return -1;
       }
+      //}}}
     }
 
   mscData->bot_data_length = MSC_MEDIA_PACKET;
-  return scsiRead (usbdHandle, lun);
+  uint32_t len = MIN(mscData->scsiBlocklen, MSC_MEDIA_PACKET);
+  if (!sdRead (lun, mscData->bot_data, mscData->scsiBlockaddr / mscData->scsiBlocksize, len / mscData->scsiBlocksize)) {
+    //{{{  error
+    scsiSenseCode (usbdHandle, lun, HARDWARE_ERROR, UNRECOVERED_READ_ERROR);
+    return -1;
+    }
+    //}}}
+  usbdLowLevelTransmit (usbdHandle, MSC_EPIN_ADDR, mscData->bot_data, len);
+
+  // case 6 : Hi = Di
+  mscData->scsiBlockaddr += len;
+  mscData->scsiBlocklen -= len;
+  mscData->csw.dDataResidue -= len;
+  if (mscData->scsiBlocklen == 0)
+    mscData->bot_state = USBD_BOT_LAST_DATA_IN;
+
+  return 0;
   }
 //}}}
 //{{{
@@ -1081,50 +1043,70 @@ int8_t scsiWrite10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params
   if (mscData->bot_state == USBD_BOT_IDLE) {
     // case 8 : Hi <> Do
     if ((mscData->cbw.bmFlags & 0x80) == 0x80) {
-      // error
+      //{{{  error
       scsiSenseCode (usbdHandle, mscData->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
       return -1;
       }
-
-    // Check whether Media is ready
+      //}}}
     if (!sdIsReady (lun)) {
-      // error
+      //{{{  error, media not ready
       scsiSenseCode (usbdHandle, lun, NOT_READY, MEDIUM_NOT_PRESENT);
       return -1;
       }
-
-    // Check If media is write-protected
+      //}}}
     if (sdIsWriteProtected (lun)) {
-      // error
+      //{{{  error, media write-protected
       scsiSenseCode (usbdHandle, lun, NOT_READY, WRITE_PROTECTED);
       return -1;
       }
+      //}}}
 
-    mscData->scsi_blk_addr = (params[2] << 24) | (params[3] << 16) | (params[4] <<  8) | params[5];
-    mscData->scsi_blk_len = (params[7] <<  8) | params[8];
-
-    // check if LBA address is in the right range
-    if (scsiCheckAddressRange (usbdHandle, lun, mscData->scsi_blk_addr, mscData->scsi_blk_len) < 0)
-      // error
+    // load addr,len check in range
+    mscData->scsiBlockaddr = (params[2] << 24) | (params[3] << 16) | (params[4] <<  8) | params[5];
+    mscData->scsiBlocklen = (params[7] <<  8) | params[8];
+    if ((mscData->scsiBlockaddr + mscData->scsiBlocklen) > mscData->scsiBlocknbr) {
+      //{{{  error
+      scsiSenseCode (usbdHandle, lun, ILLEGAL_REQUEST, ADDRESS_OUT_OF_RANGE);
       return -1;
-
-    mscData->scsi_blk_addr *= mscData->scsi_blk_size;
-    mscData->scsi_blk_len *= mscData->scsi_blk_size;
+      }
+      //}}}
 
     // cases 3,11,13 : Hn,Ho <> D0
-    if (mscData->cbw.dDataLength != mscData->scsi_blk_len) {
-      // error
+    mscData->scsiBlockaddr *= mscData->scsiBlocksize;
+    mscData->scsiBlocklen *= mscData->scsiBlocksize;
+    if (mscData->cbw.dDataLength != mscData->scsiBlocklen) {
+      //{{{  error
       scsiSenseCode (usbdHandle, mscData->cbw.bLUN, ILLEGAL_REQUEST, INVALID_CDB);
       return -1;
       }
+      //}}}
 
-    // Prepare EP to receive first data packet
+    // first data packet
     mscData->bot_state = USBD_BOT_DATA_OUT;
-    usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, mscData->bot_data, MIN(mscData->scsi_blk_len, MSC_MEDIA_PACKET));
     }
-  else // Write Process ongoing
-    return scsiWrite (usbdHandle, lun);
 
+  else {
+    // Write ongoing
+    uint32_t len = MIN(mscData->scsiBlocklen, MSC_MEDIA_PACKET);
+    if (!sdWrite (lun , mscData->bot_data, mscData->scsiBlockaddr/mscData->scsiBlocksize, len/mscData->scsiBlocksize) < 0) {
+      //{{{  error
+      scsiSenseCode (usbdHandle, lun, HARDWARE_ERROR, WRITE_FAULT);
+      return -1;
+      }
+      //}}}
+
+    // case 12 : Ho = Do
+    mscData->scsiBlockaddr += len;
+    mscData->scsiBlocklen -= len;
+    mscData->csw.dDataResidue -= len;
+    if (mscData->scsiBlocklen == 0) {
+      mscBotSendCsw (usbdHandle, USBD_CSW_CMD_PASSED);
+      return 0;
+      }
+    }
+
+  // prepare EP to rx packet
+  usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, mscData->bot_data, MIN(mscData->scsiBlocklen, MSC_MEDIA_PACKET));
   return 0;
   }
 //}}}
@@ -1139,21 +1121,18 @@ int8_t scsiVerify10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* param
     return -1;
     }
 
-  if (scsiCheckAddressRange (usbdHandle, lun, mscData->scsi_blk_addr, mscData->scsi_blk_len) < 0)
-    // error
-    return -1;
-
   mscData->bot_data_length = 0;
   return 0;
   }
 //}}}
+
 //{{{
 int8_t scsiCmd (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
 
   switch (params[0]) {
     case SCSI_TEST_UNIT_READY:        return scsiTestUnitReady (usbdHandle, lun, params);
     case SCSI_REQUEST_SENSE:          return scsiRequestSense (usbdHandle, lun, params);
-    case SCSI_INQUIRY:                return scsiInquiry(usbdHandle, lun, params);
+    case SCSI_INQUIRY:                return scsiInquiry (usbdHandle, lun, params);
     case SCSI_START_STOP_UNIT:        return scsiStartStopUnit (usbdHandle, lun, params);
     case SCSI_ALLOW_MEDIUM_REMOVAL:   return scsiStartStopUnit (usbdHandle, lun, params);
     case SCSI_MODE_SENSE6:            return scsiModeSense6 (usbdHandle, lun, params);
@@ -1167,6 +1146,7 @@ int8_t scsiCmd (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params) {
     }
   }
 //}}}
+
 //{{{
 void mscBotCbwDecode (USBD_HandleTypeDef* usbdHandle) {
 
