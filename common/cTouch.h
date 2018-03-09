@@ -80,6 +80,7 @@ protected:
   virtual void onMove (int x, int y, int z) {}
   virtual void onScroll (int x, int y, int z) {}
   virtual void onRelease (int x, int y) {}
+  virtual void onKey (bool release, uint8_t ch) {}
 
   enum eHit { eReleased, eProx, ePressed, eScroll };
   enum eHit mHit = eReleased;

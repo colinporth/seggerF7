@@ -3,6 +3,7 @@
 #include "../common/system.h"
 #include "../common/cLcd.h"
 #include "../common/cTouch.h"
+#include "../common/cPs2.h"
 
 #include "usbd_msc.h"
 
@@ -19,6 +20,7 @@ class cApp : public cTouch {
 public:
   cApp (int x, int y) : cTouch (x,y) {}
   cLcd* getLcd() { return mLcd; }
+  cPs2* getPs2() { return mPs2; }
 
   void run (bool keyboard);
 
@@ -28,15 +30,19 @@ protected:
   virtual void onMove (int x, int y, int z);
   virtual void onScroll (int x, int y, int z);
   virtual void onRelease (int x, int y);
+  virtual void onKey (bool release, uint8_t ch);
 
 private:
   void readDirectory (char* path);
 
   cLcd* mLcd = nullptr;
+  cPs2* mPs2 = nullptr;
   bool mButton = false;
   };
 //}}}
 cApp* gApp;
+
+extern "C" { void EXTI9_5_IRQHandler() { gApp->getPs2()->onIrq(); } }
 
 //{{{
 void cApp::readDirectory (char* path) {
@@ -85,17 +91,20 @@ void cApp::run (bool keyboard) {
   mLcd = new cLcd (16);
   mLcd->init();
 
+  mPs2 = new cPs2 (mLcd);
+  mPs2->initKeyboard();
+
   mscInit (mLcd);
+  mscStart();
 
   FATFS sdFatFs;
   char sdPath[40] = "0:/";
   if (f_mount (&sdFatFs, (TCHAR const*)sdPath, 0) == FR_OK) {
-      mLcd->debug (LCD_COLOR_WHITE, "mounted");
-      char buff[256] = "/";
-      readDirectory (buff);
-      }
-    else
-      mLcd->debug (LCD_COLOR_RED, "not mounted");
+    char buff[256] = "/";
+    readDirectory (buff);
+    }
+  else
+    mLcd->debug (LCD_COLOR_RED, "not mounted");
 
   DWORD numFreeClusters;
   FATFS* fatFs;
@@ -107,10 +116,14 @@ void cApp::run (bool keyboard) {
     mLcd->debug (LCD_COLOR_WHITE, "%d free of %d total", freeSectors/2, totalSectors/2);
     }
 
-  mscStart();
 
   while (true) {
     pollTouch();
+    while (mPs2->hasChar()) {
+      auto ch = mPs2->getChar();
+      onKey (ch & 0x100, ch & 0xFF);
+      }
+
     mLcd->show (kVersion);
     mLcd->flip();
     }
@@ -155,6 +168,16 @@ void cApp::onRelease (int x, int y) {
   //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
   //hidSendReport (&gUsbDevice, HID_Buffer);
   mLcd->debug (LCD_COLOR_GREEN, "onRelease %d %d", x, y);
+  }
+//}}}
+//{{{
+void cApp::onKey (bool release, uint8_t ch) {
+
+  //mLcd->debug (LCD_COLOR_GREEN, "onKey %x %s", ch, release ? "release" : "press");
+  if (ch == 0x51) // down arrow
+    mLcd->incScrollIndex (-1);
+  else if (ch == 0x52) // up arrow
+    mLcd->incScrollIndex (1);
   }
 //}}}
 

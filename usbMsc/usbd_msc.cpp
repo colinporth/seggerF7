@@ -203,9 +203,11 @@ uint8_t disk_initialize (uint8_t lun) {
 //{{{
 uint8_t disk_status (uint8_t lun) {
 
+  HAL_NVIC_DisableIRQ (OTG_HS_IRQn);
   Stat = STA_NOINIT;
   if (BSP_SD_GetCardState() == MSD_OK)
     Stat &= ~STA_NOINIT;
+  HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
 
   return Stat;
   }
@@ -249,12 +251,22 @@ DRESULT disk_ioctl (uint8_t lun, BYTE cmd, void* buff) {
 //}}}
 //{{{
 DRESULT disk_read (uint8_t lun, uint8_t* buff, uint32_t sector, uint16_t count) {
-  return sdRead (lun, buff, sector, count) ? RES_OK : RES_ERROR;
+
+  HAL_NVIC_DisableIRQ (OTG_HS_IRQn);
+  auto result = sdRead (lun, buff, sector, count) ? RES_OK : RES_ERROR;
+  HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
+
+  return result;
   }
 //}}}
 //{{{
 DRESULT disk_write (uint8_t lun, const uint8_t* buff, uint32_t sector, uint16_t count) {
-  return sdWrite (lun, buff, sector, count) ? RES_OK : RES_ERROR;
+
+  HAL_NVIC_DisableIRQ (OTG_HS_IRQn);
+  auto result = sdWrite (lun, buff, sector, count) ? RES_OK : RES_ERROR;
+  HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
+
+  return result;
   }
 //}}}
 //{{{

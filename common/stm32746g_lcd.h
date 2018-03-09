@@ -104,6 +104,8 @@ uint32_t BSP_LCD_GetBackColor();
 void     BSP_LCD_SetTextColor (uint32_t Color);
 void     BSP_LCD_SetBackColor (uint32_t Color);
 
+uint16_t BSP_LCD_GetTextHeight();
+
 uint32_t BSP_LCD_ReadPixel (uint16_t x, uint16_t y);
 void     BSP_LCD_DrawPixel (uint16_t x, uint16_t y, uint32_t pixel);
 void     BSP_LCD_Clear (uint32_t Color);

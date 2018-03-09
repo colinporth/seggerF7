@@ -79,6 +79,7 @@ public:
     }
   //}}}
 
+
   //{{{
   int getScrollScale() {
     return 4;
@@ -98,6 +99,11 @@ public:
       mScroll = 0;
     else if (getScrollLines() >  mDebugLine - mDisplayLines)
       mScroll = (mDebugLine - mDisplayLines) * getScrollScale();
+    }
+  //}}}
+  //{{{
+  void incScrollIndex (int inc) {
+    incScrollValue (inc * BSP_LCD_GetTextHeight() / getScrollScale());
     }
   //}}}
 
