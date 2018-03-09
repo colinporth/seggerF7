@@ -30,7 +30,7 @@ protected:
   virtual void onMove (int x, int y, int z);
   virtual void onScroll (int x, int y, int z);
   virtual void onRelease (int x, int y);
-  virtual void onKey (bool release, uint8_t ch);
+  virtual void onKey (uint8_t ch, bool release);
 
 private:
   void readDirectory (char* path);
@@ -81,7 +81,6 @@ void cApp::readDirectory (char* path) {
   }
 //}}}
 
-// init usbDevice library
 //{{{
 void cApp::run (bool keyboard) {
 
@@ -121,7 +120,7 @@ void cApp::run (bool keyboard) {
     pollTouch();
     while (mPs2->hasChar()) {
       auto ch = mPs2->getChar();
-      onKey (ch & 0x100, ch & 0xFF);
+      onKey (ch & 0xFF, ch & 0x100);
       }
 
     mLcd->show (kVersion);
@@ -171,7 +170,7 @@ void cApp::onRelease (int x, int y) {
   }
 //}}}
 //{{{
-void cApp::onKey (bool release, uint8_t ch) {
+void cApp::onKey (uint8_t ch, bool release) {
 
   //mLcd->debug (LCD_COLOR_GREEN, "onKey %x %s", ch, release ? "release" : "press");
   if (ch == 0x51) // down arrow
