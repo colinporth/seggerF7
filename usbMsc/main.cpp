@@ -85,7 +85,7 @@ void cApp::run (bool keyboard) {
   mLcd = new cLcd (16);
   mLcd->init();
 
-  BSP_SD_Init();
+  mscInit (mLcd);
 
   char sdPath[40] = "0:/";
   FATFS sdFatFs;
@@ -99,7 +99,7 @@ void cApp::run (bool keyboard) {
     else
       mLcd->debug (LCD_COLOR_RED, "not mounted");
 
-  initMsc (mLcd);
+  mscStart();
 
   while (true) {
     pollTouch();

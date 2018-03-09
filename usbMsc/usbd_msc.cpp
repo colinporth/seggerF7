@@ -12,191 +12,6 @@ USBD_HandleTypeDef gUsbDevice;
 extern "C" { void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); } }
 
 //{{{  sd card handlers
-#define STANDARD_INQUIRY_DATA_LEN  36
-//{{{
-const uint8_t kSdInquiryData[STANDARD_INQUIRY_DATA_LEN] = {
-  0x00,  // LUN 0
-  0x80,
-  0x02,
-  0x02,
-  (STANDARD_INQUIRY_DATA_LEN - 5),
-  0x00,
-  0x00,
-  0x00,
-  'S', 'T', 'M', ' ', ' ', ' ', ' ', ' ', /* Manufacturer: 8 bytes  */
-  'P', 'r', 'o', 'd', 'u', 'c', 't', ' ', /* Product     : 16 Bytes */
-  ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-  '0', '.', '0','1',                      /* Version     : 4 Bytes  */
-  };
-//}}}
-//{{{
-bool sdIsReady (uint8_t lun) {
-
-  static int8_t prev_status = 0;
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    if (prev_status < 0) {
-      BSP_SD_Init();
-      prev_status = 0;
-      }
-    if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
-      return true;
-    }
-  else if (prev_status == 0)
-    prev_status = -1;
-
-  return false;
-  }
-//}}}
-//{{{
-bool sdIsWriteProtected (uint8_t lun) {
-  return false;
-  }
-//}}}
-//{{{
-bool sdGetCapacity (uint8_t lun, uint32_t& block_num, uint16_t& block_size) {
-
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    HAL_SD_CardInfoTypeDef info;
-    BSP_SD_GetCardInfo (&info);
-    block_num = info.LogBlockNbr - 1;
-    block_size = info.LogBlockSize;
-    gLcd->debug (LCD_COLOR_YELLOW, "getCapacity %dk blocks size:%d", int(block_num)/1024, int(block_size));
-    return true;
-    }
-  else
-    gLcd->debug (LCD_COLOR_RED, "getCapacity SD_NOT_PRESENT");
-
-  return false;
-  }
-//}}}
-//{{{
-bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
-
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    //BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
-    //while (!readstatus) {}
-    //readstatus = 0;
-
-    auto ticks = HAL_GetTick();
-    BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
-    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
-    auto took = HAL_GetTick() - ticks;
-
-    gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
-    return true;
-    }
-
-  return false;
-  }
-//}}}
-//{{{
-bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
-
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    //BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
-    //while (!writestatus) {}
-    //writestatus = 0;
-
-    auto ticks = HAL_GetTick();
-    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
-    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
-    auto took = HAL_GetTick() - ticks;
-
-    gLcd->debug (LCD_COLOR_WHITE, "w %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
-    return true;
-    }
-
-  return false;
-  }
-//}}}
-
-volatile DSTATUS Stat = STA_NOINIT;
-//{{{
-uint8_t disk_initialize (uint8_t lun) {
-  return disk_status (lun);
-  }
-//}}}
-//{{{
-uint8_t disk_status (uint8_t lun) {
-
-  Stat = STA_NOINIT;
-  if (BSP_SD_GetCardState() == MSD_OK)
-    Stat &= ~STA_NOINIT;
-
-  return Stat;
-  }
-//}}}
-//{{{
-DRESULT disk_read (uint8_t lun, uint8_t* buff, uint32_t sector, uint16_t count) {
-
-  if (BSP_SD_ReadBlocks ((uint32_t*)buff, (uint32_t)sector, count, 1000) == MSD_OK) {
-    while (BSP_SD_GetCardState() != MSD_OK) { }
-    return RES_OK;
-    }
-
-  return RES_ERROR;
-  }
-//}}}
-//{{{
-DRESULT disk_write (uint8_t lun, const uint8_t* buff, uint32_t sector, uint16_t count) {
-
-  if (BSP_SD_WriteBlocks ((uint32_t*)buff, (uint32_t)sector, count, 1000) == MSD_OK) {
-    while (BSP_SD_GetCardState() != MSD_OK) { }
-    return RES_OK;
-    }
-
-  return RES_ERROR;
-  }
-//}}}
-//{{{
-DRESULT disk_ioctl (uint8_t lun, BYTE cmd, void* buff) {
-
-  if (Stat & STA_NOINIT)
-    return RES_NOTRDY;
-
-  BSP_SD_CardInfo CardInfo;
-  switch (cmd) {
-    // Make sure that no pending write process
-    case CTRL_SYNC :
-      return RES_OK;
-
-    // Get number of sectors on the disk (DWORD)
-    case GET_SECTOR_COUNT :
-      BSP_SD_GetCardInfo (&CardInfo);
-      *(DWORD*)buff = CardInfo.LogBlockNbr;
-      return RES_OK;
-
-    // Get R/W sector size (WORD)
-    case GET_SECTOR_SIZE :
-      BSP_SD_GetCardInfo (&CardInfo);
-      *(WORD*)buff = CardInfo.LogBlockSize;
-      return RES_OK;
-
-    // Get erase block size in unit of sector (DWORD)
-    case GET_BLOCK_SIZE :
-      BSP_SD_GetCardInfo (&CardInfo);
-      *(DWORD*)buff = CardInfo.LogBlockSize / 512;
-      return RES_OK;
-
-    default:
-      return RES_PARERR;
-    }
-
-  return RES_ERROR;
-  }
-//}}}
-//{{{
-/**
-  * @brief  Gets Time from RTC
-  * @param  None
-  * @retval Time in DWORD
-  */
-DWORD get_fattime()
-{
-  return 0;
-}
-//}}}
-
 // BSP
 //__IO uint32_t readstatus = 0;
 //void BSP_SD_ReadCpltCallback() { readstatus = 1; }
@@ -277,6 +92,181 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   HAL_NVIC_SetPriority(SD_DMAx_Tx_IRQn, 0x06, 0);
   HAL_NVIC_EnableIRQ(SD_DMAx_Tx_IRQn);
   }
+//}}}
+
+// msc interface
+#define STANDARD_INQUIRY_DATA_LEN  36
+//{{{
+const uint8_t kSdInquiryData[STANDARD_INQUIRY_DATA_LEN] = {
+  0x00,  // LUN 0
+  0x80,
+  0x02,
+  0x02,
+  (STANDARD_INQUIRY_DATA_LEN - 5),
+  0x00,
+  0x00,
+  0x00,
+  'S', 'T', 'M', ' ', ' ', ' ', ' ', ' ', /* Manufacturer: 8 bytes  */
+  'P', 'r', 'o', 'd', 'u', 'c', 't', ' ', /* Product     : 16 Bytes */
+  ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+  '0', '.', '0','1',                      /* Version     : 4 Bytes  */
+  };
+//}}}
+//{{{
+bool sdIsReady (uint8_t lun) {
+
+  static int8_t prev_status = 0;
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    if (prev_status < 0) {
+      BSP_SD_Init();
+      prev_status = 0;
+      }
+    if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
+      return true;
+    }
+  else if (prev_status == 0)
+    prev_status = -1;
+
+  return false;
+  }
+//}}}
+//{{{
+bool sdIsWriteProtected (uint8_t lun) {
+  return false;
+  }
+//}}}
+//{{{
+bool sdGetCapacity (uint8_t lun, uint32_t& block_num, uint16_t& block_size) {
+
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    HAL_SD_CardInfoTypeDef info;
+    BSP_SD_GetCardInfo (&info);
+    block_num = info.LogBlockNbr - 1;
+    block_size = info.LogBlockSize;
+    //gLcd->debug (LCD_COLOR_YELLOW, "getCapacity %dk blocks size:%d", int(block_num)/1024, int(block_size));
+    return true;
+    }
+  else
+    gLcd->debug (LCD_COLOR_RED, "getCapacity SD_NOT_PRESENT");
+
+  return false;
+  }
+//}}}
+//{{{
+bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
+
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    //BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
+    //while (!readstatus) {}
+    //readstatus = 0;
+
+    auto ticks = HAL_GetTick();
+    BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
+    auto took = HAL_GetTick() - ticks;
+
+    //gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
+    return true;
+    }
+
+  return false;
+  }
+//}}}
+//{{{
+bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
+
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    //BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
+    //while (!writestatus) {}
+    //writestatus = 0;
+
+    auto ticks = HAL_GetTick();
+    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
+    auto took = HAL_GetTick() - ticks;
+
+    gLcd->debug (LCD_COLOR_WHITE, "w %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
+    return true;
+    }
+
+  return false;
+  }
+//}}}
+
+// fatFs interface
+volatile DSTATUS Stat = STA_NOINIT;
+//{{{
+uint8_t disk_initialize (uint8_t lun) {
+  return disk_status (lun);
+  }
+//}}}
+//{{{
+uint8_t disk_status (uint8_t lun) {
+
+  Stat = STA_NOINIT;
+  if (BSP_SD_GetCardState() == MSD_OK)
+    Stat &= ~STA_NOINIT;
+
+  return Stat;
+  }
+//}}}
+//{{{
+DRESULT disk_ioctl (uint8_t lun, BYTE cmd, void* buff) {
+
+  if (Stat & STA_NOINIT)
+    return RES_NOTRDY;
+
+  BSP_SD_CardInfo CardInfo;
+  switch (cmd) {
+    // Make sure that no pending write process
+    case CTRL_SYNC :
+      return RES_OK;
+
+    // Get number of sectors on the disk (DWORD)
+    case GET_SECTOR_COUNT :
+      BSP_SD_GetCardInfo (&CardInfo);
+      *(DWORD*)buff = CardInfo.LogBlockNbr;
+      return RES_OK;
+
+    // Get R/W sector size (WORD)
+    case GET_SECTOR_SIZE :
+      BSP_SD_GetCardInfo (&CardInfo);
+      *(WORD*)buff = CardInfo.LogBlockSize;
+      return RES_OK;
+
+    // Get erase block size in unit of sector (DWORD)
+    case GET_BLOCK_SIZE :
+      BSP_SD_GetCardInfo (&CardInfo);
+      *(DWORD*)buff = CardInfo.LogBlockSize / 512;
+      return RES_OK;
+
+    default:
+      return RES_PARERR;
+    }
+
+  return RES_ERROR;
+  }
+//}}}
+//{{{
+DRESULT disk_read (uint8_t lun, uint8_t* buff, uint32_t sector, uint16_t count) {
+  return sdRead (lun, buff, sector, count) ? RES_OK : RES_ERROR;
+  }
+//}}}
+//{{{
+DRESULT disk_write (uint8_t lun, const uint8_t* buff, uint32_t sector, uint16_t count) {
+  return sdWrite (lun, buff, sector, count) ? RES_OK : RES_ERROR;
+  }
+//}}}
+//{{{
+/**
+  * @brief  Gets Time from RTC
+  * @param  None
+  * @retval Time in DWORD
+  */
+DWORD get_fattime()
+{
+  return 0;
+}
 //}}}
 //}}}
 //{{{  msc common descriptors
@@ -1734,9 +1724,14 @@ USBD_StatusTypeDef usbdLowLevelPrepareReceive (USBD_HandleTypeDef* usbdHandle, u
 //}}}
 
 //{{{
-void initMsc (cLcd* lcd) {
+void mscInit (cLcd* lcd) {
 
   gLcd = lcd;
+  BSP_SD_Init();
+  }
+//}}}
+//{{{
+void mscStart() {
 
   USBD_Init (&gUsbDevice, &kMscDescriptors, 0);
   USBD_RegisterClass (&gUsbDevice, &kMscHandlers);

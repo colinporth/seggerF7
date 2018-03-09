@@ -8,7 +8,8 @@
 #include "usbd.h"
 
 class cLcd;
-void initMsc (cLcd* lcd);
+void mscInit (cLcd* lcd);
+void mscStart();
 
 //{{{
 #ifdef __cplusplus
