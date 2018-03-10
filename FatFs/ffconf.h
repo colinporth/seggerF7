@@ -2,14 +2,14 @@
 
 #define _FS_READONLY  0
 #define _FS_MINIMIZE  0
-#define _USE_STRFUNC  0
+#define _USE_STRFUNC  1
 /* This option switches string functions, f_gets(), f_putc(), f_puts() and
 /  f_printf().
 /  0: Disable string functions.
 /  1: Enable without LF-CRLF conversion.
 /  2: Enable with LF-CRLF conversion. */
 
-#define _USE_FIND   0
+#define _USE_FIND   1
 /* This option switches filtered directory read functions, f_findfirst() and
 /  f_findnext(). (0:Disable, 1:Enable 2:Enable with matching altname[] too) */
 
@@ -19,7 +19,7 @@
 #define _USE_EXPAND   0
 /* This option switches f_expand function. (0:Disable or 1:Enable) */
 
-#define _USE_CHMOD    0
+#define _USE_CHMOD    1
 /* This option switches attribute manipulation functions, f_chmod() and f_utime().
 /  (0:Disable or 1:Enable) Also _FS_READONLY needs to be 0 to enable this option. */
 
@@ -47,7 +47,7 @@
 /  3: UTF-8
 /  This option has no effect when _LFN_UNICODE == 0. */
 
-#define _FS_RPATH 0
+#define _FS_RPATH 2
 /* This option configures support of relative path.
 /   0: Disable relative path and remove related functions.
 /   1: Enable relative path. f_chdir() and f_chdrive() are available.
@@ -74,7 +74,7 @@
 /  funciton will be available. */
 
 #define _MIN_SS   512
-#define _MAX_SS   512
+#define _MAX_SS   4096
 /* These options configure the range of sector size to be supported. (512, 1024,
 /  2048 or 4096) Always set both 512 for most systems, all type of memory cards and
 /  harddisk. But a larger value may be required for on-board flash memory and some

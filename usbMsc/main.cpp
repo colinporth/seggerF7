@@ -122,8 +122,8 @@ void cApp::run (bool keyboard) {
     mLcd->debug (LCD_COLOR_RED, "not mounted");
 
 
-  while (true) {
   reportFree();
+  while (true) {
     pollTouch();
     while (mPs2->hasChar()) {
       auto ch = mPs2->getChar();
