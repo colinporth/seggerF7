@@ -6,6 +6,7 @@
 #include "../common/cLcd.h"
 #include "../common/stm32746g_discovery_sd.h"
 //}}}
+
 cLcd* gLcd = nullptr;
 PCD_HandleTypeDef gPcdHandle;
 USBD_HandleTypeDef gUsbDevice;

@@ -23,6 +23,7 @@ public:
   cPs2* getPs2() { return mPs2; }
 
   void run (bool keyboard);
+  void onPs2Irq() { mPs2->onIrq(); }
 
 protected:
   virtual void onProx (int x, int y, int z);
@@ -34,6 +35,7 @@ protected:
 
 private:
   void readDirectory (char* path);
+  void reportFree();
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
@@ -42,7 +44,7 @@ private:
 //}}}
 cApp* gApp;
 
-extern "C" { void EXTI9_5_IRQHandler() { gApp->getPs2()->onIrq(); } }
+extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
 //{{{
 void cApp::readDirectory (char* path) {
@@ -80,6 +82,21 @@ void cApp::readDirectory (char* path) {
     }
   }
 //}}}
+//{{{
+void cApp::reportFree() {
+
+  DWORD numFreeClusters;
+  FATFS* fatFs;
+  if (f_getfree ("0:", &numFreeClusters, &fatFs) != FR_OK)
+    mLcd->debug (LCD_COLOR_WHITE, "f_getfree failed");
+  else {
+    int freeSectors = numFreeClusters * fatFs->csize;
+    int totalSectors = (fatFs->n_fatent - 2) * fatFs->csize;
+    mLcd->debug (LCD_COLOR_WHITE, "%d free of %d total", freeSectors/2, totalSectors/2);
+    }
+  }
+//}}}
+
 
 //{{{
 void cApp::run (bool keyboard) {
@@ -105,16 +122,7 @@ void cApp::run (bool keyboard) {
   else
     mLcd->debug (LCD_COLOR_RED, "not mounted");
 
-  DWORD numFreeClusters;
-  FATFS* fatFs;
-  if (f_getfree ("0:", &numFreeClusters, &fatFs) != FR_OK)
-    mLcd->debug (LCD_COLOR_WHITE, "f_getfree failed");
-  else {
-    int freeSectors = numFreeClusters * fatFs->csize;
-    int totalSectors = (fatFs->n_fatent - 2) * fatFs->csize;
-    mLcd->debug (LCD_COLOR_WHITE, "%d free of %d total", freeSectors/2, totalSectors/2);
-    }
-
+  reportFree();
 
   while (true) {
     pollTouch();
@@ -122,7 +130,6 @@ void cApp::run (bool keyboard) {
       auto ch = mPs2->getChar();
       onKey (ch & 0xFF, ch & 0x100);
       }
-
     mLcd->show (kVersion);
     mLcd->flip();
     }
