@@ -74,9 +74,6 @@ extern PARTITION VolToPart[]; /* Volume - Partition resolution table */
 
 /* Type of path name strings on FatFs API */
 #if _LFN_UNICODE      /* Unicode (UTF-16) string */
-  #if _USE_LFN == 0
-    #error _LFN_UNICODE must be 0 at non-LFN cfg.
-  #endif
   #ifndef _INC_TCHAR
     typedef WCHAR TCHAR;
     #define _T(x) L ## x
@@ -92,7 +89,7 @@ extern PARTITION VolToPart[]; /* Volume - Partition resolution table */
 
 typedef QWORD FSIZE_t;
 
-/* File system object structure (FATFS) */
+//{{{  struct FATFS
 typedef struct {
   BYTE  fs_type;    /* File system type (0:N/A) */
   BYTE  drv;        /* Physical drive number */
@@ -121,8 +118,8 @@ typedef struct {
   DWORD winsect;    /* Current sector appearing in the win[] */
   BYTE  win[_MAX_SS]; /* Disk access window for Directory, FAT (and file data at tiny cfg) */
   } FATFS;
-
-/* Object ID and allocation information (_FDID) */
+//}}}
+//{{{  struct _FDID
 typedef struct {
   FATFS*  fs;      /* Pointer to the owner file system object */
   WORD  id;        /* Owner file system mount ID */
@@ -137,8 +134,8 @@ typedef struct {
   DWORD c_ofs;     /* Offset in the containing directory (valid when sclust != 0 and non-directory object) */
   UINT  lockid;    /* File lock ID origin from 1 (index of file semaphore table Files[]) */
   } _FDID;
-
-/* File object structure (FIL) */
+//}}}
+//{{{  struct FIL
 typedef struct {
   _FDID obj;      /* Object identifier (must be the 1st member to detect invalid object pointer) */
   BYTE  flag;     /* File status flags */
@@ -152,7 +149,8 @@ typedef struct {
   BYTE  buf[_MAX_SS]; /* File private data read/write window */
   } FIL;
 
-/* Directory object structure (DIR) */
+//}}}
+//{{{  struct DIR
 typedef struct {
   _FDID obj;      /* Object identifier */
   DWORD dptr;     /* Current read/write offset */
@@ -163,8 +161,8 @@ typedef struct {
   DWORD blk_ofs;  /* Offset of current entry block being processed (0xFFFFFFFF:Invalid) */
   const TCHAR* pat;  /* Pointer to the name matching pattern */
   } DIR;
-
-/* File information structure (FILINFO) */
+//}}}
+//{{{  struct FILINFO
 typedef struct {
   FSIZE_t fsize;    /* File size */
   WORD  fdate;      /* Modified date */
@@ -173,8 +171,9 @@ typedef struct {
   TCHAR altname[13];   /* Alternative file name */
   TCHAR fname[_MAX_LFN + 1];  /* Primary file name */
   } FILINFO;
+//}}}
 
-/* File function return code (FRESULT) */
+//{{{  enum FRESULT
 typedef enum {
   FR_OK = 0,        /* (0) Succeeded */
   FR_DISK_ERR,      /* (1) A hard error occurred in the low level disk I/O layer */
@@ -197,6 +196,7 @@ typedef enum {
   FR_TOO_MANY_OPEN_FILES, /* (18) Number of open files > _FS_LOCK */
   FR_INVALID_PARAMETER    /* (19) Given parameter is invalid */
   } FRESULT;
+//}}}
 
 /* FatFs module application interface                           */
 FRESULT f_open (FIL* fp, const TCHAR* path, BYTE mode);       /* Open or create a file */
@@ -252,16 +252,12 @@ DWORD get_fattime (void);
 /* Unicode support functions */
 WCHAR ff_convert (WCHAR chr, UINT dir); /* OEM-Unicode bidirectional conversion */
 WCHAR ff_wtoupper (WCHAR chr);      /* Unicode upper-case conversion */
-void* ff_memalloc (UINT msize);     /* Allocate memory block */
-void ff_memfree (void* mblock);     /* Free memory block */
 
 /* Sync functions */
-#if _FS_REENTRANT
-  int ff_cre_syncobj (BYTE vol, _SYNC_t* sobj); /* Create a sync object */
-  int ff_req_grant (_SYNC_t sobj);        /* Lock sync object */
-  void ff_rel_grant (_SYNC_t sobj);       /* Unlock sync object */
-  int ff_del_syncobj (_SYNC_t sobj);        /* Delete a sync object */
-#endif
+int ff_cre_syncobj (BYTE vol, _SYNC_t* sobj); /* Create a sync object */
+int ff_req_grant (_SYNC_t sobj);        /* Lock sync object */
+void ff_rel_grant (_SYNC_t sobj);       /* Unlock sync object */
+int ff_del_syncobj (_SYNC_t sobj);        /* Delete a sync object */
 
 /* Flags and offset address                                     */
 /* File access mode and open method flags (3rd argument of f_open) */

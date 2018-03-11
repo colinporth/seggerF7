@@ -13,7 +13,7 @@
 #include "../common/stm32746g_discovery_sd.h"
 #include "../common/cLcd.h"
 //}}}
-const char* kVersion = "USB Msc 9/3/18";
+const char* kVersion = "USB Msc 11/3/18";
 
 //{{{
 class cApp : public cTouch {
@@ -50,6 +50,9 @@ private:
   cPs2* mPs2 = nullptr;
   bool mButton = false;
   int mFiles = 0;
+
+  DWORD mVsn = 0;
+  char mLabel[40];
   };
 //}}}
 cApp* gApp;
@@ -181,7 +184,8 @@ void cApp::run (bool keyboard) {
     char buff[256] = "/";
     auto count = getCountFiles (buff);
     if (count != lastCount) {
-      mLcd->debug (LCD_COLOR_WHITE, "files %d", count);
+      f_getlabel (sdPath, mLabel, &mVsn);
+      mLcd->debug (LCD_COLOR_WHITE, "files %s %d %d ", mLabel, &mVsn, count);
       lastCount = count;
       }
     }
