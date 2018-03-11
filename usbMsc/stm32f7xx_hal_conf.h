@@ -24,22 +24,21 @@
 #define HAL_CORTEX_MODULE_ENABLED
 #define HAL_PCD_MODULE_ENABLED
 //}}}
-//{{{  clock defines
-#define HSE_VALUE   25000000U      // Value of the External oscillator in Hz */
-#define HSE_STARTUP_TIMEOUT 100U   // Time out for HSE start up, in ms */
 
-#define HSI_VALUE  16000000U       // Value of the Internal oscillator in Hz*/
-#define LSI_VALUE  32000U          // LSI Typical Value in Hz*/
-#define LSE_VALUE  32768U          // Value of the External Low Speed oscillator in Hz */
-#define LSE_STARTUP_TIMEOUT  5000U // Time out for LSE start up, in ms */
+#define HSE_VALUE            25000000U  // Value of the External oscillator in Hz */
+#define HSE_STARTUP_TIMEOUT  100U       // Time out for HSE start up, in ms */
+#define HSI_VALUE            16000000U  // Value of the Internal oscillator in Hz*/
+#define LSI_VALUE            32000U     // LSI Typical Value in Hz*/
+#define LSE_VALUE            32768U     // Value of the External Low Speed oscillator in Hz */
+#define LSE_STARTUP_TIMEOUT  5000U      // Time out for LSE start up, in ms */
+#define EXTERNAL_CLOCK_VALUE 12288000U  // Value of the Internal oscillator in Hz*/
 
-#define EXTERNAL_CLOCK_VALUE 12288000U // Value of the Internal oscillator in Hz*/
-//}}}
 #define VDD_VALUE                    3300U /*!< Value of VDD in mv */
 #define TICK_INT_PRIORITY            0U /*!< tick interrupt priority */
 #define USE_RTOS                     0U
 #define PREFETCH_ENABLE              1U
 #define ART_ACCLERATOR_ENABLE        1U /* To enable instruction cache and prefetch */
+
 //{{{  ethernet defines
 #define MAC_ADDR0   2U
 #define MAC_ADDR1   0U
