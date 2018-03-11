@@ -155,6 +155,10 @@ void cApp::onKey (uint8_t ch, bool release) {
     mLcd->incScrollIndex (-1);
   else if (ch == 0x52) // up arrow
     mLcd->incScrollIndex (1);
+  else if (ch == 0x4e) // pagedown
+    mLcd->incScrollIndex (-16);
+  else if (ch == 0x4b) // pageup
+    mLcd->incScrollIndex (16);
   }
 //}}}
 

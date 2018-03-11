@@ -368,7 +368,7 @@ void BSP_LCD_DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignMode
   if ((column < 1) || (column >= BSP_LCD_GetXSize()))
     column = 1;
 
-  while (*text && (column < BSP_LCD_GetXSize())) {
+  while (*text && (column + Font16.mWidth < BSP_LCD_GetXSize())) {
     BSP_LCD_DisplayChar (column, y, *text++);
     column += Font16.mWidth;
     }
