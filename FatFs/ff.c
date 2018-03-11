@@ -479,14 +479,12 @@ static int chk_chr (const char* str, int chr) {
 //{{{
 static WCHAR get_achar (const TCHAR** ptr) {
 
-#if !_LFN_UNICODE
   WCHAR chr = (BYTE)*(*ptr)++;          /* Get a byte */
-  if (IsLower(chr)) chr -= 0x20;      /* To upper ASCII char */
-  if (chr >= 0x80) chr = ExCvt[chr - 0x80]; /* To upper SBCS extended char */
+  if (IsLower(chr))
+    chr -= 0x20;      /* To upper ASCII char */
+  if (chr >= 0x80)
+    chr = ExCvt[chr - 0x80]; /* To upper SBCS extended char */
   return chr;
-#else
-  return wtoupper(*(*ptr)++);      /* Get a word and to upper */
-#endif
   }
 //}}}
 //{{{
@@ -541,35 +539,7 @@ static void putc_bfd (sPutBuff* pb, TCHAR c) {
   if (i < 0)
     return;
 
-#if _LFN_UNICODE
-  #if _STRF_ENCODE == 3  /* Write a character in UTF-8 */
-    if (c < 0x80) /* 7-bit */
-      pb->buf[i++] = (BYTE)c;
-    else {
-      if (c < 0x800) /* 11-bit */
-        pb->buf[i++] = (BYTE)(0xC0 | c >> 6);
-      else {  /* 16-bit */
-        pb->buf[i++] = (BYTE)(0xE0 | c >> 12);
-        pb->buf[i++] = (BYTE)(0x80 | (c >> 6 & 0x3F));
-        }
-      pb->buf[i++] = (BYTE)(0x80 | (c & 0x3F));
-      }
-  #elif _STRF_ENCODE == 2     /* Write a character in UTF-16BE */
-    pb->buf[i++] = (BYTE)(c >> 8);
-    pb->buf[i++] = (BYTE)c;
-  #elif _STRF_ENCODE == 1     /* Write a character in UTF-16LE */
-    pb->buf[i++] = (BYTE)c;
-    pb->buf[i++] = (BYTE)(c >> 8);
-  #else             /* Write a character in ANSI/OEM */
-    c = convert(c, 0); /* Unicode -> OEM */
-    if (!c) c = '?';
-    if (c >= 0x100)
-      pb->buf[i++] = (BYTE)(c >> 8);
-    pb->buf[i++] = (BYTE)c;
-  #endif
-#else             /* Write a character without conversion */
   pb->buf[i++] = (BYTE)c;
-#endif
 
   if (i >= (int)(sizeof pb->buf) - 3) { /* Write buffered characters to the file */
     f_write(pb->fp, pb->buf, (UINT)i, &bw);
@@ -1408,9 +1378,8 @@ static int cmp_lfn (const WCHAR* lfnbuf, BYTE* dir) {
   for (wc = 1, s = 0; s < 13; s++) {    /* Process all characters in the entry */
     uc = ld_word (dir + LfnOfs[s]);    /* Pick an LFN character */
     if (wc) {
-      if (i >= _MAX_LFN || wtoupper(uc) != wtoupper(lfnbuf[i++])) { /* Compare it */
+      if (i >= _MAX_LFN || wtoupper(uc) != wtoupper(lfnbuf[i++])) /* Compare it */
         return 0;         /* Not matched */
-        }
       wc = uc;
       }
     else {
@@ -1422,7 +1391,7 @@ static int cmp_lfn (const WCHAR* lfnbuf, BYTE* dir) {
   if ((dir[LDIR_Ord] & LLEF) && wc && lfnbuf[i])
     return 0;  /* Last segment matched but different length */
 
-  return 1;   /* The part of LFN matched */
+  return 1; /* The part of LFN matched */
   }
 //}}}
 //{{{
@@ -1586,28 +1555,14 @@ static void get_xdir_info (BYTE* dirb, FILINFO* fno) {
 
   UINT di, si;
   WCHAR w;
-#if !_LFN_UNICODE
   UINT nc;
-#endif
 
   /* Get file name */
   di = 0;
-#if _LFN_UNICODE
-  for (si = SZDIRE * 2; di < dirb[XDIR_NumName]; si += 2, di++) {
-    if ((si % SZDIRE) == 0)
-      si += 2;    /* Skip entry type field */
-    w = ld_word(dirb + si);         /* Get a character */
-    if (di >= _MAX_LFN) {
-      di = 0;
-      break;
-      }  /* Buffer overflow --> inaccessible object name */
-    fno->fname[di] = w;           /* Store it */
-    }
-#else
   for (si = SZDIRE * 2, nc = 0; nc < dirb[XDIR_NumName]; si += 2, nc++) {
     if ((si % SZDIRE) == 0)
       si += 2;    /* Skip entry type field */
-    w = convert (ld_word(dirb + si), 0);  /* Get a character and Unicode -> OEM */
+    w = convert (ld_word (dirb + si), 0);  /* Get a character and Unicode -> OEM */
     if (_DF1S && w >= 0x100) {        /* Is it a double byte char? (always false at SBCS cfg) */
       fno->fname[di++] = (char)(w >> 8);  /* Put 1st byte of the DBC */
       }
@@ -1617,7 +1572,6 @@ static void get_xdir_info (BYTE* dirb, FILINFO* fno) {
       }  /* Invalid char or buffer overflow --> inaccessible object name */
     fno->fname[di++] = (char)w;
     }
-#endif
 
   if (di == 0)
     fno->fname[di++] = '?';  /* Inaccessible object name? */
@@ -2037,13 +1991,14 @@ static void get_fileinfo (DIR* dp, FILINFO* fno) {
     if (dp->blk_ofs != 0xFFFFFFFF) {  /* Get LFN if available */
       i = j = 0;
       while ((w = fs->lfnbuf[j++]) != 0) {  /* Get an LFN character */
-#if !_LFN_UNICODE
         w = convert (w, 0);   /* Unicode -> OEM */
-        if (w == 0) { i = 0; break; } /* No LFN if it could not be converted */
+        if (w == 0) {
+          i = 0;
+          break;
+          } /* No LFN if it could not be converted */
         if (_DF1S && w >= 0x100) {  /* Put 1st byte if it is a DBC (always false at SBCS cfg) */
           fno->fname[i++] = (char)(w >> 8);
         }
-#endif
         if (i >= _MAX_LFN) {
           i = 0;
           break;
@@ -2067,14 +2022,6 @@ static void get_fileinfo (DIR* dp, FILINFO* fno) {
         fno->fname[j] = '.';
       fno->altname[j++] = '.';
       }
-#if _LFN_UNICODE
-    if (IsDBCS1(c) && i != 8 && i != 11 && IsDBCS2(dp->dir[i])) {
-      c = c << 8 | dp->dir[i++];
-      }
-    c = convert(c, 1); /* OEM -> Unicode */
-    if (!c)
-      c = '?';
-#endif
     fno->altname[j] = c;
     if (!lfv) {
       if (IsUpper(c) && (dp->dir[DIR_NTres] & ((i >= 9) ? NS_EXT : NS_BODY))) {
@@ -2125,7 +2072,6 @@ static FRESULT create_name (DIR* dp, const TCHAR** path) {
       }
     if (di >= _MAX_LFN)
       return FR_INVALID_NAME; /* Reject too long name */
-#if !_LFN_UNICODE
     w &= 0xFF;
     if (IsDBCS1(w)) {       /* Check if it is a DBC 1st byte (always false on SBCS cfg) */
       b = (BYTE)p[si++];      /* Get 2nd byte */
@@ -2136,7 +2082,6 @@ static FRESULT create_name (DIR* dp, const TCHAR** path) {
     w = convert(w, 1);     /* Convert ANSI/OEM to Unicode */
     if (!w)
       return FR_INVALID_NAME; /* Reject invalid code */
-#endif
     if (w < 0x80 && chk_chr ("\"*:<>\?|\x7F", w))
       return FR_INVALID_NAME;  /* Reject illegal characters for LFN */
     lfn[di++] = w;          /* Store the Unicode character */
@@ -3966,16 +3911,12 @@ FRESULT f_getlabel (const TCHAR* path, TCHAR* label, DWORD* vsn) {
           for (si = di = 0; si < dj.dir[XDIR_NumLabel]; si++) {
             /* Extract volume label from 83 entry */
             w = ld_word(dj.dir + XDIR_Label + si * 2);
-          #if _LFN_UNICODE
-            label[di++] = w;
-          #else
             w = convert (w, 0); /* Unicode -> OEM */
             if (w == 0)
               w = '?';  /* Replace wrong character */
             if (_DF1S && w >= 0x100)
               label[di++] = (char)(w >> 8);
             label[di++] = (char)w;
-          #endif
             }
 
           label[di] = 0;
@@ -3985,14 +3926,7 @@ FRESULT f_getlabel (const TCHAR* path, TCHAR* label, DWORD* vsn) {
           /* Extract volume label from AM_VOL entry with code comversion */
           si = di = 0;
           do {
-          #if _LFN_UNICODE
-            w = (si < 11) ? dj.dir[si++] : ' ';
-            if (IsDBCS1(w) && si < 11 && IsDBCS2(dj.dir[si]))
-              w = w << 8 | dj.dir[si++];
-            label[di++] = convert (w, 1); /* OEM -> Unicode */
-          #else
             label[di++] = dj.dir[si++];
-          #endif
             } while (di < 11);
           do {
             /* Truncate trailing spaces */
@@ -4059,11 +3993,9 @@ FRESULT f_setlabel (const TCHAR* label) {
     for (i = j = 0; i < slen; ) {
       /* Create volume label in directory form */
       w = label[i++];
-    #if !_LFN_UNICODE
       if (IsDBCS1(w))
         w = (i < slen && IsDBCS2(label[i])) ? w << 8 | (BYTE)label[i++] : 0;
       w = convert(w, 1);
-    #endif
       if (w == 0 || chk_chr(badchr, w) || j == 22) {
         /* Check validity check validity of the volume label */
         LEAVE_FF(fs, FR_INVALID_NAME);
@@ -4080,14 +4012,10 @@ FRESULT f_setlabel (const TCHAR* label) {
       /* Is there a volume label to be set? */
       dirvn[0] = 0; i = j = 0;  /* Create volume label in directory form */
       do {
-      #if _LFN_UNICODE
-        w = convert (wtoupper(label[i++]), 0);
-      #else
         w = (BYTE)label[i++];
         if (IsDBCS1(w))
           w = (j < 10 && i < slen && IsDBCS2(label[i])) ? w << 8 | (BYTE)label[i++] : 0;
         w = convert (wtoupper (convert(w, 1)), 0);
-      #endif
         if (w == 0 || chk_chr(badchr, w) || j >= (UINT)((w >= 0x100) ? 10 : 11)) {
           /* Reject invalid characters for volume label */
           LEAVE_FF(fs, FR_INVALID_NAME);
@@ -4413,7 +4341,8 @@ FRESULT f_mkfs (const TCHAR* path, BYTE opt, DWORD au, void* work, UINT len) {
 
   /* Pre-determine the FAT type */
   do {
-    if (_FS_EXFAT && (opt & FM_EXFAT)) {  /* exFAT possible? */
+    if (opt & FM_EXFAT) {
+      /* exFAT possible? */
       if ((opt & FM_ANY) == FM_EXFAT || sz_vol >= 0x4000000 || au > 128) {  /* exFAT only, vol >= 64Ms or au > 128s ? */
         fmt = FS_EXFAT;
         break;
@@ -4808,7 +4737,7 @@ FRESULT f_mkfs (const TCHAR* path, BYTE opt, DWORD au, void* work, UINT len) {
     //}}}
 
   /* Determine system ID in the partition table */
-  if (_FS_EXFAT && fmt == FS_EXFAT)
+  if (fmt == FS_EXFAT)
     sys = 0x07;     /* HPFS/NTFS/exFAT */
   else if (fmt == FS_FAT32)
     sys = 0x0C;   /* FAT32X */
@@ -4819,15 +4748,18 @@ FRESULT f_mkfs (const TCHAR* path, BYTE opt, DWORD au, void* work, UINT len) {
 
   /* Update partition information */
   if (_MULTI_PARTITION && part != 0) {
-    /* Created in the existing partition, Update system ID in the partition table */
+    //{{{  Created in the existing partition, Update system ID in the partition table */
     if (disk_read(pdrv, buf, 0, 1) != RES_OK)
       return FR_DISK_ERR; /* Read the MBR */
     buf[MBR_Table + (part - 1) * SZ_PTE + PTE_System] = sys;    /* Set system ID */
     if (disk_write (pdrv, buf, 0, 1) != RES_OK)
       return FR_DISK_ERR;  /* Write it back to the MBR */
     }
-  else {                /* Created as a new single partition */
-    if (!(opt & FM_SFD)) {  /* Create partition table if in FDISK format */
+    //}}}
+  else {
+    /* Created as a new single partition */
+    if (!(opt & FM_SFD)) {
+      //{{{  Create partition table if in FDISK format */
       memset (buf, 0, ss);
       st_word (buf + BS_55AA, 0xAA55);   /* MBR signature */
       pte = buf + MBR_Table;        /* Create partition table for single partition in the drive */
@@ -4845,9 +4777,10 @@ FRESULT f_mkfs (const TCHAR* path, BYTE opt, DWORD au, void* work, UINT len) {
       if (disk_write(pdrv, buf, 0, 1) != RES_OK)
         return FR_DISK_ERR;  /* Write it to the MBR */
       }
+      //}}}
     }
 
-  if (disk_ioctl(pdrv, CTRL_SYNC, 0) != RES_OK)
+  if (disk_ioctl (pdrv, CTRL_SYNC, 0) != RES_OK)
     return FR_DISK_ERR;
   return FR_OK;
   }
@@ -5071,67 +5004,10 @@ TCHAR* f_gets (TCHAR* buff, int len, FIL* fp) {
   UINT rc;
 
   while (n < len - 1) { /* Read characters until buffer gets filled */
-#if _LFN_UNICODE
-#if _STRF_ENCODE == 3   /* Read a character in UTF-8 */
-    f_read(fp, s, 1, &rc);
-    if (rc != 1) break;
-    c = s[0];
-    if (c >= 0x80) {
-      if (c < 0xC0)
-        continue; /* Skip stray trailer */
-      if (c < 0xE0) {     /* Two-byte sequence (0x80-0x7FF) */
-        f_read(fp, s, 1, &rc);
-        if (rc != 1)
-          break;
-        c = (c & 0x1F) << 6 | (s[0] & 0x3F);
-        if (c < 0x80)
-          c = '?';  /* Reject invalid code range */
-        }
-      else {
-        if (c < 0xF0) {   /* Three-byte sequence (0x800-0xFFFF) */
-          f_read(fp, s, 2, &rc);
-          if (rc != 2)
-            break;
-          c = c << 12 | (s[0] & 0x3F) << 6 | (s[1] & 0x3F);
-          if (c < 0x800)
-            c = '?'; /* Reject invalid code range */
-          }
-        else       /* Reject four-byte sequence */
-          c = '?';
-        }
-      }
-
-#elif _STRF_ENCODE == 2   /* Read a character in UTF-16BE */
-    f_read (fp, s, 2, &rc);
-    if (rc != 2)
-      break;
-    c = s[1] + (s[0] << 8);
-#elif _STRF_ENCODE == 1   /* Read a character in UTF-16LE */
-    f_read (fp, s, 2, &rc);
-    if (rc != 2)
-      break;
-    c = s[0] + (s[1] << 8);
-#else           /* Read a character in ANSI/OEM */
     f_read (fp, s, 1, &rc);
     if (rc != 1)
       break;
     c = s[0];
-    if (IsDBCS1 (c)) {
-      f_read (fp, s, 1, &rc);
-      if (rc != 1)
-        break;
-      c = (c << 8) + s[0];
-      }
-    c = convert (c, 1); /* OEM -> Unicode */
-    if (!c)
-      c = '?';
-#endif
-#else           /* Read a character without conversion */
-    f_read (fp, s, 1, &rc);
-    if (rc != 1)
-      break;
-    c = s[0];
-#endif
     if (_USE_STRFUNC == 2 && c == '\r')
       continue; /* Strip '\r' */
     *p++ = c;
