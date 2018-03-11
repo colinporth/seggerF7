@@ -1,7 +1,9 @@
 // ffc.c
+//{{{  includes
 #include <stdarg.h>
 #include "ff.h"
 #include "diskio.h"
+//}}}
 //{{{  defines
 #define _DF1S 0
 #define _EXCVT { \
@@ -232,13 +234,17 @@ static WORD Fsid;               /* File system mount ID */
 static BYTE CurrVol;            /* Current drive */
 static FILESEM Files[_FS_LOCK]; /* Open object lock semaphores */
 
+static const BYTE ExCvt[] = _EXCVT; /* Upper conversion table for SBCS extended characters */
+
 #define MAXDIRB(nc) ((nc + 44U) / 15 * SZDIRE)
 
-#define DEF_NAMBUF    WCHAR *lfn;
-#define INIT_NAMBUF(fs) { lfn = malloc((_MAX_LFN+1)*2 + MAXDIRB(_MAX_LFN)); if (!lfn) LEAVE_FF(fs, FR_NOT_ENOUGH_CORE); (fs)->lfnbuf = lfn; (fs)->dirbuf = (BYTE*)(lfn+_MAX_LFN+1); }
-#define FREE_NAMBUF() free(lfn)
-
-static const BYTE ExCvt[] = _EXCVT; /* Upper conversion table for SBCS extended characters */
+#define INIT_NAMBUF(fs) { \
+  lfn = malloc ((_MAX_LFN+1)*2 + MAXDIRB(_MAX_LFN));   \
+  if (!lfn)                                            \
+    LEAVE_FF (fs, FR_NOT_ENOUGH_CORE);                 \
+  (fs)->lfnbuf = lfn;                                  \
+  (fs)->dirbuf = (BYTE*)(lfn+_MAX_LFN+1);              \
+  }
 //}}}
 
 //{{{  struct putbuff
@@ -1957,14 +1963,21 @@ static FRESULT create_name (DIR* dp, const TCHAR** path) {
   const TCHAR *p;
 
   /* Create LFN in Unicode */
-  p = *path; lfn = dp->obj.fs->lfnbuf; si = di = 0;
+  p = *path;
+  lfn = dp->obj.fs->lfnbuf;
+
+  si = di = 0;
   for (;;) {
-    w = p[si++];          /* Get a character */
-    if (w < ' ') break;       /* Break if end of the path name */
-    if (w == '/' || w == '\\') {  /* Break if a separator is found */
-      while (p[si] == '/' || p[si] == '\\') si++; /* Skip duplicated separator if exist */
+    /* Get a character */
+    w = p[si++];
+    if (w < ' ') /* Break if end of the path name */
       break;
-    }
+    if (w == '/' || w == '\\') {
+      /* Break if a separator is found */
+      while (p[si] == '/' || p[si] == '\\')
+        si++; /* Skip duplicated separator if exist */
+      break;
+      }
     if (di >= _MAX_LFN)
       return FR_INVALID_NAME; /* Reject too long name */
 #if !_LFN_UNICODE
@@ -1977,25 +1990,32 @@ static FRESULT create_name (DIR* dp, const TCHAR** path) {
     w = ff_convert(w, 1);     /* Convert ANSI/OEM to Unicode */
     if (!w) return FR_INVALID_NAME; /* Reject invalid code */
 #endif
-    if (w < 0x80 && chk_chr("\"*:<>\?|\x7F", w)) return FR_INVALID_NAME;  /* Reject illegal characters for LFN */
+    if (w < 0x80 && chk_chr("\"*:<>\?|\x7F", w))
+      return FR_INVALID_NAME;  /* Reject illegal characters for LFN */
     lfn[di++] = w;          /* Store the Unicode character */
     }
 
   *path = &p[si];           /* Return pointer to the next segment */
   cf = (w < ' ') ? NS_LAST : 0;   /* Set last segment flag if end of the path */
   if ((di == 1 && lfn[di - 1] == '.') ||
-    (di == 2 && lfn[di - 1] == '.' && lfn[di - 2] == '.')) {  /* Is this segment a dot name? */
+      (di == 2 && lfn[di - 1] == '.' && lfn[di - 2] == '.')) {
+    //{{{  Is this segment a dot name? */
     lfn[di] = 0;
     for (i = 0; i < 11; i++)    /* Create dot name for SFN entry */
       dp->fn[i] = (i < di) ? '.' : ' ';
     dp->fn[i] = cf | NS_DOT;    /* This is a dot entry */
     return FR_OK;
     }
-  while (di) {            /* Snip off trailing spaces and dots if exist */
+    //}}}
+  while (di) {
+    //{{{  Snip off trailing spaces and dots if exist */
     w = lfn[di - 1];
-    if (w != ' ' && w != '.') break;
+    if (w != ' ' && w != '.')
+      break;
     di--;
     }
+    //}}}
+
   lfn[di] = 0;            /* LFN is created */
   if (di == 0)
     return FR_INVALID_NAME;  /* Reject nul name */
@@ -2015,12 +2035,14 @@ static FRESULT create_name (DIR* dp, const TCHAR** path) {
     if (!w)
       break;          /* Break on end of the LFN */
     if (w == ' ' || (w == '.' && si != di)) { /* Remove spaces and dots */
-      cf |= NS_LOSS | NS_LFN; continue;
+      cf |= NS_LOSS | NS_LFN;
+      continue;
       }
 
     if (i >= ni || si == di) {    /* Extension or end of SFN */
       if (ni == 11) {       /* Long extension */
-        cf |= NS_LOSS | NS_LFN; break;
+        cf |= NS_LOSS | NS_LFN;
+        break;
         }
       if (si != di)
         cf |= NS_LOSS | NS_LFN; /* Out of 8.3 format */
@@ -2034,33 +2056,32 @@ static FRESULT create_name (DIR* dp, const TCHAR** path) {
       }
 
     if (w >= 0x80) {        /* Non ASCII character */
-      w = ff_convert(w, 0);   /* Unicode -> OEM code */
+      w = ff_convert (w, 0);   /* Unicode -> OEM code */
       if (w)
         w = ExCvt[w - 0x80]; /* Convert extended character to upper (SBCS) */
       cf |= NS_LFN;       /* Force create LFN entry */
       }
 
-    if (_DF1S && w >= 0x100) {    /* Is this DBC? (always false at SBCS cfg) */
+    if (_DF1S && w >= 0x100) {
+      //{{{  Is this DBC? (always false at SBCS cfg) */
       if (i >= ni - 1) {
-        cf |= NS_LOSS | NS_LFN; i = ni; continue;
+        cf |= NS_LOSS | NS_LFN; i = ni;
+        continue;
         }
       dp->fn[i++] = (BYTE)(w >> 8);
       }
-    else {            /* SBC */
+      //}}}
+    else {
+      //{{{  SBC */
       if (!w || chk_chr("+,;=[]", w)) { /* Replace illegal characters for SFN */
         w = '_'; cf |= NS_LOSS | NS_LFN;/* Lossy conversion */
         }
-      else {
-        if (IsUpper(w)) {   /* ASCII large capital */
-          b |= 2;
-          }
-        else {
-          if (IsLower(w)) { /* ASCII small capital */
-            b |= 1; w -= 0x20;
-            }
-          }
-        }
+      else if (IsUpper(w)) /* ASCII large capital */
+        b |= 2;
+      else if (IsLower(w)) /* ASCII small capital */
+        b |= 1; w -= 0x20;
       }
+      //}}}
     dp->fn[i++] = (BYTE)w;
     }
 
@@ -2090,19 +2111,19 @@ static FRESULT follow_path (DIR* dp, const TCHAR* path) {
   _FDID *obj = &dp->obj;
   FATFS *fs = obj->fs;
 
-
-  if (*path != '/' && *path != '\\') {
-    /* Without heading separator */
-    obj->sclust = fs->cdir;       /* Start from current directory */
-    }
+  if (*path != '/' && *path != '\\')
+    /* Without heading separator - Start from current directory */
+    obj->sclust = fs->cdir;
   else {
     /* With heading separator */
-    while (*path == '/' || *path == '\\') path++; /* Strip heading separator */
+    while (*path == '/' || *path == '\\')
+      path++; /* Strip heading separator */
     obj->sclust = 0;          /* Start from root directory */
     }
   obj->n_frag = 0;  /* Invalidate last fragment counter of the object */
+
   if (fs->fs_type == FS_EXFAT && obj->sclust) {
-    /* Retrieve the sub-directory status if needed */
+    //{{{  Retrieve the sub-directory status if needed */
     DIR dj;
     obj->c_scl = fs->cdc_scl;
     obj->c_size = fs->cdc_size;
@@ -2113,13 +2134,15 @@ static FRESULT follow_path (DIR* dp, const TCHAR* path) {
     obj->objsize = ld_dword (fs->dirbuf + XDIR_FileSize);
     obj->stat = fs->dirbuf[XDIR_GenFlags] & 2;
     }
+    //}}}
 
-  if ((UINT)*path < ' ') {        /* Null path name is the origin directory itself */
+  if ((UINT)*path < ' ') {
+    /* Null path name is the origin directory itself */
     dp->fn[NSFLAG] = NS_NONAME;
     res = dir_sdi(dp, 0);
     }
   else {
-    /* Follow path */
+    //{{{  Follow path */
     for (;;) {
       res = create_name (dp, &path); /* Get a segment name of the path */
       if (res != FR_OK)
@@ -2159,6 +2182,7 @@ static FRESULT follow_path (DIR* dp, const TCHAR* path) {
         obj->sclust = ld_clust(fs, fs->win + dp->dptr % SS(fs));  /* Open next directory */
       }
     }
+    //}}}
 
   return res;
   }
@@ -2256,7 +2280,6 @@ static FRESULT find_volume (const TCHAR** path, FATFS** rfs, BYTE mode) {
   DSTATUS stat;
   DWORD bsect, fasize, tsect, sysect, nclst, szbfat, br[4];
   WORD nrsv;
-  FATFS *fs;
   UINT i;
 
   /* Get logical drive number */
@@ -2266,7 +2289,7 @@ static FRESULT find_volume (const TCHAR** path, FATFS** rfs, BYTE mode) {
     return FR_INVALID_DRIVE;
 
   /* Check if the file system object is valid or not */
-  fs = FatFs[vol];          /* Get pointer to the file system object */
+  FATFS* fs = FatFs[vol];          /* Get pointer to the file system object */
   if (!fs)
     return FR_NOT_ENABLED;   /* Is the file system object available? */
 
@@ -2277,25 +2300,22 @@ static FRESULT find_volume (const TCHAR** path, FATFS** rfs, BYTE mode) {
   if (fs->fs_type) {          /* If the volume has been mounted */
     stat = disk_status(fs->drv);
     if (!(stat & STA_NOINIT)) {   /* and the physical drive is kept initialized */
-      if (!_FS_READONLY && mode && (stat & STA_PROTECT)) {  /* Check write protection if needed */
+      if (!_FS_READONLY && mode && (stat & STA_PROTECT))  /* Check write protection if needed */
         return FR_WRITE_PROTECTED;
-        }
       return FR_OK;       /* The file system object is valid */
       }
     }
 
   /* The file system object is not valid. */
   /* Following code attempts to mount the volume. (analyze BPB and initialize the fs object) */
-
   fs->fs_type = 0;          /* Clear the file system object */
   fs->drv = LD2PD(vol);       /* Bind the logical drive and a physical drive */
   stat = disk_initialize(fs->drv);  /* Initialize the physical drive */
   if (stat & STA_NOINIT) {      /* Check if the initialization succeeded */
     return FR_NOT_READY;      /* Failed to initialize due to no medium or hard error */
     }
-  if (!_FS_READONLY && mode && (stat & STA_PROTECT)) { /* Check disk write protection if needed */
+  if (!_FS_READONLY && mode && (stat & STA_PROTECT)) /* Check disk write protection if needed */
     return FR_WRITE_PROTECTED;
-    }
 #if _MAX_SS != _MIN_SS          /* Get sector size (multiple sector size cfg only) */
   if (disk_ioctl(fs->drv, GET_SECTOR_SIZE, &SS(fs)) != RES_OK)
     return FR_DISK_ERR;
@@ -2305,15 +2325,18 @@ static FRESULT find_volume (const TCHAR** path, FATFS** rfs, BYTE mode) {
 
   /* Find an FAT partition on the drive. Supports only generic partitioning rules, FDISK and SFD. */
   bsect = 0;
-  fmt = check_fs(fs, bsect);      /* Load sector 0 and check if it is an FAT-VBR as SFD */
+  fmt = check_fs (fs, bsect);      /* Load sector 0 and check if it is an FAT-VBR as SFD */
   if (fmt == 2 || (fmt < 2 && LD2PT(vol) != 0)) { /* Not an FAT-VBR or forced partition number */
-    for (i = 0; i < 4; i++) {   /* Get partition offset */
+    for (i = 0; i < 4; i++) {
+      /* Get partition offset */
       pt = fs->win + (MBR_Table + i * SZ_PTE);
       br[i] = pt[PTE_System] ? ld_dword(pt + PTE_StLba) : 0;
       }
     i = LD2PT(vol);         /* Partition number: 0:auto, 1-4:forced */
-    if (i) i--;
-    do {              /* Find an FAT volume */
+    if (i)
+      i--;
+    do {
+      /* Find an FAT volume */
       bsect = br[i];
       fmt = bsect ? check_fs(fs, bsect) : 3;  /* Check the partition */
       } while (LD2PT(vol) == 0 && fmt >= 2 && ++i < 4);
@@ -2325,8 +2348,6 @@ static FRESULT find_volume (const TCHAR** path, FATFS** rfs, BYTE mode) {
 
   /* An FAT volume is found (bsect). Following code initializes the file system object */
   if (fmt == 1) {
-    QWORD maxlba;
-
     for (i = BPB_ZeroedEx; i < BPB_ZeroedEx + 53 && fs->win[i] == 0; i++) ; /* Check zero filler */
     if (i < BPB_ZeroedEx + 53)
       return FR_NO_FILESYSTEM;
@@ -2335,7 +2356,7 @@ static FRESULT find_volume (const TCHAR** path, FATFS** rfs, BYTE mode) {
     if (1 << fs->win[BPB_BytsPerSecEx] != SS(fs))  /* (BPB_BytsPerSecEx must be equal to the physical sector size) */
       return FR_NO_FILESYSTEM;
 
-    maxlba = ld_qword(fs->win + BPB_TotSecEx) + bsect;  /* Last LBA + 1 of the volume */
+    QWORD maxlba = ld_qword(fs->win + BPB_TotSecEx) + bsect;  /* Last LBA + 1 of the volume */
     if (maxlba >= 0x100000000)
       return FR_NO_FILESYSTEM; /* (It cannot be handled in 32-bit LBA) */
 
@@ -2533,7 +2554,7 @@ FRESULT f_open (FIL* fp, const TCHAR* path, BYTE mode) {
   FATFS *fs;
   DWORD dw, cl, bcs, clst, sc;
   FSIZE_t ofs;
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   if (!fp)
     return FR_INVALID_OBJECT;
@@ -2680,7 +2701,7 @@ FRESULT f_open (FIL* fp, const TCHAR* path, BYTE mode) {
         }
       }
 
-    FREE_NAMBUF();
+    free(lfn);
     }
 
   if (res != FR_OK)
@@ -2868,7 +2889,7 @@ FRESULT f_sync (FIL* fp) {
   DWORD tm;
   BYTE *dir;
   DIR dj;
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   FATFS *fs;
   FRESULT res = validate(&fp->obj, &fs);  /* Check validity of the file object */
@@ -2903,7 +2924,7 @@ FRESULT f_sync (FIL* fp) {
               fp->flag &= (BYTE)~FA_MODIFIED;
             }
           }
-          FREE_NAMBUF();
+        free(lfn);
         }
       } else
       {
@@ -2966,7 +2987,7 @@ FRESULT f_chdir (const TCHAR* path) {
   FRESULT res;
   DIR dj;
   FATFS *fs;
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   /* Get logical drive */
   res = find_volume(&path, &fs, 0);
@@ -2998,7 +3019,7 @@ FRESULT f_chdir (const TCHAR* path) {
         }
       }
     }
-    FREE_NAMBUF();
+    free(lfn);
     if (res == FR_NO_FILE) res = FR_NO_PATH;
   }
 
@@ -3015,7 +3036,7 @@ FRESULT f_getcwd (TCHAR* buff, UINT len) {
   DWORD ccl;
   TCHAR *tp;
   FILINFO fno;
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   *buff = 0;
   /* Get logical drive */
@@ -3066,7 +3087,7 @@ FRESULT f_getcwd (TCHAR* buff, UINT len) {
       }
     }
     *tp = 0;
-    FREE_NAMBUF();
+    free(lfn);
   }
 
   LEAVE_FF(fs, res);
@@ -3211,7 +3232,7 @@ FRESULT f_lseek (FIL* fp, FSIZE_t ofs) {
 FRESULT f_opendir (DIR* dp, const TCHAR* path) {
 
   _FDID *obj;
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   if (!dp)
     return FR_INVALID_OBJECT;
@@ -3256,7 +3277,7 @@ FRESULT f_opendir (DIR* dp, const TCHAR* path) {
           }
         }
       }
-    FREE_NAMBUF();
+    free(lfn);
     if (res == FR_NO_FILE)
       res = FR_NO_PATH;
     }
@@ -3288,7 +3309,7 @@ FRESULT f_closedir (DIR *dp) {
 //{{{
 FRESULT f_readdir (DIR* dp, FILINFO* fno) {
 
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   FATFS *fs;
   FRESULT res = validate (&dp->obj, &fs);  /* Check validity of the directory object */
@@ -3306,7 +3327,7 @@ FRESULT f_readdir (DIR* dp, FILINFO* fno) {
         if (res == FR_NO_FILE)
           res = FR_OK; /* Ignore end of directory now */
         }
-      FREE_NAMBUF();
+      free(lfn);
       }
     }
 
@@ -3347,7 +3368,7 @@ FRESULT f_findfirst (DIR* dp, FILINFO* fno, const TCHAR* path, const TCHAR* patt
 FRESULT f_stat (const TCHAR* path, FILINFO* fno) {
 
   DIR dj;
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   /* Get logical drive */
   FRESULT res = find_volume(&path, &dj.obj.fs, 0);
@@ -3365,7 +3386,7 @@ FRESULT f_stat (const TCHAR* path, FILINFO* fno) {
           get_fileinfo(&dj, fno);
         }
       }
-    FREE_NAMBUF();
+    free(lfn);
     }
 
   LEAVE_FF(dj.obj.fs, res);
@@ -3521,7 +3542,7 @@ FRESULT f_unlink (const TCHAR* path) {
   DWORD dclst = 0;
   FATFS* fs;
   _FDID obj;
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   /* Get logical drive */
   FRESULT res = find_volume(&path, &fs, FA_WRITE);
@@ -3585,7 +3606,7 @@ FRESULT f_unlink (const TCHAR* path) {
           res = sync_fs(fs);
         }
       }
-    FREE_NAMBUF();
+    free(lfn);
     }
 
   LEAVE_FF(fs, res);
@@ -3599,7 +3620,7 @@ FRESULT f_mkdir (const TCHAR* path) {
   BYTE *dir;
   UINT n;
   DWORD dsc, dcl, pcl, tm;
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   /* Get logical drive */
   FRESULT res = find_volume(&path, &fs, FA_WRITE);
@@ -3676,7 +3697,7 @@ FRESULT f_mkdir (const TCHAR* path) {
         remove_chain(&dj.obj, dcl, 0);    /* Could not register, remove cluster chain */
       }
     }
-    FREE_NAMBUF();
+    free(lfn);
   }
 
   LEAVE_FF(fs, res);
@@ -3690,7 +3711,7 @@ FRESULT f_rename (const TCHAR* path_old, const TCHAR* path_new) {
   FATFS *fs;
   BYTE buf[_FS_EXFAT ? SZDIRE * 2 : 24], *dir;
   DWORD dw;
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   get_ldnumber(&path_new);            /* Snip drive number of new name off */
   FRESULT res = find_volume(&path_old, &fs, FA_WRITE);  /* Get logical drive of the old object */
@@ -3765,7 +3786,7 @@ FRESULT f_rename (const TCHAR* path_old, const TCHAR* path_new) {
       }
 /* End of the critical section */
     }
-    FREE_NAMBUF();
+    free(lfn);
   }
 
   LEAVE_FF(fs, res);
@@ -3775,7 +3796,7 @@ FRESULT f_rename (const TCHAR* path_old, const TCHAR* path_new) {
 FRESULT f_chmod (const TCHAR* path, BYTE attr, BYTE mask) {
 
   DIR dj;
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   FATFS *fs;
   FRESULT res = find_volume(&path, &fs, FA_WRITE);  /* Get logical drive */
@@ -3799,7 +3820,7 @@ FRESULT f_chmod (const TCHAR* path, BYTE attr, BYTE mask) {
         res = sync_fs(fs);
         }
       }
-    FREE_NAMBUF();
+    free(lfn);
     }
 
   LEAVE_FF(fs, res);
@@ -3808,7 +3829,7 @@ FRESULT f_chmod (const TCHAR* path, BYTE attr, BYTE mask) {
 //{{{
 FRESULT f_utime (const TCHAR* path, const FILINFO* fno) {
 
-  DEF_NAMBUF
+  WCHAR *lfn;
 
   /* Get logical drive */
   FATFS *fs;
@@ -3834,7 +3855,7 @@ FRESULT f_utime (const TCHAR* path, const FILINFO* fno) {
         res = sync_fs (fs);
       }
 
-    FREE_NAMBUF();
+    free(lfn);
     }
 
   LEAVE_FF(fs, res);
