@@ -6,12 +6,10 @@
 #include "../common/cPs2.h"
 
 #include "usbd_msc.h"
-
 #include "../FatFs/ff.h"
-#include "../FatFs/diskio.h"
 
-#include "../common/stm32746g_discovery_sd.h"
 #include "../common/cLcd.h"
+#include "../common/stm32746g_discovery_sd.h"
 //}}}
 const char* kVersion = "USB Msc 11/3/18";
 
@@ -59,6 +57,108 @@ cApp* gApp;
 
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
+// public
+//{{{
+void cApp::run (bool keyboard) {
+
+  mButton = BSP_PB_GetState (BUTTON_KEY);
+
+  // init lcd
+  mLcd = new cLcd (16);
+  mLcd->init();
+
+  mPs2 = new cPs2 (mLcd);
+  mPs2->initKeyboard();
+
+  mscInit (mLcd);
+  mscStart();
+
+  FATFS sdFatFs;
+  char sdPath[40] = "0:/";
+  if (f_mount (&sdFatFs, (TCHAR const*)sdPath, 0) == FR_OK) {
+    char buff[256] = "/";
+    readDirectory (buff);
+    }
+  else
+    mLcd->debug (LCD_COLOR_RED, "not mounted");
+
+
+  int lastCount = 0;
+  reportFree();
+  while (true) {
+    pollTouch();
+    while (mPs2->hasChar()) {
+      auto ch = mPs2->getChar();
+      onKey (ch & 0xFF, ch & 0x100);
+      }
+    mLcd->show (kVersion);
+    mLcd->flip();
+
+    char buff[256] = "/";
+    auto count = getCountFiles (buff);
+    if (count != lastCount) {
+      f_getlabel (sdPath, mLabel, &mVsn);
+      mLcd->debug (LCD_COLOR_WHITE, "files %s %d %d ", mLabel, &mVsn, count);
+      lastCount = count;
+      }
+    }
+  }
+//}}}
+
+// protected
+//{{{
+void cApp::onProx (int x, int y, int z) {
+
+  if (x || y) {
+    //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
+    // hidSendReport (&gUsbDevice, HID_Buffer);
+    mLcd->debug (LCD_COLOR_MAGENTA, "onProx %d %d %d", x, y, z);
+    }
+  }
+//}}}
+//{{{
+void cApp::onPress (int x, int y) {
+
+  //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,0,0,0 };
+  //hidSendReport (&gUsbDevice, HID_Buffer);
+  mLcd->debug (LCD_COLOR_GREEN, "onPress %d %d", x, y);
+  }
+//}}}
+//{{{
+void cApp::onMove (int x, int y, int z) {
+
+  if (x || y) {
+    //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
+    //hidSendReport (&gUsbDevice, HID_Buffer);
+    mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d", x, y, z);
+    }
+  }
+//}}}
+//{{{
+void cApp::onScroll (int x, int y, int z) {
+  mLcd->incScrollValue (y);
+  }
+//}}}
+//{{{
+void cApp::onRelease (int x, int y) {
+
+  //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
+  //hidSendReport (&gUsbDevice, HID_Buffer);
+  mLcd->debug (LCD_COLOR_GREEN, "onRelease %d %d", x, y);
+  }
+//}}}
+//{{{
+void cApp::onKey (uint8_t ch, bool release) {
+
+  //mLcd->debug (LCD_COLOR_GREEN, "onKey %x %s", ch, release ? "release" : "press");
+  if (ch == 0x51) // down arrow
+    mLcd->incScrollIndex (-1);
+  else if (ch == 0x52) // up arrow
+    mLcd->incScrollIndex (1);
+  }
+//}}}
+
+// private
 //{{{
 void cApp::readDirectory (char* path) {
 
@@ -142,104 +242,6 @@ void cApp::reportFree() {
     int totalSectors = (fatFs->n_fatent - 2) * fatFs->csize;
     mLcd->debug (LCD_COLOR_WHITE, "%d free of %d total", freeSectors/2, totalSectors/2);
     }
-  }
-//}}}
-
-//{{{
-void cApp::run (bool keyboard) {
-
-  mButton = BSP_PB_GetState (BUTTON_KEY);
-
-  // init lcd
-  mLcd = new cLcd (16);
-  mLcd->init();
-
-  mPs2 = new cPs2 (mLcd);
-  mPs2->initKeyboard();
-
-  mscInit (mLcd);
-  mscStart();
-
-  FATFS sdFatFs;
-  char sdPath[40] = "0:/";
-  if (f_mount (&sdFatFs, (TCHAR const*)sdPath, 0) == FR_OK) {
-    char buff[256] = "/";
-    readDirectory (buff);
-    }
-  else
-    mLcd->debug (LCD_COLOR_RED, "not mounted");
-
-
-  int lastCount = 0;
-  reportFree();
-  while (true) {
-    pollTouch();
-    while (mPs2->hasChar()) {
-      auto ch = mPs2->getChar();
-      onKey (ch & 0xFF, ch & 0x100);
-      }
-    mLcd->show (kVersion);
-    mLcd->flip();
-
-    char buff[256] = "/";
-    auto count = getCountFiles (buff);
-    if (count != lastCount) {
-      f_getlabel (sdPath, mLabel, &mVsn);
-      mLcd->debug (LCD_COLOR_WHITE, "files %s %d %d ", mLabel, &mVsn, count);
-      lastCount = count;
-      }
-    }
-  }
-//}}}
-//{{{
-void cApp::onProx (int x, int y, int z) {
-
-  if (x || y) {
-    //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
-    // hidSendReport (&gUsbDevice, HID_Buffer);
-    mLcd->debug (LCD_COLOR_MAGENTA, "onProx %d %d %d", x, y, z);
-    }
-  }
-//}}}
-//{{{
-void cApp::onPress (int x, int y) {
-
-  //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,0,0,0 };
-  //hidSendReport (&gUsbDevice, HID_Buffer);
-  mLcd->debug (LCD_COLOR_GREEN, "onPress %d %d", x, y);
-  }
-//}}}
-//{{{
-void cApp::onMove (int x, int y, int z) {
-
-  if (x || y) {
-    //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
-    //hidSendReport (&gUsbDevice, HID_Buffer);
-    mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d", x, y, z);
-    }
-  }
-//}}}
-//{{{
-void cApp::onScroll (int x, int y, int z) {
-  mLcd->incScrollValue (y);
-  }
-//}}}
-//{{{
-void cApp::onRelease (int x, int y) {
-
-  //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
-  //hidSendReport (&gUsbDevice, HID_Buffer);
-  mLcd->debug (LCD_COLOR_GREEN, "onRelease %d %d", x, y);
-  }
-//}}}
-//{{{
-void cApp::onKey (uint8_t ch, bool release) {
-
-  //mLcd->debug (LCD_COLOR_GREEN, "onKey %x %s", ch, release ? "release" : "press");
-  if (ch == 0x51) // down arrow
-    mLcd->incScrollIndex (-1);
-  else if (ch == 0x52) // up arrow
-    mLcd->incScrollIndex (1);
   }
 //}}}
 

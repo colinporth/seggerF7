@@ -26,30 +26,37 @@ typedef unsigned long long QWORD;
 
 #define _FS_READONLY  0
 #define _FS_MINIMIZE  0
+
 #define _USE_STRFUNC  1
-#define _USE_FIND   1
-#define _USE_MKFS   1
+#define _USE_FIND     1
+#define _USE_MKFS     1
 #define _USE_FASTSEEK 1
 #define _USE_EXPAND   0
 #define _USE_CHMOD    1
 #define _USE_LABEL    1
 #define _USE_FORWARD  0
 #define _CODE_PAGE  850
-#define _USE_LFN  3
-#define _MAX_LFN  255
+
+#define _USE_LFN      3
+#define _MAX_LFN    255
 #define _LFN_UNICODE  0
 #define _STRF_ENCODE  3
+
 #define _FS_RPATH 2
-#define _VOLUMES  2
-#define _STR_VOLUME_ID  0
+
+#define _VOLUMES          2
+#define _STR_VOLUME_ID    0
 #define _VOLUME_STRS  "RAM","NAND","CF","SD","SD2","USB","USB2","USB3"
 #define _MULTI_PARTITION  0
+
 #define _MIN_SS   512
 #define _MAX_SS   4096
-#define _USE_TRIM 0
+
+#define _USE_TRIM     0
 #define _FS_NOFSINFO  0
-#define _FS_TINY  0
-#define _FS_EXFAT 1
+#define _FS_TINY      0
+#define _FS_EXFAT     1
+
 #define _FS_NORTC 0
 #define _NORTC_MON  1
 #define _NORTC_MDAY 1
@@ -57,7 +64,7 @@ typedef unsigned long long QWORD;
 #define _FS_LOCK  2
 
 #define _FS_REENTRANT 0
-#define _SYNC_t         int
+#define _SYNC_t  int
 //}}}
 //{{{
 #ifdef __cplusplus
@@ -248,10 +255,6 @@ TCHAR* f_gets (TCHAR* buff, int len, FIL* fp);            /* Get a string from t
 /* Additional user defined functions                            */
 /* RTC function */
 DWORD get_fattime (void);
-
-/* Unicode support functions */
-WCHAR ff_convert (WCHAR chr, UINT dir); /* OEM-Unicode bidirectional conversion */
-WCHAR ff_wtoupper (WCHAR chr);      /* Unicode upper-case conversion */
 
 /* Sync functions */
 int ff_cre_syncobj (BYTE vol, _SYNC_t* sobj); /* Create a sync object */
