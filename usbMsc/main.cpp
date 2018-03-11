@@ -25,6 +25,14 @@ public:
   void run (bool keyboard);
   void onPs2Irq() { mPs2->onIrq(); }
 
+  //{{{
+  int getCountFiles (char* path) {
+    mFiles = 0;
+    countFiles (path);
+    return mFiles;
+    }
+  //}}}
+
 protected:
   virtual void onProx (int x, int y, int z);
   virtual void onPress (int x, int y);
@@ -35,11 +43,13 @@ protected:
 
 private:
   void readDirectory (char* path);
+  void countFiles (char* path);
   void reportFree();
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
   bool mButton = false;
+  int mFiles = 0;
   };
 //}}}
 cApp* gApp;
@@ -75,6 +85,41 @@ void cApp::readDirectory (char* path) {
         }
       else
         mLcd->debug (LCD_COLOR_WHITE, "- %s", path);
+      }
+
+    path[--i] = '\0';
+    f_closedir (&dir);
+    }
+  }
+//}}}
+//{{{
+void cApp::countFiles (char* path) {
+
+  FILINFO fno;
+  DIR dir;
+  int i, j;
+
+  auto fr = f_opendir (&dir, path);
+  if (fr == FR_OK) {
+    for (i = 0; path[i]; i++);
+    path[i++] = '/';
+
+    while (true) {
+      auto fr = f_readdir (&dir, &fno);
+      if (fr != FR_OK || !fno.fname[0])
+        break;
+      if (_FS_RPATH && fno.fname[0] == '.')
+        continue;
+
+      j = 0;
+      do {
+        path[i+j] = fno.fname[j];
+        } while (fno.fname[j++]);
+
+      if (fno.fattrib & AM_DIR)
+        countFiles (path);
+      else
+        mFiles++;
       }
 
     path[--i] = '\0';
@@ -122,6 +167,7 @@ void cApp::run (bool keyboard) {
     mLcd->debug (LCD_COLOR_RED, "not mounted");
 
 
+  int lastCount = 0;
   reportFree();
   while (true) {
     pollTouch();
@@ -131,6 +177,13 @@ void cApp::run (bool keyboard) {
       }
     mLcd->show (kVersion);
     mLcd->flip();
+
+    char buff[256] = "/";
+    auto count = getCountFiles (buff);
+    if (count != lastCount) {
+      mLcd->debug (LCD_COLOR_WHITE, "files %d", count);
+      lastCount = count;
+      }
     }
   }
 //}}}
