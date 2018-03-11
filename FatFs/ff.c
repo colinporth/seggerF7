@@ -2564,8 +2564,8 @@ FRESULT f_open (FIL* fp, const TCHAR* path, BYTE mode) {
   res = find_volume(&path, &fs, mode);
   if (res == FR_OK) {
     dj.obj.fs = fs;
-    INIT_NAMBUF(fs);
-    res = follow_path(&dj, path); /* Follow the file path */
+    INIT_NAMBUF (fs);
+    res = follow_path (&dj, path); /* Follow the file path */
     if (res == FR_OK) {
       if (dj.fn[NSFLAG] & NS_NONAME) /* Origin directory itself? */
         res = FR_INVALID_NAME;
@@ -2907,8 +2907,8 @@ FRESULT f_sync (FIL* fp) {
           res = fill_last_frag(&fp->obj, fp->clust, 0xFFFFFFFF);  /* Fill last fragment on the FAT if needed */
         }
         if (res == FR_OK) {
-          INIT_NAMBUF(fs);
-          res = load_obj_dir(&dj, &fp->obj);  /* Load directory entry block */
+          INIT_NAMBUF (fs);
+          res = load_obj_dir (&dj, &fp->obj);  /* Load directory entry block */
           if (res == FR_OK) {
             fs->dirbuf[XDIR_Attr] |= AM_ARC;        /* Set archive bit */
             fs->dirbuf[XDIR_GenFlags] = fp->obj.stat | 1; /* Update file allocation info */
@@ -2993,8 +2993,8 @@ FRESULT f_chdir (const TCHAR* path) {
   res = find_volume(&path, &fs, 0);
   if (res == FR_OK) {
     dj.obj.fs = fs;
-    INIT_NAMBUF(fs);
-    res = follow_path(&dj, path);   /* Follow the path */
+    INIT_NAMBUF (fs);
+    res = follow_path (&dj, path);   /* Follow the path */
     if (res == FR_OK) {         /* Follow completed */
       if (dj.fn[NSFLAG] & NS_NONAME) {
         fs->cdir = dj.obj.sclust; /* It is the start directory itself */
@@ -3043,7 +3043,7 @@ FRESULT f_getcwd (TCHAR* buff, UINT len) {
   res = find_volume((const TCHAR**)&buff, &fs, 0);  /* Get current volume */
   if (res == FR_OK) {
     dj.obj.fs = fs;
-    INIT_NAMBUF(fs);
+    INIT_NAMBUF (fs);
     i = len;      /* Bottom of buffer (directory stack base) */
     if (!_FS_EXFAT || fs->fs_type != FS_EXFAT) {  /* (Cannot do getcwd on exFAT and returns root path) */
       dj.obj.sclust = fs->cdir;       /* Start to follow upper directory from current directory */
@@ -3243,7 +3243,7 @@ FRESULT f_opendir (DIR* dp, const TCHAR* path) {
   FRESULT res = find_volume (&path, &fs, 0);
   if (res == FR_OK) {
     obj->fs = fs;
-    INIT_NAMBUF(fs);
+    INIT_NAMBUF (fs);
     res = follow_path (dp, path);      /* Follow the path to the directory */
     if (res == FR_OK) {           /* Follow completed */
       if (!(dp->fn[NSFLAG] & NS_NONAME)) {  /* It is not the origin directory itself */
@@ -3317,7 +3317,7 @@ FRESULT f_readdir (DIR* dp, FILINFO* fno) {
     if (!fno)
       res = dir_sdi (dp, 0);     /* Rewind the directory object */
     else {
-      INIT_NAMBUF(fs);
+      INIT_NAMBUF (fs);
       res = dir_read (dp, 0);      /* Read an item */
       if (res == FR_NO_FILE)
         res = FR_OK; /* Ignore end of directory */
@@ -3373,7 +3373,7 @@ FRESULT f_stat (const TCHAR* path, FILINFO* fno) {
   /* Get logical drive */
   FRESULT res = find_volume(&path, &dj.obj.fs, 0);
   if (res == FR_OK) {
-    INIT_NAMBUF(dj.obj.fs);
+    INIT_NAMBUF (dj.obj.fs);
     /* Follow the file path */
     res = follow_path(&dj, path);
     if (res == FR_OK) {
@@ -3545,11 +3545,11 @@ FRESULT f_unlink (const TCHAR* path) {
   WCHAR *lfn;
 
   /* Get logical drive */
-  FRESULT res = find_volume(&path, &fs, FA_WRITE);
+  FRESULT res = find_volume (&path, &fs, FA_WRITE);
   dj.obj.fs = fs;
   if (res == FR_OK) {
-    INIT_NAMBUF(fs);
-    res = follow_path(&dj, path);   /* Follow the file path */
+    INIT_NAMBUF (fs);
+    res = follow_path (&dj, path);   /* Follow the file path */
     if (_FS_RPATH && res == FR_OK && (dj.fn[NSFLAG] & NS_DOT)) {
       res = FR_INVALID_NAME;      /* Cannot remove dot entry */
       }
@@ -3626,7 +3626,7 @@ FRESULT f_mkdir (const TCHAR* path) {
   FRESULT res = find_volume(&path, &fs, FA_WRITE);
   dj.obj.fs = fs;
   if (res == FR_OK) {
-    INIT_NAMBUF(fs);
+    INIT_NAMBUF (fs);
     res = follow_path(&dj, path);     /* Follow the file path */
     if (res == FR_OK) res = FR_EXIST;   /* Any object with same name is already existing */
     if (_FS_RPATH && res == FR_NO_FILE && (dj.fn[NSFLAG] & NS_DOT)) {
@@ -3717,9 +3717,10 @@ FRESULT f_rename (const TCHAR* path_old, const TCHAR* path_new) {
   FRESULT res = find_volume(&path_old, &fs, FA_WRITE);  /* Get logical drive of the old object */
   if (res == FR_OK) {
     djo.obj.fs = fs;
-    INIT_NAMBUF(fs);
-    res = follow_path(&djo, path_old);    /* Check old object */
-    if (res == FR_OK && (djo.fn[NSFLAG] & (NS_DOT | NS_NONAME))) res = FR_INVALID_NAME; /* Check validity of name */
+    INIT_NAMBUF (fs);
+    res = follow_path (&djo, path_old);    /* Check old object */
+    if (res == FR_OK && (djo.fn[NSFLAG] & (NS_DOT | NS_NONAME))) 
+      res = FR_INVALID_NAME; /* Check validity of name */
     if (res == FR_OK) {
       res = chk_lock(&djo, 2);
     }
@@ -3802,8 +3803,8 @@ FRESULT f_chmod (const TCHAR* path, BYTE attr, BYTE mask) {
   FRESULT res = find_volume(&path, &fs, FA_WRITE);  /* Get logical drive */
   dj.obj.fs = fs;
   if (res == FR_OK) {
-    INIT_NAMBUF(fs);
-    res = follow_path(&dj, path); /* Follow the file path */
+    INIT_NAMBUF (fs);
+    res = follow_path (&dj, path); /* Follow the file path */
     if (res == FR_OK && (dj.fn[NSFLAG] & (NS_DOT | NS_NONAME)))
       res = FR_INVALID_NAME;  /* Check object validity */
     if (res == FR_OK) {
@@ -3838,7 +3839,7 @@ FRESULT f_utime (const TCHAR* path, const FILINFO* fno) {
   DIR dj;
   dj.obj.fs = fs;
   if (res == FR_OK) {
-    INIT_NAMBUF(fs);
+    INIT_NAMBUF (fs);
     res = follow_path (&dj, path);
     if (res == FR_OK && (dj.fn[NSFLAG] & (NS_DOT | NS_NONAME)))
       res = FR_INVALID_NAME;
