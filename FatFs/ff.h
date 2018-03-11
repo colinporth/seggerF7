@@ -1,6 +1,6 @@
 #pragma once
 //{{{  integer
-#include "stdint.h"  
+#include "stdint.h"
 
 // These types MUST be 16-bit or 32-bit
 typedef int            INT;
@@ -21,7 +21,44 @@ typedef unsigned long  DWORD;
 // This type MUST be 64-bit (Remove this for ANSI C (C89) compatibility)
 typedef unsigned long long QWORD;
 //}}}
-#include "ffconf.h"   /* FatFs configuration options */
+//{{{  ffconf
+#define _FFCONF 68300 /* Revision ID */
+
+#define _FS_READONLY  0
+#define _FS_MINIMIZE  0
+#define _USE_STRFUNC  1
+#define _USE_FIND   1
+#define _USE_MKFS   1
+#define _USE_FASTSEEK 1
+#define _USE_EXPAND   0
+#define _USE_CHMOD    1
+#define _USE_LABEL    1
+#define _USE_FORWARD  0
+#define _CODE_PAGE  850
+#define _USE_LFN  3
+#define _MAX_LFN  255
+#define _LFN_UNICODE  0
+#define _STRF_ENCODE  3
+#define _FS_RPATH 2
+#define _VOLUMES  2
+#define _STR_VOLUME_ID  0
+#define _VOLUME_STRS  "RAM","NAND","CF","SD","SD2","USB","USB2","USB3"
+#define _MULTI_PARTITION  0
+#define _MIN_SS   512
+#define _MAX_SS   4096
+#define _USE_TRIM 0
+#define _FS_NOFSINFO  0
+#define _FS_TINY  0
+#define _FS_EXFAT 1
+#define _FS_NORTC 0
+#define _NORTC_MON  1
+#define _NORTC_MDAY 1
+#define _NORTC_YEAR 2016
+#define _FS_LOCK  2
+
+#define _FS_REENTRANT 0
+#define _SYNC_t         int
+//}}}
 //{{{
 #ifdef __cplusplus
 extern "C" {

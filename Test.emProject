@@ -331,13 +331,7 @@
       <folder Name="includes">
         <file file_name="../FatFs/diskio.h" />
         <file file_name="../FatFs/ff.h" />
-        <file file_name="../FatFs/ffconf.h" />
-        <file file_name="../FatFs/integer.h" />
-        <file file_name="../FatFs/ff_gen_drv.h" />
-        <file file_name="../FatFs/sd_diskio.h" />
       </folder>
-      <file file_name="../FatFs/syscall.c" />
-      <file file_name="../FatFs/ccsbcs.c" />
       <file file_name="../FatFs/ff.c" />
     </folder>
   </project>
