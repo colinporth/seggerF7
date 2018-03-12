@@ -121,8 +121,7 @@ typedef struct {
   DWORD dirbase;    /* Root directory base sector/cluster */
   DWORD database;   /* Data base sector */
   DWORD winsect;    /* Current sector appearing in the win[] */
-  //BYTE win[_MAX_SS]; /* Disk access window for Directory, FAT (and file data at tiny cfg) */
-  BYTE* win;        ; /* Disk access window for Directory, FAT (and file data at tiny cfg) */
+  BYTE win[_MAX_SS]; /* Disk access window for Directory, FAT (and file data at tiny cfg) */
   } FATFS;
 //}}}
 //{{{  struct _FDID

@@ -54,7 +54,7 @@ private:
   };
 //}}}
 cApp* gApp;
-BYTE winBuff [_MAX_SS];
+FATFS sdFatFs;
 
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
@@ -74,10 +74,6 @@ void cApp::run (bool keyboard) {
   mscInit (mLcd);
   mscStart();
 
-  FATFS sdFatFs;
-  //sdFatFs.win = (BYTE*)malloc (_MAX_SS);
-  sdFatFs.win = winBuff;
-
   char sdPath[40] = "0:/";
   if (f_mount (&sdFatFs, (TCHAR const*)sdPath, 0) == FR_OK) {
     char buff[256] = "/";
@@ -85,7 +81,6 @@ void cApp::run (bool keyboard) {
     }
   else
     mLcd->debug (LCD_COLOR_RED, "not mounted");
-
 
   int lastCount = 0;
   reportFree();
