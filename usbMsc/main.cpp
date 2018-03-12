@@ -54,6 +54,7 @@ private:
   };
 //}}}
 cApp* gApp;
+BYTE winBuff [_MAX_SS];
 
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
@@ -74,6 +75,9 @@ void cApp::run (bool keyboard) {
   mscStart();
 
   FATFS sdFatFs;
+  //sdFatFs.win = (BYTE*)malloc (_MAX_SS);
+  sdFatFs.win = winBuff;
+
   char sdPath[40] = "0:/";
   if (f_mount (&sdFatFs, (TCHAR const*)sdPath, 0) == FR_OK) {
     char buff[256] = "/";

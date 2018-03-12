@@ -14,10 +14,10 @@ extern "C" { void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); } }
 
 //{{{  sd card handlers
 // BSP
-//__IO uint32_t readstatus = 0;
-//void BSP_SD_ReadCpltCallback() { readstatus = 1; }
-//__IO uint32_t writestatus = 0;
-//void BSP_SD_WriteCpltCallback() { writestatus = 1; }
+__IO uint32_t readstatus = 0;
+void BSP_SD_ReadCpltCallback() { readstatus = 1; }
+__IO uint32_t writestatus = 0;
+void BSP_SD_WriteCpltCallback() { writestatus = 1; }
 //{{{
 void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
 
@@ -157,12 +157,18 @@ bool sdGetCapacity (uint8_t lun, uint32_t& block_num, uint16_t& block_size) {
 bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    //BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
-    //while (!readstatus) {}
-    //readstatus = 0;
-
     auto ticks = HAL_GetTick();
-    BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+
+    if ((uint32_t)buf & 0x3)
+      gLcd->debug (LCD_COLOR_RED, "sdRead buf alignment %x", buf);
+    if ((uint32_t)buf > 0x20010000)
+      gLcd->debug (LCD_COLOR_RED, "sdRead buf dma prob %x", buf);
+
+    //BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+    BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
+    while (!readstatus) {}
+    readstatus = 0;
+
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
     auto took = HAL_GetTick() - ticks;
 
@@ -177,12 +183,16 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    //BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
-    //while (!writestatus) {}
-    //writestatus = 0;
+    if ((uint32_t)buf & 0x3)
+      gLcd->debug (LCD_COLOR_RED, "sdWrite buf alignment %p", buf);
+    if ((uint32_t)buf > 0x20010000)
+      gLcd->debug (LCD_COLOR_RED, "sdWrite buf dma prob %x", buf);
 
     auto ticks = HAL_GetTick();
-    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+    //BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+    BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
+    while (!writestatus) {}
+    writestatus = 0;
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
     auto took = HAL_GetTick() - ticks;
 
@@ -283,11 +293,10 @@ DWORD get_fattime()
 //}}}
 //}}}
 //{{{  msc common descriptors
-//{{{  defines
 #define USBD_VID                      0x0483
 #define USBD_PID                      0x5720
-
 #define USBD_LANGID_STRING            0x409
+
 #define USBD_MANUFACTURER_STRING      "STMicroelectronics"
 #define USBD_PRODUCT_HS_STRING        "Mass Storage in HS Mode"
 #define USBD_PRODUCT_FS_STRING        "Mass Storage in FS Mode"
@@ -295,7 +304,7 @@ DWORD get_fattime()
 #define USBD_INTERFACE_HS_STRING      "MSC Interface"
 #define USBD_CONFIGURATION_FS_STRING  "MSC Config"
 #define USBD_INTERFACE_FS_STRING      "MSC Interface"
-//}}}
+
 //{{{
 const uint8_t kMscDeviceDesc[] __attribute__((aligned(4))) = {
   0x12, USB_DESC_TYPE_DEVICE,
@@ -431,7 +440,6 @@ USBD_DescriptorsTypeDef kMscDescriptors = {
 //}}}
 //}}}
 //{{{  msc class descriptors
-//{{{  defines
 #define MSC_MAX_FS_PACKET  0x40
 #define MSC_MAX_HS_PACKET  0x200
 
@@ -439,7 +447,7 @@ USBD_DescriptorsTypeDef kMscDescriptors = {
 #define MSC_EPOUT_ADDR  0x01
 
 #define USB_MSC_CONFIG_DESC_SIZ  32
-//}}}
+
 //{{{
 /* USB Mass storage device Configuration Descriptor */
 const uint8_t kMscHighSpeedConfigDesc[] __attribute__((aligned(4))) = {
@@ -1206,6 +1214,8 @@ void mscBotCbwDecode (USBD_HandleTypeDef* usbdHandle) {
 //}}}
 //}}}
 //{{{  msc class handlers
+sMscData gMscData;
+
 //{{{
 uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
 
@@ -1218,7 +1228,8 @@ uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
     usbdLowLevelOpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
     }
 
-  usbdHandle->pClassData = malloc (sizeof (sMscData));
+  //usbdHandle->pClassData = malloc (sizeof (sMscData));
+  usbdHandle->pClassData = &gMscData;
   if (usbdHandle->pClassData) {
     usbdLowLevelFlushEP (usbdHandle, MSC_EPOUT_ADDR);
     usbdLowLevelFlushEP (usbdHandle, MSC_EPIN_ADDR);
@@ -1248,12 +1259,13 @@ uint8_t mscDeInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
   mscData->bot_state = USBD_BOT_IDLE;
 
   // Free MSC Class Resources
-  free (usbdHandle->pClassData);
-  usbdHandle->pClassData  = NULL;
+  //free (usbdHandle->pClassData);
+  //usbdHandle->pClassData  = NULL;
 
   return 0;
   }
 //}}}
+
 //{{{
 uint8_t mscSetup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) {
 
@@ -1388,6 +1400,7 @@ uint8_t mscDataOut (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
   return 0;
   }
 //}}}
+
 //{{{
 uint8_t* mscGetHighSpeedConfigDesc (uint16_t* length) {
 
@@ -1416,6 +1429,7 @@ uint8_t* mscGetDeviceQualifierDescriptor (uint16_t* length) {
   return (uint8_t*)kMscDeviceQualifierDesc;
   }
 //}}}
+
 //{{{
 USBD_ClassTypeDef kMscHandlers = {
   mscInit,
