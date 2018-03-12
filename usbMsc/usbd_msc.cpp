@@ -13,7 +13,7 @@ PCD_HandleTypeDef gPcdHandle;
 USBD_HandleTypeDef gUsbDevice;
 extern "C" { void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); } }
 
-#define MSC_MEDIA_PACKET 32 * 1024
+#define MSC_MEDIA_PACKET 48 * 1024
 //{{{  sd card handlers
 // BSP
 __IO uint32_t readstatus = 0;

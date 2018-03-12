@@ -54,12 +54,7 @@ typedef unsigned long long QWORD;
 #define _FS_NOFSINFO  0
 #define _FS_TINY      0
 #define _FS_EXFAT     1
-
-#define _FS_NORTC 0
-#define _NORTC_MON  1
-#define _NORTC_MDAY 1
-#define _NORTC_YEAR 2016
-#define _FS_LOCK  2
+#define _FS_LOCK      2
 
 #define _FS_REENTRANT 0
 #define _SYNC_t  int

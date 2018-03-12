@@ -11,7 +11,8 @@
 #include "../common/cLcd.h"
 #include "../common/stm32746g_discovery_sd.h"
 //}}}
-const char* kVersion = "USB Msc 11/3/18";
+const char* kVersion = "USB Msc 12/3/18";
+const char kSdPath[40] = "0:/";
 
 //{{{
 class cApp : public cTouch {
@@ -20,7 +21,7 @@ public:
   cLcd* getLcd() { return mLcd; }
   cPs2* getPs2() { return mPs2; }
 
-  void run (bool keyboard);
+  void run();
   void onPs2Irq() { mPs2->onIrq(); }
 
   //{{{
@@ -43,6 +44,7 @@ private:
   void readDirectory (char* path);
   void countFiles (char* path);
   void reportFree();
+  void reportLabel();
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
@@ -54,12 +56,11 @@ private:
   };
 //}}}
 cApp* gApp;
-
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
 // public
 //{{{
-void cApp::run (bool keyboard) {
+void cApp::run() {
 
   mButton = BSP_PB_GetState (BUTTON_KEY);
 
@@ -73,33 +74,35 @@ void cApp::run (bool keyboard) {
   mscInit (mLcd);
   mscStart();
 
-  const char sdPath[40] = "0:/";
-  if (f_mount ((FATFS*)malloc (sizeof (FATFS)), sdPath, 0) == FR_OK) {
-    char buff[256] = "/";
-    readDirectory (buff);
+  if (f_mount ((FATFS*)malloc (sizeof (FATFS)), kSdPath, 0) == FR_OK) {
+    char pathName[256] = "/";
+    readDirectory (pathName);
+    reportLabel();
     }
   else
     mLcd->debug (LCD_COLOR_RED, "not mounted");
 
   int lastCount = 0;
-  reportFree();
   while (true) {
     pollTouch();
+
     while (mPs2->hasChar()) {
       auto ch = mPs2->getChar();
       onKey (ch & 0xFF, ch & 0x100);
       }
+
     mLcd->show (kVersion);
     mLcd->flip();
 
     if (hasSdChanged()) {
       //{{{  check num files
-      char buff[256] = "/";
-      auto count = getCountFiles (buff);
+      char pathName[256] = "/";
+      auto count = getCountFiles (pathName);
       if (count != lastCount) {
-        f_getlabel (sdPath, mLabel, &mVsn);
-        mLcd->debug (LCD_COLOR_WHITE, "files %s %d %d ", mLabel, &mVsn, count);
+        f_getlabel (kSdPath, mLabel, &mVsn);
+        mLcd->debug (LCD_COLOR_WHITE, "Label <%s> - %d files", mLabel, count);
         lastCount = count;
+        reportFree();
         }
       }
       //}}}
@@ -168,22 +171,22 @@ void cApp::onKey (uint8_t ch, bool release) {
 //{{{
 void cApp::readDirectory (char* path) {
 
-  FILINFO fno;
   DIR dir;
-  int i, j;
-  auto fr = f_opendir (&dir, path);
-  if (fr == FR_OK) {
+  auto result = f_opendir (&dir, path);
+  if (result == FR_OK) {
+    int i;
     for (i = 0; path[i]; i++);
     path[i++] = '/';
 
     while (true) {
-      auto fr = f_readdir (&dir, &fno);
-      if (fr != FR_OK || !fno.fname[0])
+      FILINFO fno;
+      auto result = f_readdir (&dir, &fno);
+      if (result != FR_OK || !fno.fname[0])
         break;
-      if (_FS_RPATH && fno.fname[0] == '.')
+      if (fno.fname[0] == '.')
         continue;
 
-      j = 0;
+      int j = 0;
       do {
         path[i+j] = fno.fname[j];
         } while (fno.fname[j++]);
@@ -193,7 +196,7 @@ void cApp::readDirectory (char* path) {
         readDirectory (path);
         }
       else
-        mLcd->debug (LCD_COLOR_WHITE, "- %s", path);
+        mLcd->debug (LCD_COLOR_WHITE, "%s", path);
       }
 
     path[--i] = '\0';
@@ -204,23 +207,22 @@ void cApp::readDirectory (char* path) {
 //{{{
 void cApp::countFiles (char* path) {
 
-  FILINFO fno;
   DIR dir;
-  int i, j;
-
-  auto fr = f_opendir (&dir, path);
-  if (fr == FR_OK) {
+  auto result = f_opendir (&dir, path);
+  if (result == FR_OK) {
+    int i;
     for (i = 0; path[i]; i++);
     path[i++] = '/';
 
     while (true) {
-      auto fr = f_readdir (&dir, &fno);
-      if (fr != FR_OK || !fno.fname[0])
+      FILINFO fno;
+      auto result = f_readdir (&dir, &fno);
+      if (result != FR_OK || !fno.fname[0])
         break;
-      if (_FS_RPATH && fno.fname[0] == '.')
+      if (fno.fname[0] == '.')
         continue;
 
-      j = 0;
+      int j = 0;
       do {
         path[i+j] = fno.fname[j];
         } while (fno.fname[j++]);
@@ -237,14 +239,21 @@ void cApp::countFiles (char* path) {
   }
 //}}}
 //{{{
+void cApp::reportLabel() {
+
+  f_getlabel (kSdPath, mLabel, &mVsn);
+  mLcd->debug (LCD_COLOR_WHITE, "Label <%s> ", mLabel);
+  }
+//}}}
+//{{{
 void cApp::reportFree() {
 
-  DWORD numFreeClusters;
+  DWORD freeClusters;
   FATFS* fatFs;
-  if (f_getfree ("0:", &numFreeClusters, &fatFs) != FR_OK)
+  if (f_getfree ("0:", &freeClusters, &fatFs) != FR_OK)
     mLcd->debug (LCD_COLOR_WHITE, "f_getfree failed");
   else {
-    int freeSectors = numFreeClusters * fatFs->csize;
+    int freeSectors = freeClusters * fatFs->csize;
     int totalSectors = (fatFs->n_fatent - 2) * fatFs->csize;
     mLcd->debug (LCD_COLOR_WHITE, "%d free of %d total", freeSectors/2, totalSectors/2);
     }
@@ -306,6 +315,6 @@ int main() {
   BSP_PB_Init (BUTTON_KEY, BUTTON_MODE_GPIO);
 
   gApp = new cApp (BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
-  gApp->run (true);
+  gApp->run();
   }
 //}}}
