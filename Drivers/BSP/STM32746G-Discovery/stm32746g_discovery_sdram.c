@@ -1,90 +1,3 @@
-//{{{
-/**
-  ******************************************************************************
-  * @file    stm32746g_discovery_sdram.c
-  * @author  MCD Application Team
-  * @brief   This file includes the SDRAM driver for the MT48LC4M32B2B5-7 memory
-  *          device mounted on STM32746G-Discovery board.
-  @verbatim
-   1. How To use this driver:
-   --------------------------
-      - This driver is used to drive the MT48LC4M32B2B5-7 SDRAM external memory mounted
-        on STM32746G-Discovery board.
-      - This driver does not need a specific component driver for the SDRAM device
-        to be included with.
-
-   2. Driver description:
-   ---------------------
-     + Initialization steps:
-        o Initialize the SDRAM external memory using the BSP_SDRAM_Init() function. This
-          function includes the MSP layer hardware resources initialization and the
-          FMC controller configuration to interface with the external SDRAM memory.
-        o It contains the SDRAM initialization sequence to program the SDRAM external
-          device using the function BSP_SDRAM_Initialization_sequence(). Note that this
-          sequence is standard for all SDRAM devices, but can include some differences
-          from a device to another. If it is the case, the right sequence should be
-          implemented separately.
-
-     + SDRAM read/write operations
-        o SDRAM external memory can be accessed with read/write operations once it is
-          initialized.
-          Read/write operation can be performed with AHB access using the functions
-          BSP_SDRAM_ReadData()/BSP_SDRAM_WriteData(), or by DMA transfer using the functions
-          BSP_SDRAM_ReadData_DMA()/BSP_SDRAM_WriteData_DMA().
-        o The AHB access is performed with 32-bit width transaction, the DMA transfer
-          configuration is fixed at single (no burst) word transfer (see the
-          SDRAM_MspInit() static function).
-        o User can implement his own functions for read/write access with his desired
-          configurations.
-        o If interrupt mode is used for DMA transfer, the function BSP_SDRAM_DMA_IRQHandler()
-          is called in IRQ handler file, to serve the generated interrupt once the DMA
-          transfer is complete.
-        o You can send a command to the SDRAM device in runtime using the function
-          BSP_SDRAM_Sendcmd(), and giving the desired command as parameter chosen between
-          the predefined commands of the "FMC_SDRAM_CommandTypeDef" structure.
-
-  @endverbatim
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
-  *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
-  ******************************************************************************
-  */
-
-/* Dependencies
-- stm32f7xx_hal_sdram.c
-- stm32f7xx_ll_fmc.c
-- stm32f7xx_hal_dma.c
-- stm32f7xx_hal_gpio.c
-- stm32f7xx_hal_cortex.c
-- stm32f7xx_hal_rcc_ex.h
-EndDependencies */
-
-/* Includes ------------------------------------------------------------------*/
-//}}}
 #include "stm32746g_discovery_sdram.h"
 
 SDRAM_HandleTypeDef sdramHandle;
@@ -92,8 +5,8 @@ static FMC_SDRAM_TimingTypeDef Timing;
 static FMC_SDRAM_CommandTypeDef Command;
 
 //{{{
-uint8_t BSP_SDRAM_Init()
-{
+uint8_t BSP_SDRAM_Init() {
+
   static uint8_t sdramstatus = SDRAM_ERROR;
 
   /* SDRAM device configuration */
@@ -131,12 +44,13 @@ uint8_t BSP_SDRAM_Init()
   BSP_SDRAM_Initialization_sequence (REFRESH_COUNT);
 
   return sdramstatus;
-}
+  }
 //}}}
 //{{{
-uint8_t BSP_SDRAM_DeInit()
-{
+uint8_t BSP_SDRAM_DeInit() {
+
   static uint8_t sdramstatus = SDRAM_ERROR;
+
   /* SDRAM device de-initialization */
   sdramHandle.Instance = FMC_SDRAM_DEVICE;
 
@@ -149,7 +63,7 @@ uint8_t BSP_SDRAM_DeInit()
   BSP_SDRAM_MspDeInit (&sdramHandle, NULL);
 
   return sdramstatus;
-}
+  }
 //}}}
 
 //{{{
@@ -162,8 +76,6 @@ void BSP_SDRAM_Initialization_sequence (uint32_t RefreshCount) {
   Command.CommandTarget          = FMC_SDRAM_CMD_TARGET_BANK1;
   Command.AutoRefreshNumber      = 1;
   Command.ModeRegisterDefinition = 0;
-
-  /* Send the command */
   HAL_SDRAM_SendCommand (&sdramHandle, &Command, SDRAM_TIMEOUT);
 
   /* Step 2: Insert 100 us minimum delay */
@@ -175,8 +87,6 @@ void BSP_SDRAM_Initialization_sequence (uint32_t RefreshCount) {
   Command.CommandTarget          = FMC_SDRAM_CMD_TARGET_BANK1;
   Command.AutoRefreshNumber      = 1;
   Command.ModeRegisterDefinition = 0;
-
-  /* Send the command */
   HAL_SDRAM_SendCommand (&sdramHandle, &Command, SDRAM_TIMEOUT);
 
   /* Step 4: Configure an Auto Refresh command */
@@ -184,8 +94,6 @@ void BSP_SDRAM_Initialization_sequence (uint32_t RefreshCount) {
   Command.CommandTarget          = FMC_SDRAM_CMD_TARGET_BANK1;
   Command.AutoRefreshNumber      = 8;
   Command.ModeRegisterDefinition = 0;
-
-  /* Send the command */
   HAL_SDRAM_SendCommand (&sdramHandle, &Command, SDRAM_TIMEOUT);
 
   /* Step 5: Program the external memory mode register */
@@ -199,14 +107,11 @@ void BSP_SDRAM_Initialization_sequence (uint32_t RefreshCount) {
   Command.CommandTarget          = FMC_SDRAM_CMD_TARGET_BANK1;
   Command.AutoRefreshNumber      = 1;
   Command.ModeRegisterDefinition = tmpmrd;
-
-  /* Send the command */
   HAL_SDRAM_SendCommand (&sdramHandle, &Command, SDRAM_TIMEOUT);
 
   /* Step 6: Set the refresh rate counter */
-  /* Set the device refresh rate */
   HAL_SDRAM_ProgramRefreshRate (&sdramHandle, RefreshCount);
-}
+  }
 //}}}
 
 //{{{

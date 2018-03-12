@@ -12,21 +12,14 @@
 
 #define SDRAM_DEVICE_ADDR  ((uint32_t)0xC0000000)
 #define SDRAM_DEVICE_SIZE  ((uint32_t)0x00800000)  // SDRAM device size in MBytes - 8m
+#define SDRAM_SCREEN0      ((uint32_t)0xC0000000)  // 0.5m
+#define SDRAM_SCREEN1      ((uint32_t)0xC0080000)  // 0.5m
+#define SDRAM_USER         ((uint32_t)0xC0100000)  // 7m left
 
-/* #define SDRAM_MEMORY_WIDTH            FMC_SDRAM_MEM_BUS_WIDTH_8  */
-#define SDRAM_MEMORY_WIDTH               FMC_SDRAM_MEM_BUS_WIDTH_16
-#define SDCLOCK_PERIOD                   FMC_SDRAM_CLOCK_PERIOD_2
-/* #define SDCLOCK_PERIOD                FMC_SDRAM_CLOCK_PERIOD_3 */
-#define REFRESH_COUNT                    ((uint32_t)0x0603)   /* SDRAM refresh counter (100Mhz SD clock) */
-#define SDRAM_TIMEOUT                    ((uint32_t)0xFFFF)
-
-/* DMA definitions for SDRAM DMA transfer */
-#define __DMAx_CLK_ENABLE                 __HAL_RCC_DMA2_CLK_ENABLE
-#define __DMAx_CLK_DISABLE                __HAL_RCC_DMA2_CLK_DISABLE
-#define SDRAM_DMAx_CHANNEL                DMA_CHANNEL_0
-#define SDRAM_DMAx_STREAM                 DMA2_Stream0
-#define SDRAM_DMAx_IRQn                   DMA2_Stream0_IRQn
-#define BSP_SDRAM_DMA_IRQHandler          DMA2_Stream0_IRQHandler
+#define SDRAM_MEMORY_WIDTH  FMC_SDRAM_MEM_BUS_WIDTH_16
+#define SDCLOCK_PERIOD      FMC_SDRAM_CLOCK_PERIOD_2
+#define REFRESH_COUNT       ((uint32_t)0x0603)   /* SDRAM refresh counter (100Mhz SD clock) */
+#define SDRAM_TIMEOUT       ((uint32_t)0xFFFF)
 
 #define SDRAM_MODEREG_BURST_LENGTH_1             ((uint16_t)0x0000)
 #define SDRAM_MODEREG_BURST_LENGTH_2             ((uint16_t)0x0001)
@@ -44,8 +37,8 @@ uint8_t BSP_SDRAM_Init();
 uint8_t BSP_SDRAM_DeInit();
 void    BSP_SDRAM_Initialization_sequence (uint32_t RefreshCount);
 
-void    BSP_SDRAM_MspInit (SDRAM_HandleTypeDef  *hsdram, void *Params);
-void    BSP_SDRAM_MspDeInit (SDRAM_HandleTypeDef  *hsdram, void *Params);
+void    BSP_SDRAM_MspInit (SDRAM_HandleTypeDef* hsdram, void* Params);
+void    BSP_SDRAM_MspDeInit (SDRAM_HandleTypeDef* hsdram, void* Params);
 
 //{{{
 #ifdef __cplusplus

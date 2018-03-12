@@ -64,8 +64,6 @@ typedef enum {
 #define LCD_ERROR               ((uint8_t)0x01)
 #define LCD_TIMEOUT             ((uint8_t)0x02)
 
-#define LCD_FB_START_ADDRESS    ((uint32_t)0xC0000000)
-
 #define LCD_RELOAD_IMMEDIATE           ((uint32_t)LTDC_SRCR_IMR)
 #define LCD_RELOAD_VERTICAL_BLANKING   ((uint32_t)LTDC_SRCR_VBR)
 
