@@ -1226,22 +1226,19 @@ uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
 
   //usbdHandle->pClassData = malloc (sizeof (sMscData));
   usbdHandle->pClassData = &gMscData;
-  if (usbdHandle->pClassData) {
-    usbdLowLevelFlushEP (usbdHandle, MSC_EPOUT_ADDR);
-    usbdLowLevelFlushEP (usbdHandle, MSC_EPIN_ADDR);
+  usbdLowLevelFlushEP (usbdHandle, MSC_EPOUT_ADDR);
+  usbdLowLevelFlushEP (usbdHandle, MSC_EPIN_ADDR);
 
-    // Prapare EP to Receive First BOT Cmd
-    auto mscData = (sMscData*)usbdHandle->pClassData;
-    mscData->bot_state = USBD_BOT_IDLE;
-    mscData->bot_status = USBD_BOT_STATUS_NORMAL;
-    mscData->scsi_sense_tail = 0;
-    mscData->scsi_sense_head = 0;
-    usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
+  // Prapare EP to Receive First BOT Cmd
+  auto mscData = (sMscData*)usbdHandle->pClassData;
 
-    return 0;
-    }
+  mscData->bot_state = USBD_BOT_IDLE;
+  mscData->bot_status = USBD_BOT_STATUS_NORMAL;
+  mscData->scsi_sense_tail = 0;
+  mscData->scsi_sense_head = 0;
+  usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, (uint8_t*)&mscData->cbw, USBD_BOT_CBW_LENGTH);
 
-  return 1;
+  return 0;
   }
 //}}}
 //{{{
@@ -1253,10 +1250,6 @@ uint8_t mscDeInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
   mscData->bot_state = USBD_BOT_IDLE;
-
-  // Free MSC Class Resources
-  //free (usbdHandle->pClassData);
-  //usbdHandle->pClassData  = NULL;
 
   return 0;
   }
