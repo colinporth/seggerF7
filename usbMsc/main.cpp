@@ -54,7 +54,7 @@ private:
   };
 //}}}
 cApp* gApp;
-FATFS sdFatFs;
+FATFS gFatFs;
 
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
@@ -75,7 +75,7 @@ void cApp::run (bool keyboard) {
   mscStart();
 
   char sdPath[40] = "0:/";
-  if (f_mount (&sdFatFs, (TCHAR const*)sdPath, 0) == FR_OK) {
+  if (f_mount (&gFatFs, (char const*)sdPath, 0) == FR_OK) {
     char buff[256] = "/";
     readDirectory (buff);
     }
@@ -93,13 +93,17 @@ void cApp::run (bool keyboard) {
     mLcd->show (kVersion);
     mLcd->flip();
 
-    char buff[256] = "/";
-    auto count = getCountFiles (buff);
-    if (count != lastCount) {
-      f_getlabel (sdPath, mLabel, &mVsn);
-      mLcd->debug (LCD_COLOR_WHITE, "files %s %d %d ", mLabel, &mVsn, count);
-      lastCount = count;
+    if (hasSdChanged()) {
+      //{{{  check num files
+      char buff[256] = "/";
+      auto count = getCountFiles (buff);
+      if (count != lastCount) {
+        f_getlabel (sdPath, mLabel, &mVsn);
+        mLcd->debug (LCD_COLOR_WHITE, "files %s %d %d ", mLabel, &mVsn, count);
+        lastCount = count;
+        }
       }
+      //}}}
     }
   }
 //}}}

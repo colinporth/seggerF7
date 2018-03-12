@@ -7,6 +7,7 @@
 #include "../common/stm32746g_discovery_sd.h"
 //}}}
 
+bool gSdChanged = false;
 cLcd* gLcd = nullptr;
 PCD_HandleTypeDef gPcdHandle;
 USBD_HandleTypeDef gUsbDevice;
@@ -95,7 +96,15 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   }
 //}}}
 
-// msc interface
+//{{{
+bool hasSdChanged() {
+  bool changed = gSdChanged;
+  gSdChanged = false;
+  return changed;
+  }
+//}}}
+
+// msc sdCard interface
 #define STANDARD_INQUIRY_DATA_LEN  36
 //{{{
 const uint8_t kSdInquiryData[STANDARD_INQUIRY_DATA_LEN] = {
@@ -196,6 +205,8 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
     auto took = HAL_GetTick() - ticks;
 
+    gSdChanged = true;
+
     //gLcd->debug (LCD_COLOR_WHITE, "w %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
     return true;
     }
@@ -204,7 +215,7 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
   }
 //}}}
 
-// fatFs interface
+// fatFs sdCard interface
 volatile DSTATUS Stat = STA_NOINIT;
 //{{{
 uint8_t disk_initialize (uint8_t lun) {
@@ -280,17 +291,8 @@ DRESULT disk_write (uint8_t lun, const uint8_t* buff, uint32_t sector, uint16_t 
   return result;
   }
 //}}}
-//{{{
-/**
-  * @brief  Gets Time from RTC
-  * @param  None
-  * @retval Time in DWORD
-  */
-DWORD get_fattime()
-{
-  return 0;
-}
-//}}}
+
+DWORD get_fattime() { return 0; }
 //}}}
 //{{{  msc common descriptors
 #define USBD_VID                      0x0483
@@ -1213,9 +1215,8 @@ void mscBotCbwDecode (USBD_HandleTypeDef* usbdHandle) {
   }
 //}}}
 //}}}
-//{{{  msc class handlers
 sMscData gMscData;
-
+//{{{  msc class handlers
 //{{{
 uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
 
@@ -1430,7 +1431,6 @@ uint8_t* mscGetDeviceQualifierDescriptor (uint16_t* length) {
   }
 //}}}
 
-//{{{
 USBD_ClassTypeDef kMscHandlers = {
   mscInit,
   mscDeInit,
@@ -1447,7 +1447,6 @@ USBD_ClassTypeDef kMscHandlers = {
   mscGetOtherSpeedConfigDesc,
   mscGetDeviceQualifierDescriptor,
   };
-//}}}
 //}}}
 
 // HAL pcd

@@ -230,7 +230,7 @@ typedef struct {
   } FILESEM;
 //}}}
 //{{{
-static FATFS* FatFs[_VOLUMES];  /* Pointer to the file system objects (logical drives) */
+static FATFS* FatFs[_VOLUMES];
 static WORD Fsid;               /* File system mount ID */
 
 static BYTE CurrVol;            /* Current drive */
@@ -477,7 +477,7 @@ static int chk_chr (const char* str, int chr) {
   }
 //}}}
 //{{{
-static WCHAR get_achar (const TCHAR** ptr) {
+static WCHAR get_achar (const char** ptr) {
 
   WCHAR chr = (BYTE)*(*ptr)++;          /* Get a byte */
   if (IsLower(chr))
@@ -488,9 +488,9 @@ static WCHAR get_achar (const TCHAR** ptr) {
   }
 //}}}
 //{{{
-static int pattern_matching (const TCHAR* pat, const TCHAR* nam, int skip, int inf) {
+static int pattern_matching (const char* pat, const char* nam, int skip, int inf) {
 
-  const TCHAR *pp, *np;
+  const char *pp, *np;
   WCHAR pc, nc;
   int nm, nx;
 
@@ -529,7 +529,7 @@ static int pattern_matching (const TCHAR* pat, const TCHAR* nam, int skip, int i
 //}}}
 
 //{{{
-static void putc_bfd (sPutBuff* pb, TCHAR c) {
+static void putc_bfd (sPutBuff* pb, char c) {
 
   UINT bw;
   int i;
@@ -1975,7 +1975,7 @@ static FRESULT dir_remove (DIR* dp) {
 static void get_fileinfo (DIR* dp, FILINFO* fno) {
 
   UINT i, j;
-  TCHAR c;
+  char c;
   DWORD tm;
   WCHAR w, lfv;
   FATFS *fs = dp->obj.fs;
@@ -2003,7 +2003,7 @@ static void get_fileinfo (DIR* dp, FILINFO* fno) {
           i = 0;
           break;
           }  /* No LFN if buffer overflow */
-        fno->fname[i++] = (TCHAR)w;
+        fno->fname[i++] = (char)w;
         }
       fno->fname[i] = 0;  /* Terminate the LFN */
       }
@@ -2012,11 +2012,11 @@ static void get_fileinfo (DIR* dp, FILINFO* fno) {
   i = j = 0;
   lfv = fno->fname[i];  /* LFN is exist if non-zero */
   while (i < 11) {    /* Copy name body and extension */
-    c = (TCHAR)dp->dir[i++];
+    c = (char)dp->dir[i++];
     if (c == ' ')
       continue;       /* Skip padding spaces */
     if (c == RDDEM)
-      c = (TCHAR)DDEM;  /* Restore replaced DDEM character */
+      c = (char)DDEM;  /* Restore replaced DDEM character */
     if (i == 9) {           /* Insert a . if extension is exist */
       if (!lfv)
         fno->fname[j] = '.';
@@ -2047,12 +2047,12 @@ static void get_fileinfo (DIR* dp, FILINFO* fno) {
 //}}}
 
 //{{{
-static FRESULT create_name (DIR* dp, const TCHAR** path) {
+static FRESULT create_name (DIR* dp, const char** path) {
 
   BYTE b, cf;
   WCHAR w, *lfn;
   UINT i, ni, si, di;
-  const TCHAR *p;
+  const char *p;
 
   /* Create LFN in Unicode */
   p = *path;
@@ -2197,7 +2197,7 @@ static FRESULT create_name (DIR* dp, const TCHAR** path) {
   }
 //}}}
 //{{{
-static FRESULT follow_path (DIR* dp, const TCHAR* path) {
+static FRESULT follow_path (DIR* dp, const char* path) {
 
   FRESULT res;
   BYTE ns;
@@ -2281,9 +2281,9 @@ static FRESULT follow_path (DIR* dp, const TCHAR* path) {
   }
 //}}}
 //{{{
-static int get_ldnumber (const TCHAR** path) {
+static int get_ldnumber (const char** path) {
 
-  const TCHAR *tp, *tt;
+  const char *tp, *tt;
   UINT i;
   int vol = -1;
 
@@ -2291,7 +2291,7 @@ static int get_ldnumber (const TCHAR** path) {
   static const char* const volid[] = {_VOLUME_STRS};
   const char *sp;
   char c;
-  TCHAR tc;
+  char tc;
 #endif
 
   if (*path) {  /* If the pointer is not a null */
@@ -2314,7 +2314,7 @@ static int get_ldnumber (const TCHAR** path) {
             c = *sp++; tc = *tp++;
             if (IsLower(tc))
               tc -= 0x20;
-            } while (c && (TCHAR)c == tc);
+            } while (c && (char)c == tc);
           } while ((c || tp != tt) && ++i < _VOLUMES);  /* Repeat for each id until pattern match */
         if (i < _VOLUMES) { /* If a drive id is found, get the value and strip it */
           vol = (int)i;
@@ -2366,7 +2366,7 @@ static BYTE check_fs (FATFS* fs, DWORD sect) {
   }
 //}}}
 //{{{
-static FRESULT find_volume (const TCHAR** path, FATFS** rfs, BYTE mode) {
+static FRESULT find_volume (const char** path, FATFS** rfs, BYTE mode) {
 
   BYTE fmt, *pt;
   DWORD bsect, fasize, tsect, sysect, nclst, szbfat, br[4];
@@ -2608,10 +2608,10 @@ static FRESULT validate (_FDID* obj, FATFS** fs) {
 
 // external
 //{{{
-FRESULT f_mount (FATFS* fs, const TCHAR* path, BYTE opt) {
+FRESULT f_mount (FATFS* fs, const char* path, BYTE opt) {
 
   /* Get logical drive number */
-  const TCHAR* rp = path;
+  const char* rp = path;
   int vol = get_ldnumber (&rp);
   if (vol < 0)
     return FR_INVALID_DRIVE;
@@ -2643,7 +2643,7 @@ FRESULT f_mount (FATFS* fs, const TCHAR* path, BYTE opt) {
   }
 //}}}
 //{{{
-FRESULT f_open (FIL* fp, const TCHAR* path, BYTE mode) {
+FRESULT f_open (FIL* fp, const char* path, BYTE mode) {
 
   DWORD dw, cl, bcs, clst, sc;
   FSIZE_t ofs;
@@ -3304,7 +3304,7 @@ FRESULT f_close (FIL* fp) {
 //}}}
 
 //{{{
-FRESULT f_opendir (DIR* dp, const TCHAR* path) {
+FRESULT f_opendir (DIR* dp, const char* path) {
 
   _FDID *obj;
   WCHAR *lfn;
@@ -3409,7 +3409,7 @@ FRESULT f_findnext (DIR* dp, FILINFO* fno) {
   }
 //}}}
 //{{{
-FRESULT f_findfirst (DIR* dp, FILINFO* fno, const TCHAR* path, const TCHAR* pattern) {
+FRESULT f_findfirst (DIR* dp, FILINFO* fno, const char* path, const char* pattern) {
 
   dp->pat = pattern;    /* Save pointer to pattern string */
   FRESULT res = f_opendir (dp, path);    /* Open the target directory */
@@ -3440,7 +3440,7 @@ FRESULT f_closedir (DIR *dp) {
 //}}}
 
 //{{{
-FRESULT f_stat (const TCHAR* path, FILINFO* fno) {
+FRESULT f_stat (const char* path, FILINFO* fno) {
 
   DIR dj;
   FRESULT res = find_volume (&path, &dj.obj.fs, 0);
@@ -3463,7 +3463,7 @@ FRESULT f_stat (const TCHAR* path, FILINFO* fno) {
   }
 //}}}
 //{{{
-FRESULT f_getfree (const TCHAR* path, DWORD* nclst, FATFS** fatfs) {
+FRESULT f_getfree (const char* path, DWORD* nclst, FATFS** fatfs) {
 
   FATFS* fs;
   FRESULT res = find_volume (&path, &fs, 0);
@@ -3562,7 +3562,7 @@ FRESULT f_getfree (const TCHAR* path, DWORD* nclst, FATFS** fatfs) {
   }
 //}}}
 //{{{
-FRESULT f_unlink (const TCHAR* path) {
+FRESULT f_unlink (const char* path) {
 
   DIR dj, sdj;
   DWORD dclst = 0;
@@ -3637,7 +3637,7 @@ FRESULT f_unlink (const TCHAR* path) {
   }
 //}}}
 //{{{
-FRESULT f_mkdir (const TCHAR* path) {
+FRESULT f_mkdir (const char* path) {
 
   DIR dj;
   FATFS *fs;
@@ -3729,7 +3729,7 @@ FRESULT f_mkdir (const TCHAR* path) {
 
 //}}}
 //{{{
-FRESULT f_rename (const TCHAR* path_old, const TCHAR* path_new) {
+FRESULT f_rename (const char* path_old, const char* path_new) {
 
   DIR djo, djn;
   FATFS *fs;
@@ -3818,7 +3818,7 @@ FRESULT f_rename (const TCHAR* path_old, const TCHAR* path_new) {
 }
 //}}}
 //{{{
-FRESULT f_chmod (const TCHAR* path, BYTE attr, BYTE mask) {
+FRESULT f_chmod (const char* path, BYTE attr, BYTE mask) {
 
   FATFS* fs;
   FRESULT res = find_volume (&path, &fs, FA_WRITE);  /* Get logical drive */
@@ -3851,7 +3851,7 @@ FRESULT f_chmod (const TCHAR* path, BYTE attr, BYTE mask) {
   }
 //}}}
 //{{{
-FRESULT f_utime (const TCHAR* path, const FILINFO* fno) {
+FRESULT f_utime (const char* path, const FILINFO* fno) {
 
   /* Get logical drive */
   FATFS* fs;
@@ -3885,7 +3885,7 @@ FRESULT f_utime (const TCHAR* path, const FILINFO* fno) {
   }
 //}}}
 //{{{
-FRESULT f_getlabel (const TCHAR* path, TCHAR* label, DWORD* vsn) {
+FRESULT f_getlabel (const char* path, char* label, DWORD* vsn) {
 
   UINT si, di;
   WCHAR w;
@@ -3970,7 +3970,7 @@ FRESULT f_getlabel (const TCHAR* path, TCHAR* label, DWORD* vsn) {
   }
 //}}}
 //{{{
-FRESULT f_setlabel (const TCHAR* label) {
+FRESULT f_setlabel (const char* label) {
 
   BYTE dirvn[22];
   UINT i, j, slen;
@@ -4262,7 +4262,7 @@ FRESULT f_forward (FIL* fp, UINT (*func)(const BYTE*,UINT), UINT btf, UINT* bf) 
   }
 //}}}
 //{{{
-FRESULT f_mkfs (const TCHAR* path, BYTE opt, DWORD au, void* work, UINT len) {
+FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
 
   const UINT n_fats = 1;    /* Number of FATs for FAT12/16/32 volume (1 or 2) */
   const UINT n_rootdir = 512; /* Number of root directory entries for FAT12/16 volume */
@@ -4324,12 +4324,12 @@ FRESULT f_mkfs (const TCHAR* path, BYTE opt, DWORD au, void* work, UINT len) {
     pte = buf + (MBR_Table + (part - 1) * SZ_PTE);
     if (!pte[PTE_System])
       return FR_MKFS_ABORTED; /* No partition? */
-    b_vol = ld_dword(pte + PTE_StLba);    /* Get volume start sector */
-    sz_vol = ld_dword(pte + PTE_SizLba);  /* Get volume size */
+    b_vol = ld_dword (pte + PTE_StLba);    /* Get volume start sector */
+    sz_vol = ld_dword (pte + PTE_SizLba);  /* Get volume size */
     }
   else {
     /* Create a single-partition in this function */
-    if (disk_ioctl(pdrv, GET_SECTOR_COUNT, &sz_vol) != RES_OK)
+    if (disk_ioctl (pdrv, GET_SECTOR_COUNT, &sz_vol) != RES_OK)
       return FR_DISK_ERR;
     b_vol = (opt & FM_SFD) ? 0 : 63;    /* Volume start sector */
     if (sz_vol < b_vol)
@@ -4339,7 +4339,7 @@ FRESULT f_mkfs (const TCHAR* path, BYTE opt, DWORD au, void* work, UINT len) {
   if (sz_vol < 128)
     return FR_MKFS_ABORTED; /* Check if volume size is >=128s */
 
-  /* Pre-determine the FAT type */
+  // Pre-determine the FAT type
   do {
     if (opt & FM_EXFAT) {
       /* exFAT possible? */
@@ -4354,16 +4354,18 @@ FRESULT f_mkfs (const TCHAR* path, BYTE opt, DWORD au, void* work, UINT len) {
     if (opt & FM_FAT32) {
       /* FAT32 possible? */
       if ((opt & FM_ANY) == FM_FAT32 || !(opt & FM_FAT)) {  /* FAT32 only or no-FAT? */
-        fmt = FS_FAT32; break;
+        fmt = FS_FAT32; 
+        break;
         }
       }
+
     if (!(opt & FM_FAT))
       return FR_INVALID_PARAMETER; /* no-FAT? */
     fmt = FS_FAT16;
     } while (0);
 
   if (fmt == FS_EXFAT) {
-    //{{{  Create an exFAT volume */
+    //{{{  create an exFAT volume */
     DWORD szb_bit, szb_case, sum, nb, cl;
     WCHAR ch, si;
     UINT j, st;
@@ -4736,19 +4738,19 @@ FRESULT f_mkfs (const TCHAR* path, BYTE opt, DWORD au, void* work, UINT len) {
     }
     //}}}
 
-  /* Determine system ID in the partition table */
+  // Determine system ID in the partition table
   if (fmt == FS_EXFAT)
-    sys = 0x07;     /* HPFS/NTFS/exFAT */
+    sys = 0x07;
   else if (fmt == FS_FAT32)
-    sys = 0x0C;   /* FAT32X */
+    sys = 0x0C;
   else if (sz_vol >= 0x10000)
-    sys = 0x06; /* FAT12/16 (>=64KS) */
+    sys = 0x06;
   else
-    sys = (fmt == FS_FAT16) ? 0x04 : 0x01;  /* FAT16 (<64KS) : FAT12 (<64KS) */
+    sys = (fmt == FS_FAT16) ? 0x04 : 0x01;
 
-  /* Update partition information */
+  // Update partition information
   if (_MULTI_PARTITION && part != 0) {
-    //{{{  Created in the existing partition, Update system ID in the partition table */
+    //{{{  create in the existing partition, Update system ID in the partition table 
     if (disk_read(pdrv, buf, 0, 1) != RES_OK)
       return FR_DISK_ERR; /* Read the MBR */
     buf[MBR_Table + (part - 1) * SZ_PTE + PTE_System] = sys;    /* Set system ID */
@@ -4756,32 +4758,34 @@ FRESULT f_mkfs (const TCHAR* path, BYTE opt, DWORD au, void* work, UINT len) {
       return FR_DISK_ERR;  /* Write it back to the MBR */
     }
     //}}}
-  else {
-    /* Created as a new single partition */
-    if (!(opt & FM_SFD)) {
-      //{{{  Create partition table if in FDISK format */
-      memset (buf, 0, ss);
-      st_word (buf + BS_55AA, 0xAA55);   /* MBR signature */
-      pte = buf + MBR_Table;        /* Create partition table for single partition in the drive */
-      pte[PTE_Boot] = 0;          /* Boot indicator */
-      pte[PTE_StHead] = 1;        /* Start head */
-      pte[PTE_StSec] = 1;         /* Start sector */
-      pte[PTE_StCyl] = 0;         /* Start cylinder */
-      pte[PTE_System] = sys;        /* System type */
-      n = (b_vol + sz_vol) / (63 * 255);  /* (End CHS may be invalid) */
-      pte[PTE_EdHead] = 254;        /* End head */
-      pte[PTE_EdSec] = (BYTE)(n >> 2 | 63); /* End sector */
-      pte[PTE_EdCyl] = (BYTE)n;     /* End cylinder */
-      st_dword (pte + PTE_StLba, b_vol); /* Start offset in LBA */
-      st_dword (pte + PTE_SizLba, sz_vol); /* Size in sectors */
-      if (disk_write(pdrv, buf, 0, 1) != RES_OK)
-        return FR_DISK_ERR;  /* Write it to the MBR */
-      }
-      //}}}
+  else if (!(opt & FM_SFD)) {
+    //{{{  create partition table if in FDISK format 
+    memset (buf, 0, ss);
+    st_word (buf + BS_55AA, 0xAA55);   /* MBR signature */
+
+    pte = buf + MBR_Table;        /* Create partition table for single partition in the drive */
+    pte[PTE_Boot] = 0;          /* Boot indicator */
+    pte[PTE_StHead] = 1;        /* Start head */
+    pte[PTE_StSec] = 1;         /* Start sector */
+    pte[PTE_StCyl] = 0;         /* Start cylinder */
+    pte[PTE_System] = sys;        /* System type */
+
+    n = (b_vol + sz_vol) / (63 * 255);  /* (End CHS may be invalid) */
+    pte[PTE_EdHead] = 254;        /* End head */
+    pte[PTE_EdSec] = (BYTE)(n >> 2 | 63); /* End sector */
+    pte[PTE_EdCyl] = (BYTE)n;     /* End cylinder */
+
+    st_dword (pte + PTE_StLba, b_vol); /* Start offset in LBA */
+    st_dword (pte + PTE_SizLba, sz_vol); /* Size in sectors */
+
+    if (disk_write (pdrv, buf, 0, 1) != RES_OK)
+      return FR_DISK_ERR;  /* Write it to the MBR */
     }
+    //}}}
 
   if (disk_ioctl (pdrv, CTRL_SYNC, 0) != RES_OK)
     return FR_DISK_ERR;
+
   return FR_OK;
   }
 //}}}
@@ -4852,7 +4856,7 @@ FRESULT f_fdisk (BYTE pdrv, const DWORD* szt, void* work) {
 //}}}
 
 //{{{
-FRESULT f_chdrive (const TCHAR* path) {
+FRESULT f_chdrive (const char* path) {
 
   // Get logical drive number
   int vol = get_ldnumber(&path);
@@ -4865,7 +4869,7 @@ FRESULT f_chdrive (const TCHAR* path) {
   }
 //}}}
 //{{{
-FRESULT f_chdir (const TCHAR* path) {
+FRESULT f_chdir (const char* path) {
 
   FATFS *fs;
   FRESULT res = find_volume (&path, &fs, 0);
@@ -4913,18 +4917,18 @@ FRESULT f_chdir (const TCHAR* path) {
   }
 //}}}
 //{{{
-FRESULT f_getcwd (TCHAR* buff, UINT len) {
+FRESULT f_getcwd (char* buff, UINT len) {
 
   DIR dj;
   UINT i, n;
   DWORD ccl;
-  TCHAR* tp;
+  char* tp;
   FILINFO fno;
   WCHAR *lfn;
 
   *buff = 0;
   FATFS* fs;
-  FRESULT res = find_volume ((const TCHAR**)&buff, &fs, 0);  /* Get current volume */
+  FRESULT res = find_volume ((const char**)&buff, &fs, 0);  /* Get current volume */
   if (res == FR_OK) {
     dj.obj.fs = fs;
     INIT_NAMBUF (fs);
@@ -4996,10 +5000,10 @@ FRESULT f_getcwd (TCHAR* buff, UINT len) {
 //}}}
 
 //{{{
-TCHAR* f_gets (TCHAR* buff, int len, FIL* fp) {
+char* f_gets (char* buff, int len, FIL* fp) {
 
   int n = 0;
-  TCHAR c, *p = buff;
+  char c, *p = buff;
   BYTE s[2];
   UINT rc;
 
@@ -5021,7 +5025,7 @@ TCHAR* f_gets (TCHAR* buff, int len, FIL* fp) {
   }
 //}}}
 //{{{
-int f_putc (TCHAR c, FIL* fp) {
+int f_putc (char c, FIL* fp) {
 
   sPutBuff pb;
   putc_init (&pb, fp);
@@ -5030,7 +5034,7 @@ int f_putc (TCHAR c, FIL* fp) {
   }
 //}}}
 //{{{
-int f_puts (const TCHAR* str, FIL* fp) {
+int f_puts (const char* str, FIL* fp) {
 
   sPutBuff pb;
 
@@ -5042,14 +5046,14 @@ int f_puts (const TCHAR* str, FIL* fp) {
   }
 //}}}
 //{{{
-int f_printf (FIL* fp, const TCHAR* fmt, ...) {
+int f_printf (FIL* fp, const char* fmt, ...) {
 
   va_list arp;
   sPutBuff pb;
   BYTE f, r;
   UINT i, j, w;
   DWORD v;
-  TCHAR c, d, str[32], *p;
+  char c, d, str[32], *p;
 
   putc_init (&pb, fp);
 
@@ -5091,7 +5095,7 @@ int f_printf (FIL* fp, const TCHAR* fmt, ...) {
     switch (d) {
       //{{{
       case 'S':  // String
-        p = va_arg(arp, TCHAR*);
+        p = va_arg(arp, char*);
         for (j = 0; p[j]; j++) ;
         if (!(f & 2)) {
           while (j++ < w)
@@ -5105,7 +5109,7 @@ int f_printf (FIL* fp, const TCHAR* fmt, ...) {
       //}}}
       //{{{
       case 'C':  // Character
-        putc_bfd (&pb, (TCHAR)va_arg(arp, int));
+        putc_bfd (&pb, (char)va_arg(arp, int));
         continue;
       //}}}
       //{{{
@@ -5145,7 +5149,7 @@ int f_printf (FIL* fp, const TCHAR* fmt, ...) {
       }
     i = 0;
     do {
-      d = (TCHAR)(v % r); v /= r;
+      d = (char)(v % r); v /= r;
       if (d > 9)
         d += (c == 'x') ? 0x27 : 0x07;
       str[i++] = d + '0';
