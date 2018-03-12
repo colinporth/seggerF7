@@ -1,9 +1,9 @@
 <!DOCTYPE CrossStudio_Session_File>
 <session>
  <Bookmarks>
-  <BookmarkItem objectName="" line="66" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="path[i++] = '/';" color="5"/>
-  <BookmarkItem objectName="" line="58" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="char path[] = &quot;/&quot;;" color="5"/>
   <BookmarkItem objectName="" line="77" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="3" extra="} while (fno.fname[j++]);" color="5"/>
+  <BookmarkItem objectName="" line="58" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="char path[] = &quot;/&quot;;" color="5"/>
+  <BookmarkItem objectName="" line="66" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="path[i++] = '/';" color="5"/>
  </Bookmarks>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
   <BreakpointListItem trigger="" line="3255" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="FatFs/ff.c" useHWbreakpoint="false"/>
@@ -96,7 +96,9 @@
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="288" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/ff.c" debugPath="FatFs/ff.c" selected="0" top="254" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="281" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_cortex.h" debugPath="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_cortex.h" selected="0" top="243" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="246" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_cortex.c" debugPath="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_cortex.c" selected="0" top="212" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="83" y="2395" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/CMSIS/Include./core_cm7.h" debugPath="Drivers/CMSIS/Include./core_cm7.h" selected="1" top="2385" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="2395" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/CMSIS/Include./core_cm7.h" debugPath="Drivers/CMSIS/Include./core_cm7.h" selected="0" top="2385" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="201" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/usbd_msc.cpp" debugPath="usbMsc/usbd_msc.cpp" selected="0" top="175" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="77" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="1" top="39" codecName="Default"/>
  </Files>
  <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

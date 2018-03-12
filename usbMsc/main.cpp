@@ -54,7 +54,6 @@ private:
   };
 //}}}
 cApp* gApp;
-FATFS gFatFs;
 
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
@@ -74,8 +73,8 @@ void cApp::run (bool keyboard) {
   mscInit (mLcd);
   mscStart();
 
-  char sdPath[40] = "0:/";
-  if (f_mount (&gFatFs, (char const*)sdPath, 0) == FR_OK) {
+  const char sdPath[40] = "0:/";
+  if (f_mount ((FATFS*)malloc (sizeof (FATFS)), sdPath, 0) == FR_OK) {
     char buff[256] = "/";
     readDirectory (buff);
     }

@@ -13,6 +13,7 @@ PCD_HandleTypeDef gPcdHandle;
 USBD_HandleTypeDef gUsbDevice;
 extern "C" { void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); } }
 
+#define MSC_MEDIA_PACKET 32 * 1024
 //{{{  sd card handlers
 // BSP
 __IO uint32_t readstatus = 0;
@@ -165,21 +166,17 @@ bool sdGetCapacity (uint8_t lun, uint32_t& block_num, uint16_t& block_size) {
 //{{{
 bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
+  if ((uint32_t)buf & 0x3)
+    gLcd->debug (LCD_COLOR_RED, "sdRead buf alignment %x", buf);
+
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    auto ticks = HAL_GetTick();
-
-    if ((uint32_t)buf & 0x3)
-      gLcd->debug (LCD_COLOR_RED, "sdRead buf alignment %x", buf);
-    if ((uint32_t)buf > 0x20010000)
-      gLcd->debug (LCD_COLOR_RED, "sdRead buf dma prob %x", buf);
-
-    //BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
     BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
     while (!readstatus) {}
     readstatus = 0;
-
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
-    auto took = HAL_GetTick() - ticks;
+
+    uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
+    SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, ((uint32_t)buf - alignedAddr) + blk_len*512);
 
     //gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
     return true;
@@ -191,24 +188,23 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 //{{{
 bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
+  if ((uint32_t)buf & 0x3)
+    gLcd->debug (LCD_COLOR_RED, "sdWrite buf alignment %p", buf);
+
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    if ((uint32_t)buf & 0x3)
-      gLcd->debug (LCD_COLOR_RED, "sdWrite buf alignment %p", buf);
-    if ((uint32_t)buf > 0x20010000)
-      gLcd->debug (LCD_COLOR_RED, "sdWrite buf dma prob %x", buf);
-
-    auto ticks = HAL_GetTick();
-    //BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+    uint32_t alignedAddr = (uint32_t)buf &  ~0x1F;
+    SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, blk_len*512 + ((uint32_t)buf - alignedAddr));
     BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
-    while (!writestatus) {}
+
+    uint32_t timeout = HAL_GetTick();
+    while  ((writestatus == 0) && ((HAL_GetTick() - timeout) < 2000)) {}
     writestatus = 0;
-    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
-    auto took = HAL_GetTick() - ticks;
-
-    gSdChanged = true;
-
-    //gLcd->debug (LCD_COLOR_WHITE, "w %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
-    return true;
+    while ((HAL_GetTick() - timeout) < 2000) {
+      if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
+        gSdChanged = true;
+        return true;
+        }
+      }
     }
 
   return false;
@@ -573,7 +569,6 @@ const uint8_t kMscDeviceQualifierDesc[] __attribute__((aligned(4))) = {
 //}}}
 //}}}
 //{{{  msc scsi handlers
-#define MSC_MEDIA_PACKET 32 * 1024
 //{{{  defines
 #define BOT_GET_MAX_LUN          0xFE
 #define BOT_RESET                0xFF
