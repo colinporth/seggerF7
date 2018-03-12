@@ -1611,9 +1611,11 @@ USBD_StatusTypeDef usbdLowLevelInit (USBD_HandleTypeDef* usbdHandle) {
   gPcdHandle.Init.dev_endpoints = 6;
   gPcdHandle.Init.use_dedicated_ep1 = 0;
   gPcdHandle.Init.ep0_mps = 0x40;
+
   gPcdHandle.Init.dma_enable = 0;
   gPcdHandle.Init.low_power_enable = 0;
   gPcdHandle.Init.lpm_enable = 0;
+
   gPcdHandle.Init.phy_itface = PCD_PHY_ULPI;
   gPcdHandle.Init.Sof_enable = 0;
   gPcdHandle.Init.speed = PCD_SPEED_HIGH;
