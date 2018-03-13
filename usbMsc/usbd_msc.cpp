@@ -8,16 +8,20 @@
 //}}}
 //#define USE_USB_FS
 
-bool gSdChanged = false;
 cLcd* gLcd = nullptr;
+
+bool gSdChanged = false;
 PCD_HandleTypeDef gPcdHandle;
 USBD_HandleTypeDef gUsbDevice;
 extern "C" {
+#ifdef USE_USB_FS
   void OTG_FS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); }
+#else
   void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); }
+#endif
   }
 
-#define MSC_MEDIA_PACKET 48 * 1024
+#define MSC_MEDIA_PACKET 32*1024
 //{{{  sd card handlers
 // BSP
 __IO uint32_t readstatus = 0;
@@ -1039,7 +1043,8 @@ int8_t scsiRead10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params)
 
   mscData->bot_data_length = MSC_MEDIA_PACKET;
   uint32_t len = MIN(mscData->scsiBlocklen, MSC_MEDIA_PACKET);
-  if (!sdRead (lun, mscData->bot_data, mscData->scsiBlockaddr / mscData->scsiBlocksize, len / mscData->scsiBlocksize)) {
+  if (!sdRead (lun, mscData->bot_data,
+               mscData->scsiBlockaddr / mscData->scsiBlocksize, len / mscData->scsiBlocksize)) {
     //{{{  error
     scsiSenseCode (usbdHandle, lun, HARDWARE_ERROR, UNRECOVERED_READ_ERROR);
     return -1;
@@ -1110,7 +1115,8 @@ int8_t scsiWrite10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params
   else {
     // Write ongoing
     uint32_t len = MIN(mscData->scsiBlocklen, MSC_MEDIA_PACKET);
-    if (!sdWrite (lun , mscData->bot_data, mscData->scsiBlockaddr/mscData->scsiBlocksize, len/mscData->scsiBlocksize) < 0) {
+    if (!sdWrite (lun , mscData->bot_data,
+                  mscData->scsiBlockaddr/mscData->scsiBlocksize, len/mscData->scsiBlocksize) < 0) {
       //{{{  error
       scsiSenseCode (usbdHandle, lun, HARDWARE_ERROR, WRITE_FAULT);
       return -1;
@@ -1128,7 +1134,8 @@ int8_t scsiWrite10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params
     }
 
   // prepare EP to rx packet
-  usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR, mscData->bot_data, MIN(mscData->scsiBlocklen, MSC_MEDIA_PACKET));
+  usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR,
+                              mscData->bot_data, MIN(mscData->scsiBlocklen, MSC_MEDIA_PACKET));
   return 0;
   }
 //}}}
@@ -1228,7 +1235,6 @@ uint8_t mscInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
     usbdLowLevelOpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
     }
 
-  //usbdHandle->pClassData = malloc (sizeof (sMscData));
   usbdHandle->pClassData = &gMscData;
   usbdLowLevelFlushEP (usbdHandle, MSC_EPOUT_ADDR);
   usbdLowLevelFlushEP (usbdHandle, MSC_EPIN_ADDR);
@@ -1252,8 +1258,8 @@ uint8_t mscDeInit (USBD_HandleTypeDef* usbdHandle, uint8_t cfgidx) {
   usbdLowLevelCloseEP (usbdHandle, MSC_EPOUT_ADDR);
   usbdLowLevelCloseEP (usbdHandle, MSC_EPIN_ADDR);
 
-  auto mscData = (sMscData*)usbdHandle->pClassData;
-  mscData->bot_state = USBD_BOT_IDLE;
+  //free (usbdHandle->pClassData);
+  //usbdHandle->pClassData = nullptr;
 
   return 0;
   }
