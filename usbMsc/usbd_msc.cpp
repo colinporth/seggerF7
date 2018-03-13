@@ -6,12 +6,16 @@
 #include "../common/cLcd.h"
 #include "../common/stm32746g_discovery_sd.h"
 //}}}
+//#define USE_USB_FS
 
 bool gSdChanged = false;
 cLcd* gLcd = nullptr;
 PCD_HandleTypeDef gPcdHandle;
 USBD_HandleTypeDef gUsbDevice;
-extern "C" { void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); } }
+extern "C" {
+  void OTG_FS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); }
+  void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); }
+  }
 
 #define MSC_MEDIA_PACKET 48 * 1024
 //{{{  sd card handlers
@@ -92,8 +96,8 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   HAL_NVIC_EnableIRQ (SD_DMAx_Rx_IRQn);
 
   // NVIC configuration for DMA transfer complete interrupt
-  HAL_NVIC_SetPriority(SD_DMAx_Tx_IRQn, 0x06, 0);
-  HAL_NVIC_EnableIRQ(SD_DMAx_Tx_IRQn);
+  HAL_NVIC_SetPriority (SD_DMAx_Tx_IRQn, 0x06, 0);
+  HAL_NVIC_EnableIRQ (SD_DMAx_Tx_IRQn);
   }
 //}}}
 
@@ -1441,75 +1445,96 @@ USBD_ClassTypeDef kMscHandlers = {
 //{{{
 void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
 
-  //{{{  setup gpio for usb HS
-  // Configure USB FS GPIOs
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
+   __HAL_RCC_GPIOA_CLK_ENABLE();
 
-  // CLK
-  GPIO_InitTypeDef GPIO_InitStruct;
-  GPIO_InitStruct.Pin = GPIO_PIN_5;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-  HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
+  if (pcdHandle->Instance == USB_OTG_FS) {
+    // full speed init
+    GPIO_InitTypeDef GPIO_InitStruct;
+    GPIO_InitStruct.Pin = (GPIO_PIN_11 | GPIO_PIN_12);
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
+    HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
 
-  // D0
-  GPIO_InitStruct.Pin = GPIO_PIN_3;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-  HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
+    __HAL_RCC_USB_OTG_FS_CLK_ENABLE();
+    HAL_NVIC_SetPriority (OTG_FS_IRQn, 7, 0);
+    HAL_NVIC_EnableIRQ (OTG_FS_IRQn);
+    }
 
-  // D1 D2 D3 D4 D5 D6 D7
-  GPIO_InitStruct.Pin = GPIO_PIN_0  | GPIO_PIN_1  | GPIO_PIN_5 |\
-    GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-  HAL_GPIO_Init (GPIOB, &GPIO_InitStruct);
+  else if (pcdHandle->Instance == USB_OTG_HS) {
+    //  high speed init
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOH_CLK_ENABLE();
 
-  // STP
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-  HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
+    GPIO_InitTypeDef GPIO_InitStruct;
+    //{{{  CLK
+    GPIO_InitStruct.Pin = GPIO_PIN_5;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    //}}}
+    //{{{  D0
+    GPIO_InitStruct.Pin = GPIO_PIN_3;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    //}}}
+    //{{{  D1 D2 D3 D4 D5 D6 D7
+    GPIO_InitStruct.Pin = GPIO_PIN_0  | GPIO_PIN_1  | GPIO_PIN_5 |\
+                          GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    //}}}
+    //{{{  STP
+    GPIO_InitStruct.Pin = GPIO_PIN_0;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    //}}}
+    //{{{  NXT
+    GPIO_InitStruct.Pin = GPIO_PIN_4;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
+    HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
+    //}}}
+    //{{{  DIR
+    GPIO_InitStruct.Pin = GPIO_PIN_2;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    //}}}
 
-  // NXT
-  GPIO_InitStruct.Pin = GPIO_PIN_4;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-  HAL_GPIO_Init (GPIOH, &GPIO_InitStruct);
-
-  // DIR
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-  HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
-  //}}}
-
-  // Enable usb HS Clocks
-  __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
-  __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
-
-  // Set usb HS Interrupt to the lowest priority, enable
-  HAL_NVIC_SetPriority (OTG_HS_IRQn, 7, 0);
-  HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
+    __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
+    __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
+    HAL_NVIC_SetPriority (OTG_HS_IRQn, 7, 0);
+    HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
+    }
   }
 //}}}
 //{{{
 void HAL_PCD_MspDeInit (PCD_HandleTypeDef* pcdHandle) {
 
-  // Disable USB HS Clocks
-  __HAL_RCC_USB_OTG_HS_CLK_DISABLE();
-  __HAL_RCC_SYSCFG_CLK_DISABLE();
+  if (pcdHandle->Instance == USB_OTG_FS) {
+    // Disable USB FS Clock
+    __HAL_RCC_USB_OTG_FS_CLK_DISABLE();
+    __HAL_RCC_SYSCFG_CLK_DISABLE();
+    }
+  else if (pcdHandle->Instance == USB_OTG_HS) {
+    // Disable USB HS Clocks
+    __HAL_RCC_USB_OTG_HS_CLK_DISABLE();
+    __HAL_RCC_SYSCFG_CLK_DISABLE();
+    }
   }
 //}}}
 //{{{
@@ -1591,32 +1616,44 @@ void HAL_PCD_DisconnectCallback (PCD_HandleTypeDef* pcdHandle) {
 // usbd lowLevel
 //{{{
 USBD_StatusTypeDef usbdLowLevelInit (USBD_HandleTypeDef* usbdHandle) {
-// Be aware that enabling DMA mode will result in data being sent only by multiple of 4 packet sizes.
-// This is due to the fact that USB DMA does not allow sending data from non word-aligned addresses.
 
+gPcdHandle.Init.use_dedicated_ep1 = 0;
+gPcdHandle.Init.ep0_mps = 0x40;
+gPcdHandle.Init.dma_enable = 0;
+gPcdHandle.Init.low_power_enable = 0;
+gPcdHandle.Init.lpm_enable = 0;
+gPcdHandle.Init.Sof_enable = 0;
+gPcdHandle.pData = usbdHandle;
+usbdHandle->pData = &gPcdHandle;
+
+#ifdef USE_USB_FS
+  // Set LL Driver parameters
+  gPcdHandle.Instance = USB_OTG_FS;
+  gPcdHandle.Init.dev_endpoints = 4;
+  gPcdHandle.Init.phy_itface = PCD_PHY_EMBEDDED;
+  gPcdHandle.Init.speed = PCD_SPEED_FULL;
+  gPcdHandle.Init.vbus_sensing_enable = 0;
+
+  // Initialize LL Driver
+  HAL_PCD_Init (&gPcdHandle);
+  HAL_PCDEx_SetRxFiFo (&gPcdHandle, 0x80);
+  HAL_PCDEx_SetTxFiFo (&gPcdHandle, 0, 0x40);
+  HAL_PCDEx_SetTxFiFo (&gPcdHandle, 1, 0x80);
+
+#else
+  // Set LL Driver parameters
   gPcdHandle.Instance = USB_OTG_HS;
   gPcdHandle.Init.dev_endpoints = 6;
-  gPcdHandle.Init.use_dedicated_ep1 = 0;
-  gPcdHandle.Init.ep0_mps = 0x40;
-
-  gPcdHandle.Init.dma_enable = 0;
-  gPcdHandle.Init.low_power_enable = 0;
-  gPcdHandle.Init.lpm_enable = 0;
-
   gPcdHandle.Init.phy_itface = PCD_PHY_ULPI;
-  gPcdHandle.Init.Sof_enable = 0;
   gPcdHandle.Init.speed = PCD_SPEED_HIGH;
   gPcdHandle.Init.vbus_sensing_enable = 1;
-
-  // Link The driver to the stack
-  gPcdHandle.pData = usbdHandle;
-  usbdHandle->pData = &gPcdHandle;
 
   // Initialize LL Driver
   HAL_PCD_Init (&gPcdHandle);
   HAL_PCDEx_SetRxFiFo (&gPcdHandle, 0x200);
   HAL_PCDEx_SetTxFiFo (&gPcdHandle, 0, 0x80);
   HAL_PCDEx_SetTxFiFo (&gPcdHandle, 1, 0x174);
+#endif
 
   return USBD_OK;
   }

@@ -14,36 +14,17 @@ void ff_rel_grant (_SYNC_t sobj);              // Unlock sync object
 int ff_del_syncobj (_SYNC_t sobj);             // Delete a sync object
 //}}}
 //{{{  defines
-#define _DF1S 0
-#define _EXCVT { \
-        0x43,0x55,0x45,0x41,0x41,0x41,0x41,0x43,0x45,0x45,0x45,0x49,0x49,0x49,0x41,0x41, \
-        0x45,0x92,0x92,0x4F,0x4F,0x4F,0x55,0x55,0x59,0x4F,0x55,0x4F,0x9C,0x4F,0x9E,0x9F, \
-        0x41,0x49,0x4F,0x55,0xA5,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF, \
-        0xB0,0xB1,0xB2,0xB3,0xB4,0x41,0x41,0x41,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF, \
-        0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0x41,0x41,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF, \
-        0xD1,0xD1,0x45,0x45,0x45,0x49,0x49,0x49,0x49,0xD9,0xDA,0xDB,0xDC,0xDD,0x49,0xDF, \
-        0x4F,0xE1,0x4F,0x4F,0x4F,0x4F,0xE6,0xE8,0xE8,0x55,0x55,0x55,0x59,0x59,0xEE,0xEF, \
-        0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF}
-
-/* Character code support macros */
-#define IsUpper(c)  (((c)>='A')&&((c)<='Z'))
-#define IsLower(c)  (((c)>='a')&&((c)<='z'))
-#define IsDigit(c)  (((c)>='0')&&((c)<='9'))
-
-#define IsDBCS1(c)  0
-#define IsDBCS2(c)  0
-
-//{{{  Additional file attribute bits for internal use */
+//{{{  Additional file attribute bits for internal use 
 #define AM_VOL    0x08  /* Volume label */
 #define AM_LFN    0x0F  /* LFN entry */
 #define AM_MASK   0x3F  /* Mask of defined bits */
 //}}}
-//{{{  Additional file access control and file status flags for internal use */
+//{{{  Additional file access control and file status flags for internal use 
 #define FA_SEEKEND  0x20  /* Seek to end of the file on file open */
 #define FA_MODIFIED 0x40  /* File has been modified */
 #define FA_DIRTY  0x80  /* FIL.buf[] needs to be written-back */
 //}}}
-//{{{  Name status flags in fn[] */
+//{{{  Name status flags in fn[] 
 #define NSFLAG    11    /* Index of the name status byte */
 #define NS_LOSS   0x01  /* Out of 8.3 format */
 #define NS_LFN    0x02  /* Force to create LFN entry */
@@ -54,7 +35,7 @@ int ff_del_syncobj (_SYNC_t sobj);             // Delete a sync object
 #define NS_NOLFN  0x40  /* Do not find LFN */
 #define NS_NONAME 0x80  /* Not followed */
 //}}}
-//{{{  Limits and boundaries */
+//{{{  Limits and boundaries 
 #define MAX_DIR   0x200000    /* Max size of FAT directory */
 #define MAX_DIR_EX  0x10000000    /* Max size of exFAT directory */
 #define MAX_FAT12 0xFF5     /* Max FAT12 clusters (differs from specs, but correct for real DOS/Windows behavior) */
@@ -62,7 +43,7 @@ int ff_del_syncobj (_SYNC_t sobj);             // Delete a sync object
 #define MAX_FAT32 0x0FFFFFF5    /* Max FAT32 clusters (not specified, practical limit) */
 #define MAX_EXFAT 0x7FFFFFFD    /* Max exFAT clusters (differs from specs, implementation limit) */
 //}}}
-
+//{{{  fat defines
 /* FatFs refers the FAT structure as simple byte array instead of structure member
 / because the C structure is not binary compatible between different platforms */
 #define BS_JmpBoot      0   /* x86 jump instruction (3-byte) */
@@ -79,6 +60,7 @@ int ff_del_syncobj (_SYNC_t sobj);             // Delete a sync object
 #define BPB_NumHeads    26  /* Number of heads for int13h (WORD) */
 #define BPB_HiddSec     28  /* Volume offset from top of the drive (DWORD) */
 #define BPB_TotSec32    32  /* Volume size (32-bit) [sector] (DWORD) */
+
 #define BS_DrvNum       36  /* Physical drive number for int13h (BYTE) */
 #define BS_NTres        37  /* Error flag (BYTE) */
 #define BS_BootSig      38  /* Extended boot signature (BYTE) */
@@ -94,6 +76,7 @@ int ff_del_syncobj (_SYNC_t sobj);             // Delete a sync object
 #define BPB_RootClus32  44   /* FAT32: Root directory cluster (DWORD) */
 #define BPB_FSInfo32    48   /* FAT32: Offset of FSINFO sector (WORD) */
 #define BPB_BkBootSec32 50   /* FAT32: Offset of backup boot sector (WORD) */
+
 #define BS_DrvNum32     64   /* FAT32: Physical drive number for int13h (BYTE) */
 #define BS_NTres32      65   /* FAT32: Error flag (BYTE) */
 #define BS_BootSig32    66   /* FAT32: Extended boot signature (BYTE) */
@@ -183,51 +166,36 @@ int ff_del_syncobj (_SYNC_t sobj);             // Delete a sync object
 #define PTE_EdCyl     7   /* MBR PTE: End cylinder */
 #define PTE_StLba     8   /* MBR PTE: Start in LBA */
 #define PTE_SizLba    12  /* MBR PTE: Size in LBA */
+//}}}
 
-/* Post process after fatal error on file operation */
-#define ABORT(fs, result)    { fp->err = (BYTE)(result); LEAVE_FF(fs, result); }
+// Post process after fatal error on file operation
+#define ABORT(fs, result)  { fp->err = (BYTE)(result); LEAVE_FF(fs, result); }
 
-/* Reentrancy related */
+// Reentrancy related
 #if _FS_REENTRANT
-  #define ENTER_FF(fs)    { if (!lock_fs(fs)) return FR_TIMEOUT; }
+  #define ENTER_FF(fs) { if (!lock_fs(fs)) return FR_TIMEOUT; }
   #define LEAVE_FF(fs, result) { unlock_fs(fs, result); return result; }
 #else
   #define ENTER_FF(fs)
   #define LEAVE_FF(fs, result) return result
 #endif
 
-/* Definitions of volume - partition conversion */
+// Definitions of volume - partition conversion
 #if _MULTI_PARTITION
-  #define LD2PD(vol) VolToPart[vol].pd  /* Get physical drive number */
-  #define LD2PT(vol) VolToPart[vol].pt  /* Get partition index */
+  #define LD2PD(vol) VolToPart[vol].pd  // Get physical drive number
+  #define LD2PT(vol) VolToPart[vol].pt  // Get partition index
 #else
-  #define LD2PD(vol) (BYTE)(vol)  /* Each logical drive is bound to the same physical drive number */
-  #define LD2PT(vol) 0      /* Find first valid partition or in SFD */
-#endif
+  #define LD2PD(vol) (BYTE)(vol)  // Each logical drive is bound to the same physical drive number
+  #define LD2PT(vol) 0            // Find first valid partition or in SFD 
+  #endif
 
 #if _MAX_SS == _MIN_SS
-  #define SS(fs)  ((UINT)_MAX_SS) /* Fixed sector size */
+  #define SS(fs)  ((UINT)_MAX_SS) // Fixed sector size
 #else
-  #define SS(fs)  ((fs)->ssize) /* Variable sector size */
+  #define SS(fs)  ((fs)->ssize)   // Variable sector size
 #endif
-
-/* File lock controls */
-typedef struct {
-  FATFS *fs;  /* Object ID 1, volume (NULL:blank entry) */
-  DWORD clu;  /* Object ID 2, containing directory (0:root) */
-  DWORD ofs;  /* Object ID 3, offset in the directory */
-  WORD ctr;   /* Object open counter, 0:none, 0x01..0xFF:read mode open count, 0x100:write mode */
-  } FILESEM;
 //}}}
-//{{{
-static FATFS* FatFs[_VOLUMES];
-static WORD Fsid;               /* File system mount ID */
-
-static BYTE CurrVol;            /* Current drive */
-static FILESEM Files[_FS_LOCK]; /* Open object lock semaphores */
-
-static const BYTE ExCvt[] = _EXCVT; /* Upper conversion table for SBCS extended characters */
-
+//{{{  macros
 #define MAXDIRB(nc) ((nc + 44U) / 15 * SZDIRE)
 
 #define INIT_NAMBUF(fs) { \
@@ -238,7 +206,15 @@ static const BYTE ExCvt[] = _EXCVT; /* Upper conversion table for SBCS extended 
   (fs)->dirbuf = (BYTE*)(lfn+_MAX_LFN+1);              \
   }
 //}}}
-
+//{{{  struct FILESEM
+// File lock controls
+typedef struct {
+  FATFS *fs; // Object ID 1, volume (NULL:blank entry)
+  DWORD clu; // Object ID 2, containing directory (0:root)
+  DWORD ofs; // Object ID 3, offset in the directory
+  WORD ctr;  // Object open counter, 0:none, 0x01..0xFF:read mode open count, 0x100:write mode
+  } FILESEM;
+//}}}
 //{{{  struct sPutBuff
 typedef struct {
   FIL* fp;       // Ptr to the writing file
@@ -247,7 +223,33 @@ typedef struct {
   BYTE buf[64];  // Write buffer
   } sPutBuff;
 //}}}
+//{{{  vars
+static FATFS* FatFs[_VOLUMES];
+static WORD Fsid;               /* File system mount ID */
+static BYTE CurrVol;            /* Current drive */
+static FILESEM Files[_FS_LOCK]; /* Open object lock semaphores */
+//}}}
+
 //{{{  unicode conversion
+// Upper conversion table for SBCS extended characters
+static const BYTE ExCvt[] = {
+  0x43,0x55,0x45,0x41,0x41,0x41,0x41,0x43,0x45,0x45,0x45,0x49,0x49,0x49,0x41,0x41,
+  0x45,0x92,0x92,0x4F,0x4F,0x4F,0x55,0x55,0x59,0x4F,0x55,0x4F,0x9C,0x4F,0x9E,0x9F,
+  0x41,0x49,0x4F,0x55,0xA5,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,
+  0xB0,0xB1,0xB2,0xB3,0xB4,0x41,0x41,0x41,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF,
+  0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0x41,0x41,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,
+  0xD1,0xD1,0x45,0x45,0x45,0x49,0x49,0x49,0x49,0xD9,0xDA,0xDB,0xDC,0xDD,0x49,0xDF,
+  0x4F,0xE1,0x4F,0x4F,0x4F,0x4F,0xE6,0xE8,0xE8,0x55,0x55,0x55,0x59,0x59,0xEE,0xEF,
+  0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF
+  };
+
+#define IsUpper(c)  (((c)>='A')&&((c)<='Z'))
+#define IsLower(c)  (((c)>='a')&&((c)<='z'))
+#define IsDigit(c)  (((c)>='0')&&((c)<='9'))
+
+#define IsDBCS1(c)  0
+#define IsDBCS2(c)  0
+
 static const WCHAR kTable[] = {
   0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7, 0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
   0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9, 0x00FF, 0x00D6, 0x00DC, 0x00F8, 0x00A3, 0x00D8, 0x00D7, 0x0192,
@@ -1556,9 +1558,6 @@ static void get_xdir_info (BYTE* dirb, FILINFO* fno) {
     if ((si % SZDIRE) == 0)
       si += 2;    /* Skip entry type field */
     w = convert (ld_word (dirb + si), 0);  /* Get a character and Unicode -> OEM */
-    if (_DF1S && w >= 0x100) {        /* Is it a double byte char? (always false at SBCS cfg) */
-      fno->fname[di++] = (char)(w >> 8);  /* Put 1st byte of the DBC */
-      }
     if (w == 0 || di >= _MAX_LFN) {
       di = 0;
       break;
@@ -2013,9 +2012,6 @@ static void get_fileinfo (DIR* dp, FILINFO* fno) {
           i = 0;
           break;
           } /* No LFN if it could not be converted */
-        if (_DF1S && w >= 0x100) {  /* Put 1st byte if it is a DBC (always false at SBCS cfg) */
-          fno->fname[i++] = (char)(w >> 8);
-        }
         if (i >= _MAX_LFN) {
           i = 0;
           break;
@@ -2173,26 +2169,15 @@ static FRESULT create_name (DIR* dp, const char** path) {
       cf |= NS_LFN;       /* Force create LFN entry */
       }
 
-    if (_DF1S && w >= 0x100) {
-      //{{{  Is this DBC? (always false at SBCS cfg) */
-      if (i >= ni - 1) {
-        cf |= NS_LOSS | NS_LFN; i = ni;
-        continue;
-        }
-      dp->fn[i++] = (BYTE)(w >> 8);
+    // SBC
+    if (!w || chk_chr("+,;=[]", w)) { /* Replace illegal characters for SFN */
+      w = '_'; cf |= NS_LOSS | NS_LFN;/* Lossy conversion */
       }
-      //}}}
-    else {
-      //{{{  SBC */
-      if (!w || chk_chr("+,;=[]", w)) { /* Replace illegal characters for SFN */
-        w = '_'; cf |= NS_LOSS | NS_LFN;/* Lossy conversion */
-        }
-      else if (IsUpper(w)) /* ASCII large capital */
-        b |= 2;
-      else if (IsLower(w)) /* ASCII small capital */
-        b |= 1; w -= 0x20;
-      }
-      //}}}
+    else if (IsUpper(w)) /* ASCII large capital */
+      b |= 2;
+    else if (IsLower(w)) /* ASCII small capital */
+      b |= 1; w -= 0x20;
+
     dp->fn[i++] = (BYTE)w;
     }
 
@@ -3944,8 +3929,6 @@ FRESULT f_getlabel (const char* path, char* label, DWORD* vsn) {
             w = convert (w, 0); /* Unicode -> OEM */
             if (w == 0)
               w = '?';  /* Replace wrong character */
-            if (_DF1S && w >= 0x100)
-              label[di++] = (char)(w >> 8);
             label[di++] = (char)w;
             }
 
