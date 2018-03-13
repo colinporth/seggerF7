@@ -79,7 +79,6 @@ public:
     }
   //}}}
 
-
   //{{{
   int getScrollScale() {
     return 4;

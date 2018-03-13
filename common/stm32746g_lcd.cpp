@@ -90,7 +90,7 @@ void FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t 
 //}}}
 //{{{
 void FillBuffer (uint32_t LayerIndex, void* pDst, uint32_t xSize, uint32_t ySize,
-                    uint32_t OffLine, uint32_t ColorIndex) {
+                 uint32_t OffLine, uint32_t ColorIndex) {
 
   hDma2dHandler.Init.Mode = DMA2D_R2M;
   if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565)
@@ -103,11 +103,11 @@ void FillBuffer (uint32_t LayerIndex, void* pDst, uint32_t xSize, uint32_t ySize
     if (HAL_DMA2D_ConfigLayer (&hDma2dHandler, LayerIndex) == HAL_OK)
       if (HAL_DMA2D_Start (&hDma2dHandler, ColorIndex, (uint32_t)pDst, xSize, ySize) == HAL_OK)
         HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
-}
+  }
 //}}}
 //{{{
-void ConvertLineToARGB8888 (void* pSrc, void* pDst, uint32_t xSize, uint32_t ColorMode)
-{
+void ConvertLineToARGB8888 (void* pSrc, void* pDst, uint32_t xSize, uint32_t ColorMode) {
+
   hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
   hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
   hDma2dHandler.Init.OutputOffset = 0;
@@ -157,7 +157,7 @@ uint8_t BSP_LCD_Init() {
   hLtdcHandler.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
   hLtdcHandler.Instance = LTDC;
 
-  if(HAL_LTDC_GetState(&hLtdcHandler) == HAL_LTDC_STATE_RESET)
+  if (HAL_LTDC_GetState(&hLtdcHandler) == HAL_LTDC_STATE_RESET)
     BSP_LCD_MspInit (&hLtdcHandler, NULL);
   HAL_LTDC_Init (&hLtdcHandler);
 
@@ -220,46 +220,44 @@ void BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
 
 void BSP_LCD_SelectLayer (uint32_t LayerIndex) { ActiveLayer = LayerIndex; }
 //{{{
-void BSP_LCD_SetLayerVisible (uint32_t LayerIndex, FunctionalState State)
-{
-  if(State == ENABLE)
+void BSP_LCD_SetLayerVisible (uint32_t LayerIndex, FunctionalState State) {
+
+  if (State == ENABLE)
     __HAL_LTDC_LAYER_ENABLE(&hLtdcHandler, LayerIndex);
   else
     __HAL_LTDC_LAYER_DISABLE(&hLtdcHandler, LayerIndex);
+
   __HAL_LTDC_RELOAD_CONFIG(&hLtdcHandler);
-}
+  }
 //}}}
 //{{{
-void BSP_LCD_SetLayerVisible_NoReload (uint32_t LayerIndex, FunctionalState State)
-{
-  if(State == ENABLE)
+void BSP_LCD_SetLayerVisible_NoReload (uint32_t LayerIndex, FunctionalState State) {
+
+  if (State == ENABLE)
     __HAL_LTDC_LAYER_ENABLE(&hLtdcHandler, LayerIndex);
   else
     __HAL_LTDC_LAYER_DISABLE(&hLtdcHandler, LayerIndex);
-  // Do not Sets the Reload
-}
+  }
 //}}}
 //{{{
 void BSP_LCD_SetTransparency (uint32_t LayerIndex, uint8_t Transparency) {
-  HAL_LTDC_SetAlpha(&hLtdcHandler, Transparency, LayerIndex);
+  HAL_LTDC_SetAlpha (&hLtdcHandler, Transparency, LayerIndex);
   }
 //}}}
 //{{{
 void BSP_LCD_SetTransparency_NoReload (uint32_t LayerIndex, uint8_t Transparency) {
-  HAL_LTDC_SetAlpha_NoReload(&hLtdcHandler, Transparency, LayerIndex);
+  HAL_LTDC_SetAlpha_NoReload (&hLtdcHandler, Transparency, LayerIndex);
   }
 //}}}
 //{{{
-void BSP_LCD_SetLayerAddress (uint32_t LayerIndex, uint32_t Address)
-{
-  HAL_LTDC_SetAddress(&hLtdcHandler, Address, LayerIndex);
-}
+void BSP_LCD_SetLayerAddress (uint32_t LayerIndex, uint32_t Address) {
+  HAL_LTDC_SetAddress (&hLtdcHandler, Address, LayerIndex);
+  }
 //}}}
 //{{{
 void BSP_LCD_SetLayerAddress_NoReload (uint32_t LayerIndex, uint32_t Address) {
-  HAL_LTDC_SetAddress_NoReload(&hLtdcHandler, Address, LayerIndex);
+  HAL_LTDC_SetAddress_NoReload (&hLtdcHandler, Address, LayerIndex);
   }
-
 //}}}
 void BSP_LCD_Reload (uint32_t ReloadType) { HAL_LTDC_Reload (&hLtdcHandler, ReloadType); }
 
@@ -273,24 +271,23 @@ uint16_t BSP_LCD_GetTextHeight() { return Font16.mHeight; }
 //{{{
 uint32_t BSP_LCD_ReadPixel (uint16_t Xpos, uint16_t Ypos) {
 
-  uint32_t ret = 0;
-
   if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB8888)
     // Read data value from SDRAM memory
-    ret = *(__IO uint32_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress + (4*(Ypos*BSP_LCD_GetXSize() + Xpos)));
+    return *(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress + (4*(Ypos*BSP_LCD_GetXSize() + Xpos)));
+
   else if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB888)
     // Read data value from SDRAM memory
-    ret = (*(__IO uint32_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress + (4*(Ypos*BSP_LCD_GetXSize() + Xpos))) & 0x00FFFFFF);
+    return (*(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress + (4*(Ypos*BSP_LCD_GetXSize() + Xpos))) & 0x00FFFFFF);
+
   else if ((hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565) || \
            (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB4444) || \
            (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_AL88))
     // Read data value from SDRAM memory
-    ret = *(__IO uint16_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress + (2*(Ypos*BSP_LCD_GetXSize() + Xpos)));
+    return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress + (2*(Ypos*BSP_LCD_GetXSize() + Xpos)));
+
   else
     // Read data value from SDRAM memory
-    ret = *(__IO uint8_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress + (2*(Ypos*BSP_LCD_GetXSize() + Xpos)));
-
-  return ret;
+    return *(__IO uint8_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress + (2*(Ypos*BSP_LCD_GetXSize() + Xpos)));
   }
 //}}}
 
@@ -386,9 +383,9 @@ void BSP_LCD_DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* pt
 //}}}
 
 //{{{
-void BSP_LCD_DrawHLine (uint16_t Xpos, uint16_t Ypos, uint16_t Length)
-{
-  uint32_t  Xaddress = 0;
+void BSP_LCD_DrawHLine (uint16_t Xpos, uint16_t Ypos, uint16_t Length) {
+
+  uint32_t Xaddress = 0;
 
   // Get the line address
   if(hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565)
@@ -401,8 +398,8 @@ void BSP_LCD_DrawHLine (uint16_t Xpos, uint16_t Ypos, uint16_t Length)
   }
 //}}}
 //{{{
-void BSP_LCD_DrawVLine (uint16_t Xpos, uint16_t Ypos, uint16_t Length)
-{
+void BSP_LCD_DrawVLine (uint16_t Xpos, uint16_t Ypos, uint16_t Length) {
+
   uint32_t  Xaddress = 0;
 
   // Get the line address
@@ -412,80 +409,70 @@ void BSP_LCD_DrawVLine (uint16_t Xpos, uint16_t Ypos, uint16_t Length)
     Xaddress = (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress) + 4*(BSP_LCD_GetXSize()*Ypos + Xpos);
 
   // Write line
-  FillBuffer(ActiveLayer, (uint32_t *)Xaddress, 1, Length, (BSP_LCD_GetXSize() - 1), TextColor);
-}
+  FillBuffer (ActiveLayer, (uint32_t *)Xaddress, 1, Length, (BSP_LCD_GetXSize() - 1), TextColor);
+  }
 //}}}
 //{{{
-void BSP_LCD_DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
-{
-  int16_t deltax = 0, deltay = 0, x = 0, y = 0, xinc1 = 0, xinc2 = 0,
-  yinc1 = 0, yinc2 = 0, den = 0, num = 0, num_add = 0, num_pixels = 0,
-  curpixel = 0;
+void BSP_LCD_DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
 
-  deltax = ABS(x2 - x1);        // The difference between the x's
-  deltay = ABS(y2 - y1);        // The difference between the y's
-  x = x1;                       // Start x off at the first pixel
-  y = y1;                       // Start y off at the first pixel
+  int16_t xinc1 = 0, xinc2 = 0, yinc1 = 0, yinc2 = 0, den = 0, num = 0, num_add = 0, num_pixels = 0;
 
-  if (x2 >= x1)                 // The x-values are increasing
-  {
+  int16_t deltax = ABS(x2 - x1);        // The difference between the x's
+  int16_t deltay = ABS(y2 - y1);        // The difference between the y's
+  int16_t x = x1;                       // Start x off at the first pixel
+  int16_t y = y1;                       // Start y off at the first pixel
+
+  if (x2 >= x1) { // The x-values are increasing
     xinc1 = 1;
     xinc2 = 1;
-  }
-  else                          // The x-values are decreasing
-  {
+    }
+  else {          // The x-values are decreasing
     xinc1 = -1;
     xinc2 = -1;
-  }
+    }
 
-  if (y2 >= y1)                 // The y-values are increasing
-  {
+  if (y2 >= y1) { // The y-values are increasing
     yinc1 = 1;
     yinc2 = 1;
-  }
-  else                          // The y-values are decreasing
-  {
+    }
+  else {          // The y-values are decreasing
     yinc1 = -1;
     yinc2 = -1;
-  }
+    }
 
-  if (deltax >= deltay)         // There is at least one x-value for every y-value
-  {
+  if (deltax >= deltay) {        // There is at least one x-value for every y-value
     xinc1 = 0;                  // Don't change the x when numerator >= denominator
     yinc2 = 0;                  // Don't change the y for every iteration
     den = deltax;
     num = deltax / 2;
     num_add = deltay;
     num_pixels = deltax;         // There are more x-values than y-values
-  }
-  else                          // There is at least one y-value for every x-value
-  {
+    }
+  else {                         // There is at least one y-value for every x-value
     xinc2 = 0;                  // Don't change the x for every iteration
     yinc1 = 0;                  // Don't change the y when numerator >= denominator
     den = deltay;
     num = deltay / 2;
     num_add = deltax;
     num_pixels = deltay;         // There are more y-values than x-values
-  }
-
-  for (curpixel = 0; curpixel <= num_pixels; curpixel++)
-  {
-    BSP_LCD_DrawPixel(x, y, TextColor);   // Draw the current pixel
-    num += num_add;                            // Increase the numerator by the top of the fraction
-    if (num >= den)                           // Check if numerator >= denominator
-    {
-      num -= den;                             // Calculate the new numerator value
-      x += xinc1;                             // Change the x as appropriate
-      y += yinc1;                             // Change the y as appropriate
     }
-    x += xinc2;                               // Change the x as appropriate
-    y += yinc2;                               // Change the y as appropriate
+
+  for (int16_t curpixel = 0; curpixel <= num_pixels; curpixel++) {
+    BSP_LCD_DrawPixel (x, y, TextColor);
+    num += num_add;     // Increase the numerator by the top of the fraction
+    if (num >= den) {   // Check if numerator >= denominator
+      num -= den;       // Calculate the new numerator value
+      x += xinc1;       // Change the x as appropriate
+      y += yinc1;       // Change the y as appropriate
+      }
+    x += xinc2;         // Change the x as appropriate
+    y += yinc2;         // Change the y as appropriate
+    }
   }
-}
 //}}}
 //{{{
-void BSP_LCD_DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height)
-{
+void BSP_LCD_DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
+
   // Draw horizontal lines
   BSP_LCD_DrawHLine(Xpos, Ypos, Width);
   BSP_LCD_DrawHLine(Xpos, (Ypos+ Height), Width);
@@ -493,14 +480,14 @@ void BSP_LCD_DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t He
   // Draw vertical lines
   BSP_LCD_DrawVLine(Xpos, Ypos, Height);
   BSP_LCD_DrawVLine((Xpos + Width), Ypos, Height);
-}
+  }
 //}}}
 //{{{
-void BSP_LCD_DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius)
-{
-  int32_t   decision;    // Decision Variable
-  uint32_t  current_x;   // Current X Value
-  uint32_t  current_y;   // Current Y Value
+void BSP_LCD_DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
+
+  int32_t decision;    // Decision Variable
+  uint32_t current_x;   // Current X Value
+  uint32_t current_y;   // Current Y Value
 
   decision = 3 - (Radius << 1);
   current_x = 0;
@@ -523,31 +510,30 @@ void BSP_LCD_DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius)
       current_y--;
       }
     current_x++;
+    }
   }
-}
 //}}}
 //{{{
-void BSP_LCD_DrawPolygon (pPoint Points, uint16_t PointCount)
-{
+void BSP_LCD_DrawPolygon (pPoint Points, uint16_t PointCount) {
+
   int16_t x = 0, y = 0;
 
   if (PointCount < 2)
     return;
 
-  BSP_LCD_DrawLine(Points->X, Points->Y, (Points+PointCount-1)->X, (Points+PointCount-1)->Y);
+  BSP_LCD_DrawLine (Points->X, Points->Y, (Points+PointCount-1)->X, (Points+PointCount-1)->Y);
 
-  while(--PointCount)
-  {
+  while(--PointCount) {
     x = Points->X;
     y = Points->Y;
     Points++;
-    BSP_LCD_DrawLine(x, y, Points->X, Points->Y);
+    BSP_LCD_DrawLine (x, y, Points->X, Points->Y);
+    }
   }
-}
 //}}}
 //{{{
-void BSP_LCD_DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius)
-{
+void BSP_LCD_DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
+
   int x = 0, y = -YRadius, err = 2-2*XRadius, e2;
   float k = 0, rad1 = 0, rad2 = 0;
 
@@ -565,16 +551,20 @@ void BSP_LCD_DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius)
     e2 = err;
     if (e2 <= x) {
       err += ++x*2+1;
-      if (-y == x && e2 <= y) e2 = 0;
+      if (-y == x && e2 <= y)
+        e2 = 0;
+      }
+    if (e2 > y)
+      err += ++y*2+1;
     }
-    if (e2 > y) err += ++y*2+1;
-  }
+
   while (y <= 0);
-}
+  }
 //}}}
 //{{{
 void BSP_LCD_DrawPixel (uint16_t Xpos, uint16_t Ypos, uint32_t RGB_Code) {
-  // Write data value to all SDRAM memory
+// Write data value to all SDRAM memory
+
   if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565)
     *(__IO uint16_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress + (2*(Ypos*BSP_LCD_GetXSize() + Xpos))) = (uint16_t)RGB_Code;
   else
@@ -582,8 +572,8 @@ void BSP_LCD_DrawPixel (uint16_t Xpos, uint16_t Ypos, uint32_t RGB_Code) {
   }
 //}}}
 //{{{
-void BSP_LCD_DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp)
-{
+void BSP_LCD_DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
+
   uint32_t index = 0, width = 0, height = 0, bit_pixel = 0;
   uint32_t address;
   uint32_t input_color_mode = 0;
@@ -615,16 +605,15 @@ void BSP_LCD_DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp)
   pbmp += (index + (width * (height - 1) * (bit_pixel/8)));
 
   // Convert picture to ARGB8888 pixel format
-  for(index=0; index < height; index++)
-  {
+  for(index=0; index < height; index++) {
     // Pixel format conversion
     ConvertLineToARGB8888((uint32_t *)pbmp, (uint32_t *)address, width, input_color_mode);
 
     // Increment the source and destination buffers
     address+=  (BSP_LCD_GetXSize()*4);
     pbmp -= width*(bit_pixel/8);
+    }
   }
-}
 //}}}
 
 //{{{
@@ -633,8 +622,8 @@ void BSP_LCD_Clear (uint32_t Color) {
   }
 //}}}
 //{{{
-void BSP_LCD_FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height)
-{
+void BSP_LCD_FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
+
   uint32_t  x_address = 0;
 
   // Get the rectangle start address
@@ -645,52 +634,50 @@ void BSP_LCD_FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t He
 
   // Fill the rectangle
   FillBuffer (ActiveLayer, (uint32_t *)x_address, Width, Height, (BSP_LCD_GetXSize() - Width), TextColor);
-}
+  }
 //}}}
 //{{{
-void BSP_LCD_FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius)
-{
+void BSP_LCD_FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
+
   int32_t  decision;     // Decision Variable
   uint32_t  current_x;   // Current X Value
   uint32_t  current_y;   // Current Y Value
-
   decision = 3 - (Radius << 1);
-
   current_x = 0;
   current_y = Radius;
 
   while (current_x <= current_y) {
     if(current_y > 0) {
-      BSP_LCD_DrawHLine(Xpos - current_y, Ypos + current_x, 2*current_y);
-      BSP_LCD_DrawHLine(Xpos - current_y, Ypos - current_x, 2*current_y);
-    }
+      BSP_LCD_DrawHLine (Xpos - current_y, Ypos + current_x, 2*current_y);
+      BSP_LCD_DrawHLine (Xpos - current_y, Ypos - current_x, 2*current_y);
+      }
 
     if(current_x > 0) {
-      BSP_LCD_DrawHLine(Xpos - current_x, Ypos - current_y, 2*current_x);
-      BSP_LCD_DrawHLine(Xpos - current_x, Ypos + current_y, 2*current_x);
-    }
+      BSP_LCD_DrawHLine (Xpos - current_x, Ypos - current_y, 2*current_x);
+      BSP_LCD_DrawHLine (Xpos - current_x, Ypos + current_y, 2*current_x);
+      }
     if (decision < 0)
       decision += (current_x << 2) + 6;
     else {
       decision += ((current_x - current_y) << 2) + 10;
       current_y--;
-    }
+      }
     current_x++;
-  }
+    }
 
-  BSP_LCD_DrawCircle(Xpos, Ypos, Radius);
-}
+  BSP_LCD_DrawCircle (Xpos, Ypos, Radius);
+  }
 //}}}
 //{{{
-void BSP_LCD_FillPolygon (pPoint Points, uint16_t PointCount)
-{
+void BSP_LCD_FillPolygon (pPoint Points, uint16_t PointCount) {
+
   int16_t X = 0, Y = 0, X2 = 0, Y2 = 0, X_center = 0, Y_center = 0, X_first = 0, Y_first = 0, pixelX = 0, pixelY = 0, counter = 0;
   uint16_t  image_left = 0, image_right = 0, image_top = 0, image_bottom = 0;
 
   image_left = image_right = Points->X;
   image_top= image_bottom = Points->Y;
 
-  for(counter = 1; counter < PointCount; counter++) {
+  for (counter = 1; counter < PointCount; counter++) {
     pixelX = POLY_X(counter);
     if(pixelX < image_left)
       image_left = pixelX;
@@ -702,9 +689,9 @@ void BSP_LCD_FillPolygon (pPoint Points, uint16_t PointCount)
       image_top = pixelY;
     if(pixelY > image_bottom)
       image_bottom = pixelY;
-  }
+    }
 
-  if(PointCount < 2)
+  if (PointCount < 2)
     return;
 
   X_center = (image_left + image_right)/2;
@@ -760,19 +747,19 @@ void BSP_LCD_FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
 void BSP_LCD_DisplayOn() {
 
   // Display On
-  __HAL_LTDC_ENABLE(&hLtdcHandler);
-  HAL_GPIO_WritePin(LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_SET);        // Assert LCD_DISP pin
-  HAL_GPIO_WritePin(LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, GPIO_PIN_SET);  // Assert LCD_BL_CTRL pin
-}
+  __HAL_LTDC_ENABLE (&hLtdcHandler);
+  HAL_GPIO_WritePin (LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_SET);        // Assert LCD_DISP pin
+  HAL_GPIO_WritePin (LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, GPIO_PIN_SET);  // Assert LCD_BL_CTRL pin
+  }
 //}}}
 //{{{
-void BSP_LCD_DisplayOff()
-{
+void BSP_LCD_DisplayOff() {
+
   // Display Off
   __HAL_LTDC_DISABLE(&hLtdcHandler);
-  HAL_GPIO_WritePin(LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_RESET);      // De-assert LCD_DISP pin
-  HAL_GPIO_WritePin(LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, GPIO_PIN_RESET);// De-assert LCD_BL_CTRL pin
-}
+  HAL_GPIO_WritePin (LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_RESET);      // De-assert LCD_DISP pin
+  HAL_GPIO_WritePin (LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, GPIO_PIN_RESET);// De-assert LCD_BL_CTRL pin
+  }
 //}}}
 
 //{{{
@@ -800,46 +787,44 @@ __weak void BSP_LCD_MspInit (LTDC_HandleTypeDef* hltdc, void* Params) {
   gpio_init_structure.Pull      = GPIO_NOPULL;
   gpio_init_structure.Speed     = GPIO_SPEED_FAST;
   gpio_init_structure.Alternate = GPIO_AF14_LTDC;
-  HAL_GPIO_Init(GPIOE, &gpio_init_structure);
+  HAL_GPIO_Init (GPIOE, &gpio_init_structure);
 
   // GPIOG configuration
   gpio_init_structure.Pin       = GPIO_PIN_12;
   gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF9_LTDC;
-  HAL_GPIO_Init(GPIOG, &gpio_init_structure);
+  HAL_GPIO_Init (GPIOG, &gpio_init_structure);
 
   // GPIOI LTDC alternate configuration
-  gpio_init_structure.Pin       = GPIO_PIN_9 | GPIO_PIN_10 | \
-                                  GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+  gpio_init_structure.Pin       = GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
   gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF14_LTDC;
-  HAL_GPIO_Init(GPIOI, &gpio_init_structure);
+  HAL_GPIO_Init (GPIOI, &gpio_init_structure);
 
   // GPIOJ configuration
-  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | \
-                                  GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | \
-                                  GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | \
-                                  GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_4 | 
+                                  GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9 | 
+                                  GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
   gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF14_LTDC;
-  HAL_GPIO_Init(GPIOJ, &gpio_init_structure);
+  HAL_GPIO_Init (GPIOJ, &gpio_init_structure);
 
   // GPIOK configuration
   gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_4 | \
                                   GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
   gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF14_LTDC;
-  HAL_GPIO_Init(GPIOK, &gpio_init_structure);
+  HAL_GPIO_Init (GPIOK, &gpio_init_structure);
 
   // LCD_DISP GPIO configuration
   gpio_init_structure.Pin       = LCD_DISP_PIN;     // LCD_DISP pin has to be manually controlled
   gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
-  HAL_GPIO_Init(LCD_DISP_GPIO_PORT, &gpio_init_structure);
+  HAL_GPIO_Init (LCD_DISP_GPIO_PORT, &gpio_init_structure);
 
   // LCD_BL_CTRL GPIO configuration
   gpio_init_structure.Pin       = LCD_BL_CTRL_PIN;  // LCD_BL_CTRL pin has to be manually controlled
   gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
-  HAL_GPIO_Init(LCD_BL_CTRL_GPIO_PORT, &gpio_init_structure);
+  HAL_GPIO_Init (LCD_BL_CTRL_GPIO_PORT, &gpio_init_structure);
   }
 //}}}
 //{{{
@@ -853,28 +838,28 @@ __weak void BSP_LCD_MspDeInit (LTDC_HandleTypeDef *hltdc, void *Params) {
   // LTDC Pins deactivation
 
   // GPIOE deactivation
-  gpio_init_structure.Pin       = GPIO_PIN_4;
+  gpio_init_structure.Pin = GPIO_PIN_4;
   HAL_GPIO_DeInit (GPIOE, gpio_init_structure.Pin);
 
   // GPIOG deactivation
-  gpio_init_structure.Pin       = GPIO_PIN_12;
+  gpio_init_structure.Pin = GPIO_PIN_12;
   HAL_GPIO_DeInit (GPIOG, gpio_init_structure.Pin);
 
   // GPIOI deactivation
-  gpio_init_structure.Pin       = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_12 | \
-                                  GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+  gpio_init_structure.Pin  = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_12 | \
+                             GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
   HAL_GPIO_DeInit (GPIOI, gpio_init_structure.Pin);
 
   // GPIOJ deactivation
-  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | \
-                                  GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | \
-                                  GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | \
-                                  GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+  gpio_init_structure.Pin  = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | \
+                             GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | \
+                             GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | \
+                             GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
   HAL_GPIO_DeInit (GPIOJ, gpio_init_structure.Pin);
 
   // GPIOK deactivation
-  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_4 | \
-                                  GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
+  gpio_init_structure.Pin  = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_4 | \
+                             GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
   HAL_GPIO_DeInit (GPIOK, gpio_init_structure.Pin);
 
   // Disable LTDC clock
@@ -885,18 +870,17 @@ __weak void BSP_LCD_MspDeInit (LTDC_HandleTypeDef *hltdc, void *Params) {
 //}}}
 //{{{
 __weak void BSP_LCD_ClockConfig (LTDC_HandleTypeDef *hltdc, void *Params) {
+// RK043FN48H LCD clock configuration
+// PLLSAI_VCO Input = HSE_VALUE/PLLM = 1 Mhz
+// PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz
+// PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/5 = 38.4 Mhz
+// LTDC clock frequency = PLLLCDCLK / LTDC_PLLSAI_DIVR_4 = 38.4/4 = 9.6Mhz
 
-  static RCC_PeriphCLKInitTypeDef  periph_clk_init_struct;
-
-  // RK043FN48H LCD clock configuration
-  // PLLSAI_VCO Input = HSE_VALUE/PLLM = 1 Mhz
-  // PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz
-  // PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/5 = 38.4 Mhz
-  // LTDC clock frequency = PLLLCDCLK / LTDC_PLLSAI_DIVR_4 = 38.4/4 = 9.6Mhz
+  RCC_PeriphCLKInitTypeDef periph_clk_init_struct;
   periph_clk_init_struct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
   periph_clk_init_struct.PLLSAI.PLLSAIN = 192;
   periph_clk_init_struct.PLLSAI.PLLSAIR = RK043FN48H_FREQUENCY_DIVIDER;
   periph_clk_init_struct.PLLSAIDivR = RCC_PLLSAIDIVR_4;
-  HAL_RCCEx_PeriphCLKConfig(&periph_clk_init_struct);
+  HAL_RCCEx_PeriphCLKConfig (&periph_clk_init_struct);
   }
 //}}}
