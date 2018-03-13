@@ -4,7 +4,7 @@
 #include "../FatFs/diskio.h"
 
 #include "../common/cLcd.h"
-#include "../common/stm32746g_discovery_sd.h"
+#include "stm32746g_discovery_sd.h"
 //}}}
 //#define USE_USB_FS
 
@@ -1454,80 +1454,63 @@ USBD_ClassTypeDef kMscHandlers = {
 void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
 
    __HAL_RCC_GPIOA_CLK_ENABLE();
+  GPIO_InitTypeDef GPIO_InitStruct;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
 
   if (pcdHandle->Instance == USB_OTG_FS) {
-    // full speed init
-    GPIO_InitTypeDef GPIO_InitStruct;
-    GPIO_InitStruct.Pin = (GPIO_PIN_11 | GPIO_PIN_12);
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+    //{{{  full speed init
+    GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12;
     GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
     HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
 
     __HAL_RCC_USB_OTG_FS_CLK_ENABLE();
+
     HAL_NVIC_SetPriority (OTG_FS_IRQn, 7, 0);
     HAL_NVIC_EnableIRQ (OTG_FS_IRQn);
     }
-
+    //}}}
   else if (pcdHandle->Instance == USB_OTG_HS) {
-    //  high speed init
+    //{{{  high speed init
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOH_CLK_ENABLE();
 
-    GPIO_InitTypeDef GPIO_InitStruct;
-    //{{{  CLK
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
+
+    // CLK
     GPIO_InitStruct.Pin = GPIO_PIN_5;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    //}}}
-    //{{{  D0
+    HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
+
+    // D0
     GPIO_InitStruct.Pin = GPIO_PIN_3;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    //}}}
-    //{{{  D1 D2 D3 D4 D5 D6 D7
-    GPIO_InitStruct.Pin = GPIO_PIN_0  | GPIO_PIN_1  | GPIO_PIN_5 |\
+    HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
+
+    // D1 D2 D3 D4 D5 D6 D7
+    GPIO_InitStruct.Pin = GPIO_PIN_0  | GPIO_PIN_1  | GPIO_PIN_5 | 
                           GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    //}}}
-    //{{{  STP
+    HAL_GPIO_Init (GPIOB, &GPIO_InitStruct);
+
+    // STP
     GPIO_InitStruct.Pin = GPIO_PIN_0;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    //}}}
-    //{{{  NXT
+    HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
+
+    // NXT
     GPIO_InitStruct.Pin = GPIO_PIN_4;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-    HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
-    //}}}
-    //{{{  DIR
+    HAL_GPIO_Init (GPIOH, &GPIO_InitStruct);
+
+    // DIR
     GPIO_InitStruct.Pin = GPIO_PIN_2;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    //}}}
+    HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
 
     __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
     __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
+
     HAL_NVIC_SetPriority (OTG_HS_IRQn, 7, 0);
     HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
     }
+    //}}}
   }
 //}}}
 //{{{

@@ -9,7 +9,7 @@
 #include "../FatFs/ff.h"
 
 #include "../common/cLcd.h"
-#include "../common/stm32746g_discovery_sd.h"
+#include "stm32746g_discovery_sd.h"
 //}}}
 const char* kVersion = "USB Msc 13/3/18";
 const char kSdPath[40] = "0:/";
