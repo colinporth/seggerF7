@@ -14,17 +14,17 @@ void ff_rel_grant (_SYNC_t sobj);              // Unlock sync object
 int ff_del_syncobj (_SYNC_t sobj);             // Delete a sync object
 //}}}
 //{{{  defines
-//{{{  Additional file attribute bits for internal use 
+//{{{  Additional file attribute bits for internal use
 #define AM_VOL    0x08  /* Volume label */
 #define AM_LFN    0x0F  /* LFN entry */
 #define AM_MASK   0x3F  /* Mask of defined bits */
 //}}}
-//{{{  Additional file access control and file status flags for internal use 
+//{{{  Additional file access control and file status flags for internal use
 #define FA_SEEKEND  0x20  /* Seek to end of the file on file open */
 #define FA_MODIFIED 0x40  /* File has been modified */
 #define FA_DIRTY  0x80  /* FIL.buf[] needs to be written-back */
 //}}}
-//{{{  Name status flags in fn[] 
+//{{{  Name status flags in fn[]
 #define NSFLAG    11    /* Index of the name status byte */
 #define NS_LOSS   0x01  /* Out of 8.3 format */
 #define NS_LFN    0x02  /* Force to create LFN entry */
@@ -35,7 +35,7 @@ int ff_del_syncobj (_SYNC_t sobj);             // Delete a sync object
 #define NS_NOLFN  0x40  /* Do not find LFN */
 #define NS_NONAME 0x80  /* Not followed */
 //}}}
-//{{{  Limits and boundaries 
+//{{{  Limits and boundaries
 #define MAX_DIR   0x200000    /* Max size of FAT directory */
 #define MAX_DIR_EX  0x10000000    /* Max size of exFAT directory */
 #define MAX_FAT12 0xFF5     /* Max FAT12 clusters (differs from specs, but correct for real DOS/Windows behavior) */
@@ -186,7 +186,7 @@ int ff_del_syncobj (_SYNC_t sobj);             // Delete a sync object
   #define LD2PT(vol) VolToPart[vol].pt  // Get partition index
 #else
   #define LD2PD(vol) (BYTE)(vol)  // Each logical drive is bound to the same physical drive number
-  #define LD2PT(vol) 0            // Find first valid partition or in SFD 
+  #define LD2PT(vol) 0            // Find first valid partition or in SFD
   #endif
 
 #if _MAX_SS == _MIN_SS
@@ -246,9 +246,6 @@ static const BYTE ExCvt[] = {
 #define IsUpper(c)  (((c)>='A')&&((c)<='Z'))
 #define IsLower(c)  (((c)>='a')&&((c)<='z'))
 #define IsDigit(c)  (((c)>='0')&&((c)<='9'))
-
-#define IsDBCS1(c)  0
-#define IsDBCS2(c)  0
 
 static const WCHAR kTable[] = {
   0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7, 0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
@@ -1482,14 +1479,7 @@ static void gen_numname (BYTE* dst, const BYTE* src, const WCHAR* lfn, UINT seq)
 
   // Append the number
   UINT j;
-  for (j = 0; j < i && dst[j] != ' '; j++) {
-    if (IsDBCS1 (dst[j])) {
-      if (j == i - 1)
-        break;
-      j++;
-      }
-    }
-
+  for (j = 0; j < i && dst[j] != ' '; j++) {}
   do {
     dst[j++] = (i < 8) ? ns[i++] : ' ';
     } while (j < 8);
@@ -2088,12 +2078,6 @@ static FRESULT create_name (DIR* dp, const char** path) {
     if (di >= _MAX_LFN)
       return FR_INVALID_NAME; /* Reject too long name */
     w &= 0xFF;
-    if (IsDBCS1(w)) {       /* Check if it is a DBC 1st byte (always false on SBCS cfg) */
-      b = (BYTE)p[si++];      /* Get 2nd byte */
-      w = (w << 8) + b;     /* Create a DBC */
-      if (!IsDBCS2(b))
-        return FR_INVALID_NAME;  /* Reject invalid sequence */
-    }
     w = convert(w, 1);     /* Convert ANSI/OEM to Unicode */
     if (!w)
       return FR_INVALID_NAME; /* Reject invalid code */
@@ -2646,6 +2630,7 @@ FRESULT f_mount (FATFS* fs, const char* path, BYTE opt) {
   LEAVE_FF (fs, result);
   }
 //}}}
+
 //{{{
 FRESULT f_open (FIL* fp, const char* path, BYTE mode) {
 
@@ -4006,8 +3991,6 @@ FRESULT f_setlabel (const char* label) {
     for (i = j = 0; i < slen; ) {
       /* Create volume label in directory form */
       w = label[i++];
-      if (IsDBCS1(w))
-        w = (i < slen && IsDBCS2(label[i])) ? w << 8 | (BYTE)label[i++] : 0;
       w = convert(w, 1);
       if (w == 0 || chk_chr(badchr, w) || j == 22) {
         /* Check validity check validity of the volume label */
@@ -4026,8 +4009,6 @@ FRESULT f_setlabel (const char* label) {
       dirvn[0] = 0; i = j = 0;  /* Create volume label in directory form */
       do {
         w = (BYTE)label[i++];
-        if (IsDBCS1(w))
-          w = (j < 10 && i < slen && IsDBCS2(label[i])) ? w << 8 | (BYTE)label[i++] : 0;
         w = convert (wtoupper (convert(w, 1)), 0);
         if (w == 0 || chk_chr(badchr, w) || j >= (UINT)((w >= 0x100) ? 10 : 11)) {
           /* Reject invalid characters for volume label */

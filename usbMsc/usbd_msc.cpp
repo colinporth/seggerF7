@@ -13,6 +13,7 @@ cLcd* gLcd = nullptr;
 bool gSdChanged = false;
 PCD_HandleTypeDef gPcdHandle;
 USBD_HandleTypeDef gUsbDevice;
+//{{{  pcd_IRQ handler routing
 extern "C" {
 #ifdef USE_USB_FS
   void OTG_FS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); }
@@ -20,6 +21,7 @@ extern "C" {
   void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); }
 #endif
   }
+//}}}
 
 #define MSC_MEDIA_PACKET 32*1024
 //{{{  sd card handlers
@@ -816,7 +818,7 @@ void mscBotAbort (USBD_HandleTypeDef* usbdHandle) {
   }
 //}}}
 //{{{
-void mscBotCplClrFeature (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
+void mscBotCplClrFeature (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -825,7 +827,7 @@ void mscBotCplClrFeature (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
     usbdLowLevelStallEP (usbdHandle, MSC_EPIN_ADDR);
     mscData->bot_status = USBD_BOT_STATUS_NORMAL;
     }
-  else if (((epnum & 0x80) == 0x80) && (mscData->bot_status != USBD_BOT_STATUS_RECOVERY))
+  else if (((endPointNum & 0x80) == 0x80) && (mscData->bot_status != USBD_BOT_STATUS_RECOVERY))
     mscBotSendCsw (usbdHandle, USBD_CSW_CMD_FAILED);
   }
 //}}}
@@ -1355,7 +1357,7 @@ uint8_t mscSetup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) {
   }
 //}}}
 //{{{
-uint8_t mscDataIn (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
+uint8_t mscDataIn (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -1378,7 +1380,7 @@ uint8_t mscDataIn (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
   }
 //}}}
 //{{{
-uint8_t mscDataOut (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) {
+uint8_t mscDataOut (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum) {
 
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
@@ -1549,13 +1551,13 @@ void HAL_PCD_SetupStageCallback (PCD_HandleTypeDef* pcdHandle) {
   }
 //}}}
 //{{{
-void HAL_PCD_DataOutStageCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
-  usbdLowLevelDataOutStage ((USBD_HandleTypeDef*)pcdHandle->pData, epnum, pcdHandle->OUT_ep[epnum].xfer_buff);
+void HAL_PCD_DataOutStageCallback (PCD_HandleTypeDef* pcdHandle, uint8_t endPointNum) {
+  usbdLowLevelDataOutStage ((USBD_HandleTypeDef*)pcdHandle->pData, endPointNum, pcdHandle->OUT_ep[endPointNum].xfer_buff);
   }
 //}}}
 //{{{
-void HAL_PCD_DataInStageCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
-  usbdLowLevelDataInStage ((USBD_HandleTypeDef*)pcdHandle->pData, epnum, pcdHandle->IN_ep[epnum].xfer_buff);
+void HAL_PCD_DataInStageCallback (PCD_HandleTypeDef* pcdHandle, uint8_t endPointNum) {
+  usbdLowLevelDataInStage ((USBD_HandleTypeDef*)pcdHandle->pData, endPointNum, pcdHandle->IN_ep[endPointNum].xfer_buff);
   }
 //}}}
 //{{{
@@ -1566,26 +1568,9 @@ void HAL_PCD_SOFCallback (PCD_HandleTypeDef* pcdHandle) {
 //{{{
 void HAL_PCD_ResetCallback (PCD_HandleTypeDef* pcdHandle) {
 
-  USBD_SpeedTypeDef speed = USBD_SPEED_FULL;
-
-  // Set USB Current Speed
-  switch (pcdHandle->Init.speed) {
-    case PCD_SPEED_HIGH:
-      speed = USBD_SPEED_HIGH;
-      break;
-
-    case PCD_SPEED_FULL:
-      speed = USBD_SPEED_FULL;
-      break;
-
-    default:
-      speed = USBD_SPEED_FULL;
-      break;
-    }
-
-  // Reset Device
   usbdLowLevelReset ((USBD_HandleTypeDef*)pcdHandle->pData);
-  usbdLowLevelSetSpeed ((USBD_HandleTypeDef*)pcdHandle->pData, speed);
+  usbdLowLevelSetSpeed ((USBD_HandleTypeDef*)pcdHandle->pData,
+                        (pcdHandle->Init.speed == PCD_SPEED_HIGH) ? USBD_SPEED_HIGH : USBD_SPEED_FULL);
   }
 //}}}
 //{{{
@@ -1599,13 +1584,13 @@ void HAL_PCD_ResumeCallback (PCD_HandleTypeDef* pcdHandle) {
   }
 //}}}
 //{{{
-void HAL_PCD_ISOOUTIncompleteCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
-  usbdLowLevelIsoOUTIncomplete ((USBD_HandleTypeDef*)pcdHandle->pData, epnum);
+void HAL_PCD_ISOOUTIncompleteCallback (PCD_HandleTypeDef* pcdHandle, uint8_t endPointNum) {
+  usbdLowLevelIsoOUTIncomplete ((USBD_HandleTypeDef*)pcdHandle->pData, endPointNum);
   }
 //}}}
 //{{{
-void HAL_PCD_ISOINIncompleteCallback (PCD_HandleTypeDef* pcdHandle, uint8_t epnum) {
-  usbdLowLevelIsoINIncomplete ((USBD_HandleTypeDef*)pcdHandle->pData, epnum);
+void HAL_PCD_ISOINIncompleteCallback (PCD_HandleTypeDef* pcdHandle, uint8_t endPointNum) {
+  usbdLowLevelIsoINIncomplete ((USBD_HandleTypeDef*)pcdHandle->pData, endPointNum);
   }
 //}}}
 //{{{
@@ -1633,28 +1618,24 @@ gPcdHandle.pData = usbdHandle;
 usbdHandle->pData = &gPcdHandle;
 
 #ifdef USE_USB_FS
-  // Set LL Driver parameters
   gPcdHandle.Instance = USB_OTG_FS;
   gPcdHandle.Init.dev_endpoints = 4;
   gPcdHandle.Init.phy_itface = PCD_PHY_EMBEDDED;
   gPcdHandle.Init.speed = PCD_SPEED_FULL;
   gPcdHandle.Init.vbus_sensing_enable = 0;
 
-  // Initialize LL Driver
   HAL_PCD_Init (&gPcdHandle);
   HAL_PCDEx_SetRxFiFo (&gPcdHandle, 0x80);
   HAL_PCDEx_SetTxFiFo (&gPcdHandle, 0, 0x40);
   HAL_PCDEx_SetTxFiFo (&gPcdHandle, 1, 0x80);
 
 #else
-  // Set LL Driver parameters
   gPcdHandle.Instance = USB_OTG_HS;
   gPcdHandle.Init.dev_endpoints = 6;
   gPcdHandle.Init.phy_itface = PCD_PHY_ULPI;
   gPcdHandle.Init.speed = PCD_SPEED_HIGH;
   gPcdHandle.Init.vbus_sensing_enable = 1;
 
-  // Initialize LL Driver
   HAL_PCD_Init (&gPcdHandle);
   HAL_PCDEx_SetRxFiFo (&gPcdHandle, 0x200);
   HAL_PCDEx_SetTxFiFo (&gPcdHandle, 0, 0x80);

@@ -582,9 +582,9 @@ USBD_StatusTypeDef usbdLowLevelSetupStage (USBD_HandleTypeDef* usbdHandle, uint8
   }
 //}}}
 //{{{
-USBD_StatusTypeDef usbdLowLevelDataOutStage (USBD_HandleTypeDef* usbdHandle, uint8_t epnum, uint8_t* pdata) {
+USBD_StatusTypeDef usbdLowLevelDataOutStage (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum, uint8_t* pdata) {
 
-  if (epnum == 0) {
+  if (endPointNum == 0) {
     auto pep = &usbdHandle->ep_out[0];
     if (usbdHandle->ep0_state == USBD_EP0_DATA_OUT) {
       if (pep->rem_length > pep->maxpacket) {
@@ -601,15 +601,15 @@ USBD_StatusTypeDef usbdLowLevelDataOutStage (USBD_HandleTypeDef* usbdHandle, uin
     }
   else if ((usbdHandle->pClass->DataOut != NULL)&&
            (usbdHandle->dev_state == USBD_STATE_CONFIGURED))
-    usbdHandle->pClass->DataOut(usbdHandle, epnum);
+    usbdHandle->pClass->DataOut(usbdHandle, endPointNum);
 
   return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef usbdLowLevelDataInStage (USBD_HandleTypeDef* usbdHandle, uint8_t epnum, uint8_t* pdata) {
+USBD_StatusTypeDef usbdLowLevelDataInStage (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum, uint8_t* pdata) {
 
-  if (epnum == 0) {
+  if (endPointNum == 0) {
     auto pep = &usbdHandle->ep_in[0];
     if (usbdHandle->ep0_state == USBD_EP0_DATA_IN) {
       if (pep->rem_length > pep->maxpacket) {
@@ -646,7 +646,7 @@ USBD_StatusTypeDef usbdLowLevelDataInStage (USBD_HandleTypeDef* usbdHandle, uint
 
   else if ((usbdHandle->pClass->DataIn != NULL)&&
            (usbdHandle->dev_state == USBD_STATE_CONFIGURED))
-    usbdHandle->pClass->DataIn(usbdHandle, epnum);
+    usbdHandle->pClass->DataIn(usbdHandle, endPointNum);
 
   return USBD_OK;
   }
@@ -703,8 +703,8 @@ USBD_StatusTypeDef usbdLowLevelSOF (USBD_HandleTypeDef* usbdHandle) {
   return USBD_OK;
   }
 //}}}
-USBD_StatusTypeDef usbdLowLevelIsoINIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) { return USBD_OK; }
-USBD_StatusTypeDef usbdLowLevelIsoOUTIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t epnum) { return USBD_OK; }
+USBD_StatusTypeDef usbdLowLevelIsoINIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum) { return USBD_OK; }
+USBD_StatusTypeDef usbdLowLevelIsoOUTIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum) { return USBD_OK; }
 USBD_StatusTypeDef usbdLowLevelDevConnected (USBD_HandleTypeDef* usbdHandle) { return USBD_OK; }
 //{{{
 USBD_StatusTypeDef usbdLowLevelDevDisconnected (USBD_HandleTypeDef* usbdHandle) {
