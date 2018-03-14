@@ -39,10 +39,10 @@ public:
     BSP_LCD_DisplayOn();
     }
   //}}}
+
   //{{{
   void start (const char* title) {
 
-    BSP_LCD_SelectLayer (mFlip);
     BSP_LCD_Clear (LCD_COLOR_BLACK);
 
     drawTitle (title);
@@ -53,7 +53,6 @@ public:
   //{{{
   void startBgnd (const char* title, uint32_t* bgnd) {
 
-    BSP_LCD_SelectLayer (mFlip);
     memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), bgnd, 480*272*4);
 
     drawTitle (title);
@@ -69,8 +68,9 @@ public:
     mTick = HAL_GetTick();
 
     BSP_LCD_SetTransparency (mFlip, 255);
+    BSP_LCD_SetTransparency (!mFlip, 0);
     mFlip = !mFlip;
-    BSP_LCD_SetTransparency (mFlip, 0);
+    BSP_LCD_SelectLayer (mFlip);
     }
   //}}}
 

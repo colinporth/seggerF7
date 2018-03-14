@@ -9,8 +9,8 @@
 #include "stm32746g_audio.h"
 //}}}
 
-const char* kAudVersion = "USB Audio 4/3/18";
-const char* kHidVersion = "USB keyboard 4/3/18";
+const char* kAudVersion = "USB Audio 14/3/18";
+const char* kHidVersion = "USB keyboard 14/3/18";
 #define HID_IN_ENDPOINT       0x81
 #define HID_IN_ENDPOINT_SIZE  7
 #define AUDIO_OUT_ENDPOINT    0x01
@@ -1182,7 +1182,7 @@ void cApp::run (bool keyboard) {
 
     pollTouch();
 
-    mLcd->show (mAud ? kAudVersion : kHidVersion);
+    mLcd->start (mAud ? kAudVersion : kHidVersion);
 
     if (mAud) {
       gPackets.show();
@@ -1196,7 +1196,7 @@ void cApp::run (bool keyboard) {
       mPs2->showCodes();
       mPs2->showWave();
       }
-    mLcd->flip();
+    mLcd->present();
 
     if (keyboard) {
       while (mPs2->hasRawChar())
