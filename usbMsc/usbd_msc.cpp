@@ -23,6 +23,8 @@ extern "C" {
   }
 //}}}
 
+uint32_t* gSectors = (uint32_t*)SDRAM_USER;
+
 #define MSC_MEDIA_PACKET 32*1024
 //{{{  sd card handlers
 // BSP
@@ -188,6 +190,8 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
     uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
     SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, ((uint32_t)buf - alignedAddr) + blk_len*512);
 
+    gSectors[blk_addr / 256] = LCD_COLOR_GREEN;
+
     //gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
     return true;
     }
@@ -212,6 +216,7 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
     while ((HAL_GetTick() - timeout) < 2000) {
       if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
         gSdChanged = true;
+        gSectors[blk_addr / 256] = LCD_COLOR_RED;
         return true;
         }
       }
@@ -1488,7 +1493,7 @@ void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
     HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
 
     // D1 D2 D3 D4 D5 D6 D7
-    GPIO_InitStruct.Pin = GPIO_PIN_0  | GPIO_PIN_1  | GPIO_PIN_5 | 
+    GPIO_InitStruct.Pin = GPIO_PIN_0  | GPIO_PIN_1  | GPIO_PIN_5 |
                           GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
     HAL_GPIO_Init (GPIOB, &GPIO_InitStruct);
 
@@ -1730,6 +1735,9 @@ void mscInit (cLcd* lcd) {
 
   gLcd = lcd;
   BSP_SD_Init();
+
+  for (auto i = 0; i < 480 * 272; i++)
+    gSectors[i] = 0;
   }
 //}}}
 //{{{
@@ -1738,5 +1746,10 @@ void mscStart() {
   USBD_Init (&gUsbDevice, &kMscDescriptors, 0);
   USBD_RegisterClass (&gUsbDevice, &kMscHandlers);
   USBD_Start (&gUsbDevice);
+  }
+//}}}
+//{{{
+uint32_t* mscGetSectors() {
+  return gSectors;
   }
 //}}}

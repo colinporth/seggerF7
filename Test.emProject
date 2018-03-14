@@ -134,7 +134,7 @@
       arm_target_device_name="STM32F746NG"
       arm_target_interface_type="SWD"
       c_preprocessor_definitions="USE_HAL_DRIVER;STM32F746xx;USE_STM32746G_DISCO"
-      c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/Drivers/BSP/STM32746G-Discovery;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include."
+      c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/BSP;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include."
       debug_target_connection="J-Link"
       debug_type_file="$(StudioDir)/bin/STLport.xml"
       gcc_c_language_standard="c11"
@@ -157,28 +157,26 @@
         <file file_name="usbd.h" />
         <file file_name="usbd_msc.h" />
         <file file_name="../common/usbd.h" />
-        <file file_name="../common/ts.h" />
         <file file_name="../common/system.h" />
         <file file_name="../common/cTouch.h" />
         <file file_name="../common/cPs2.h" />
         <file file_name="../common/cLcd.h" />
-        <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_audio.h" />
-        <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.h" />
-        <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sd.h" />
-        <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.h" />
-        <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_ts.h" />
-        <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_lcd.h" />
-        <file file_name="../Drivers/BSP/STM32746G-Discovery/wm8994.h" />
-        <file file_name="../Drivers/BSP/STM32746G-Discovery/ft5336.h" />
-        <file file_name="../Drivers/BSP/STM32746G-Discovery/ts.h" />
-        <file file_name="../Drivers/BSP/STM32746G-Discovery/font.h" />
+        <file file_name="../BSP/font.h" />
+        <file file_name="../BSP/ft5336.h" />
+        <file file_name="../BSP/stm32746g_discovery.h" />
+        <file file_name="../BSP/stm32746g_discovery_sd.h" />
+        <file file_name="../BSP/stm32746g_discovery_sdram.h" />
+        <file file_name="../BSP/stm32746g_discovery_ts.h" />
+        <file file_name="../BSP/stm32746g_lcd.h" />
+        <file file_name="../BSP/ts.h" />
       </folder>
-      <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.c" />
-      <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sd.c" />
-      <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.c" />
-      <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_ts.c" />
-      <file file_name="../Drivers/BSP/STM32746G-Discovery/ft5336.cpp" />
-      <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_lcd.cpp" />
+      <file file_name="../BSP/font16.c" />
+      <file file_name="../BSP/stm32746g_discovery.c" />
+      <file file_name="../BSP/stm32746g_discovery_sd.c" />
+      <file file_name="../BSP/stm32746g_discovery_sdram.c" />
+      <file file_name="../BSP/stm32746g_discovery_ts.c" />
+      <file file_name="../BSP/ft5336.cpp" />
+      <file file_name="../BSP/stm32746g_lcd.cpp" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />
@@ -201,47 +199,25 @@
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sdram.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_sdmmc.c" />
       <folder Name="includes">
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_adc_ex.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_can.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_cec.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_conf_template.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_cortex.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_crc.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_crc_ex.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_cryp.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_cryp_ex.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dac.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dac_ex.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dcmi.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dcmi_ex.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_def.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dfsdm.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dma.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dma_ex.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dma2d.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dsi.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_eth.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_flash.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_flash_ex.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_gpio.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_gpio_ex.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_hash.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_hash_ex.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_hcd.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_i2c.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_i2c_ex.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_i2s.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_irda.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_irda_ex.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_iwdg.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_jpeg.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_lptim.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_ltdc.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_ltdc_ex.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_mdios.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_mmc.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_nand.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_nor.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pcd.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pcd_ex.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pwr.h" />
@@ -259,7 +235,6 @@
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_smartcard.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_smartcard_ex.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_smbus.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_spdifrx.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_spi.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_sram.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim.h" />
@@ -272,8 +247,6 @@
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_adc.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_bus.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_cortex.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_crc.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_dac.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_dma.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_dma2d.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_exti.h" />
@@ -300,9 +273,7 @@
           filter="*.*"
           path="../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy"
           recurse="No" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32_assert_template.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h" />
-        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_adc.h" />
       </folder>
     </folder>
     <folder Name="rtt">
@@ -328,6 +299,5 @@
       </folder>
       <file file_name="../FatFs/ff.c" />
     </folder>
-    <file file_name="../Drivers/BSP/STM32746G-Discovery/font16.c" />
   </project>
 </solution>

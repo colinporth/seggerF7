@@ -82,6 +82,10 @@ void cApp::run() {
   else
     mLcd->debug (LCD_COLOR_RED, "not mounted");
 
+  BSP_SD_CardInfo cardInfo;
+  BSP_SD_GetCardInfo (&cardInfo);
+  mLcd->debug (LCD_COLOR_YELLOW, "num:%d size:%d", cardInfo.LogBlockNbr, cardInfo.LogBlockSize);
+
   int lastCount = 0;
   while (true) {
     pollTouch();
@@ -91,8 +95,8 @@ void cApp::run() {
       onKey (ch & 0xFF, ch & 0x100);
       }
 
-    mLcd->show (kVersion);
-    mLcd->flip();
+    mLcd->startBgnd (kVersion, mscGetSectors());
+    mLcd->present();
 
     if (hasSdChanged()) {
       //{{{  check num files

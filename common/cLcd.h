@@ -40,38 +40,27 @@ public:
     }
   //}}}
   //{{{
-  void show (const char* title) {
+  void start (const char* title) {
 
     BSP_LCD_SelectLayer (mFlip);
     BSP_LCD_Clear (LCD_COLOR_BLACK);
+    drawTitleDebug (title);
+    }
+  //}}}
+  //{{{
+  void startBgnd (const char* title, uint32_t* bgnd) {
+
+    BSP_LCD_SelectLayer (mFlip);
+    memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), bgnd, 480*272*4);
+    drawTitleDebug (title);
+    }
+  //}}}
+  //{{{
+  void present() {
 
     uint32_t wait = 20 - (HAL_GetTick() % 20);
     HAL_Delay (wait);
     mTick = HAL_GetTick();
-
-    char str1[40];
-    sprintf (str1, "%s %d %d", title, (int)mTick, (int)wait);
-    BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
-    BSP_LCD_DisplayStringAtLine (0, str1);
-
-    if (!BSP_PB_GetState (BUTTON_KEY))
-      for (auto displayLine = 0u; (displayLine < mDebugLine) && ((int)displayLine < mDisplayLines); displayLine++) {
-        int debugLine = ((int)mDebugLine < mDisplayLines) ?
-          displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
-
-        BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
-        char tickStr[20];
-        auto ticks = mLines[debugLine].mTicks;
-        sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
-        BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 0, tickStr);
-
-        BSP_LCD_SetTextColor (mLines[debugLine].mColour);
-        BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 7, mLines[debugLine].mStr);
-        }
-    }
-  //}}}
-  //{{{
-  void flip() {
 
     BSP_LCD_SetTransparency (mFlip, 255);
     mFlip = !mFlip;
@@ -140,6 +129,30 @@ private:
     uint32_t mTicks = 0;
     uint32_t mColour = 0;
     };
+  //}}}
+  //{{{
+  void drawTitleDebug (const char* title) {
+
+    char str1[40];
+    sprintf (str1, "%s %d", title, (int)mTick);
+    BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
+    BSP_LCD_DisplayStringAtLine (0, str1);
+
+    if (!BSP_PB_GetState (BUTTON_KEY))
+      for (auto displayLine = 0u; (displayLine < mDebugLine) && ((int)displayLine < mDisplayLines); displayLine++) {
+        int debugLine = ((int)mDebugLine < mDisplayLines) ?
+          displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
+
+        BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
+        char tickStr[20];
+        auto ticks = mLines[debugLine].mTicks;
+        sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
+        BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 0, tickStr);
+
+        BSP_LCD_SetTextColor (mLines[debugLine].mColour);
+        BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 7, mLines[debugLine].mStr);
+        }
+      }
   //}}}
 
   bool mFlip = false;
