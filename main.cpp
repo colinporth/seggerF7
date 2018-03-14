@@ -6,7 +6,7 @@
 #include "common/cPs2.h"
 #include "common/usbd.h"
 
-#include "common/stm32746g_audio.h"
+#include "stm32746g_audio.h"
 //}}}
 
 const char* kAudVersion = "USB Audio 4/3/18";
