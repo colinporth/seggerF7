@@ -42,7 +42,7 @@ public:
   //{{{
   void show (const char* title) {
 
-    BSP_LCD_SelectLayer (mLayer);
+    BSP_LCD_SelectLayer (mFlip);
     BSP_LCD_Clear (LCD_COLOR_BLACK);
 
     uint32_t wait = 20 - (HAL_GetTick() % 20);
@@ -73,9 +73,9 @@ public:
   //{{{
   void flip() {
 
-    BSP_LCD_SetTransparency (mLayer, 255);
-    mLayer = !mLayer;
-    BSP_LCD_SetTransparency (mLayer, 0);
+    BSP_LCD_SetTransparency (mFlip, 255);
+    mFlip = !mFlip;
+    BSP_LCD_SetTransparency (mFlip, 0);
     }
   //}}}
 
@@ -142,7 +142,7 @@ private:
     };
   //}}}
 
-  int mLayer = 0;
+  bool mFlip = false;
   uint32_t mTick = 0;
 
   int mDisplayLines;
