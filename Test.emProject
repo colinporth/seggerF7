@@ -81,7 +81,6 @@
       <file file_name="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_i2c.c" />
       <file file_name="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_ltdc.c" />
       <file file_name="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pcd.c" />
-      <file file_name="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pcd_ex.c" />
       <file file_name="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pwr.c" />
       <file file_name="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pwr_ex.c" />
       <file file_name="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc.c" />
@@ -90,13 +89,6 @@
       <file file_name="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sai.c" />
     </folder>
     <folder Name="bsp_drivers">
-      <file file_name="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.c" />
-      <file file_name="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.c" />
-      <file file_name="common/stm32746g_audio.c" />
-      <file file_name="common/stm32746g_discovery_ts.c" />
-      <file file_name="common/stm32746g_lcd.cpp" />
-      <file file_name="common/ft5336.c" />
-      <file file_name="common/wm8994.c" />
       <folder Name="includes">
         <file file_name="common/stm32746g_audio.h" />
         <file file_name="common/stm32746g_lcd.h" />
@@ -105,11 +97,14 @@
         <file file_name="common/wm8994.h" />
         <file file_name="common/font.h" />
       </folder>
-      <file file_name="common/font16.c" />
-      <file file_name="common/font8.c" />
-      <file file_name="common/font12.c" />
-      <file file_name="common/font20.c" />
-      <file file_name="common/font24.c" />
+      <file file_name="Drivers/BSP/STM32746G-Discovery/font16.c" />
+      <file file_name="Drivers/BSP/STM32746G-Discovery/stm32746g_audio.c" />
+      <file file_name="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.c" />
+      <file file_name="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.c" />
+      <file file_name="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_ts.c" />
+      <file file_name="Drivers/BSP/STM32746G-Discovery/wm8994.c" />
+      <file file_name="Drivers/BSP/STM32746G-Discovery/ft5336.cpp" />
+      <file file_name="Drivers/BSP/STM32746G-Discovery/stm32746g_lcd.cpp" />
     </folder>
   </project>
   <configuration
@@ -178,12 +173,10 @@
         <file file_name="../Drivers/BSP/STM32746G-Discovery/ts.h" />
         <file file_name="../Drivers/BSP/STM32746G-Discovery/font.h" />
       </folder>
-      <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_audio.c" />
       <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery.c" />
       <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sd.c" />
       <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.c" />
       <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_ts.c" />
-      <file file_name="../Drivers/BSP/STM32746G-Discovery/wm8994.c" />
       <file file_name="../Drivers/BSP/STM32746G-Discovery/ft5336.cpp" />
       <file file_name="../Drivers/BSP/STM32746G-Discovery/stm32746g_lcd.cpp" />
     </folder>
