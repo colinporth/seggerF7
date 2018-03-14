@@ -10,22 +10,20 @@
 
 cLcd* gLcd = nullptr;
 
-bool gSdChanged = false;
 PCD_HandleTypeDef gPcdHandle;
 USBD_HandleTypeDef gUsbDevice;
 //{{{  pcd_IRQ handler routing
 extern "C" {
-#ifdef USE_USB_FS
   void OTG_FS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); }
-#else
   void OTG_HS_IRQHandler() { HAL_PCD_IRQHandler (&gPcdHandle); }
-#endif
   }
 //}}}
 
+bool gSdChanged = false;
 uint32_t* gSectors = (uint32_t*)SDRAM_USER;
-
+const int kSectorScale = 128;
 #define MSC_MEDIA_PACKET 32*1024
+
 //{{{  sd card handlers
 // BSP
 __IO uint32_t readstatus = 0;
@@ -190,7 +188,7 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
     uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
     SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, ((uint32_t)buf - alignedAddr) + blk_len*512);
 
-    gSectors[blk_addr / 256] = LCD_COLOR_GREEN;
+    gSectors[blk_addr / kSectorScale] = LCD_COLOR_GREEN;
 
     //gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
     return true;
@@ -216,7 +214,7 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
     while ((HAL_GetTick() - timeout) < 2000) {
       if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
         gSdChanged = true;
-        gSectors[blk_addr / 256] = LCD_COLOR_RED;
+        gSectors[blk_addr / kSectorScale] = LCD_COLOR_RED;
         return true;
         }
       }

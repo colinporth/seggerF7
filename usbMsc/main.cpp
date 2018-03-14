@@ -1,4 +1,4 @@
-// main.cpp - hid class usb
+// main.cpp - msc class usb
 //{{{  includes
 #include "../common/system.h"
 #include "../common/cLcd.h"
@@ -11,7 +11,7 @@
 #include "../common/cLcd.h"
 #include "stm32746g_discovery_sd.h"
 //}}}
-const char* kVersion = "USB Msc 13/3/18";
+const char* kVersion = "USB Msc 14/3/18";
 const char kSdPath[40] = "0:/";
 
 //{{{

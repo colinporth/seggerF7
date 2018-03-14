@@ -44,7 +44,10 @@ public:
 
     BSP_LCD_SelectLayer (mFlip);
     BSP_LCD_Clear (LCD_COLOR_BLACK);
-    drawTitleDebug (title);
+
+    drawTitle (title);
+    if (!BSP_PB_GetState (BUTTON_KEY))
+      drawDebug();
     }
   //}}}
   //{{{
@@ -52,7 +55,10 @@ public:
 
     BSP_LCD_SelectLayer (mFlip);
     memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), bgnd, 480*272*4);
-    drawTitleDebug (title);
+
+    drawTitle (title);
+    if (!BSP_PB_GetState (BUTTON_KEY))
+      drawDebug();
     }
   //}}}
   //{{{
@@ -131,28 +137,31 @@ private:
     };
   //}}}
   //{{{
-  void drawTitleDebug (const char* title) {
+  void drawTitle (const char* title) {
 
     char str1[40];
     sprintf (str1, "%s %d", title, (int)mTick);
     BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
     BSP_LCD_DisplayStringAtLine (0, str1);
+    }
+  //}}}
+  //{{{
+  void drawDebug() {
 
-    if (!BSP_PB_GetState (BUTTON_KEY))
-      for (auto displayLine = 0u; (displayLine < mDebugLine) && ((int)displayLine < mDisplayLines); displayLine++) {
-        int debugLine = ((int)mDebugLine < mDisplayLines) ?
-          displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
+    for (auto displayLine = 0u; (displayLine < mDebugLine) && ((int)displayLine < mDisplayLines); displayLine++) {
+      int debugLine = ((int)mDebugLine < mDisplayLines) ?
+        displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
 
-        BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
-        char tickStr[20];
-        auto ticks = mLines[debugLine].mTicks;
-        sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
-        BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 0, tickStr);
+      BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
+      char tickStr[20];
+      auto ticks = mLines[debugLine].mTicks;
+      sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
+      BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 0, tickStr);
 
-        BSP_LCD_SetTextColor (mLines[debugLine].mColour);
-        BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 7, mLines[debugLine].mStr);
-        }
+      BSP_LCD_SetTextColor (mLines[debugLine].mColour);
+      BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 7, mLines[debugLine].mStr);
       }
+    }
   //}}}
 
   bool mFlip = false;
