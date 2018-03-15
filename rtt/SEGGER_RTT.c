@@ -174,11 +174,9 @@ static unsigned char _aTerminalId[16] = { '0', '1', '2', '3', '4', '5', '6', '7'
 
 static char _ActiveTerminal;
 
-#define INIT()  do {                                            \
-                  if (_SEGGER_RTT.acID[0] == '\0') { _DoInit(); }  \
-                } while (0)
+#define INIT()  do { if (_SEGGER_RTT.acID[0] == '\0') _DoInit(); } while (0)
 //{{{
-static void _DoInit(void) {
+static void _DoInit() {
   SEGGER_RTT_CB* p;
   //
   // Initialize control block
@@ -828,7 +826,7 @@ unsigned SEGGER_RTT_WriteString(unsigned BufferIndex, const char* s) {
 *  Notes
 *    (1) This function is only specified for accesses to RTT buffer 0.
 */
-int SEGGER_RTT_GetKey(void) {
+int SEGGER_RTT_GetKey() {
   char c;
   int r;
 
@@ -857,7 +855,7 @@ int SEGGER_RTT_GetKey(void) {
 *    (1) This function is only specified for accesses to RTT buffer 0
 *    (2) This function is blocking if no character is present in RTT buffer
 */
-int SEGGER_RTT_WaitKey(void) {
+int SEGGER_RTT_WaitKey() {
   int r;
 
   do {
@@ -881,7 +879,7 @@ int SEGGER_RTT_WaitKey(void) {
 *  Notes
 *    (1) This function is only specified for accesses to RTT buffer 0
 */
-int SEGGER_RTT_HasKey(void) {
+int SEGGER_RTT_HasKey() {
   unsigned RdOff;
   int r;
 
@@ -1173,7 +1171,7 @@ int SEGGER_RTT_SetNameDownBuffer(unsigned BufferIndex, const char* sName) {
 *    Should be used in RAM targets, at start of the application.
 *
 */
-void SEGGER_RTT_Init (void) {
+void SEGGER_RTT_Ini () {
   _DoInit();
 }
 //}}}

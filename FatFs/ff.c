@@ -206,14 +206,14 @@ int ff_del_syncobj (_SYNC_t sobj);             // Delete a sync object
   (fs)->dirbuf = (BYTE*)(lfn+_MAX_LFN+1);              \
   }
 //}}}
-//{{{  struct FILESEM
+//{{{  struct sFILESEM
 // File lock controls
 typedef struct {
-  FATFS *fs; // Object ID 1, volume (NULL:blank entry)
-  DWORD clu; // Object ID 2, containing directory (0:root)
-  DWORD ofs; // Object ID 3, offset in the directory
-  WORD ctr;  // Object open counter, 0:none, 0x01..0xFF:read mode open count, 0x100:write mode
-  } FILESEM;
+  FATFS* fs;  // Object ID 1, volume (NULL:blank entry)
+  DWORD  clu; // Object ID 2, containing directory (0:root)
+  DWORD  ofs; // Object ID 3, offset in the directory
+  WORD   ctr; // Object open counter, 0:none, 0x01..0xFF:read mode open count, 0x100:write mode
+  } sFILESEM;
 //}}}
 //{{{  struct sPutBuff
 typedef struct {
@@ -227,7 +227,7 @@ typedef struct {
 static FATFS* FatFs[_VOLUMES];
 static WORD Fsid;               /* File system mount ID */
 static BYTE CurrVol;            /* Current drive */
-static FILESEM Files[_FS_LOCK]; /* Open object lock semaphores */
+static sFILESEM Files[_FS_LOCK]; /* Open object lock semaphores */
 //}}}
 
 //{{{  unicode conversion

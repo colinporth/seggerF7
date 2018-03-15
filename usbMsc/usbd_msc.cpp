@@ -6,7 +6,9 @@
 #include "../common/cLcd.h"
 #include "stm32746g_discovery_sd.h"
 //}}}
-//#define USE_USB_FULLSPEED
+const bool kUsbFullSpeed = false;
+const int kMscMediaPacket = 32*1024;
+const int kSectorScale = 256;
 
 cLcd* gLcd = nullptr;
 
@@ -19,8 +21,6 @@ extern "C" {
   }
 //}}}
 
-const int kMscMediaPacket = 32*1024;
-const int kSectorScale = 256;
 
 bool gSdChanged = false;
 uint32_t* gSectors = (uint32_t*)SDRAM_USER;
@@ -1463,57 +1463,57 @@ void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
 
-#ifdef USE_USB_FULLSPEED
-  //  fullSpeed init
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
-  GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12;
-  HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
+  if (kUsbFullSpeed) {
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
+    GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12;
+    HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
 
-  __HAL_RCC_USB_OTG_FS_CLK_ENABLE();
-  HAL_NVIC_SetPriority (OTG_FS_IRQn, 7, 0);
-  HAL_NVIC_EnableIRQ (OTG_FS_IRQn);
-#else
-  // highSpeed init
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
+    __HAL_RCC_USB_OTG_FS_CLK_ENABLE();
+    HAL_NVIC_SetPriority (OTG_FS_IRQn, 7, 0);
+    HAL_NVIC_EnableIRQ (OTG_FS_IRQn);
+    }
+  else {
+    // highSpeed init
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOH_CLK_ENABLE();
 
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
+    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
 
-  // CLK, D0
-  GPIO_InitStruct.Pin = GPIO_PIN_5 | GPIO_PIN_3;
-  HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
+    // CLK, D0
+    GPIO_InitStruct.Pin = GPIO_PIN_5 | GPIO_PIN_3;
+    HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
 
-  // D1 D2 D3 D4 D5 D6 D7
-  GPIO_InitStruct.Pin = GPIO_PIN_0  | GPIO_PIN_1  | GPIO_PIN_5 |
-                        GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
-  HAL_GPIO_Init (GPIOB, &GPIO_InitStruct);
+    // D1 D2 D3 D4 D5 D6 D7
+    GPIO_InitStruct.Pin = GPIO_PIN_0  | GPIO_PIN_1  | GPIO_PIN_5 |
+                          GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
+    HAL_GPIO_Init (GPIOB, &GPIO_InitStruct);
 
-  // STP, DIR
-  GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_2;
-  HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
+    // STP, DIR
+    GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_2;
+    HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
 
-  // NXT
-  GPIO_InitStruct.Pin = GPIO_PIN_4;
-  HAL_GPIO_Init (GPIOH, &GPIO_InitStruct);
+    // NXT
+    GPIO_InitStruct.Pin = GPIO_PIN_4;
+    HAL_GPIO_Init (GPIOH, &GPIO_InitStruct);
 
-  __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
-  __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
-  HAL_NVIC_SetPriority (OTG_HS_IRQn, 7, 0);
-  HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
-#endif
+    __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
+    __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
+    HAL_NVIC_SetPriority (OTG_HS_IRQn, 7, 0);
+    HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
+    }
   }
 //}}}
 //{{{
 void HAL_PCD_MspDeInit (PCD_HandleTypeDef* pcdHandle) {
 
-  if (pcdHandle->Instance == USB_OTG_FS) {
-    // Disable USB FS Clock
+  if (kUsbFullSpeed) {
+    // Disable USB1 FS Clock
     __HAL_RCC_USB_OTG_FS_CLK_DISABLE();
     __HAL_RCC_SYSCFG_CLK_DISABLE();
     }
-  else if (pcdHandle->Instance == USB_OTG_HS) {
-    // Disable USB HS Clocks
+  else {
+    // Disable USB2 HS Clocks
     __HAL_RCC_USB_OTG_HS_CLK_DISABLE();
     __HAL_RCC_SYSCFG_CLK_DISABLE();
     }
@@ -1582,39 +1582,42 @@ void HAL_PCD_DisconnectCallback (PCD_HandleTypeDef* pcdHandle) {
 //{{{
 USBD_StatusTypeDef usbdLowLevelInit (USBD_HandleTypeDef* usbdHandle) {
 
-gPcdHandle.Init.use_dedicated_ep1 = 0;
-gPcdHandle.Init.ep0_mps = 0x40;
-gPcdHandle.Init.dma_enable = 0;
-gPcdHandle.Init.low_power_enable = 0;
-gPcdHandle.Init.lpm_enable = 0;
-gPcdHandle.Init.Sof_enable = 0;
-gPcdHandle.pData = usbdHandle;
-usbdHandle->pData = &gPcdHandle;
+  gPcdHandle.Init.use_dedicated_ep1 = 0;
+  gPcdHandle.Init.ep0_mps = 0x40;
+  gPcdHandle.Init.dma_enable = 0;
+  gPcdHandle.Init.low_power_enable = 0;
+  gPcdHandle.Init.lpm_enable = 0;
+  gPcdHandle.Init.Sof_enable = 0;
+  gPcdHandle.pData = usbdHandle;
+  usbdHandle->pData = &gPcdHandle;
 
-#ifdef USE_USB_FULLSPEED
-  gPcdHandle.Instance = USB_OTG_FS;
-  gPcdHandle.Init.dev_endpoints = 4;
-  gPcdHandle.Init.phy_itface = PCD_PHY_EMBEDDED;
-  gPcdHandle.Init.speed = PCD_SPEED_FULL;
-  gPcdHandle.Init.vbus_sensing_enable = 0;
+  if (kUsbFullSpeed) {
+    // usb1 fullSpeed
+    gPcdHandle.Instance = USB_OTG_FS;
+    gPcdHandle.Init.dev_endpoints = 4;
+    gPcdHandle.Init.phy_itface = PCD_PHY_EMBEDDED;
+    gPcdHandle.Init.speed = PCD_SPEED_FULL;
+    gPcdHandle.Init.vbus_sensing_enable = 0;
 
-  HAL_PCD_Init (&gPcdHandle);
-  HAL_PCDEx_SetRxFiFo (&gPcdHandle, 0x80);
-  HAL_PCDEx_SetTxFiFo (&gPcdHandle, 0, 0x40);
-  HAL_PCDEx_SetTxFiFo (&gPcdHandle, 1, 0x80);
+    HAL_PCD_Init (&gPcdHandle);
+    HAL_PCDEx_SetRxFiFo (&gPcdHandle, 0x80);
+    HAL_PCDEx_SetTxFiFo (&gPcdHandle, 0, 0x40);
+    HAL_PCDEx_SetTxFiFo (&gPcdHandle, 1, 0x80);
+    }
 
-#else
-  gPcdHandle.Instance = USB_OTG_HS;
-  gPcdHandle.Init.dev_endpoints = 6;
-  gPcdHandle.Init.phy_itface = PCD_PHY_ULPI;
-  gPcdHandle.Init.speed = PCD_SPEED_HIGH;
-  gPcdHandle.Init.vbus_sensing_enable = 1;
+  else {
+    // usb2 highSpeed
+    gPcdHandle.Instance = USB_OTG_HS;
+    gPcdHandle.Init.dev_endpoints = 6;
+    gPcdHandle.Init.phy_itface = PCD_PHY_ULPI;
+    gPcdHandle.Init.speed = PCD_SPEED_HIGH;
+    gPcdHandle.Init.vbus_sensing_enable = 1;
 
-  HAL_PCD_Init (&gPcdHandle);
-  HAL_PCDEx_SetRxFiFo (&gPcdHandle, 0x200);
-  HAL_PCDEx_SetTxFiFo (&gPcdHandle, 0, 0x80);
-  HAL_PCDEx_SetTxFiFo (&gPcdHandle, 1, 0x174);
-#endif
+    HAL_PCD_Init (&gPcdHandle);
+    HAL_PCDEx_SetRxFiFo (&gPcdHandle, 0x200);
+    HAL_PCDEx_SetTxFiFo (&gPcdHandle, 0, 0x80);
+    HAL_PCDEx_SetTxFiFo (&gPcdHandle, 1, 0x174);
+    }
 
   return USBD_OK;
   }
