@@ -34,52 +34,52 @@
 #define USBD_SELF_POWERED           1
 #define USBD_DEBUG_LEVEL            0
 
-#define  USB_LEN_DEV_QUALIFIER_DESC  0x0A
-#define  USB_LEN_DEV_DESC            0x12
-#define  USB_LEN_CFG_DESC            0x09
-#define  USB_LEN_IF_DESC             0x09
-#define  USB_LEN_EP_DESC             0x07
-#define  USB_LEN_OTG_DESC            0x03
-#define  USB_LEN_LANGID_STR_DESC     0x04
-#define  USB_LEN_OTHER_SPEED_DESC_SIZ0x09
+#define USB_LEN_DEV_QUALIFIER_DESC  0x0A
+#define USB_LEN_DEV_DESC            0x12
+#define USB_LEN_CFG_DESC            0x09
+#define USB_LEN_IF_DESC             0x09
+#define USB_LEN_EP_DESC             0x07
+#define USB_LEN_OTG_DESC            0x03
+#define USB_LEN_LANGID_STR_DESC     0x04
+#define USB_LEN_OTHER_SPEED_DESC_SIZ0x09
 
-#define  USBD_IDX_LANGID_STR         0x00
-#define  USBD_IDX_MFC_STR            0x01
-#define  USBD_IDX_PRODUCT_STR        0x02
-#define  USBD_IDX_SERIAL_STR         0x03
-#define  USBD_IDX_CONFIG_STR         0x04
-#define  USBD_IDX_INTERFACE_STR      0x05
+#define USBD_IDX_LANGID_STR         0x00
+#define USBD_IDX_MFC_STR            0x01
+#define USBD_IDX_PRODUCT_STR        0x02
+#define USBD_IDX_SERIAL_STR         0x03
+#define USBD_IDX_CONFIG_STR         0x04
+#define USBD_IDX_INTERFACE_STR      0x05
 
-#define  USB_REQ_TYPE_STANDARD       0x00
-#define  USB_REQ_TYPE_CLASS          0x20
-#define  USB_REQ_TYPE_VENDOR         0x40
-#define  USB_REQ_TYPE_MASK           0x60
+#define USB_REQ_TYPE_STANDARD       0x00
+#define USB_REQ_TYPE_CLASS          0x20
+#define USB_REQ_TYPE_VENDOR         0x40
+#define USB_REQ_TYPE_MASK           0x60
 
-#define  USB_REQ_RECIPIENT_DEVICE    0x00
-#define  USB_REQ_RECIPIENT_INTERFACE 0x01
-#define  USB_REQ_RECIPIENT_ENDPOINT  0x02
-#define  USB_REQ_RECIPIENT_MASK      0x03
+#define USB_REQ_RECIPIENT_DEVICE    0x00
+#define USB_REQ_RECIPIENT_INTERFACE 0x01
+#define USB_REQ_RECIPIENT_ENDPOINT  0x02
+#define USB_REQ_RECIPIENT_MASK      0x03
 
-#define  USB_REQ_GET_STATUS          0x00
-#define  USB_REQ_CLEAR_FEATURE       0x01
-#define  USB_REQ_SET_FEATURE         0x03
-#define  USB_REQ_SET_ADDRESS         0x05
-#define  USB_REQ_GET_DESCRIPTOR      0x06
-#define  USB_REQ_SET_DESCRIPTOR      0x07
-#define  USB_REQ_GET_CONFIGURATION   0x08
-#define  USB_REQ_SET_CONFIGURATION   0x09
-#define  USB_REQ_GET_INTERFACE       0x0A
-#define  USB_REQ_SET_INTERFACE       0x0B
-#define  USB_REQ_SYNCH_FRAME         0x0C
+#define USB_REQ_GET_STATUS          0x00
+#define USB_REQ_CLEAR_FEATURE       0x01
+#define USB_REQ_SET_FEATURE         0x03
+#define USB_REQ_SET_ADDRESS         0x05
+#define USB_REQ_GET_DESCRIPTOR      0x06
+#define USB_REQ_SET_DESCRIPTOR      0x07
+#define USB_REQ_GET_CONFIGURATION   0x08
+#define USB_REQ_SET_CONFIGURATION   0x09
+#define USB_REQ_GET_INTERFACE       0x0A
+#define USB_REQ_SET_INTERFACE       0x0B
+#define USB_REQ_SYNCH_FRAME         0x0C
 
-#define  USB_DESC_TYPE_DEVICE                      1
-#define  USB_DESC_TYPE_CONFIGURATION               2
-#define  USB_DESC_TYPE_STRING                      3
-#define  USB_DESC_TYPE_INTERFACE                   4
-#define  USB_DESC_TYPE_ENDPOINT                    5
-#define  USB_DESC_TYPE_DEVICE_QUALIFIER            6
-#define  USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION   7
-#define  USB_DESC_TYPE_BOS                         0x0F
+#define USB_DESC_TYPE_DEVICE                      1
+#define USB_DESC_TYPE_CONFIGURATION               2
+#define USB_DESC_TYPE_STRING                      3
+#define USB_DESC_TYPE_INTERFACE                   4
+#define USB_DESC_TYPE_ENDPOINT                    5
+#define USB_DESC_TYPE_DEVICE_QUALIFIER            6
+#define USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION   7
+#define USB_DESC_TYPE_BOS                         0x0F
 
 #define USB_CONFIG_REMOTE_WAKEUP   2
 #define USB_CONFIG_SELF_POWERED    1
@@ -114,8 +114,8 @@
 #define USBD_EP_TYPE_BULK          2
 #define USBD_EP_TYPE_INTR          3
 //}}}
-typedef enum { USBD_OK = 0, USBD_BUSY, USBD_FAIL, } USBD_StatusTypeDef;
-typedef enum { USBD_SPEED_HIGH = 0, USBD_SPEED_FULL  = 1, USBD_SPEED_LOW   = 2, } USBD_SpeedTypeDef;
+typedef enum { USBD_OK = 0, USBD_BUSY, USBD_FAIL } USBD_StatusTypeDef;
+typedef enum { USBD_SPEED_HIGH = 0, USBD_SPEED_FULL  = 1, USBD_SPEED_LOW   = 2 } USBD_SpeedTypeDef;
 
 //{{{  struct  USBD_SetupReqTypedef
 typedef struct usb_setup_req {
@@ -208,23 +208,86 @@ typedef struct _USBD_HandleTypeDef {
 
 // USBD Low Level Driver
 USBD_StatusTypeDef usbdLowLevelInit (USBD_HandleTypeDef* usbdHandle);
-USBD_StatusTypeDef usbdLowLevelDeInit (USBD_HandleTypeDef* usbdHandle);
-
-uint8_t usbdLowLevelIsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr);
-uint32_t usbdLowLevelGetRxDataSize  (USBD_HandleTypeDef* usbdHandle, uint8_t  ep_addr);
-
-USBD_StatusTypeDef usbdLowLevelStart(USBD_HandleTypeDef* usbdHandle);
-USBD_StatusTypeDef usbdLowLevelStop (USBD_HandleTypeDef* usbdHandle);
-USBD_StatusTypeDef usbdLowLevelOpenEP  (USBD_HandleTypeDef* usbdHandle, uint8_t  ep_addr, uint8_t  ep_type, uint16_t ep_mps);
-USBD_StatusTypeDef usbdLowLevelCloseEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr);
-USBD_StatusTypeDef usbdLowLevelFlushEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr);
-USBD_StatusTypeDef usbdLowLevelStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr);
-USBD_StatusTypeDef usbdLowLevelClearStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr);
-
-USBD_StatusTypeDef usbdLowLevelSetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t dev_addr);
-USBD_StatusTypeDef usbdLowLevelTransmit (USBD_HandleTypeDef* usbdHandle, uint8_t  ep_addr, uint8_t * pbuf, uint16_t  size);
-USBD_StatusTypeDef usbdLowLevelPrepareReceive(USBD_HandleTypeDef* usbdHandle, uint8_t  ep_addr, uint8_t * pbuf, uint16_t  size);
-
+//{{{
+inline USBD_StatusTypeDef usbdLowLevelDeInit (USBD_HandleTypeDef* usbdHandle) {
+  HAL_PCD_DeInit ((PCD_HandleTypeDef*)usbdHandle->pData);
+  return USBD_OK;
+  }
+//}}}
+//{{{
+inline uint8_t usbdLowLevelIsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  auto pcdHandle = (PCD_HandleTypeDef*)usbdHandle->pData;
+  if ((ep_addr & 0x80) == 0x80)
+    return pcdHandle->IN_ep[ep_addr & 0xF].is_stall;
+  else
+    return pcdHandle->OUT_ep[ep_addr & 0xF].is_stall;
+  }
+//}}}
+//{{{
+inline uint32_t usbdLowLevelGetRxDataSize (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  return HAL_PCD_EP_GetRxCount ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
+  }
+//}}}
+//{{{
+inline USBD_StatusTypeDef usbdLowLevelStart (USBD_HandleTypeDef* usbdHandle) {
+  HAL_PCD_Start ((PCD_HandleTypeDef*)usbdHandle->pData);
+  return USBD_OK;
+  }
+//}}}
+//{{{
+inline USBD_StatusTypeDef usbdLowLevelStop (USBD_HandleTypeDef* usbdHandle) {
+  HAL_PCD_Stop ((PCD_HandleTypeDef*)usbdHandle->pData);
+  return USBD_OK;
+  }
+//}}}
+//{{{
+inline USBD_StatusTypeDef usbdLowLevelOpenEP( USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t ep_type, uint16_t ep_mps) {
+  HAL_PCD_EP_Open ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr, ep_mps, ep_type);
+  return USBD_OK;
+  }
+//}}}
+//{{{
+inline USBD_StatusTypeDef usbdLowLevelCloseEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  HAL_PCD_EP_Close ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
+  return USBD_OK;
+  }
+//}}}
+//{{{
+inline USBD_StatusTypeDef usbdLowLevelFlushEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  HAL_PCD_EP_Flush ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
+  return USBD_OK;
+  }
+//}}}
+//{{{
+inline USBD_StatusTypeDef usbdLowLevelStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  HAL_PCD_EP_SetStall ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
+  return USBD_OK;
+  }
+//}}}
+//{{{
+inline USBD_StatusTypeDef usbdLowLevelClearStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  HAL_PCD_EP_ClrStall ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
+  return USBD_OK;
+  }
+//}}}
+//{{{
+inline USBD_StatusTypeDef usbdLowLevelSetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t dev_addr) {
+  HAL_PCD_SetAddress ((PCD_HandleTypeDef*)usbdHandle->pData, dev_addr);
+  return USBD_OK;
+  }
+//}}}
+//{{{
+inline USBD_StatusTypeDef usbdLowLevelTransmit (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
+  HAL_PCD_EP_Transmit ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr, pbuf, size);
+  return USBD_OK;
+  }
+//}}}
+//{{{
+inline USBD_StatusTypeDef usbdLowLevelPrepareReceive (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
+  HAL_PCD_EP_Receive ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr, pbuf, size);
+  return USBD_OK;
+  }
+//}}}
 //
 void USBD_CtlError (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req);
 void USBD_GetString (uint8_t* desc, uint8_t* unicode, uint16_t* len);

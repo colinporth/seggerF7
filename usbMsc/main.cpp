@@ -74,17 +74,13 @@ void cApp::run() {
   mscInit (mLcd);
   mscStart();
 
-  if (f_mount ((FATFS*)malloc (sizeof (FATFS)), kSdPath, 0) == FR_OK) {
-    char pathName[256] = "/";
-    readDirectory (pathName);
-    reportLabel();
-    }
-  else
-    mLcd->debug (LCD_COLOR_RED, "not mounted");
-
-  BSP_SD_CardInfo cardInfo;
-  BSP_SD_GetCardInfo (&cardInfo);
-  mLcd->debug (LCD_COLOR_YELLOW, "num:%d size:%d", cardInfo.LogBlockNbr, cardInfo.LogBlockSize);
+  //if (f_mount ((FATFS*)malloc (sizeof (FATFS)), kSdPath, 0) == FR_OK) {
+  //  char pathName[256] = "/";
+  //  readDirectory (pathName);
+  //  reportLabel();
+  //  }
+  //else
+  //  mLcd->debug (LCD_COLOR_RED, "not mounted");
 
   int lastCount = 0;
   while (true) {
@@ -98,7 +94,8 @@ void cApp::run() {
     mLcd->startBgnd (kVersion, mscGetSectors());
     mLcd->present();
 
-    if (hasSdChanged()) {
+    if (false) {
+    //if (hasSdChanged()) {
       //{{{  check num files
       char pathName[256] = "/";
       auto count = getCountFiles (pathName);

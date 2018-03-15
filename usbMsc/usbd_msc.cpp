@@ -21,7 +21,7 @@ extern "C" {
 
 bool gSdChanged = false;
 uint32_t* gSectors = (uint32_t*)SDRAM_USER;
-const int kSectorScale = 128;
+const int kSectorScale = 256;
 #define MSC_MEDIA_PACKET 32*1024
 
 //{{{  sd card handlers
@@ -190,7 +190,7 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
     gSectors[blk_addr / kSectorScale] = LCD_COLOR_GREEN;
 
-    //gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d %d", buf, (int)blk_addr, (int)blk_len, took);
+    gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
     return true;
     }
 
@@ -207,6 +207,8 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
     uint32_t alignedAddr = (uint32_t)buf &  ~0x1F;
     SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, blk_len*512 + ((uint32_t)buf - alignedAddr));
     BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
+
+    gLcd->debug (LCD_COLOR_MAGENTA, "w %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
 
     uint32_t timeout = HAL_GetTick();
     while  ((writestatus == 0) && ((HAL_GetTick() - timeout) < 2000)) {}
@@ -1631,102 +1633,6 @@ usbdHandle->pData = &gPcdHandle;
   return USBD_OK;
   }
 //}}}
-//{{{
-USBD_StatusTypeDef usbdLowLevelDeInit (USBD_HandleTypeDef* usbdHandle) {
-
-  HAL_PCD_DeInit ((PCD_HandleTypeDef*)usbdHandle->pData);
-  return USBD_OK;
-  }
-//}}}
-
-//{{{
-uint8_t usbdLowLevelIsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
-
-  auto pcdHandle = (PCD_HandleTypeDef*)usbdHandle->pData;
-  if ((ep_addr & 0x80) == 0x80)
-    return pcdHandle->IN_ep[ep_addr & 0xF].is_stall;
-  else
-    return pcdHandle->OUT_ep[ep_addr & 0xF].is_stall;
-  }
-//}}}
-//{{{
-uint32_t usbdLowLevelGetRxDataSize (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
-  return HAL_PCD_EP_GetRxCount ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
-  }
-//}}}
-
-//{{{
-USBD_StatusTypeDef usbdLowLevelStart (USBD_HandleTypeDef* usbdHandle) {
-
-  HAL_PCD_Start ((PCD_HandleTypeDef*)usbdHandle->pData);
-  return USBD_OK;
-  }
-//}}}
-//{{{
-USBD_StatusTypeDef usbdLowLevelStop (USBD_HandleTypeDef* usbdHandle) {
-
-  HAL_PCD_Stop ((PCD_HandleTypeDef*)usbdHandle->pData);
-  return USBD_OK;
-  }
-//}}}
-
-//{{{
-USBD_StatusTypeDef usbdLowLevelOpenEP( USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t ep_type, uint16_t ep_mps) {
-
-  HAL_PCD_EP_Open ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr, ep_mps, ep_type);
-  return USBD_OK;
-  }
-//}}}
-//{{{
-USBD_StatusTypeDef usbdLowLevelCloseEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
-
-  HAL_PCD_EP_Close ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
-  return USBD_OK;
-  }
-//}}}
-//{{{
-USBD_StatusTypeDef usbdLowLevelFlushEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
-
-  HAL_PCD_EP_Flush ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
-  return USBD_OK;
-  }
-//}}}
-//{{{
-USBD_StatusTypeDef usbdLowLevelStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
-
-  HAL_PCD_EP_SetStall ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
-  return USBD_OK;
-  }
-//}}}
-//{{{
-USBD_StatusTypeDef usbdLowLevelClearStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
-
-  HAL_PCD_EP_ClrStall ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
-  return USBD_OK;
-  }
-//}}}
-
-//{{{
-USBD_StatusTypeDef usbdLowLevelSetUSBAddress (USBD_HandleTypeDef* usbdHandle, uint8_t dev_addr) {
-
-  HAL_PCD_SetAddress ((PCD_HandleTypeDef*)usbdHandle->pData, dev_addr);
-  return USBD_OK;
-  }
-//}}}
-//{{{
-USBD_StatusTypeDef usbdLowLevelTransmit (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
-
-  HAL_PCD_EP_Transmit ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr, pbuf, size);
-  return USBD_OK;
-  }
-//}}}
-//{{{
-USBD_StatusTypeDef usbdLowLevelPrepareReceive (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr, uint8_t* pbuf, uint16_t size) {
-
-  HAL_PCD_EP_Receive ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr, pbuf, size);
-  return USBD_OK;
-  }
-//}}}
 
 //{{{
 void mscInit (cLcd* lcd) {
@@ -1734,8 +1640,12 @@ void mscInit (cLcd* lcd) {
   gLcd = lcd;
   BSP_SD_Init();
 
+  BSP_SD_CardInfo cardInfo;
+  BSP_SD_GetCardInfo (&cardInfo);
+  gLcd->debug (LCD_COLOR_YELLOW, "num:%d size:%d", cardInfo.LogBlockNbr, cardInfo.LogBlockSize);
+  auto max = cardInfo.LogBlockNbr / kSectorScale;
   for (auto i = 0; i < 480 * 272; i++)
-    gSectors[i] = 0;
+    gSectors[i] = i > max ? 0 : 0x40404040;
   }
 //}}}
 //{{{

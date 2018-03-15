@@ -45,8 +45,6 @@
  <Project>
   <ProjectSessionItem path="usb"/>
   <ProjectSessionItem path="usb;usbHid"/>
-  <ProjectSessionItem path="usb;usbHid;bsp_drivers"/>
-  <ProjectSessionItem path="usb;usbHid;bsp_drivers;includes"/>
   <ProjectSessionItem path="usb;usbHid;main"/>
   <ProjectSessionItem path="usb;usbMsc"/>
   <ProjectSessionItem path="usb;usbMsc;bsp_drivers"/>
@@ -93,20 +91,14 @@
  </Watch4>
  <Files>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="227" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/ff.c" debugPath="FatFs/ff.c" selected="0" top="209" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="41" y="37" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/usbd_msc.cpp" debugPath="usbMsc/usbd_msc.cpp" selected="0" top="6" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="34" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.h" debugPath="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sdram.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="8" y="1741" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/usbd_msc.cpp" debugPath="usbMsc/usbd_msc.cpp" selected="1" top="1703" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="389" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h" debugPath="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h" selected="0" top="363" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="113" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pcd.c" debugPath="Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pcd.c" selected="0" top="99" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="44" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_ts.h" debugPath="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_ts.h" selected="0" top="9" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="46" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_camera.h" debugPath="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_camera.h" selected="0" top="8" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="16" y="90" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="0" top="62" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="255" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/BSP/STM32746G-Discovery/stm32746g_lcd.cpp" debugPath="Drivers/BSP/STM32746G-Discovery/stm32746g_lcd.cpp" selected="0" top="241" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="26" y="10" useTextEdit="1" useBinaryEdit="0" left="0" path="common/cLcd.h" debugPath="common/cLcd.h" selected="0" top="10" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="42" y="11" useTextEdit="1" useBinaryEdit="0" left="0" path="main.cpp" debugPath="main.cpp" selected="1" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="90" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="0" top="62" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="10" useTextEdit="1" useBinaryEdit="0" left="0" path="common/cLcd.h" debugPath="common/cLcd.h" selected="0" top="10" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="11" useTextEdit="1" useBinaryEdit="0" left="0" path="main.cpp" debugPath="main.cpp" selected="0" top="0" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dac_ex.h" debugPath="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dac_ex.h" selected="0" top="0" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_smartcard_ex.h" debugPath="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_smartcard_ex.h" selected="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="86" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/BSP/STM32746G-Discovery/stm32746g_lcd.h" debugPath="Drivers/BSP/STM32746G-Discovery/stm32746g_lcd.h" selected="0" top="79" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="8" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sd.h" debugPath="Drivers/BSP/STM32746G-Discovery/stm32746g_discovery_sd.h" selected="0" top="0" codecName="Default"/>
  </Files>
- <ARMCrossStudioWindow activeProject="usbHid" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
+ <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>
