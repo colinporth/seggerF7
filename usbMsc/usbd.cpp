@@ -2,6 +2,18 @@
 #include "usbd.h"
 
 //{{{
+uint8_t USBD_GetLen (uint8_t* buf) {
+
+  uint8_t  len = 0;
+  while (*buf != '\0') {
+    len++;
+    buf++;
+    }
+
+  return len;
+  }
+//}}}
+//{{{
 void USBD_SetConfig (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) {
 
   static uint8_t cfgidx = (uint8_t)(req->wValue);
@@ -18,10 +30,8 @@ void USBD_SetConfig (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) 
             USBD_CtlError (usbdHandle , req);
             return;
             }
-          USBD_CtlSendStatus (usbdHandle);
           }
-        else
-           USBD_CtlSendStatus (usbdHandle);
+        USBD_CtlSendStatus (usbdHandle);
         break;
 
       case USBD_STATE_CONFIGURED:
@@ -29,9 +39,8 @@ void USBD_SetConfig (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) 
           usbdHandle->dev_state = USBD_STATE_ADDRESSED;
           usbdHandle->dev_config = cfgidx;
           USBD_ClrClassConfig (usbdHandle , cfgidx);
-          USBD_CtlSendStatus (usbdHandle);
           }
-        else  if (cfgidx != usbdHandle->dev_config) {
+        else if (cfgidx != usbdHandle->dev_config) {
           // Clear old configuration
           USBD_ClrClassConfig (usbdHandle , usbdHandle->dev_config);
 
@@ -41,16 +50,14 @@ void USBD_SetConfig (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) 
             USBD_CtlError (usbdHandle , req);
             return;
             }
-          USBD_CtlSendStatus (usbdHandle);
           }
-        else
-          USBD_CtlSendStatus (usbdHandle);
+        USBD_CtlSendStatus (usbdHandle);
         break;
 
       default:
-         USBD_CtlError (usbdHandle , req);
+        USBD_CtlError (usbdHandle , req);
         break;
-        }
+      }
     }
   }
 //}}}
@@ -58,21 +65,21 @@ void USBD_SetConfig (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) 
 void USBD_GetConfig (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) {
 
   if (req->wLength != 1)
-    USBD_CtlError (usbdHandle , req);
+    USBD_CtlError (usbdHandle, req);
 
   else {
     switch (usbdHandle->dev_state ) {
       case USBD_STATE_ADDRESSED:
         usbdHandle->dev_default_config = 0;
-        USBD_CtlSendData (usbdHandle, (uint8_t *)&usbdHandle->dev_default_config, 1);
+        USBD_CtlSendData (usbdHandle, (uint8_t*)&usbdHandle->dev_default_config, 1);
         break;
 
       case USBD_STATE_CONFIGURED:
-        USBD_CtlSendData (usbdHandle, (uint8_t *)&usbdHandle->dev_config, 1);
+        USBD_CtlSendData (usbdHandle, (uint8_t*)&usbdHandle->dev_config, 1);
         break;
 
       default:
-         USBD_CtlError (usbdHandle , req);
+        USBD_CtlError (usbdHandle, req);
         break;
       }
    }
@@ -93,11 +100,11 @@ void USBD_GetStatus (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) 
       if (usbdHandle->dev_remote_wakeup)
         usbdHandle->dev_config_status |= USB_CONFIG_REMOTE_WAKEUP;
 
-      USBD_CtlSendData (usbdHandle, (uint8_t *)& usbdHandle->dev_config_status, 2);
+      USBD_CtlSendData (usbdHandle, (uint8_t*)& usbdHandle->dev_config_status, 2);
       break;
 
     default :
-      USBD_CtlError (usbdHandle , req);
+      USBD_CtlError (usbdHandle, req);
       break;
    }
   }
@@ -126,7 +133,7 @@ void USBD_ClrFeature (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req)
       break;
 
     default :
-       USBD_CtlError (usbdHandle , req);
+      USBD_CtlError (usbdHandle , req);
       break;
     }
   }
@@ -151,66 +158,52 @@ void USBD_GetDescriptor (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* r
     //}}}
     //{{{
     case USB_DESC_TYPE_CONFIGURATION:
-      if(usbdHandle->dev_speed == USBD_SPEED_HIGH ) {
-        pbuf   = (uint8_t *)usbdHandle->pClass->GetHSConfigDescriptor(&len);
-        pbuf[1] = USB_DESC_TYPE_CONFIGURATION;
-        }
-      else {
-        pbuf   = (uint8_t *)usbdHandle->pClass->GetFSConfigDescriptor(&len);
-        pbuf[1] = USB_DESC_TYPE_CONFIGURATION;
-        }
+      if (usbdHandle->dev_speed == USBD_SPEED_HIGH)
+        pbuf = (uint8_t*)usbdHandle->pClass->GetHSConfigDescriptor (&len);
+      else
+        pbuf = (uint8_t*)usbdHandle->pClass->GetFSConfigDescriptor (&len);
+
+      pbuf[1] = USB_DESC_TYPE_CONFIGURATION;
       break;
     //}}}
     //{{{
     case USB_DESC_TYPE_STRING:
       switch ((uint8_t)(req->wValue)) {
-        //{{{
         case USBD_IDX_LANGID_STR:
-          pbuf = usbdHandle->pDesc->GetLangIDStrDescriptor(usbdHandle->dev_speed, &len);
+          pbuf = usbdHandle->pDesc->GetLangIDStrDescriptor (usbdHandle->dev_speed, &len);
           break;
-        //}}}
-        //{{{
+
         case USBD_IDX_MFC_STR:
-          pbuf = usbdHandle->pDesc->GetManufacturerStrDescriptor(usbdHandle->dev_speed, &len);
+          pbuf = usbdHandle->pDesc->GetManufacturerStrDescriptor (usbdHandle->dev_speed, &len);
           break;
-        //}}}
-        //{{{
+
         case USBD_IDX_PRODUCT_STR:
-          pbuf = usbdHandle->pDesc->GetProductStrDescriptor(usbdHandle->dev_speed, &len);
+          pbuf = usbdHandle->pDesc->GetProductStrDescriptor (usbdHandle->dev_speed, &len);
           break;
-        //}}}
-        //{{{
+
         case USBD_IDX_SERIAL_STR:
-          pbuf = usbdHandle->pDesc->GetSerialStrDescriptor(usbdHandle->dev_speed, &len);
+          pbuf = usbdHandle->pDesc->GetSerialStrDescriptor (usbdHandle->dev_speed, &len);
           break;
-        //}}}
-        //{{{
+
         case USBD_IDX_CONFIG_STR:
-          pbuf = usbdHandle->pDesc->GetConfigurationStrDescriptor(usbdHandle->dev_speed, &len);
+          pbuf = usbdHandle->pDesc->GetConfigurationStrDescriptor (usbdHandle->dev_speed, &len);
           break;
-        //}}}
-        //{{{
+
         case USBD_IDX_INTERFACE_STR:
-          pbuf = usbdHandle->pDesc->GetInterfaceStrDescriptor(usbdHandle->dev_speed, &len);
+          pbuf = usbdHandle->pDesc->GetInterfaceStrDescriptor (usbdHandle->dev_speed, &len);
           break;
-        //}}}
-        //{{{
+
         default:
-        #if (USBD_SUPPORT_USER_STRING == 1)
-          pbuf = usbdHandle->pClass->GetUsrStrDescriptor(usbdHandle, (req->wValue) , &len);
-          break;
-        #else
-          USBD_CtlError(usbdHandle , req);
+          USBD_CtlError (usbdHandle , req);
           return;
-        #endif
-        //}}}
         }
+
       break;
     //}}}
     //{{{
     case USB_DESC_TYPE_DEVICE_QUALIFIER:
-      if (usbdHandle->dev_speed == USBD_SPEED_HIGH  ) {
-        pbuf = (uint8_t *)usbdHandle->pClass->GetDeviceQualifierDescriptor(&len);
+      if (usbdHandle->dev_speed == USBD_SPEED_HIGH) {
+        pbuf = (uint8_t*)usbdHandle->pClass->GetDeviceQualifierDescriptor(&len);
         break;
         }
       else {
@@ -220,8 +213,8 @@ void USBD_GetDescriptor (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* r
     //}}}
     //{{{
     case USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION:
-      if (usbdHandle->dev_speed == USBD_SPEED_HIGH  ) {
-        pbuf   = (uint8_t *)usbdHandle->pClass->GetOtherSpeedConfigDescriptor(&len);
+      if (usbdHandle->dev_speed == USBD_SPEED_HIGH) {
+        pbuf = (uint8_t*)usbdHandle->pClass->GetOtherSpeedConfigDescriptor (&len);
         pbuf[1] = USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION;
         break;
         }
@@ -237,8 +230,8 @@ void USBD_GetDescriptor (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* r
     //}}}
     }
 
-  if ((len != 0)&& (req->wLength != 0)) {
-    len = MIN(len , req->wLength);
+  if ((len != 0) && (req->wLength != 0)) {
+    len = MIN(len, req->wLength);
     USBD_CtlSendData (usbdHandle, pbuf, len);
     }
   }
@@ -263,18 +256,6 @@ void USBD_SetAddress (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req)
     }
   else
     USBD_CtlError (usbdHandle, req);
-  }
-//}}}
-//{{{
-uint8_t USBD_GetLen (uint8_t* buf) {
-
-  uint8_t  len = 0;
-  while (*buf != '\0') {
-    len++;
-    buf++;
-    }
-
-  return len;
   }
 //}}}
 
@@ -451,12 +432,6 @@ USBD_StatusTypeDef USBD_StdEPReq (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqT
 //}}}
 
 //{{{
-void USBD_CtlError (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) {
-  usbdLowLevelStallEP (usbdHandle, 0x80);
-  usbdLowLevelStallEP (usbdHandle, 0);
-  }
-//}}}
-//{{{
 void USBD_GetString (uint8_t* desc, uint8_t* unicode, uint16_t* len) {
 
   uint8_t idx = 0;
@@ -471,7 +446,18 @@ void USBD_GetString (uint8_t* desc, uint8_t* unicode, uint16_t* len) {
    }
   }
 //}}}
+//{{{
+void USBD_CtlError (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) {
+  usbdLowLevelStallEP (usbdHandle, 0x80);
+  usbdLowLevelStallEP (usbdHandle, 0);
+  }
+//}}}
 
+//{{{
+uint16_t USBD_GetRxCount (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
+  return usbdLowLevelGetRxDataSize (usbdHandle, ep_addr);
+  }
+//}}}
 //{{{
 USBD_StatusTypeDef USBD_CtlSendData (USBD_HandleTypeDef* usbdHandle, uint8_t* pbuf, uint16_t len) {
 
@@ -538,11 +524,6 @@ USBD_StatusTypeDef USBD_CtlReceiveStatus (USBD_HandleTypeDef* usbdHandle) {
   usbdLowLevelPrepareReceive (usbdHandle, 0, NULL, 0);
 
   return USBD_OK;
-  }
-//}}}
-//{{{
-uint16_t USBD_GetRxCount (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
-  return usbdLowLevelGetRxDataSize(usbdHandle, ep_addr);
   }
 //}}}
 

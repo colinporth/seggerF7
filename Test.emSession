@@ -1,9 +1,9 @@
 <!DOCTYPE CrossStudio_Session_File>
 <session>
  <Bookmarks>
-  <BookmarkItem objectName="" line="77" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="3" extra="} while (fno.fname[j++]);" color="5"/>
-  <BookmarkItem objectName="" line="58" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="char path[] = &quot;/&quot;;" color="5"/>
   <BookmarkItem objectName="" line="66" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="path[i++] = '/';" color="5"/>
+  <BookmarkItem objectName="" line="58" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="char path[] = &quot;/&quot;;" color="5"/>
+  <BookmarkItem objectName="" line="77" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="3" extra="} while (fno.fname[j++]);" color="5"/>
  </Bookmarks>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
   <BreakpointListItem trigger="" line="3255" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="FatFs/ff.c" useHWbreakpoint="false"/>
@@ -44,11 +44,8 @@
  </Memory4>
  <Project>
   <ProjectSessionItem path="usb"/>
-  <ProjectSessionItem path="usb;usbHid"/>
-  <ProjectSessionItem path="usb;usbHid;main"/>
   <ProjectSessionItem path="usb;usbMsc"/>
-  <ProjectSessionItem path="usb;usbMsc;bsp_drivers"/>
-  <ProjectSessionItem path="usb;usbMsc;bsp_drivers;includes"/>
+  <ProjectSessionItem path="usb;usbMsc;FatFs"/>
   <ProjectSessionItem path="usb;usbMsc;hal_drivers"/>
   <ProjectSessionItem path="usb;usbMsc;hal_drivers;includes"/>
   <ProjectSessionItem path="usb;usbMsc;main"/>
@@ -92,9 +89,6 @@
  <Watch4>
   <Watches active="0" update="Never"/>
  </Watch4>
- <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="227" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/ff.c" debugPath="FatFs/ff.c" selected="0" top="209" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="389" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h" debugPath="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h" selected="1" top="363" codecName="Default"/>
- </Files>
+ <Files/>
  <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

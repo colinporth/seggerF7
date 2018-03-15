@@ -6,7 +6,7 @@
 #include "../common/cLcd.h"
 #include "stm32746g_discovery_sd.h"
 //}}}
-//#define USE_USB_FS
+//#define USE_USB_FULLSPEED
 
 cLcd* gLcd = nullptr;
 
@@ -19,10 +19,11 @@ extern "C" {
   }
 //}}}
 
+const int kMscMediaPacket = 32*1024;
+const int kSectorScale = 256;
+
 bool gSdChanged = false;
 uint32_t* gSectors = (uint32_t*)SDRAM_USER;
-const int kSectorScale = 256;
-#define MSC_MEDIA_PACKET 32*1024
 
 //{{{  sd card handlers
 // BSP
@@ -770,7 +771,7 @@ typedef struct {
   uint8_t               bot_state;
   uint8_t               bot_status;
   uint16_t              bot_data_length;
-  uint8_t               bot_data[MSC_MEDIA_PACKET];
+  uint8_t               bot_data[kMscMediaPacket];
   sMscBotCbwTypeDef     cbw;
   sMscBotCswTypeDef     csw;
 
@@ -1054,8 +1055,8 @@ int8_t scsiRead10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params)
       //}}}
     }
 
-  mscData->bot_data_length = MSC_MEDIA_PACKET;
-  uint32_t len = MIN(mscData->scsiBlocklen, MSC_MEDIA_PACKET);
+  mscData->bot_data_length = kMscMediaPacket;
+  uint32_t len = MIN(mscData->scsiBlocklen, kMscMediaPacket);
   if (!sdRead (lun, mscData->bot_data,
                mscData->scsiBlockaddr / mscData->scsiBlocksize, len / mscData->scsiBlocksize)) {
     //{{{  error
@@ -1127,7 +1128,7 @@ int8_t scsiWrite10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params
 
   else {
     // Write ongoing
-    uint32_t len = MIN(mscData->scsiBlocklen, MSC_MEDIA_PACKET);
+    uint32_t len = MIN(mscData->scsiBlocklen, kMscMediaPacket);
     if (!sdWrite (lun , mscData->bot_data,
                   mscData->scsiBlockaddr/mscData->scsiBlocksize, len/mscData->scsiBlocksize) < 0) {
       //{{{  error
@@ -1148,7 +1149,7 @@ int8_t scsiWrite10 (USBD_HandleTypeDef* usbdHandle, uint8_t lun, uint8_t* params
 
   // prepare EP to rx packet
   usbdLowLevelPrepareReceive (usbdHandle, MSC_EPOUT_ADDR,
-                              mscData->bot_data, MIN(mscData->scsiBlocklen, MSC_MEDIA_PACKET));
+                              mscData->bot_data, MIN(mscData->scsiBlocklen, kMscMediaPacket));
   return 0;
   }
 //}}}
@@ -1284,22 +1285,25 @@ uint8_t mscSetup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) {
   auto mscData = (sMscData*)usbdHandle->pClassData;
 
   switch (req->bmRequest & USB_REQ_TYPE_MASK) {
-    case USB_REQ_TYPE_CLASS : // Class request
+    //{{{
+    case USB_REQ_TYPE_CLASS :   // Class request
       switch (req->bRequest) {
-        //{{{
         case BOT_GET_MAX_LUN :
-          if((req->wValue  == 0) && (req->wLength == 1) && ((req->bmRequest & 0x80) == 0x80))
+          if ((req->wValue  == 0) &&
+              (req->wLength == 1) &&
+              ((req->bmRequest & 0x80) == 0x80))
             // maxLun = 0
             USBD_CtlSendData (usbdHandle, 0, 1);
           else {
-            USBD_CtlError(usbdHandle, req);
+            USBD_CtlError (usbdHandle, req);
             return USBD_FAIL;
             }
           break;
-        //}}}
-        //{{{
+
         case BOT_RESET :
-          if ((req->wValue  == 0) && (req->wLength == 0) && ((req->bmRequest & 0x80) != 0x80)) {
+          if ((req->wValue  == 0) &&
+              (req->wLength == 0) &&
+              ((req->bmRequest & 0x80) != 0x80)) {
             // Prepare EP to Receive First BOT Cmd
             auto mscData = (sMscData*)usbdHandle->pClassData;
             mscData->bot_state = USBD_BOT_IDLE;
@@ -1312,54 +1316,42 @@ uint8_t mscSetup (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req) {
             }
           break;
 
-        //}}}
-        //{{{
         default:
           USBD_CtlError (usbdHandle , req);
           return USBD_FAIL;
-        //}}}
         }
-      break;
 
+      break;
+    //}}}
+    //{{{
     case USB_REQ_TYPE_STANDARD: // Interface & Endpoint request
       switch (req->bRequest) {
-        //{{{
         case USB_REQ_GET_INTERFACE :
           USBD_CtlSendData (usbdHandle, (uint8_t*)&mscData->interface, 1);
           break;
-        //}}}
-        //{{{
+
         case USB_REQ_SET_INTERFACE :
           mscData->interface = (uint8_t)(req->wValue);
           break;
-        //}}}
-        //{{{
+
         case USB_REQ_CLEAR_FEATURE:
           // Flush the FIFO and Clear the stall status
           usbdLowLevelFlushEP (usbdHandle, (uint8_t)req->wIndex);
 
           // Reactivate the EP
           usbdLowLevelCloseEP (usbdHandle , (uint8_t)req->wIndex);
-          if ((((uint8_t)req->wIndex) & 0x80) == 0x80) {
-            if (usbdHandle->dev_speed == USBD_SPEED_HIGH) // Open EP IN
-              usbdLowLevelOpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
-            else // Open EP IN
-              usbdLowLevelOpenEP (usbdHandle, MSC_EPIN_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
-            }
-          else {
-            if (usbdHandle->dev_speed == USBD_SPEED_HIGH) // Open EP IN
-              usbdLowLevelOpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_HS_PACKET);
-            else // Open EP IN
-              usbdLowLevelOpenEP (usbdHandle, MSC_EPOUT_ADDR, USBD_EP_TYPE_BULK, MSC_MAX_FS_PACKET);
-            }
+          usbdLowLevelOpenEP (usbdHandle,
+                              (((uint8_t)req->wIndex) & 0x80) == 0x80 ? MSC_EPIN_ADDR : MSC_EPOUT_ADDR,
+                              USBD_EP_TYPE_BULK,
+                              usbdHandle->dev_speed == USBD_SPEED_HIGH ? MSC_MAX_HS_PACKET : MSC_MAX_FS_PACKET);
 
           // Handle BOT error
           mscBotCplClrFeature (usbdHandle, (uint8_t)req->wIndex);
           break;
-        //}}}
         }
-      break;
 
+      break;
+    //}}}
     default:
       break;
     }
@@ -1465,53 +1457,51 @@ USBD_ClassTypeDef kMscHandlers = {
 void HAL_PCD_MspInit (PCD_HandleTypeDef* pcdHandle) {
 
    __HAL_RCC_GPIOA_CLK_ENABLE();
+
   GPIO_InitTypeDef GPIO_InitStruct;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
 
-  if (pcdHandle->Instance == USB_OTG_FS) {
-    //  full speed init
-    GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12;
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
-    HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
+#ifdef USE_USB_FULLSPEED
+  //  fullSpeed init
+  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
+  GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12;
+  HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
 
-    __HAL_RCC_USB_OTG_FS_CLK_ENABLE();
+  __HAL_RCC_USB_OTG_FS_CLK_ENABLE();
+  HAL_NVIC_SetPriority (OTG_FS_IRQn, 7, 0);
+  HAL_NVIC_EnableIRQ (OTG_FS_IRQn);
+#else
+  // highSpeed init
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
 
-    HAL_NVIC_SetPriority (OTG_FS_IRQn, 7, 0);
-    HAL_NVIC_EnableIRQ (OTG_FS_IRQn);
-    }
-  else if (pcdHandle->Instance == USB_OTG_HS) {
-    // high speed init
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    __HAL_RCC_GPIOH_CLK_ENABLE();
+  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
 
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
+  // CLK, D0
+  GPIO_InitStruct.Pin = GPIO_PIN_5 | GPIO_PIN_3;
+  HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
 
-    // CLK, D0
-    GPIO_InitStruct.Pin = GPIO_PIN_5 | GPIO_PIN_3;
-    HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
+  // D1 D2 D3 D4 D5 D6 D7
+  GPIO_InitStruct.Pin = GPIO_PIN_0  | GPIO_PIN_1  | GPIO_PIN_5 |
+                        GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
+  HAL_GPIO_Init (GPIOB, &GPIO_InitStruct);
 
-    // D1 D2 D3 D4 D5 D6 D7
-    GPIO_InitStruct.Pin = GPIO_PIN_0  | GPIO_PIN_1  | GPIO_PIN_5 |
-                          GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
-    HAL_GPIO_Init (GPIOB, &GPIO_InitStruct);
+  // STP, DIR
+  GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_2;
+  HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
 
-    // STP, DIR
-    GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_2;
-    HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
+  // NXT
+  GPIO_InitStruct.Pin = GPIO_PIN_4;
+  HAL_GPIO_Init (GPIOH, &GPIO_InitStruct);
 
-    // NXT
-    GPIO_InitStruct.Pin = GPIO_PIN_4;
-    HAL_GPIO_Init (GPIOH, &GPIO_InitStruct);
-
-    __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
-    __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
-
-    HAL_NVIC_SetPriority (OTG_HS_IRQn, 7, 0);
-    HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
-    }
+  __HAL_RCC_USB_OTG_HS_ULPI_CLK_ENABLE();
+  __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
+  HAL_NVIC_SetPriority (OTG_HS_IRQn, 7, 0);
+  HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
+#endif
   }
 //}}}
 //{{{
@@ -1601,7 +1591,7 @@ gPcdHandle.Init.Sof_enable = 0;
 gPcdHandle.pData = usbdHandle;
 usbdHandle->pData = &gPcdHandle;
 
-#ifdef USE_USB_FS
+#ifdef USE_USB_FULLSPEED
   gPcdHandle.Instance = USB_OTG_FS;
   gPcdHandle.Init.dev_endpoints = 4;
   gPcdHandle.Init.phy_itface = PCD_PHY_EMBEDDED;
