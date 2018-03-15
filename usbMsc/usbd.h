@@ -209,12 +209,6 @@ typedef struct _USBD_HandleTypeDef {
 // USBD Low Level Driver
 USBD_StatusTypeDef usbdLowLevelInit (USBD_HandleTypeDef* usbdHandle);
 //{{{
-inline USBD_StatusTypeDef usbdLowLevelDeInit (USBD_HandleTypeDef* usbdHandle) {
-  HAL_PCD_DeInit ((PCD_HandleTypeDef*)usbdHandle->pData);
-  return USBD_OK;
-  }
-//}}}
-//{{{
 inline uint8_t usbdLowLevelIsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
   auto pcdHandle = (PCD_HandleTypeDef*)usbdHandle->pData;
   if ((ep_addr & 0x80) == 0x80)
@@ -226,18 +220,6 @@ inline uint8_t usbdLowLevelIsStallEP (USBD_HandleTypeDef* usbdHandle, uint8_t ep
 //{{{
 inline uint32_t usbdLowLevelGetRxDataSize (USBD_HandleTypeDef* usbdHandle, uint8_t ep_addr) {
   return HAL_PCD_EP_GetRxCount ((PCD_HandleTypeDef*)usbdHandle->pData, ep_addr);
-  }
-//}}}
-//{{{
-inline USBD_StatusTypeDef usbdLowLevelStart (USBD_HandleTypeDef* usbdHandle) {
-  HAL_PCD_Start ((PCD_HandleTypeDef*)usbdHandle->pData);
-  return USBD_OK;
-  }
-//}}}
-//{{{
-inline USBD_StatusTypeDef usbdLowLevelStop (USBD_HandleTypeDef* usbdHandle) {
-  HAL_PCD_Stop ((PCD_HandleTypeDef*)usbdHandle->pData);
-  return USBD_OK;
   }
 //}}}
 //{{{
@@ -288,7 +270,7 @@ inline USBD_StatusTypeDef usbdLowLevelPrepareReceive (USBD_HandleTypeDef* usbdHa
   return USBD_OK;
   }
 //}}}
-//
+
 void USBD_CtlError (USBD_HandleTypeDef* usbdHandle, USBD_SetupReqTypedef* req);
 void USBD_GetString (uint8_t* desc, uint8_t* unicode, uint16_t* len);
 

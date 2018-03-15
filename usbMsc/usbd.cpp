@@ -704,18 +704,18 @@ USBD_StatusTypeDef usbdLowLevelSOF (USBD_HandleTypeDef* usbdHandle) {
   }
 //}}}
 //{{{
-USBD_StatusTypeDef usbdLowLevelIsoINIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum) { 
-  return USBD_OK; 
+USBD_StatusTypeDef usbdLowLevelIsoINIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum) {
+  return USBD_OK;
   }
 //}}}
 //{{{
-USBD_StatusTypeDef usbdLowLevelIsoOUTIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum) { 
-  return USBD_OK; 
+USBD_StatusTypeDef usbdLowLevelIsoOUTIncomplete (USBD_HandleTypeDef* usbdHandle, uint8_t endPointNum) {
+  return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef usbdLowLevelDevConnected (USBD_HandleTypeDef* usbdHandle) {
-  return USBD_OK; 
+  return USBD_OK;
   }
 //}}}
 //{{{
@@ -764,11 +764,10 @@ USBD_StatusTypeDef USBD_DeInit (USBD_HandleTypeDef* usbdHandle) {
   usbdHandle->pClass->DeInit (usbdHandle, usbdHandle->dev_config);
 
   // Stop the low level driver
-  usbdLowLevelStop (usbdHandle);
+  HAL_PCD_Stop ((PCD_HandleTypeDef*)usbdHandle->pData);
 
   // Initialize low level driver
-  usbdLowLevelDeInit (usbdHandle);
-
+  HAL_PCD_DeInit ((PCD_HandleTypeDef*)usbdHandle->pData);
   return USBD_OK;
   }
 //}}}
@@ -790,19 +789,17 @@ USBD_StatusTypeDef USBD_RegisterClass (USBD_HandleTypeDef* usbdHandle, USBD_Clas
 //{{{
 USBD_StatusTypeDef USBD_Start (USBD_HandleTypeDef* usbdHandle) {
 
-  // Start low level driver
-  usbdLowLevelStart (usbdHandle);
+  HAL_PCD_Start ((PCD_HandleTypeDef*)usbdHandle->pData);
   return USBD_OK;
   }
 //}}}
 //{{{
 USBD_StatusTypeDef USBD_Stop (USBD_HandleTypeDef* usbdHandle) {
 
-  //  Free Class Resources
+  // Free Class Resources
   usbdHandle->pClass->DeInit (usbdHandle, usbdHandle->dev_config);
 
-  // Stop the low level driver
-  usbdLowLevelStop (usbdHandle);
+  HAL_PCD_Stop ((PCD_HandleTypeDef*)usbdHandle->pData);
 
   return USBD_OK;
   }
