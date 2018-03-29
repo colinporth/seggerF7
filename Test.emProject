@@ -172,6 +172,9 @@
         <file file_name="../BSP/stm32746g_discovery_ts.h" />
         <file file_name="../BSP/stm32746g_lcd.h" />
         <file file_name="../BSP/ts.h" />
+        <file file_name="../BSP/camera.h" />
+        <file file_name="../BSP/stm32746g_discovery_camera.h" />
+        <file file_name="../BSP/ov9655.h" />
       </folder>
       <file file_name="../BSP/font16.c" />
       <file file_name="../BSP/stm32746g_discovery.c" />
@@ -180,6 +183,8 @@
       <file file_name="../BSP/stm32746g_discovery_ts.c" />
       <file file_name="../BSP/ft5336.cpp" />
       <file file_name="../BSP/stm32746g_lcd.cpp" />
+      <file file_name="../BSP/ov9655.c" />
+      <file file_name="../BSP/stm32746g_discovery_camera.c" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />
@@ -277,7 +282,11 @@
           path="../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy"
           recurse="No" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h" />
+        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dcmi.h" />
+        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dcmi_ex.h" />
       </folder>
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_dcmi.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_dcmi_ex.c" />
     </folder>
     <folder Name="rtt">
       <file file_name="../rtt/SEGGER_RTT.c" />

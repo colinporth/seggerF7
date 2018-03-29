@@ -23,6 +23,7 @@
 #define HAL_UART_MODULE_ENABLED
 #define HAL_CORTEX_MODULE_ENABLED
 #define HAL_PCD_MODULE_ENABLED
+#define HAL_DCMI_MODULE_ENABLED
 //}}}
 
 #define HSE_VALUE            25000000U  // Value of the External oscillator in Hz */
