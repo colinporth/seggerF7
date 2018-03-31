@@ -33,6 +33,8 @@
 "Output/usbHid Debug/Obj/wm8994.o"
 "Output/usbHid Debug/Obj/ft5336.o"
 "Output/usbHid Debug/Obj/stm32746g_lcd.o"
+"Output/usbHid Debug/Obj/ov9655.o"
+"Output/usbHid Debug/Obj/stm32746g_discovery_camera.o"
 "C:/Program Files/SEGGER/SEGGER Embedded Studio for ARM 3.34a/lib/libdebugio_mempoll_v7em_fpv5_sp_d16_hard_t_le_eabi_small.a"
 "C:/Program Files/SEGGER/SEGGER Embedded Studio for ARM 3.34a/lib/libm_v7em_fpv5_sp_d16_hard_t_le_eabi_small.a"
 "C:/Program Files/SEGGER/SEGGER Embedded Studio for ARM 3.34a/lib/libc_v7em_fpv5_sp_d16_hard_t_le_eabi_small.a"

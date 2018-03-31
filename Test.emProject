@@ -99,6 +99,8 @@
         <file file_name="BSP/stm32746g_lcd.h" />
         <file file_name="BSP/ts.h" />
         <file file_name="BSP/wm8994.h" />
+        <file file_name="BSP/ov9655.h" />
+        <file file_name="BSP/stm32746g_discovery_camera.h" />
       </folder>
       <file file_name="BSP/font16.c" />
       <file file_name="BSP/stm32746g_audio.c" />
@@ -108,6 +110,8 @@
       <file file_name="BSP/wm8994.c" />
       <file file_name="BSP/ft5336.cpp" />
       <file file_name="BSP/stm32746g_lcd.cpp" />
+      <file file_name="BSP/ov9655.c" />
+      <file file_name="BSP/stm32746g_discovery_camera.c" />
     </folder>
   </project>
   <configuration
@@ -172,7 +176,6 @@
         <file file_name="../BSP/stm32746g_discovery_ts.h" />
         <file file_name="../BSP/stm32746g_lcd.h" />
         <file file_name="../BSP/ts.h" />
-        <file file_name="../BSP/camera.h" />
         <file file_name="../BSP/stm32746g_discovery_camera.h" />
         <file file_name="../BSP/ov9655.h" />
       </folder>

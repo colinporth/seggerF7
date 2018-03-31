@@ -6,30 +6,10 @@
 //}}}
 #include "stm32f7xx_hal.h"
 
-typedef enum
-{
-LED1 = 0,
-LED_GREEN = LED1,
-}Led_TypeDef;
-
-typedef enum
-{
-  BUTTON_WAKEUP = 0,
-  BUTTON_TAMPER = 1,
-  BUTTON_KEY = 2
-}Button_TypeDef;
-
-typedef enum
-{
-  BUTTON_MODE_GPIO = 0,
-  BUTTON_MODE_EXTI = 1
-}ButtonMode_TypeDef;
-
-typedef enum
-{
-  COM1 = 0,
-  COM2 = 1
-}COM_TypeDef;
+typedef enum { LED1 = 0, LED_GREEN = LED1, }Led_TypeDef;
+typedef enum { BUTTON_WAKEUP = 0, BUTTON_TAMPER = 1, BUTTON_KEY = 2 }Button_TypeDef;
+typedef enum { BUTTON_MODE_GPIO = 0, BUTTON_MODE_EXTI = 1 }ButtonMode_TypeDef;
+typedef enum { COM1 = 0, COM2 = 1 }COM_TypeDef;
 
 #if !defined (USE_STM32746G_DISCO)
  #define USE_STM32746G_DISCO
@@ -112,8 +92,6 @@ typedef enum
 #define DISCOVERY_COMx_RX_GPIO_CLK_ENABLE(__INDEX__)    do { if((__INDEX__) == COM1) DISCOVERY_COM1_RX_GPIO_CLK_ENABLE(); } while(0)
 #define DISCOVERY_COMx_RX_GPIO_CLK_DISABLE(__INDEX__)   (((__INDEX__) == 0) ? DISCOVERY_COM1_RX_GPIO_CLK_DISABLE() : 0)
 
-/* Exported constant IO ------------------------------------------------------*/
-
 #define LCD_I2C_ADDRESS                  ((uint16_t)0x70)
 #define CAMERA_I2C_ADDRESS               ((uint16_t)0x60)
 #define AUDIO_I2C_ADDRESS                ((uint16_t)0x34)
@@ -178,6 +156,8 @@ uint32_t  BSP_PB_GetState(Button_TypeDef Button);
 void      BSP_COM_Init(COM_TypeDef COM, UART_HandleTypeDef *husart);
 void      BSP_COM_DeInit(COM_TypeDef COM, UART_HandleTypeDef *huart);
 
+//{{{
 #ifdef __cplusplus
 }
 #endif
+//}}}

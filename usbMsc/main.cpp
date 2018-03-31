@@ -10,8 +10,9 @@
 
 #include "../common/cLcd.h"
 #include "stm32746g_discovery_sd.h"
+#include "stm32746g_discovery_camera.h"
 //}}}
-const char* kVersion = "USB Msc 14/3/18";
+const char* kVersion = "USB Msc 31/3/18";
 const char kSdPath[40] = "0:/";
 
 //{{{
@@ -68,11 +69,11 @@ void cApp::run() {
   mLcd = new cLcd (16);
   mLcd->init();
 
-  mPs2 = new cPs2 (mLcd);
-  mPs2->initKeyboard();
+  //mPs2 = new cPs2 (mLcd);
+ // mPs2->initKeyboard();
 
-  mscInit (mLcd);
-  mscStart();
+  //mscInit (mLcd);
+  //mscStart();
 
   //if (f_mount ((FATFS*)malloc (sizeof (FATFS)), kSdPath, 0) == FR_OK) {
   //  char pathName[256] = "/";
@@ -82,14 +83,23 @@ void cApp::run() {
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
 
+  // BSP_IO_Init();
+  //BSP_CAMERA_HwReset();
+  //BSP_CAMERA_PwrDown();
+  BSP_CAMERA_Init (RESOLUTION_R480x272);
+  HAL_Delay (100);
+
+  //BSP_CAMERA_ContinuousStart ((uint8_t *)CAMERA_FRAME_BUFFER);
+
+
   int lastCount = 0;
   while (true) {
     pollTouch();
 
-    while (mPs2->hasChar()) {
-      auto ch = mPs2->getChar();
-      onKey (ch & 0xFF, ch & 0x100);
-      }
+    //while (mPs2->hasChar()) {
+   //   auto ch = mPs2->getChar();
+   //   onKey (ch & 0xFF, ch & 0x100);
+   //   }
 
     mLcd->startBgnd (kVersion, mscGetSectors());
     mLcd->present();

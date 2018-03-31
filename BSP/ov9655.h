@@ -1,11 +1,48 @@
 #pragma once
+#include <stdint.h>
 //{{{
 #ifdef __cplusplus
  extern "C" {
 #endif
 //}}}
 
-#include "camera.h"
+typedef struct {
+  void     (*Init)(uint16_t, uint32_t);
+  uint16_t (*ReadID)(uint16_t);
+  void     (*Config)(uint16_t, uint32_t, uint32_t, uint32_t);
+  } CAMERA_DrvTypeDef;
+
+#define CAMERA_R160x120                 0x00   /* QQVGA Resolution                     */
+#define CAMERA_R320x240                 0x01   /* QVGA Resolution                      */
+#define CAMERA_R480x272                 0x02   /* 480x272 Resolution                   */
+#define CAMERA_R640x480                 0x03   /* VGA Resolution                       */
+
+#define CAMERA_CONTRAST_BRIGHTNESS      0x00   /* Camera contrast brightness features  */
+#define CAMERA_BLACK_WHITE              0x01   /* Camera black white feature           */
+#define CAMERA_COLOR_EFFECT             0x03   /* Camera color effect feature          */
+
+#define CAMERA_BRIGHTNESS_LEVEL0        0x00   /* Brightness level -2         */
+#define CAMERA_BRIGHTNESS_LEVEL1        0x01   /* Brightness level -1         */
+#define CAMERA_BRIGHTNESS_LEVEL2        0x02   /* Brightness level 0          */
+#define CAMERA_BRIGHTNESS_LEVEL3        0x03   /* Brightness level +1         */
+#define CAMERA_BRIGHTNESS_LEVEL4        0x04   /* Brightness level +2         */
+
+#define CAMERA_CONTRAST_LEVEL0          0x05   /* Contrast level -2           */
+#define CAMERA_CONTRAST_LEVEL1          0x06   /* Contrast level -1           */
+#define CAMERA_CONTRAST_LEVEL2          0x07   /* Contrast level  0           */
+#define CAMERA_CONTRAST_LEVEL3          0x08   /* Contrast level +1           */
+#define CAMERA_CONTRAST_LEVEL4          0x09   /* Contrast level +2           */
+
+#define CAMERA_BLACK_WHITE_BW           0x00   /* Black and white effect      */
+#define CAMERA_BLACK_WHITE_NEGATIVE     0x01   /* Negative effect             */
+#define CAMERA_BLACK_WHITE_BW_NEGATIVE  0x02   /* BW and Negative effect      */
+#define CAMERA_BLACK_WHITE_NORMAL       0x03   /* Normal effect               */
+
+#define CAMERA_COLOR_EFFECT_NONE        0x00   /* No effects                  */
+#define CAMERA_COLOR_EFFECT_BLUE        0x01   /* Blue effect                 */
+#define CAMERA_COLOR_EFFECT_GREEN       0x02   /* Green effect                */
+#define CAMERA_COLOR_EFFECT_RED         0x03   /* Red effect                  */
+#define CAMERA_COLOR_EFFECT_ANTIQUE     0x04   /* Antique effect              */
 
 #define  OV9655_ID    0x96
 
@@ -47,16 +84,16 @@
 #define OV9655_COLOR_EFFECT_GREEN       0xCC000000008000  /* Green effect                */
 #define OV9655_COLOR_EFFECT_RED         0xCC600000000000  /* Red effect                  */
 
-void     ov9655_Init(uint16_t DeviceAddr, uint32_t resolution);
-void     ov9655_Config(uint16_t DeviceAddr, uint32_t feature, uint32_t value, uint32_t BR_value);
-uint16_t ov9655_ReadID(uint16_t DeviceAddr);
+void ov9655_Init (uint16_t DeviceAddr, uint32_t resolution);
+void ov9655_Config (uint16_t DeviceAddr, uint32_t feature, uint32_t value, uint32_t BR_value);
+uint16_t ov9655_ReadID (uint16_t DeviceAddr);
 
-void     CAMERA_IO_Init(void);
-void     CAMERA_IO_Write(uint8_t addr, uint8_t reg, uint8_t value);
-uint8_t  CAMERA_IO_Read(uint8_t addr, uint8_t reg);
-void     CAMERA_Delay(uint32_t delay);
+void CAMERA_IO_Init();
+void CAMERA_IO_Write (uint8_t addr, uint8_t reg, uint8_t value);
+uint8_t CAMERA_IO_Read (uint8_t addr, uint8_t reg);
+void CAMERA_Delay (uint32_t delay);
 
-extern CAMERA_DrvTypeDef   ov9655_drv;
+extern CAMERA_DrvTypeDef ov9655_drv;
 //{{{
 #ifdef __cplusplus
 }

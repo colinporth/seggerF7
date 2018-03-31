@@ -7,15 +7,13 @@
 #include "ov9655.h"
 #include "stm32746g_discovery.h"
 
-typedef enum
-{
+typedef enum {
   CAMERA_OK            = 0x00,
   CAMERA_ERROR         = 0x01,
   CAMERA_TIMEOUT       = 0x02,
   CAMERA_NOT_DETECTED  = 0x03,
   CAMERA_NOT_SUPPORTED = 0x04
-
-} Camera_StatusTypeDef;
+  } Camera_StatusTypeDef;
 
 #define RESOLUTION_R160x120      CAMERA_R160x120      /* QQVGA Resolution     */
 #define RESOLUTION_R320x240      CAMERA_R320x240      /* QVGA Resolution      */
@@ -24,27 +22,27 @@ typedef enum
 #define BSP_CAMERA_IRQHandler      DCMI_IRQHandler
 #define BSP_CAMERA_DMA_IRQHandler  DMA2_Stream1_IRQHandler
 
-uint8_t BSP_CAMERA_Init(uint32_t Resolution);
-uint8_t BSP_CAMERA_DeInit(void);
-void    BSP_CAMERA_ContinuousStart(uint8_t *buff);
-void    BSP_CAMERA_SnapshotStart(uint8_t *buff);
-void    BSP_CAMERA_Suspend(void);
-void    BSP_CAMERA_Resume(void);
-uint8_t BSP_CAMERA_Stop(void);
-void    BSP_CAMERA_PwrUp(void);
-void    BSP_CAMERA_PwrDown(void);
-void    BSP_CAMERA_LineEventCallback(void);
-void    BSP_CAMERA_VsyncEventCallback(void);
-void    BSP_CAMERA_FrameEventCallback(void);
-void    BSP_CAMERA_ErrorCallback(void);
+uint8_t BSP_CAMERA_Init (uint32_t Resolution);
+uint8_t BSP_CAMERA_DeInit();
+void    BSP_CAMERA_ContinuousStart (uint8_t* buff);
+void    BSP_CAMERA_SnapshotStart (uint8_t* buff);
+void    BSP_CAMERA_Suspend();
+void    BSP_CAMERA_Resume();
+uint8_t BSP_CAMERA_Stop();
+void    BSP_CAMERA_PwrUp();
+void    BSP_CAMERA_PwrDown();
+void    BSP_CAMERA_LineEventCallback();
+void    BSP_CAMERA_VsyncEventCallback();
+void    BSP_CAMERA_FrameEventCallback();
+void    BSP_CAMERA_ErrorCallback();
 
 /* Camera features functions prototype */
-void    BSP_CAMERA_ContrastBrightnessConfig(uint32_t contrast_level, uint32_t brightness_level);
-void    BSP_CAMERA_BlackWhiteConfig(uint32_t Mode);
-void    BSP_CAMERA_ColorEffectConfig(uint32_t Effect);
+void    BSP_CAMERA_ContrastBrightnessConfig (uint32_t contrast_level, uint32_t brightness_level);
+void    BSP_CAMERA_BlackWhiteConfig (uint32_t Mode);
+void    BSP_CAMERA_ColorEffectConfig (uint32_t Effect);
 
-void BSP_CAMERA_MspInit(DCMI_HandleTypeDef *hdcmi, void *Params);
-void BSP_CAMERA_MspDeInit(DCMI_HandleTypeDef *hdcmi, void *Params);
+void BSP_CAMERA_MspInit (DCMI_HandleTypeDef* hdcmi, void* Params);
+void BSP_CAMERA_MspDeInit (DCMI_HandleTypeDef* hdcmi, void* Params);
 
 //{{{
 #ifdef __cplusplus

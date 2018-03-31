@@ -476,226 +476,130 @@ const char OV9655_QQVGA[][2]=
 //}}}
 
 //{{{
-static uint64_t ov9655_ConvertValue(uint32_t feature, uint32_t value)
-{
+static uint64_t ov9655_ConvertValue (uint32_t feature, uint32_t value) {
+
   uint64_t ret = 0;
 
-  switch(feature)
-  {
-  case CAMERA_BLACK_WHITE:
-    {
-      switch(value)
-      {
-      case CAMERA_BLACK_WHITE_BW:
-        {
-          ret =  OV9655_BLACK_WHITE_BW;
-          break;
+  switch (feature) {
+    case CAMERA_BLACK_WHITE: {
+      switch (value) {
+        case CAMERA_BLACK_WHITE_BW: ret =  OV9655_BLACK_WHITE_BW; break;
+        case CAMERA_BLACK_WHITE_NEGATIVE: ret =  OV9655_BLACK_WHITE_NEGATIVE; break;
+        case CAMERA_BLACK_WHITE_BW_NEGATIVE: ret =  OV9655_BLACK_WHITE_BW_NEGATIVE; break;
+        case CAMERA_BLACK_WHITE_NORMAL: ret =  OV9655_BLACK_WHITE_NORMAL; break;
+        default: ret =  OV9655_BLACK_WHITE_NORMAL; break;
         }
-      case CAMERA_BLACK_WHITE_NEGATIVE:
-        {
-          ret =  OV9655_BLACK_WHITE_NEGATIVE;
-          break;
-        }
-      case CAMERA_BLACK_WHITE_BW_NEGATIVE:
-        {
-          ret =  OV9655_BLACK_WHITE_BW_NEGATIVE;
-          break;
-        }
-      case CAMERA_BLACK_WHITE_NORMAL:
-        {
-          ret =  OV9655_BLACK_WHITE_NORMAL;
-          break;
-        }
-      default:
-        {
-          ret =  OV9655_BLACK_WHITE_NORMAL;
-          break;
-        }
-      }
       break;
-    }
-  case CAMERA_CONTRAST_BRIGHTNESS:
-    {
-      switch(value)
-      {
-      case CAMERA_BRIGHTNESS_LEVEL0:
-        {
-          ret =  OV9655_BRIGHTNESS_LEVEL0;
-          break;
-        }
-      case CAMERA_BRIGHTNESS_LEVEL1:
-        {
-          ret =  OV9655_BRIGHTNESS_LEVEL1;
-          break;
-        }
-      case CAMERA_BRIGHTNESS_LEVEL2:
-        {
-          ret =  OV9655_BRIGHTNESS_LEVEL2;
-          break;
-        }
-      case CAMERA_BRIGHTNESS_LEVEL3:
-        {
-          ret =  OV9655_BRIGHTNESS_LEVEL3;
-          break;
-        }
-      case CAMERA_BRIGHTNESS_LEVEL4:
-        {
-          ret =  OV9655_BRIGHTNESS_LEVEL4;
-          break;
-        }
-      case CAMERA_CONTRAST_LEVEL0:
-        {
-          ret =  OV9655_CONTRAST_LEVEL0;
-          break;
-        }
-      case CAMERA_CONTRAST_LEVEL1:
-        {
-          ret =  OV9655_CONTRAST_LEVEL1;
-          break;
-        }
-      case CAMERA_CONTRAST_LEVEL2:
-        {
-          ret =  OV9655_CONTRAST_LEVEL2;
-          break;
-        }
-      case CAMERA_CONTRAST_LEVEL3:
-        {
-          ret =  OV9655_CONTRAST_LEVEL3;
-          break;
-        }
-      case CAMERA_CONTRAST_LEVEL4:
-        {
-          ret =  OV9655_CONTRAST_LEVEL4;
-          break;
-        }
-      default:
-        {
-          ret =  OV9655_CONTRAST_LEVEL0;
-          break;
-        }
       }
+
+    case CAMERA_CONTRAST_BRIGHTNESS: {
+      switch (value) {
+        case CAMERA_BRIGHTNESS_LEVEL0: ret = OV9655_BRIGHTNESS_LEVEL0; break;
+        case CAMERA_BRIGHTNESS_LEVEL1: ret =  OV9655_BRIGHTNESS_LEVEL1; break;
+        case CAMERA_BRIGHTNESS_LEVEL2: ret =  OV9655_BRIGHTNESS_LEVEL2; break;
+        case CAMERA_BRIGHTNESS_LEVEL3: ret =  OV9655_BRIGHTNESS_LEVEL3; break;
+        case CAMERA_BRIGHTNESS_LEVEL4: ret =  OV9655_BRIGHTNESS_LEVEL4; break;
+        case CAMERA_CONTRAST_LEVEL0: ret =  OV9655_CONTRAST_LEVEL0; break;
+        case CAMERA_CONTRAST_LEVEL1: ret =  OV9655_CONTRAST_LEVEL1; break;
+        case CAMERA_CONTRAST_LEVEL2: ret =  OV9655_CONTRAST_LEVEL2; break;
+        case CAMERA_CONTRAST_LEVEL3: ret =  OV9655_CONTRAST_LEVEL3; break;
+        case CAMERA_CONTRAST_LEVEL4: ret =  OV9655_CONTRAST_LEVEL4; break;
+        default: ret =  OV9655_CONTRAST_LEVEL0; break;
+        }
       break;
-    }
-  case CAMERA_COLOR_EFFECT:
-    {
-      switch(value)
-      {
-      case CAMERA_COLOR_EFFECT_ANTIQUE:
-        {
-          ret =  OV9655_COLOR_EFFECT_ANTIQUE;
-          break;
-        }
-      case CAMERA_COLOR_EFFECT_BLUE:
-        {
-          ret =  OV9655_COLOR_EFFECT_BLUE;
-          break;
-        }
-      case CAMERA_COLOR_EFFECT_GREEN:
-        {
-          ret =  OV9655_COLOR_EFFECT_GREEN;
-          break;
-        }
-      case CAMERA_COLOR_EFFECT_RED:
-        {
-          ret =  OV9655_COLOR_EFFECT_RED;
-          break;
-        }
-      case CAMERA_COLOR_EFFECT_NONE:
-      default:
-        {
-          ret =  OV9655_COLOR_EFFECT_NONE;
-          break;
-        }
       }
+
+    case CAMERA_COLOR_EFFECT: {
+      switch (value) {
+        case CAMERA_COLOR_EFFECT_ANTIQUE: ret =  OV9655_COLOR_EFFECT_ANTIQUE; break;
+        case CAMERA_COLOR_EFFECT_BLUE: ret =  OV9655_COLOR_EFFECT_BLUE; break;
+        case CAMERA_COLOR_EFFECT_GREEN: ret =  OV9655_COLOR_EFFECT_GREEN; break;
+        case CAMERA_COLOR_EFFECT_RED: ret = OV9655_COLOR_EFFECT_RED; break; 
+        case CAMERA_COLOR_EFFECT_NONE: 
+        default: ret =  OV9655_COLOR_EFFECT_NONE; break;
+        }
       break;
-    default:
-      {
-        ret = 0;
-        break;
+      }
+
+    default: {
+      ret = 0;
+      break;
       }
     }
-  }
 
   return ret;
-}
+  }
 //}}}
 
 //{{{
-void ov9655_Init(uint16_t DeviceAddr, uint32_t resolution)
-{
+void ov9655_Init (uint16_t DeviceAddr, uint32_t resolution) {
+
   uint32_t index;
 
   /* Initialize I2C */
   CAMERA_IO_Init();
 
   /* Prepare the camera to be configured by resetting all its registers */
-  CAMERA_IO_Write(DeviceAddr, OV9655_SENSOR_COM7, 0x80);
-  CAMERA_Delay(200);
+  CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_COM7, 0x80);
+  CAMERA_Delay (200);
 
   /* Initialize OV9655 */
-  switch (resolution)
-  {
-  case CAMERA_R160x120:
-    {
-      for(index=0; index<(sizeof(OV9655_QQVGA)/2); index++)
-      {
-        CAMERA_IO_Write(DeviceAddr, OV9655_QQVGA[index][0], OV9655_QQVGA[index][1]);
-        CAMERA_Delay(2);
-      }
+  switch (resolution) {
+    case CAMERA_R160x120: {
+      for (index=0; index<(sizeof(OV9655_QQVGA)/2); index++) {
+        CAMERA_IO_Write (DeviceAddr, OV9655_QQVGA[index][0], OV9655_QQVGA[index][1]);
+        CAMERA_Delay (2);
+        }
       break;
-    }
-  case CAMERA_R320x240:
-    {
-      for(index=0; index<(sizeof(OV9655_QVGA)/2); index++)
-      {
-        CAMERA_IO_Write(DeviceAddr, OV9655_QVGA[index][0], OV9655_QVGA[index][1]);
-        CAMERA_Delay(2);
       }
+
+    case CAMERA_R320x240: {
+      for (index=0; index < (sizeof(OV9655_QVGA)/2); index++) {
+        CAMERA_IO_Write (DeviceAddr, OV9655_QVGA[index][0], OV9655_QVGA[index][1]);
+        CAMERA_Delay (2);
+        }
       break;
-    }
-  case CAMERA_R480x272:
-    {
+      }
+
+    case CAMERA_R480x272: {
       /* Not supported resolution */
       break;
-    }
-  case CAMERA_R640x480:
-    {
-      for(index=0; index<(sizeof(OV9655_VGA)/2); index++)
-      {
-        CAMERA_IO_Write(DeviceAddr, OV9655_VGA[index][0], OV9655_VGA[index][1]);
-        CAMERA_Delay(2);
       }
+
+    case CAMERA_R640x480: {
+      for (index=0; index < (sizeof(OV9655_VGA)/2); index++) {
+        CAMERA_IO_Write (DeviceAddr, OV9655_VGA[index][0], OV9655_VGA[index][1]);
+        CAMERA_Delay (2);
+        }
       break;
-    }
-  default:
-    {
+      }
+
+    default: {
       break;
+      }
     }
   }
-}
 //}}}
 //{{{
-void ov9655_Config(uint16_t DeviceAddr, uint32_t feature, uint32_t value, uint32_t brightness_value)
-{
+void ov9655_Config (uint16_t DeviceAddr, uint32_t feature, uint32_t value, uint32_t brightness_value) {
+
   uint8_t tslb, mtx1, mtx2, mtx3, mtx4, mtx5, mtx6;
   uint64_t value_tmp;
   uint32_t br_value;
 
   /* Convert the input value into ov9655 parameters */
-  value_tmp = ov9655_ConvertValue(feature, value);
-  br_value = (uint32_t)ov9655_ConvertValue(CAMERA_CONTRAST_BRIGHTNESS, brightness_value);
+  value_tmp = ov9655_ConvertValue (feature, value);
+  br_value = (uint32_t)ov9655_ConvertValue (CAMERA_CONTRAST_BRIGHTNESS, brightness_value);
 
-  switch(feature)
-  {
-  case CAMERA_CONTRAST_BRIGHTNESS:
-    {
-      CAMERA_IO_Write(DeviceAddr, OV9655_SENSOR_BRTN, br_value);
-      CAMERA_IO_Write(DeviceAddr, OV9655_SENSOR_CNST1, value_tmp);
+  switch (feature) {
+    case CAMERA_CONTRAST_BRIGHTNESS: {
+      CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_BRTN, br_value);
+      CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_CNST1, value_tmp);
       break;
-    }
-  case CAMERA_BLACK_WHITE:
-  case CAMERA_COLOR_EFFECT:
-    {
+      }
+
+    case CAMERA_BLACK_WHITE:
+    case CAMERA_COLOR_EFFECT: {
       tslb = (uint8_t)(value_tmp >> 48);
       mtx1 = (uint8_t)(value_tmp >> 40);
       mtx2 = (uint8_t)(value_tmp >> 32);
@@ -703,29 +607,29 @@ void ov9655_Config(uint16_t DeviceAddr, uint32_t feature, uint32_t value, uint32
       mtx4 = (uint8_t)(value_tmp >> 16);
       mtx5 = (uint8_t)(value_tmp >> 8);
       mtx6 = (uint8_t)(value_tmp);
-      CAMERA_IO_Write(DeviceAddr, OV9655_SENSOR_TSLB, tslb);
-      CAMERA_IO_Write(DeviceAddr, OV9655_SENSOR_MTX1, mtx1);
-      CAMERA_IO_Write(DeviceAddr, OV9655_SENSOR_MTX2, mtx2);
-      CAMERA_IO_Write(DeviceAddr, OV9655_SENSOR_MTX3, mtx3);
-      CAMERA_IO_Write(DeviceAddr, OV9655_SENSOR_MTX4, mtx4);
-      CAMERA_IO_Write(DeviceAddr, OV9655_SENSOR_MTX5, mtx5);
-      CAMERA_IO_Write(DeviceAddr, OV9655_SENSOR_MTX6, mtx6);
+      CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_TSLB, tslb);
+      CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_MTX1, mtx1);
+      CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_MTX2, mtx2);
+      CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_MTX3, mtx3);
+      CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_MTX4, mtx4);
+      CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_MTX5, mtx5);
+      CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_MTX6, mtx6);
       break;
-    }
-  default:
-    {
+      }
+
+    default:
       break;
     }
   }
-}
 //}}}
+
 //{{{
-uint16_t ov9655_ReadID(uint16_t DeviceAddr)
-{
+uint16_t ov9655_ReadID (uint16_t DeviceAddr) {
+
   /* Initialize I2C */
   CAMERA_IO_Init();
 
   /* Get the camera ID */
   return (CAMERA_IO_Read(DeviceAddr, OV9655_SENSOR_PIDH));
-}
+  }
 //}}}
