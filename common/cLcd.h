@@ -40,10 +40,22 @@ public:
     }
   //}}}
 
+  uint32_t* getBuffer() { return (uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0); }
+
   //{{{
   void start (const char* title) {
 
     BSP_LCD_Clear (LCD_COLOR_BLACK);
+
+    drawTitle (title);
+    if (!BSP_PB_GetState (BUTTON_KEY))
+      drawDebug();
+    }
+  //}}}
+  //{{{
+  void startCam (const char* title, uint16_t* bgnd) {
+
+    BSP_LCD_ConvertFrame (bgnd, mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0, 480, 272);
 
     drawTitle (title);
     if (!BSP_PB_GetState (BUTTON_KEY))

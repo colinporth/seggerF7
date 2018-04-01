@@ -177,9 +177,7 @@ static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler) {
   GPIO_InitTypeDef  gpio_init_structure;
 
   if (i2c_handler == (I2C_HandleTypeDef*)(&hI2cAudioHandler)) {
-    //{{{  AUDIO and LCD I2C MSP init 
-
-    /*** Configure the GPIOs ***/
+    //{{{  AUDIO and LCD I2C MSP init
     /* Enable GPIO clock */
     DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_CLK_ENABLE();
 
@@ -189,13 +187,12 @@ static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler) {
     gpio_init_structure.Pull = GPIO_NOPULL;
     gpio_init_structure.Speed = GPIO_SPEED_FAST;
     gpio_init_structure.Alternate = DISCOVERY_AUDIO_I2Cx_SCL_SDA_AF;
-    HAL_GPIO_Init(DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
+    HAL_GPIO_Init (DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
 
     /* Configure I2C Rx as alternate function */
     gpio_init_structure.Pin = DISCOVERY_AUDIO_I2Cx_SDA_PIN;
-    HAL_GPIO_Init(DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
+    HAL_GPIO_Init (DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
 
-    /*** Configure the I2C peripheral ***/
     /* Enable I2C clock */
     DISCOVERY_AUDIO_I2Cx_CLK_ENABLE();
 
@@ -206,17 +203,16 @@ static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler) {
     DISCOVERY_AUDIO_I2Cx_RELEASE_RESET();
 
     /* Enable and set I2Cx Interrupt to a lower priority */
-    HAL_NVIC_SetPriority(DISCOVERY_AUDIO_I2Cx_EV_IRQn, 0x0F, 0);
-    HAL_NVIC_EnableIRQ(DISCOVERY_AUDIO_I2Cx_EV_IRQn);
+    HAL_NVIC_SetPriority (DISCOVERY_AUDIO_I2Cx_EV_IRQn, 0x0F, 0);
+    HAL_NVIC_EnableIRQ (DISCOVERY_AUDIO_I2Cx_EV_IRQn);
 
     /* Enable and set I2Cx Interrupt to a lower priority */
-    HAL_NVIC_SetPriority(DISCOVERY_AUDIO_I2Cx_ER_IRQn, 0x0F, 0);
-    HAL_NVIC_EnableIRQ(DISCOVERY_AUDIO_I2Cx_ER_IRQn);
+    HAL_NVIC_SetPriority (DISCOVERY_AUDIO_I2Cx_ER_IRQn, 0x0F, 0);
+    HAL_NVIC_EnableIRQ (DISCOVERY_AUDIO_I2Cx_ER_IRQn);
     }
     //}}}
   else {
-    //{{{  External, camera and Arduino connector I2C MSP init 
-    /*** Configure the GPIOs ***/
+    //{{{  External, camera and Arduino connector I2C MSP init
     /* Enable GPIO clock */
     DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_CLK_ENABLE();
 
@@ -226,11 +222,11 @@ static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler) {
     gpio_init_structure.Pull = GPIO_NOPULL;
     gpio_init_structure.Speed = GPIO_SPEED_FAST;
     gpio_init_structure.Alternate = DISCOVERY_EXT_I2Cx_SCL_SDA_AF;
-    HAL_GPIO_Init(DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
+    HAL_GPIO_Init (DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
 
     /* Configure I2C Rx as alternate function */
     gpio_init_structure.Pin = DISCOVERY_EXT_I2Cx_SDA_PIN;
-    HAL_GPIO_Init(DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
+    HAL_GPIO_Init (DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
 
     /*** Configure the I2C peripheral ***/
     /* Enable I2C clock */
@@ -243,12 +239,12 @@ static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler) {
     DISCOVERY_EXT_I2Cx_RELEASE_RESET();
 
     /* Enable and set I2Cx Interrupt to a lower priority */
-    HAL_NVIC_SetPriority(DISCOVERY_EXT_I2Cx_EV_IRQn, 0x0F, 0);
-    HAL_NVIC_EnableIRQ(DISCOVERY_EXT_I2Cx_EV_IRQn);
+    HAL_NVIC_SetPriority (DISCOVERY_EXT_I2Cx_EV_IRQn, 0x0F, 0);
+    HAL_NVIC_EnableIRQ (DISCOVERY_EXT_I2Cx_EV_IRQn);
 
     /* Enable and set I2Cx Interrupt to a lower priority */
-    HAL_NVIC_SetPriority(DISCOVERY_EXT_I2Cx_ER_IRQn, 0x0F, 0);
-    HAL_NVIC_EnableIRQ(DISCOVERY_EXT_I2Cx_ER_IRQn);
+    HAL_NVIC_SetPriority (DISCOVERY_EXT_I2Cx_ER_IRQn, 0x0F, 0);
+    HAL_NVIC_EnableIRQ (DISCOVERY_EXT_I2Cx_ER_IRQn);
     }
     //}}}
   }
@@ -257,11 +253,9 @@ static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler) {
 static void I2Cx_Init (I2C_HandleTypeDef* i2c_handler) {
 
   if(HAL_I2C_GetState(i2c_handler) == HAL_I2C_STATE_RESET) {
-    if (i2c_handler == (I2C_HandleTypeDef*)(&hI2cAudioHandler))
-      /* Audio and LCD I2C configuration */
+    if (i2c_handler == (I2C_HandleTypeDef*)(&hI2cAudioHandler)) /* Audio and LCD I2C configuration */
       i2c_handler->Instance = DISCOVERY_AUDIO_I2Cx;
-    else 
-      /* External, camera and Arduino connector  I2C configuration */
+    else /* External, camera and Arduino connector  I2C configuration */
       i2c_handler->Instance = DISCOVERY_EXT_I2Cx;
 
     i2c_handler->Init.Timing           = DISCOVERY_I2Cx_TIMING;
@@ -283,11 +277,9 @@ static HAL_StatusTypeDef I2Cx_ReadMultiple (I2C_HandleTypeDef *i2c_handler,
                                             uint8_t Addr, uint16_t Reg, uint16_t MemAddress,
                                             uint8_t *Buffer, uint16_t Length) {
 
-  HAL_StatusTypeDef status = HAL_OK;
-  status = HAL_I2C_Mem_Read (i2c_handler, Addr, (uint16_t)Reg, MemAddress, Buffer, Length, 1000);
   /* Check the communication status */
-  if (status != HAL_OK)
-    /* I2C error occurred */
+  HAL_StatusTypeDef status = HAL_I2C_Mem_Read (i2c_handler, Addr, (uint16_t)Reg, MemAddress, Buffer, Length, 1000);
+  if (status != HAL_OK) /* I2C error occurred */
     I2Cx_Error (i2c_handler, Addr);
 
   return status;
@@ -298,14 +290,11 @@ static HAL_StatusTypeDef I2Cx_WriteMultiple (I2C_HandleTypeDef *i2c_handler,
                                              uint8_t Addr, uint16_t Reg, uint16_t MemAddress,
                                              uint8_t *Buffer, uint16_t Length) {
 
-  HAL_StatusTypeDef status = HAL_OK;
-
-  status = HAL_I2C_Mem_Write (i2c_handler, Addr, (uint16_t)Reg, MemAddress, Buffer, Length, 1000);
-
   /* Check the communication status */
-  if(status != HAL_OK)
-    /* Re-Initiaize the I2C Bus */
+  HAL_StatusTypeDef status = HAL_I2C_Mem_Write (i2c_handler, Addr, (uint16_t)Reg, MemAddress, Buffer, Length, 1000);
+  if (status != HAL_OK) /* Re-Initiaize the I2C Bus */
     I2Cx_Error (i2c_handler, Addr);
+
   return status;
   }
 //}}}
@@ -374,10 +363,9 @@ void CAMERA_IO_Write (uint8_t Addr, uint8_t Reg, uint8_t Value) {
 //}}}
 //{{{
 uint8_t CAMERA_IO_Read (uint8_t Addr, uint8_t Reg) {
+
   uint8_t read_value = 0;
-
   I2Cx_ReadMultiple (&hI2cExtHandler, Addr, Reg, I2C_MEMADD_SIZE_8BIT, (uint8_t*)&read_value, 1);
-
   return read_value;
   }
 //}}}

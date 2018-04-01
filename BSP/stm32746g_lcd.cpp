@@ -89,7 +89,7 @@ void FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t 
   }
 //}}}
 //{{{
-void FillBuffer (uint32_t LayerIndex, void* pDst, uint32_t xSize, uint32_t ySize,
+void FillBuffer (uint32_t LayerIndex, void* dst, uint32_t xSize, uint32_t ySize,
                  uint32_t OffLine, uint32_t ColorIndex) {
 
   hDma2dHandler.Init.Mode = DMA2D_R2M;
@@ -101,12 +101,12 @@ void FillBuffer (uint32_t LayerIndex, void* pDst, uint32_t xSize, uint32_t ySize
 
   if (HAL_DMA2D_Init (&hDma2dHandler) == HAL_OK)
     if (HAL_DMA2D_ConfigLayer (&hDma2dHandler, LayerIndex) == HAL_OK)
-      if (HAL_DMA2D_Start (&hDma2dHandler, ColorIndex, (uint32_t)pDst, xSize, ySize) == HAL_OK)
+      if (HAL_DMA2D_Start (&hDma2dHandler, ColorIndex, (uint32_t)dst, xSize, ySize) == HAL_OK)
         HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
   }
 //}}}
 //{{{
-void ConvertLineToARGB8888 (void* pSrc, void* pDst, uint32_t xSize, uint32_t ColorMode) {
+void ConvertLineToARGB8888 (void* src, void* dst, uint32_t xSize, uint32_t ColorMode) {
 
   hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
   hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
@@ -120,8 +120,40 @@ void ConvertLineToARGB8888 (void* pSrc, void* pDst, uint32_t xSize, uint32_t Col
 
   if (HAL_DMA2D_Init (&hDma2dHandler) == HAL_OK)
     if (HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1) == HAL_OK)
-      if (HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)pSrc, (uint32_t)pDst, xSize, 1) == HAL_OK)
+      if (HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, xSize, 1) == HAL_OK)
         HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
+  }
+//}}}
+//{{{
+void BSP_LCD_ConvertFrameToARGB8888 (uint16_t* src, uint32_t* dst, uint16_t xsize, uint16_t ysize) {
+
+  hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
+  hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
+  hDma2dHandler.Init.OutputOffset = 0;
+
+  // Foreground Configuration
+  hDma2dHandler.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
+  hDma2dHandler.LayerCfg[1].InputAlpha = 0xFF;
+  hDma2dHandler.LayerCfg[1].InputColorMode = CM_RGB565;
+  hDma2dHandler.LayerCfg[1].InputOffset = 0;
+
+  if (HAL_DMA2D_Init (&hDma2dHandler) == HAL_OK)
+    if (HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1) == HAL_OK)
+      if (HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, xsize, ysize) == HAL_OK)
+        HAL_DMA2D_PollForTransfer (&hDma2dHandler, 100);
+  }
+//}}}
+//{{{
+void BSP_LCD_ConvertFrame (uint16_t* src, uint8_t* dst, uint16_t xsize, uint16_t ysize) {
+
+  auto srcEnd = src + (xsize*ysize);
+  while (src < srcEnd) {
+    uint16_t rgb = *src++;
+    *dst++ = (rgb & 0x001F) << 3;
+    *dst++ = (rgb & 0x07E0) >> 3;
+    *dst++ = (rgb & 0xF800) >> 11;
+    *dst++ = 0xFF;
+    }
   }
 //}}}
 
@@ -605,9 +637,9 @@ void BSP_LCD_DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
   pbmp += (index + (width * (height - 1) * (bit_pixel/8)));
 
   // Convert picture to ARGB8888 pixel format
-  for(index=0; index < height; index++) {
+  for (index=0; index < height; index++) {
     // Pixel format conversion
-    ConvertLineToARGB8888((uint32_t *)pbmp, (uint32_t *)address, width, input_color_mode);
+    ConvertLineToARGB8888((uint32_t*)pbmp, (uint32_t*)address, width, input_color_mode);
 
     // Increment the source and destination buffers
     address+=  (BSP_LCD_GetXSize()*4);
@@ -802,8 +834,8 @@ __weak void BSP_LCD_MspInit (LTDC_HandleTypeDef* hltdc, void* Params) {
   HAL_GPIO_Init (GPIOI, &gpio_init_structure);
 
   // GPIOJ configuration
-  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_4 | 
-                                  GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9 | 
+  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_4 |
+                                  GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9 |
                                   GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
   gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF14_LTDC;

@@ -83,14 +83,10 @@ void cApp::run() {
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
 
-  // BSP_IO_Init();
-  //BSP_CAMERA_HwReset();
-  //BSP_CAMERA_PwrDown();
-  BSP_CAMERA_Init (RESOLUTION_R480x272);
+  mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (RESOLUTION_R480x272));
   HAL_Delay (100);
 
-  //BSP_CAMERA_ContinuousStart ((uint8_t *)CAMERA_FRAME_BUFFER);
-
+  BSP_CAMERA_ContinuousStart ((uint8_t*)SDRAM_USER);
 
   int lastCount = 0;
   while (true) {
@@ -101,7 +97,8 @@ void cApp::run() {
    //   onKey (ch & 0xFF, ch & 0x100);
    //   }
 
-    mLcd->startBgnd (kVersion, mscGetSectors());
+    //mLcd->startBgnd (kVersion, mscGetSectors());
+    mLcd->startCam (kVersion, (uint16_t*)SDRAM_USER);
     mLcd->present();
 
     if (false) {

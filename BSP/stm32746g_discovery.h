@@ -156,6 +156,11 @@ uint32_t  BSP_PB_GetState(Button_TypeDef Button);
 void      BSP_COM_Init(COM_TypeDef COM, UART_HandleTypeDef *husart);
 void      BSP_COM_DeInit(COM_TypeDef COM, UART_HandleTypeDef *huart);
 
+void CAMERA_IO_Init();
+void CAMERA_IO_Write (uint8_t Addr, uint8_t Reg, uint8_t Value);
+uint8_t CAMERA_IO_Read (uint8_t Addr, uint8_t Reg);
+void CAMERA_Delay (uint32_t Delay);
+
 //{{{
 #ifdef __cplusplus
 }

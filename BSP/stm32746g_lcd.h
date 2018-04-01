@@ -127,6 +127,9 @@ void     BSP_LCD_FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
 void     BSP_LCD_FillPolygon (pPoint Points, uint16_t PointCount);
 void     BSP_LCD_FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius);
 
+void     BSP_LCD_ConvertFrameToARGB8888 (uint16_t* src, uint32_t* dst, uint16_t xsize, uint16_t ysize);
+void     BSP_LCD_ConvertFrame (uint16_t* src, uint8_t* dst, uint16_t xsize, uint16_t ysize);
+
 void     BSP_LCD_DisplayOff();
 void     BSP_LCD_DisplayOn();
 
