@@ -55,7 +55,8 @@ public:
   //{{{
   void startCam (const char* title, uint16_t* bgnd) {
 
-    BSP_LCD_ConvertFrame (bgnd, mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0, 480, 272);
+    //BSP_LCD_ConvertFrame (bgnd, mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0, 480, 272);
+    BSP_LCD_ConvertFrameCpu (bgnd, mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0, 480, 272);
 
     drawTitle (title);
     if (!BSP_PB_GetState (BUTTON_KEY))

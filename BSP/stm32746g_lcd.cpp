@@ -124,38 +124,6 @@ void ConvertLineToARGB8888 (void* src, void* dst, uint32_t xSize, uint32_t Color
         HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
   }
 //}}}
-//{{{
-void BSP_LCD_ConvertFrameToARGB8888 (uint16_t* src, uint32_t* dst, uint16_t xsize, uint16_t ysize) {
-
-  hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
-  hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
-  hDma2dHandler.Init.OutputOffset = 0;
-
-  // Foreground Configuration
-  hDma2dHandler.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
-  hDma2dHandler.LayerCfg[1].InputAlpha = 0xFF;
-  hDma2dHandler.LayerCfg[1].InputColorMode = CM_RGB565;
-  hDma2dHandler.LayerCfg[1].InputOffset = 0;
-
-  if (HAL_DMA2D_Init (&hDma2dHandler) == HAL_OK)
-    if (HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1) == HAL_OK)
-      if (HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, xsize, ysize) == HAL_OK)
-        HAL_DMA2D_PollForTransfer (&hDma2dHandler, 100);
-  }
-//}}}
-//{{{
-void BSP_LCD_ConvertFrame (uint16_t* src, uint8_t* dst, uint16_t xsize, uint16_t ysize) {
-
-  auto srcEnd = src + (xsize*ysize);
-  while (src < srcEnd) {
-    uint16_t rgb = *src++;
-    *dst++ = (rgb & 0x001F) << 3;
-    *dst++ = (rgb & 0x07E0) >> 3;
-    *dst++ = (rgb & 0xF800) >> 8;
-    *dst++ = 0xFF;
-    }
-  }
-//}}}
 
 //{{{
 uint8_t BSP_LCD_Init() {
@@ -426,7 +394,7 @@ void BSP_LCD_DrawHLine (uint16_t Xpos, uint16_t Ypos, uint16_t Length) {
     Xaddress = (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress) + 4*(BSP_LCD_GetXSize()*Ypos + Xpos);
 
   // Write line
-  FillBuffer  (ActiveLayer, (uint32_t *)Xaddress, Length, 1, 0, TextColor);
+  FillBuffer  (ActiveLayer, (uint32_t*)Xaddress, Length, 1, 0, TextColor);
   }
 //}}}
 //{{{
@@ -772,6 +740,39 @@ void BSP_LCD_FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
     }
 
   while (y <= 0);
+  }
+//}}}
+
+//{{{
+void BSP_LCD_ConvertFrame (uint16_t* src, uint8_t* dst, uint16_t xsize, uint16_t ysize) {
+
+  hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
+  hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
+  hDma2dHandler.Init.OutputOffset = 0;
+
+  // Foreground Configuration
+  hDma2dHandler.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
+  hDma2dHandler.LayerCfg[1].InputAlpha = 0xFF;
+  hDma2dHandler.LayerCfg[1].InputColorMode = CM_RGB565;
+  hDma2dHandler.LayerCfg[1].InputOffset = 0;
+
+  if (HAL_DMA2D_Init (&hDma2dHandler) == HAL_OK)
+    if (HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1) == HAL_OK)
+      if (HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, xsize, ysize) == HAL_OK)
+        HAL_DMA2D_PollForTransfer (&hDma2dHandler, 1000);
+  }
+//}}}
+//{{{
+void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint8_t* dst, uint16_t xsize, uint16_t ysize) {
+
+  auto srcEnd = src + (xsize*ysize);
+  while (src < srcEnd) {
+    uint16_t rgb = *src++;
+    *dst++ = (rgb & 0x001F) << 3;
+    *dst++ = (rgb & 0x07E0) >> 3;
+    *dst++ = (rgb & 0xF800) >> 8;
+    *dst++ = 0xFF;
+    }
   }
 //}}}
 

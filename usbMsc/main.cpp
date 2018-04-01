@@ -86,8 +86,8 @@ void cApp::run() {
   mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (RESOLUTION_R480x272));
   HAL_Delay (100);
 
-  BSP_CAMERA_ContinuousStart ((uint8_t*)SDRAM_USER);
   BSP_CAMERA_ContrastBrightness (CAMERA_BRIGHTNESS_LEVEL4, CAMERA_CONTRAST_LEVEL4);
+  BSP_CAMERA_ContinuousStart ((uint8_t*)SDRAM_USER);
 
   int lastCount = 0;
   while (true) {
