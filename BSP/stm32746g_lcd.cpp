@@ -151,7 +151,7 @@ void BSP_LCD_ConvertFrame (uint16_t* src, uint8_t* dst, uint16_t xsize, uint16_t
     uint16_t rgb = *src++;
     *dst++ = (rgb & 0x001F) << 3;
     *dst++ = (rgb & 0x07E0) >> 3;
-    *dst++ = (rgb & 0xF800) >> 11;
+    *dst++ = (rgb & 0xF800) >> 8;
     *dst++ = 0xFF;
     }
   }
