@@ -55,8 +55,8 @@ void BSP_CAMERA_Suspend();
 void BSP_CAMERA_Resume();
 void BSP_CAMERA_Stop();
 
-void BSP_CAMERA_PwrUp();
-void BSP_CAMERA_PwrDown();
+void BSP_CAMERA_PowerUp();
+void BSP_CAMERA_PowerDown();
 
 void BSP_CAMERA_ContrastBrightnessConfig (uint32_t contrast_level, uint32_t brightness_level);
 void BSP_CAMERA_BlackWhiteConfig (uint32_t Mode);

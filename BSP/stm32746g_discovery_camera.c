@@ -700,7 +700,7 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
   phdcmi->Init.PCKPolarity      = DCMI_PCKPOLARITY_RISING;
 
   /* Power up camera */
-  BSP_CAMERA_PwrUp();
+  BSP_CAMERA_PowerUp();
 
   /* Read ID of Camera module via I2C */
   uint32_t readBack = ov9655_ReadID (CAMERA_I2C_ADDRESS);
@@ -763,7 +763,7 @@ void BSP_CAMERA_Stop() {
   }
 //}}}
 //{{{
-void BSP_CAMERA_PwrUp() {
+void BSP_CAMERA_PowerUp() {
 
 
   /* Enable GPIO clock */
@@ -784,7 +784,7 @@ void BSP_CAMERA_PwrUp() {
   }
 //}}}
 //{{{
-void BSP_CAMERA_PwrDown() {
+void BSP_CAMERA_PowerDown() {
 
 
   /* Enable GPIO clock */
