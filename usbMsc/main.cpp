@@ -70,10 +70,10 @@ void cApp::run() {
   mLcd->init();
 
   //mPs2 = new cPs2 (mLcd);
- // mPs2->initKeyboard();
+  //mPs2->initKeyboard();
 
-  //mscInit (mLcd);
-  //mscStart();
+  mscInit (mLcd);
+  mscStart();
 
   //if (f_mount ((FATFS*)malloc (sizeof (FATFS)), kSdPath, 0) == FR_OK) {
   //  char pathName[256] = "/";
