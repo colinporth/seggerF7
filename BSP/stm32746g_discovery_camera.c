@@ -62,9 +62,7 @@ void DCMI_IRQHandler() { HAL_DCMI_IRQHandler (&hDcmiHandler); }
 void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (hDcmiHandler.DMA_Handle); }
 
 //{{{
-/* Initialization sequence for VGA resolution (640x480)*/
-const unsigned char OV9655_VGA[][2]=
-{
+const unsigned char OV9655_640x480[][2] = {
   {0x00, 0x00},
   {0x01, 0x80},
   {0x02, 0x80},
@@ -596,7 +594,7 @@ void ov9655_Init (uint16_t DeviceAddr, uint32_t resolution) {
   /* Initialize OV9655 */
   switch (resolution) {
     case CAMERA_R160x120: {
-      for (index=0; index<(sizeof(OV9655_QQVGA)/2); index++) {
+      for (index = 0; index<(sizeof(OV9655_QQVGA)/2); index++) {
         CAMERA_IO_Write (DeviceAddr, OV9655_QQVGA[index][0], OV9655_QQVGA[index][1]);
         CAMERA_Delay (2);
         }
@@ -604,7 +602,7 @@ void ov9655_Init (uint16_t DeviceAddr, uint32_t resolution) {
       }
 
     case CAMERA_R320x240: {
-      for (index=0; index < (sizeof(OV9655_QVGA)/2); index++) {
+      for (index = 0; index < (sizeof(OV9655_QVGA)/2); index++) {
         CAMERA_IO_Write (DeviceAddr, OV9655_QVGA[index][0], OV9655_QVGA[index][1]);
         CAMERA_Delay (2);
         }
@@ -617,8 +615,8 @@ void ov9655_Init (uint16_t DeviceAddr, uint32_t resolution) {
       }
 
     case CAMERA_R640x480: {
-      for (index=0; index < (sizeof(OV9655_VGA)/2); index++) {
-        CAMERA_IO_Write (DeviceAddr, OV9655_VGA[index][0], OV9655_VGA[index][1]);
+      for (index = 0; index < (sizeof(OV9655_640x480)/2); index++) {
+        CAMERA_IO_Write (DeviceAddr, OV9655_640x480[index][0], OV9655_640x480[index][1]);
         CAMERA_Delay (2);
         }
       break;
