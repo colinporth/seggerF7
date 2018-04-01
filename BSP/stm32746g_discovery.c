@@ -122,32 +122,28 @@ void BSP_LED_Toggle (Led_TypeDef Led)
 //{{{
 void BSP_PB_Init (Button_TypeDef Button, ButtonMode_TypeDef ButtonMode) {
 
-  GPIO_InitTypeDef gpio_init_structure;
-
   /* Enable the BUTTON clock */
   BUTTONx_GPIO_CLK_ENABLE (Button);
 
-  if(ButtonMode == BUTTON_MODE_GPIO) {
+  GPIO_InitTypeDef gpio_init_structure;
+  gpio_init_structure.Speed = GPIO_SPEED_FAST;
+  gpio_init_structure.Pull = GPIO_NOPULL;
+  gpio_init_structure.Pin = BUTTON_PIN[Button];
+
+  if (ButtonMode == BUTTON_MODE_GPIO) {
     /* Configure Button pin as input */
-    gpio_init_structure.Pin = BUTTON_PIN[Button];
     gpio_init_structure.Mode = GPIO_MODE_INPUT;
-    gpio_init_structure.Pull = GPIO_NOPULL;
-    gpio_init_structure.Speed = GPIO_SPEED_FAST;
     HAL_GPIO_Init (BUTTON_PORT[Button], &gpio_init_structure);
     }
 
-  if(ButtonMode == BUTTON_MODE_EXTI) {
+  if (ButtonMode == BUTTON_MODE_EXTI) {
     /* Configure Button pin as input with External interrupt */
-    gpio_init_structure.Pin = BUTTON_PIN[Button];
-    gpio_init_structure.Pull = GPIO_NOPULL;
-    gpio_init_structure.Speed = GPIO_SPEED_FAST;
-
-    if(Button != BUTTON_WAKEUP)
+    if (Button != BUTTON_WAKEUP)
       gpio_init_structure.Mode = GPIO_MODE_IT_FALLING;
     else
       gpio_init_structure.Mode = GPIO_MODE_IT_RISING;
 
-    HAL_GPIO_Init(BUTTON_PORT[Button], &gpio_init_structure);
+    HAL_GPIO_Init (BUTTON_PORT[Button], &gpio_init_structure);
 
     /* Enable and set Button EXTI Interrupt to the lowest priority */
     HAL_NVIC_SetPriority ((IRQn_Type)(BUTTON_IRQn[Button]), 0x0F, 0x00);
@@ -166,7 +162,6 @@ void BSP_PB_DeInit (Button_TypeDef Button) {
 //}}}
 //{{{
 uint32_t BSP_PB_GetState (Button_TypeDef Button) {
-
   return HAL_GPIO_ReadPin (BUTTON_PORT[Button], BUTTON_PIN[Button]);
   }
 //}}}
@@ -177,11 +172,10 @@ static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler) {
   GPIO_InitTypeDef  gpio_init_structure;
 
   if (i2c_handler == (I2C_HandleTypeDef*)(&hI2cAudioHandler)) {
-    //{{{  AUDIO and LCD I2C MSP init
-    /* Enable GPIO clock */
+    // AUDIO and LCD I2C MSP init
     DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_CLK_ENABLE();
 
-    /* Configure I2C Tx as alternate function */
+    // Configure I2C Tx as alternate function
     gpio_init_structure.Pin = DISCOVERY_AUDIO_I2Cx_SCL_PIN;
     gpio_init_structure.Mode = GPIO_MODE_AF_OD;
     gpio_init_structure.Pull = GPIO_NOPULL;
@@ -189,34 +183,23 @@ static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler) {
     gpio_init_structure.Alternate = DISCOVERY_AUDIO_I2Cx_SCL_SDA_AF;
     HAL_GPIO_Init (DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
 
-    /* Configure I2C Rx as alternate function */
+    // Configure I2C Rx as alternate function
     gpio_init_structure.Pin = DISCOVERY_AUDIO_I2Cx_SDA_PIN;
     HAL_GPIO_Init (DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
 
-    /* Enable I2C clock */
     DISCOVERY_AUDIO_I2Cx_CLK_ENABLE();
-
-    /* Force the I2C peripheral clock reset */
     DISCOVERY_AUDIO_I2Cx_FORCE_RESET();
-
-    /* Release the I2C peripheral clock reset */
     DISCOVERY_AUDIO_I2Cx_RELEASE_RESET();
-
-    /* Enable and set I2Cx Interrupt to a lower priority */
     HAL_NVIC_SetPriority (DISCOVERY_AUDIO_I2Cx_EV_IRQn, 0x0F, 0);
     HAL_NVIC_EnableIRQ (DISCOVERY_AUDIO_I2Cx_EV_IRQn);
-
-    /* Enable and set I2Cx Interrupt to a lower priority */
     HAL_NVIC_SetPriority (DISCOVERY_AUDIO_I2Cx_ER_IRQn, 0x0F, 0);
     HAL_NVIC_EnableIRQ (DISCOVERY_AUDIO_I2Cx_ER_IRQn);
     }
-    //}}}
   else {
-    //{{{  External, camera and Arduino connector I2C MSP init
-    /* Enable GPIO clock */
+    //  External, camera and Arduino connector I2C MSP init
     DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_CLK_ENABLE();
 
-    /* Configure I2C Tx as alternate function */
+    // Configure I2C Tx as alternate function
     gpio_init_structure.Pin = DISCOVERY_EXT_I2Cx_SCL_PIN;
     gpio_init_structure.Mode = GPIO_MODE_AF_OD;
     gpio_init_structure.Pull = GPIO_NOPULL;
@@ -224,29 +207,19 @@ static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler) {
     gpio_init_structure.Alternate = DISCOVERY_EXT_I2Cx_SCL_SDA_AF;
     HAL_GPIO_Init (DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
 
-    /* Configure I2C Rx as alternate function */
+    // Configure I2C Rx as alternate function
     gpio_init_structure.Pin = DISCOVERY_EXT_I2Cx_SDA_PIN;
     HAL_GPIO_Init (DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
 
-    /*** Configure the I2C peripheral ***/
-    /* Enable I2C clock */
+    // Enable I2C clock
     DISCOVERY_EXT_I2Cx_CLK_ENABLE();
-
-    /* Force the I2C peripheral clock reset */
     DISCOVERY_EXT_I2Cx_FORCE_RESET();
-
-    /* Release the I2C peripheral clock reset */
     DISCOVERY_EXT_I2Cx_RELEASE_RESET();
-
-    /* Enable and set I2Cx Interrupt to a lower priority */
     HAL_NVIC_SetPriority (DISCOVERY_EXT_I2Cx_EV_IRQn, 0x0F, 0);
     HAL_NVIC_EnableIRQ (DISCOVERY_EXT_I2Cx_EV_IRQn);
-
-    /* Enable and set I2Cx Interrupt to a lower priority */
     HAL_NVIC_SetPriority (DISCOVERY_EXT_I2Cx_ER_IRQn, 0x0F, 0);
     HAL_NVIC_EnableIRQ (DISCOVERY_EXT_I2Cx_ER_IRQn);
     }
-    //}}}
   }
 //}}}
 //{{{
