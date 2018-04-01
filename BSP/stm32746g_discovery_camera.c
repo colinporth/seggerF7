@@ -55,7 +55,6 @@
 DCMI_HandleTypeDef hDcmiHandler;
 
 static DMA_HandleTypeDef hdma_handler;
-static uint32_t CameraHwAddress;
 static uint32_t CameraCurrentResolution;
 
 void DCMI_IRQHandler() { HAL_DCMI_IRQHandler (&hDcmiHandler); }
@@ -213,7 +212,7 @@ const uint8_t OV9655_640x480[][2] = {
   };
 //}}}
 //{{{
-const uint8_t OV9655_320x240[][2]= {
+const uint8_t OV9655_320x240[][2] = {
   {0x00, 0x00},
   {0x01, 0x80},
   {0x02, 0x80},
@@ -367,7 +366,7 @@ const uint8_t OV9655_320x240[][2]= {
   };
 //}}}
 //{{{
-const uint8_t OV9655_160x120[][2]= {
+const uint8_t OV9655_160x120[][2] = {
   {0x00, 0x00},
   {0x01, 0x80},
   {0x02, 0x80},
@@ -578,18 +577,15 @@ static uint64_t ov9655_ConvertValue (uint32_t feature, uint32_t value) {
 //}}}
 
 //{{{
-void ov9655_Init (uint16_t DeviceAddr, uint32_t resolution) {
+static void ov9655_Init (uint16_t DeviceAddr, uint32_t resolution) {
 
   uint32_t index;
 
-  /* Initialize I2C */
   CAMERA_IO_Init();
 
-  /* Prepare the camera to be configured by resetting all its registers */
-  CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_COM7, 0x80);
+  // Prepare the camera to be configured by resetting all its registers CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_COM7, 0x80);
   CAMERA_Delay (200);
 
-  /* Initialize OV9655 */
   switch (resolution) {
     case CAMERA_R160x120: {
       for (index = 0; index<(sizeof(OV9655_160x120)/2); index++) {
@@ -627,7 +623,7 @@ void ov9655_Init (uint16_t DeviceAddr, uint32_t resolution) {
   }
 //}}}
 //{{{
-void ov9655_Config (uint16_t DeviceAddr, uint32_t feature, uint32_t value, uint32_t brightness_value) {
+static void ov9655_Config (uint16_t DeviceAddr, uint32_t feature, uint32_t value, uint32_t brightness_value) {
 
   uint8_t tslb, mtx1, mtx2, mtx3, mtx4, mtx5, mtx6;
   uint64_t value_tmp;
@@ -669,12 +665,9 @@ void ov9655_Config (uint16_t DeviceAddr, uint32_t feature, uint32_t value, uint3
   }
 //}}}
 //{{{
-uint16_t ov9655_ReadID (uint16_t DeviceAddr) {
+static uint16_t ov9655_ReadID (uint16_t DeviceAddr) {
 
-  /* Initialize I2C */
   CAMERA_IO_Init();
-
-  /* Get the camera ID */
   return (CAMERA_IO_Read (DeviceAddr, OV9655_SENSOR_PIDH));
   }
 //}}}
@@ -683,27 +676,28 @@ uint16_t ov9655_ReadID (uint16_t DeviceAddr) {
 static uint32_t getSize (uint32_t resolution) {
 
   switch (resolution) {
-    case CAMERA_R160x120: return 0x2580;
-    case CAMERA_R320x240: return 0x9600;
-    case CAMERA_R480x272: return 0xFF00;
+    case CAMERA_R160x120: return  0x2580;
+    case CAMERA_R320x240: return  0x9600;
+    case CAMERA_R480x272: return  0xFF00;
     case CAMERA_R640x480: return 0x25800;
     default: return 0;
     }
   }
 //}}}
 
+// external
 //{{{
 uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
 
   // Configures the DCMI to interface with the camera module ***/
   DCMI_HandleTypeDef* phdcmi    = &hDcmiHandler;
+  phdcmi->Instance              = DCMI;
   phdcmi->Init.CaptureRate      = DCMI_CR_ALL_FRAME;
   phdcmi->Init.HSPolarity       = DCMI_HSPOLARITY_LOW;
   phdcmi->Init.SynchroMode      = DCMI_SYNCHRO_HARDWARE;
   phdcmi->Init.VSPolarity       = DCMI_VSPOLARITY_HIGH;
   phdcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
   phdcmi->Init.PCKPolarity      = DCMI_PCKPOLARITY_RISING;
-  phdcmi->Instance              = DCMI;
 
   /* Power up camera */
   BSP_CAMERA_PwrUp();
@@ -711,9 +705,6 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
   /* Read ID of Camera module via I2C */
   uint32_t readBack = ov9655_ReadID (CAMERA_I2C_ADDRESS);
   if (readBack == OV9655_ID) {
-    /* Initialize the camera driver structure */
-    CameraHwAddress = CAMERA_I2C_ADDRESS;
-
     /* DCMI Initialization */
     BSP_CAMERA_MspInit (&hDcmiHandler, NULL);
     HAL_DCMI_Init (phdcmi);
@@ -722,7 +713,7 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
     if (Resolution == CAMERA_R480x272) {
       // For 480x272 resolution, the OV9655 sensor is set to VGA resolution
       // as OV9655 doesn't supports 480x272 resolution DCMI is configured to output a 480x272 cropped window
-      ov9655_Init (CameraHwAddress, CAMERA_R640x480);
+      ov9655_Init (CAMERA_I2C_ADDRESS, CAMERA_R640x480);
       HAL_DCMI_ConfigCROP (phdcmi,           /* Crop in the middle of the VGA picture */
                            (CAMERA_VGA_RES_X - CAMERA_480x272_RES_X)/2,
                            (CAMERA_VGA_RES_Y - CAMERA_480x272_RES_Y)/2,
@@ -731,7 +722,7 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
       HAL_DCMI_EnableCROP (phdcmi);
       }
     else {
-      ov9655_Init (CameraHwAddress, Resolution);
+      ov9655_Init (CAMERA_I2C_ADDRESS, Resolution);
       HAL_DCMI_DisableCROP (phdcmi);
       }
 
@@ -757,7 +748,7 @@ void BSP_CAMERA_ContinuousStart (uint8_t* buff) {
 //}}}
 //{{{
 void BSP_CAMERA_SnapshotStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_SNAPSHOT, (uint32_t)buff, getSize(CameraCurrentResolution));
+  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_SNAPSHOT, (uint32_t)buff, getSize (CameraCurrentResolution));
   }
 //}}}
 
@@ -832,17 +823,17 @@ void BSP_CAMERA_PwrDown() {
   * @retval None
   */
 void BSP_CAMERA_ContrastBrightnessConfig (uint32_t contrast_level, uint32_t brightness_level) {
-  ov9655_Config (CameraHwAddress, CAMERA_CONTRAST_BRIGHTNESS, contrast_level, brightness_level);
+  ov9655_Config (CAMERA_I2C_ADDRESS, CAMERA_CONTRAST_BRIGHTNESS, contrast_level, brightness_level);
   }
 //}}}
 //{{{
 void BSP_CAMERA_BlackWhiteConfig (uint32_t Mode) {
-  ov9655_Config (CameraHwAddress, CAMERA_BLACK_WHITE, Mode, 0);
+  ov9655_Config (CAMERA_I2C_ADDRESS, CAMERA_BLACK_WHITE, Mode, 0);
   }
 //}}}
 //{{{
 void BSP_CAMERA_ColorEffectConfig( uint32_t Effect) {
-  ov9655_Config (CameraHwAddress, CAMERA_COLOR_EFFECT, Effect, 0);
+  ov9655_Config (CAMERA_I2C_ADDRESS, CAMERA_COLOR_EFFECT, Effect, 0);
   }
 //}}}
 
