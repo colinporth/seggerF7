@@ -31,7 +31,6 @@
 "Output/usbMsc Debug/Obj/stm32f7xx_hal_sdram.o"
 "Output/usbMsc Debug/Obj/stm32f7xx_ll_sdmmc.o"
 "Output/usbMsc Debug/Obj/stm32f7xx_hal_dcmi.o"
-"Output/usbMsc Debug/Obj/stm32f7xx_hal_dcmi_ex.o"
 "Output/usbMsc Debug/Obj/stm32f7xx_hal_dma_ex.o"
 "Output/usbMsc Debug/Obj/SEGGER_RTT.o"
 "Output/usbMsc Debug/Obj/SEGGER_RTT_Syscalls_SES.o"

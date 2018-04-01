@@ -87,6 +87,7 @@ void cApp::run() {
   HAL_Delay (100);
 
   BSP_CAMERA_ContinuousStart ((uint8_t*)SDRAM_USER);
+  BSP_CAMERA_ContrastBrightness (CAMERA_BRIGHTNESS_LEVEL4, CAMERA_CONTRAST_LEVEL4);
 
   int lastCount = 0;
   while (true) {
