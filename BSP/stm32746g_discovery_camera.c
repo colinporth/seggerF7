@@ -62,7 +62,7 @@ void DCMI_IRQHandler() { HAL_DCMI_IRQHandler (&hDcmiHandler); }
 void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (hDcmiHandler.DMA_Handle); }
 
 //{{{
-const unsigned char OV9655_640x480[][2] = {
+const uint8_t OV9655_640x480[][2] = {
   {0x00, 0x00},
   {0x01, 0x80},
   {0x02, 0x80},
@@ -213,8 +213,7 @@ const unsigned char OV9655_640x480[][2] = {
   };
 //}}}
 //{{{
-/* Initialization sequence for QVGA resolution (320x240) */
-const unsigned char OV9655_QVGA[][2]= {
+const uint8_t OV9655_320x240[][2]= {
   {0x00, 0x00},
   {0x01, 0x80},
   {0x02, 0x80},
@@ -368,8 +367,7 @@ const unsigned char OV9655_QVGA[][2]= {
   };
 //}}}
 //{{{
-/* Initialization sequence for QQVGA resolution (160x120) */
-const char OV9655_QQVGA[][2]= {
+const uint8_t OV9655_160x120[][2]= {
   {0x00, 0x00},
   {0x01, 0x80},
   {0x02, 0x80},
@@ -594,16 +592,16 @@ void ov9655_Init (uint16_t DeviceAddr, uint32_t resolution) {
   /* Initialize OV9655 */
   switch (resolution) {
     case CAMERA_R160x120: {
-      for (index = 0; index<(sizeof(OV9655_QQVGA)/2); index++) {
-        CAMERA_IO_Write (DeviceAddr, OV9655_QQVGA[index][0], OV9655_QQVGA[index][1]);
+      for (index = 0; index<(sizeof(OV9655_160x120)/2); index++) {
+        CAMERA_IO_Write (DeviceAddr, OV9655_160x120[index][0], OV9655_160x120[index][1]);
         CAMERA_Delay (2);
         }
       break;
       }
 
     case CAMERA_R320x240: {
-      for (index = 0; index < (sizeof(OV9655_QVGA)/2); index++) {
-        CAMERA_IO_Write (DeviceAddr, OV9655_QVGA[index][0], OV9655_QVGA[index][1]);
+      for (index = 0; index < (sizeof(OV9655_320x240)/2); index++) {
+        CAMERA_IO_Write (DeviceAddr, OV9655_320x240[index][0], OV9655_320x240[index][1]);
         CAMERA_Delay (2);
         }
       break;
@@ -682,19 +680,15 @@ uint16_t ov9655_ReadID (uint16_t DeviceAddr) {
 //}}}
 
 //{{{
-static uint32_t GetSize (uint32_t resolution) {
-
-  uint32_t size = 0;
+static uint32_t getSize (uint32_t resolution) {
 
   switch (resolution) {
-    case CAMERA_R160x120: size = 0x2580; break;
-    case CAMERA_R320x240: size = 0x9600; break;
-    case CAMERA_R480x272: size = 0xFF00; break;
-    case CAMERA_R640x480: size = 0x25800; break;
-    default: break;
+    case CAMERA_R160x120: return 0x2580;
+    case CAMERA_R320x240: return 0x9600;
+    case CAMERA_R480x272: return 0xFF00;
+    case CAMERA_R640x480: return 0x25800;
+    default: return 0;
     }
-
-  return size;
   }
 //}}}
 
@@ -758,12 +752,12 @@ void BSP_CAMERA_DeInit() {
 
 //{{{
 void BSP_CAMERA_ContinuousStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff, GetSize (CameraCurrentResolution));
+  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff, getSize (CameraCurrentResolution));
   }
 //}}}
 //{{{
 void BSP_CAMERA_SnapshotStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_SNAPSHOT, (uint32_t)buff, GetSize(CameraCurrentResolution));
+  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_SNAPSHOT, (uint32_t)buff, getSize(CameraCurrentResolution));
   }
 //}}}
 
