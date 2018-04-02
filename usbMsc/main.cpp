@@ -84,6 +84,7 @@ void cApp::run() {
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
   mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (CAMERA_R480x272));
   //mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (CAMERA_R320x240));
+  //mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (CAMERA_R160x120));
   HAL_Delay (100);
 
   BSP_CAMERA_ContrastBrightness (CAMERA_BRIGHTNESS_LEVEL4, CAMERA_CONTRAST_LEVEL4);
