@@ -9,6 +9,7 @@
 #include "stm32f7xx.h"
 #include "stm32f7xx_hal.h"
 #include "stm32746g_lcd.h"
+#include "stm32746g_discovery_camera.h"
 //}}}
 //{{{
 #ifdef __cplusplus
@@ -55,14 +56,14 @@ public:
     }
   //}}}
   //{{{
-  void startCam (uint16_t* src, uint16_t xsize, uint16_t ysize) {
+  void startCam (uint16_t* src) {
 
-    if ((xsize < BSP_LCD_GetXSize()) || (ysize < BSP_LCD_GetYSize()))
+    if ((BSP_CAMERA_getXSize() < BSP_LCD_GetXSize()) || (BSP_CAMERA_getYSize() < BSP_LCD_GetYSize()))
       BSP_LCD_Clear (LCD_COLOR_BLACK);
 
-    BSP_LCD_ConvertFrame (src, xsize, ysize,
+    BSP_LCD_ConvertFrame (src, BSP_CAMERA_getXSize(), BSP_CAMERA_getYSize(),
                           mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0,
-                          (BSP_LCD_GetXSize() - xsize) / 2, (BSP_LCD_GetYSize() - ysize) / 2,
+                          (BSP_LCD_GetXSize() - BSP_CAMERA_getXSize()) / 2, (BSP_LCD_GetYSize() - BSP_CAMERA_getYSize()) / 2,
                           BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
     }
   //}}}

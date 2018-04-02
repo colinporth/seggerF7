@@ -83,6 +83,7 @@ void cApp::run() {
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
   mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (CAMERA_R480x272));
+  //mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (CAMERA_R320x240));
   HAL_Delay (100);
 
   BSP_CAMERA_ContrastBrightness (CAMERA_BRIGHTNESS_LEVEL4, CAMERA_CONTRAST_LEVEL4);
@@ -97,7 +98,7 @@ void cApp::run() {
     //  }
 
     //mLcd->startBgnd (kVersion, mscGetSectors());
-    mLcd->startCam ((uint16_t*)SDRAM_USER, 480, 272);
+    mLcd->startCam ((uint16_t*)SDRAM_USER);
     mLcd->drawTitle (kVersion);
     mLcd->drawDebug();
     mLcd->present();

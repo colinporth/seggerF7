@@ -197,6 +197,7 @@ const uint8_t OV9655_640x480[][2] = {
   {0x00, 0x00}, // OV9655_GAIN       0x00
   {0x01, 0x80}, // OV9655_BLUE       0x01
   {0x02, 0x80}, // OV9655_RED        0x02
+
   {0xb5, 0x00},
   {0x35, 0x00}, // OV9655_AREF2      0x35
   {0xa8, 0xc1}, // OV9655_REFA8      0xA8
@@ -217,16 +218,20 @@ const uint8_t OV9655_640x480[][2] = {
   {0x11, 0x03},
   {0x72, 0x00},
   {0x3e, 0x0c},
+
   {0x74, 0x3a},
   {0x76, 0x01},
   {0x75, 0x35},
   {0x73, 0x00},
+
   {0xc7, 0x80},
+
   {0x62, 0x00},
   {0x63, 0x00},
   {0x64, 0x02},
   {0x65, 0x20},
   {0x66, 0x01},
+
   {0xc3, 0x4e},
   {0x33, 0x00},
   {0xa4, 0x50},
@@ -251,6 +256,7 @@ const uint8_t OV9655_640x480[][2] = {
   {0x69, 0x0a},
   {0x8c, 0x8d},
   {0xc0, 0xaa},
+
   {0x40, 0xd0},
   {0x43, 0x14},
   {0x44, 0xf0},
@@ -265,9 +271,11 @@ const uint8_t OV9655_640x480[][2] = {
   {0x5d, 0x53},
   {0x5e, 0x0e},
   {0x6c, 0x0c},
+
   {0xc6, 0x85},
   {0xcb, 0xf0},
   {0xcc, 0xd8},
+
   {0x71, 0x78},
   {0xa5, 0x68},
   {0x6f, 0x9e},
@@ -307,38 +315,47 @@ const uint8_t OV9655_640x480[][2] = {
   {0x54, 0x98},
   {0x58, 0x1a},
   {0x6b, 0x5a},
+
   {0x90, 0x92},
   {0x91, 0x92},
   {0x9f, 0x90},
+
   {0xa0, 0x90},
   {0x16, 0x24},
   {0x2a, 0x00},
   {0x2b, 0x00},
+
   {0xac, 0x80},
   {0xad, 0x80},
   {0xae, 0x80},
   {0xaf, 0x80},
+
   {0xb2, 0xf2},
   {0xb3, 0x20},
   {0xb4, 0x20},
   {0xb6, 0xaf},
   {0x29, 0x15},
+
   {0x9d, 0x02},
   {0x9e, 0x02},
   {0x9e, 0x02},
+
   {0x04, 0x03},
   {0x05, 0x2e},
   {0x06, 0x2e},
   {0x07, 0x2e},
   {0x08, 0x2e},
   {0x2f, 0x2e},
+
   {0x4a, 0xe9},
   {0x4b, 0xdd},
   {0x4c, 0xdd},
   {0x4d, 0xdd},
   {0x4e, 0xdd},
+
   {0x70, 0x06},
   {0xa6, 0x40},
+
   {0xbc, 0x02},
   {0xbd, 0x01},
   {0xbe, 0x02},
@@ -736,12 +753,12 @@ static void mspDeInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
 //}}}
 
 //{{{
-static uint32_t getSize (uint32_t resolution) {
+static uint32_t getPix (uint32_t resolution) {
 
   switch (resolution) {
     case CAMERA_R160x120: return  0x2580;
     case CAMERA_R320x240: return  0x9600;
-    case CAMERA_R480x272: return  0xFF00;
+    case CAMERA_R480x272: return 0xFF00;
     case CAMERA_R640x480: return 0x25800;
     default: return 0;
     }
@@ -830,7 +847,7 @@ static uint16_t readID (uint16_t DeviceAddr) {
 //{{{
 uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
 
-  // Configures the DCMI to interface with the camera module ***/
+  // Configures the DCMI to interface with the camera module
   DCMI_HandleTypeDef* hDcmi    = &hDcmiHandler;
   hDcmi->Instance              = DCMI;
   hDcmi->Init.CaptureRate      = DCMI_CR_ALL_FRAME;
@@ -848,9 +865,9 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
     HAL_DCMI_Init (hDcmi);
 
     if (Resolution == CAMERA_R480x272) {
-      // For 480x272, use cropped 640x480
+      // 480x272 uses cropped 640x480
       init (CAMERA_I2C_ADDRESS, CAMERA_R640x480);
-      HAL_DCMI_ConfigCROP (hDcmi,           /* Crop in the middle of the VGA picture */
+      HAL_DCMI_ConfigCROP (hDcmi,
                            (CAMERA_VGA_RES_X - CAMERA_480x272_RES_X)/2,
                            (CAMERA_VGA_RES_Y - CAMERA_480x272_RES_Y)/2,
                            (CAMERA_480x272_RES_X * 2) - 1,
@@ -878,13 +895,38 @@ void BSP_CAMERA_DeInit() {
 //}}}
 
 //{{{
+uint32_t BSP_CAMERA_getXSize() {
+
+  switch (CameraCurrentResolution) {
+    case CAMERA_R160x120: return 160;
+    case CAMERA_R320x240: return 320;
+    case CAMERA_R480x272: return 480;
+    case CAMERA_R640x480: return 640;
+    default: return 0;
+    }
+  }
+//}}}
+//{{{
+uint32_t BSP_CAMERA_getYSize() {
+
+  switch (CameraCurrentResolution) {
+    case CAMERA_R160x120: return 120;
+    case CAMERA_R320x240: return 240;
+    case CAMERA_R480x272: return 272;
+    case CAMERA_R640x480: return 280;
+    default: return 0;
+    }
+  }
+//}}}
+
+//{{{
 void BSP_CAMERA_SnapshotStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_SNAPSHOT, (uint32_t)buff, getSize (CameraCurrentResolution));
+  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_SNAPSHOT, (uint32_t)buff, getPix (CameraCurrentResolution));
   }
 //}}}
 //{{{
 void BSP_CAMERA_ContinuousStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff, getSize (CameraCurrentResolution));
+  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff, getPix (CameraCurrentResolution));
   }
 //}}}
 //{{{

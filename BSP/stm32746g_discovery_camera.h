@@ -27,6 +27,9 @@
 uint32_t BSP_CAMERA_Init (uint32_t Resolution);
 void BSP_CAMERA_DeInit();
 
+uint32_t BSP_CAMERA_getXSize();
+uint32_t BSP_CAMERA_getYSize();
+
 void BSP_CAMERA_SnapshotStart (uint8_t* buff);
 void BSP_CAMERA_ContinuousStart (uint8_t* buff);
 void BSP_CAMERA_ContrastBrightness (uint32_t contrast_level, uint32_t brightness_level);
