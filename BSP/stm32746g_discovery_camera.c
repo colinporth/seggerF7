@@ -663,107 +663,6 @@ void DCMI_IRQHandler() { HAL_DCMI_IRQHandler (&hDcmiHandler); }
 void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (hDcmiHandler.DMA_Handle); }
 
 //{{{
-static uint64_t convertValue (uint32_t value) {
-
-  switch (value) {
-    case CAMERA_BRIGHTNESS_LEVEL0: return OV9655_BRIGHTNESS_LEVEL0;
-    case CAMERA_BRIGHTNESS_LEVEL1: return OV9655_BRIGHTNESS_LEVEL1;
-    case CAMERA_BRIGHTNESS_LEVEL2: return OV9655_BRIGHTNESS_LEVEL2;
-    case CAMERA_BRIGHTNESS_LEVEL3: return OV9655_BRIGHTNESS_LEVEL3;
-    case CAMERA_BRIGHTNESS_LEVEL4: return OV9655_BRIGHTNESS_LEVEL4;
-
-    case CAMERA_CONTRAST_LEVEL0: return OV9655_CONTRAST_LEVEL0;
-    case CAMERA_CONTRAST_LEVEL1: return OV9655_CONTRAST_LEVEL1;
-    case CAMERA_CONTRAST_LEVEL2: return OV9655_CONTRAST_LEVEL2;
-    case CAMERA_CONTRAST_LEVEL3: return OV9655_CONTRAST_LEVEL3;
-    case CAMERA_CONTRAST_LEVEL4: return OV9655_CONTRAST_LEVEL4;
-
-    default: return OV9655_CONTRAST_LEVEL0;
-    }
-
-  }
-//}}}
-//{{{
-static void init (uint16_t DeviceAddr, uint32_t resolution) {
-
-  uint32_t index;
-
-  CAMERA_IO_Init();
-
-  // Prepare the camera to be configured by resetting all its registers CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_COM7, 0x80);
-  CAMERA_Delay (200);
-
-  switch (resolution) {
-    case CAMERA_R160x120: {
-      for (index = 0; index<(sizeof(OV9655_160x120)/2); index++) {
-        CAMERA_IO_Write (DeviceAddr, OV9655_160x120[index][0], OV9655_160x120[index][1]);
-        CAMERA_Delay (2);
-        }
-      break;
-      }
-
-    case CAMERA_R320x240: {
-      for (index = 0; index < (sizeof(OV9655_320x240)/2); index++) {
-        CAMERA_IO_Write (DeviceAddr, OV9655_320x240[index][0], OV9655_320x240[index][1]);
-        CAMERA_Delay (2);
-        }
-      break;
-      }
-
-    case CAMERA_R480x272: {
-      /* Not supported resolution */
-      break;
-      }
-
-    case CAMERA_R640x480: {
-      for (index = 0; index < (sizeof(OV9655_640x480)/2); index++) {
-        CAMERA_IO_Write (DeviceAddr, OV9655_640x480[index][0], OV9655_640x480[index][1]);
-        CAMERA_Delay (2);
-        }
-      break;
-      }
-
-    default: {
-      break;
-      }
-    }
-  }
-//}}}
-//{{{
-static void config (uint16_t DeviceAddr, uint32_t value, uint32_t brightness_value) {
-
-  uint64_t value_tmp;
-  uint32_t br_value;
-
-  /* Convert the input value into ov9655 parameters */
-  value_tmp = convertValue (value);
-  br_value = (uint32_t)convertValue (brightness_value);
-  CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_BRTN, br_value);
-  CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_CNST1, value_tmp);
-  }
-//}}}
-//{{{
-static uint16_t readID (uint16_t DeviceAddr) {
-
-  CAMERA_IO_Init();
-  return (CAMERA_IO_Read (DeviceAddr, OV9655_SENSOR_PIDH));
-  }
-//}}}
-
-//{{{
-static uint32_t getSize (uint32_t resolution) {
-
-  switch (resolution) {
-    case CAMERA_R160x120: return  0x2580;
-    case CAMERA_R320x240: return  0x9600;
-    case CAMERA_R480x272: return  0xFF00;
-    case CAMERA_R640x480: return 0x25800;
-    default: return 0;
-    }
-  }
-//}}}
-
-//{{{
 static void mspInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
 
   __HAL_RCC_DCMI_CLK_ENABLE();
@@ -833,6 +732,97 @@ static void mspDeInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
 
   HAL_DMA_DeInit (hdcmi->DMA_Handle);
   __HAL_RCC_DCMI_CLK_DISABLE();
+  }
+//}}}
+
+//{{{
+static uint32_t getSize (uint32_t resolution) {
+
+  switch (resolution) {
+    case CAMERA_R160x120: return  0x2580;
+    case CAMERA_R320x240: return  0x9600;
+    case CAMERA_R480x272: return  0xFF00;
+    case CAMERA_R640x480: return 0x25800;
+    default: return 0;
+    }
+  }
+//}}}
+//{{{
+static uint64_t convertValue (uint32_t value) {
+
+  switch (value) {
+    case CAMERA_BRIGHTNESS_LEVEL0: return OV9655_BRIGHTNESS_LEVEL0;
+    case CAMERA_BRIGHTNESS_LEVEL1: return OV9655_BRIGHTNESS_LEVEL1;
+    case CAMERA_BRIGHTNESS_LEVEL2: return OV9655_BRIGHTNESS_LEVEL2;
+    case CAMERA_BRIGHTNESS_LEVEL3: return OV9655_BRIGHTNESS_LEVEL3;
+    case CAMERA_BRIGHTNESS_LEVEL4: return OV9655_BRIGHTNESS_LEVEL4;
+
+    case CAMERA_CONTRAST_LEVEL0: return OV9655_CONTRAST_LEVEL0;
+    case CAMERA_CONTRAST_LEVEL1: return OV9655_CONTRAST_LEVEL1;
+    case CAMERA_CONTRAST_LEVEL2: return OV9655_CONTRAST_LEVEL2;
+    case CAMERA_CONTRAST_LEVEL3: return OV9655_CONTRAST_LEVEL3;
+    case CAMERA_CONTRAST_LEVEL4: return OV9655_CONTRAST_LEVEL4;
+
+    default: return OV9655_CONTRAST_LEVEL0;
+    }
+
+  }
+//}}}
+//{{{
+static void init (uint16_t DeviceAddr, uint32_t resolution) {
+
+  CAMERA_IO_Init();
+  CAMERA_Delay (200);
+
+  switch (resolution) {
+    case CAMERA_R160x120: {
+      for (uint32_t index = 0; index < (sizeof(OV9655_160x120)/2); index++) {
+        CAMERA_IO_Write (DeviceAddr, OV9655_160x120[index][0], OV9655_160x120[index][1]);
+        CAMERA_Delay (2);
+        }
+      break;
+      }
+
+    case CAMERA_R320x240: {
+      for (uint32_t index = 0; index < (sizeof(OV9655_320x240)/2); index++) {
+        CAMERA_IO_Write (DeviceAddr, OV9655_320x240[index][0], OV9655_320x240[index][1]);
+        CAMERA_Delay (2);
+        }
+      break;
+      }
+
+    case CAMERA_R640x480: {
+      for (uint32_t index = 0; index < (sizeof(OV9655_640x480)/2); index++) {
+        CAMERA_IO_Write (DeviceAddr, OV9655_640x480[index][0], OV9655_640x480[index][1]);
+        CAMERA_Delay (2);
+        }
+      break;
+      }
+
+    default: {
+      break;
+      }
+    }
+  }
+//}}}
+//{{{
+static void config (uint16_t DeviceAddr, uint32_t value, uint32_t brightness_value) {
+
+  uint64_t value_tmp;
+  uint32_t br_value;
+
+  /* Convert the input value into ov9655 parameters */
+  value_tmp = convertValue (value);
+  br_value = (uint32_t)convertValue (brightness_value);
+  CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_BRTN, br_value);
+  CAMERA_IO_Write (DeviceAddr, OV9655_SENSOR_CNST1, value_tmp);
+  }
+//}}}
+//{{{
+static uint16_t readID (uint16_t DeviceAddr) {
+
+  CAMERA_IO_Init();
+  return (CAMERA_IO_Read (DeviceAddr, OV9655_SENSOR_PIDH));
   }
 //}}}
 
@@ -949,14 +939,7 @@ void BSP_CAMERA_PowerDown() {
 void BSP_CAMERA_Suspend() { HAL_DCMI_Suspend (&hDcmiHandler); }
 void BSP_CAMERA_Resume() { HAL_DCMI_Resume (&hDcmiHandler); }
 
-void HAL_DCMI_LineEventCallback (DCMI_HandleTypeDef* hdcmi) { BSP_CAMERA_LineEventCallback(); }
-__weak void BSP_CAMERA_LineEventCallback() {}
-
-void HAL_DCMI_VsyncEventCallback (DCMI_HandleTypeDef* hdcmi) { BSP_CAMERA_VsyncEventCallback(); }
-__weak void BSP_CAMERA_VsyncEventCallback() {}
-
-void HAL_DCMI_FrameEventCallback (DCMI_HandleTypeDef* hdcmi) { BSP_CAMERA_FrameEventCallback(); }
-__weak void BSP_CAMERA_FrameEventCallback() {}
-
-void HAL_DCMI_ErrorCallback (DCMI_HandleTypeDef* hdcmi) { BSP_CAMERA_ErrorCallback(); }
-__weak void BSP_CAMERA_ErrorCallback() {}
+void HAL_DCMI_LineEventCallback (DCMI_HandleTypeDef* hdcmi) {}
+void HAL_DCMI_VsyncEventCallback (DCMI_HandleTypeDef* hdcmi) {}
+void HAL_DCMI_FrameEventCallback (DCMI_HandleTypeDef* hdcmi) {}
+void HAL_DCMI_ErrorCallback (DCMI_HandleTypeDef* hdcmi) {}

@@ -12,7 +12,7 @@
 #include "stm32746g_discovery_sd.h"
 #include "stm32746g_discovery_camera.h"
 //}}}
-const char* kVersion = "USB Msc 31/3/18";
+const char* kVersion = "USB Msc 2/4/18";
 const char kSdPath[40] = "0:/";
 
 //{{{
@@ -82,8 +82,7 @@ void cApp::run() {
   //  }
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
-
-  mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (CAMERA_R320x240));
+  mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (CAMERA_R480x272));
   HAL_Delay (100);
 
   BSP_CAMERA_ContrastBrightness (CAMERA_BRIGHTNESS_LEVEL4, CAMERA_CONTRAST_LEVEL4);
@@ -98,7 +97,9 @@ void cApp::run() {
     //  }
 
     //mLcd->startBgnd (kVersion, mscGetSectors());
-    mLcd->startCam (kVersion, (uint16_t*)SDRAM_USER, 320, 240);
+    mLcd->startCam ((uint16_t*)SDRAM_USER, 480, 272);
+    mLcd->drawTitle (kVersion);
+    mLcd->drawDebug();
     mLcd->present();
 
     if (false) {

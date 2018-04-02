@@ -43,48 +43,56 @@ public:
   uint32_t* getBuffer() { return (uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0); }
 
   //{{{
-  void start (const char* title) {
+  void start() {
 
     BSP_LCD_Clear (LCD_COLOR_BLACK);
 
-    drawTitle (title);
-    if (!BSP_PB_GetState (BUTTON_KEY))
-      drawDebug();
     }
   //}}}
   //{{{
-  void startBgnd (const char* title, uint32_t* bgnd) {
-
+  void startBgnd (uint32_t* bgnd) {
     memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), bgnd, 480*272*4);
-
-    drawTitle (title);
-    if (!BSP_PB_GetState (BUTTON_KEY))
-      drawDebug();
     }
   //}}}
   //{{{
-  void startCam (const char* title, uint16_t* src, uint16_t xsize, uint16_t ysize) {
+  void startCam (uint16_t* src, uint16_t xsize, uint16_t ysize) {
 
-    //BSP_LCD_Clear (LCD_COLOR_BLACK);
-    //HAL_Delay(2);
-    BSP_LCD_ConvertFrameCpu (src, xsize, ysize,
-                             mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0,
-                             (BSP_LCD_GetXSize() - xsize) / 2, (BSP_LCD_GetYSize() - ysize) / 2,
-                             BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
-    drawTitle (title);
-    if (!BSP_PB_GetState (BUTTON_KEY))
-      drawDebug();
+    if ((xsize < BSP_LCD_GetXSize()) || (ysize < BSP_LCD_GetYSize()))
+      BSP_LCD_Clear (LCD_COLOR_BLACK);
+
+    BSP_LCD_ConvertFrame (src, xsize, ysize,
+                          mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0,
+                          (BSP_LCD_GetXSize() - xsize) / 2, (BSP_LCD_GetYSize() - ysize) / 2,
+                          BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
     }
   //}}}
   //{{{
-  void startCam1 (const char* title, uint16_t* src, uint16_t xsize, uint16_t ysize) {
+  void drawTitle (const char* title) {
 
-    BSP_LCD_Clear (LCD_COLOR_BLACK);
-    BSP_LCD_ConvertFrame (src, mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0, 480, 272);
+    char str1[40];
+    sprintf (str1, "%s %d", title, (int)mTick);
 
-    drawTitle (title);
+    BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
+    BSP_LCD_DisplayStringAtLine (0, str1);
+    }
+  //}}}
+  //{{{
+  void drawDebug() {
+
     if (!BSP_PB_GetState (BUTTON_KEY))
-      drawDebug();
+      for (auto displayLine = 0u; (displayLine < mDebugLine) && ((int)displayLine < mDisplayLines); displayLine++) {
+        int debugLine = ((int)mDebugLine < mDisplayLines) ?
+          displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
+
+        BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
+        char tickStr[20];
+        auto ticks = mLines[debugLine].mTicks;
+        sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
+        BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 0, tickStr);
+
+        BSP_LCD_SetTextColor (mLines[debugLine].mColour);
+        BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 7, mLines[debugLine].mStr);
+        }
     }
   //}}}
   //{{{
@@ -162,34 +170,6 @@ private:
     uint32_t mTicks = 0;
     uint32_t mColour = 0;
     };
-  //}}}
-  //{{{
-  void drawTitle (const char* title) {
-
-    char str1[40];
-    sprintf (str1, "%s %d", title, (int)mTick);
-
-    BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
-    BSP_LCD_DisplayStringAtLine (0, str1);
-    }
-  //}}}
-  //{{{
-  void drawDebug() {
-
-    for (auto displayLine = 0u; (displayLine < mDebugLine) && ((int)displayLine < mDisplayLines); displayLine++) {
-      int debugLine = ((int)mDebugLine < mDisplayLines) ?
-        displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
-
-      BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
-      char tickStr[20];
-      auto ticks = mLines[debugLine].mTicks;
-      sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
-      BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 0, tickStr);
-
-      BSP_LCD_SetTextColor (mLines[debugLine].mColour);
-      BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 7, mLines[debugLine].mStr);
-      }
-    }
   //}}}
 
   bool mFlip = false;

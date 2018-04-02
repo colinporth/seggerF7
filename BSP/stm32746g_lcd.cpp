@@ -98,7 +98,7 @@ void FillBuffer (uint32_t layer, void* dst, uint32_t xsize, uint32_t ysize, uint
   HAL_DMA2D_Init (&hDma2dHandler);
   HAL_DMA2D_ConfigLayer (&hDma2dHandler, layer);
   HAL_DMA2D_Start (&hDma2dHandler, color, (uint32_t)dst, xsize, ysize);
-  HAL_DMA2D_PollForTransfer (&hDma2dHandler, 100);
+  HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
   }
 //}}}
 //{{{
@@ -166,6 +166,9 @@ uint8_t BSP_LCD_Init() {
   BSP_SDRAM_Init();
 
   hDma2dHandler.Instance = DMA2D;
+  HAL_DMA2D_ConfigDeadTime (&hDma2dHandler, 5);
+  HAL_DMA2D_EnableDeadTime (&hDma2dHandler);
+
 
   return LCD_OK;
   }
@@ -740,22 +743,27 @@ void BSP_LCD_FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
 //}}}
 
 //{{{
-void BSP_LCD_ConvertFrame (uint16_t* src, uint8_t* dst, uint16_t xsize, uint16_t ysize) {
+void BSP_LCD_ConvertFrame (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+                           uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize) {
 
   hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
   hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
   hDma2dHandler.Init.OutputOffset = 0;
 
-  // Foreground Configuration
   hDma2dHandler.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
   hDma2dHandler.LayerCfg[1].InputAlpha = 0xFF;
   hDma2dHandler.LayerCfg[1].InputColorMode = CM_RGB565;
   hDma2dHandler.LayerCfg[1].InputOffset = 0;
 
-  if (HAL_DMA2D_Init (&hDma2dHandler) == HAL_OK)
-    if (HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1) == HAL_OK)
-      if (HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, xsize, ysize) == HAL_OK)
-        HAL_DMA2D_PollForTransfer (&hDma2dHandler, 1000);
+  dst += ((y * xsize) + x) * 4;
+  for (auto y = 0; y < srcYsize; y++) {
+    HAL_DMA2D_Init (&hDma2dHandler);
+    HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1);
+    HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, srcXsize, 1);
+    HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
+    src += srcXsize;
+    dst += xsize * 4;
+    }
   }
 //}}}
 //{{{
