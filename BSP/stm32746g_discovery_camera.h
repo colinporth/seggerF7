@@ -17,11 +17,6 @@
 #define CAMERA_CONTRAST_LEVEL2          0x07   /* Contrast level  0           */
 #define CAMERA_CONTRAST_LEVEL3          0x08   /* Contrast level +1           */
 #define CAMERA_CONTRAST_LEVEL4          0x09   /* Contrast level +2           */
-
-#define RESOLUTION_R160x120      CAMERA_R160x120      /* QQVGA Resolution     */
-#define RESOLUTION_R320x240      CAMERA_R320x240      /* QVGA Resolution      */
-#define RESOLUTION_R480x272      CAMERA_R480x272      /* 480x272 Resolution   */
-#define RESOLUTION_R640x480      CAMERA_R640x480      /* VGA Resolution       */
 //}}}
 
 //{{{

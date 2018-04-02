@@ -83,7 +83,7 @@ void cApp::run() {
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
 
-  mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (RESOLUTION_R480x272));
+  mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (CAMERA_R320x240));
   HAL_Delay (100);
 
   BSP_CAMERA_ContrastBrightness (CAMERA_BRIGHTNESS_LEVEL4, CAMERA_CONTRAST_LEVEL4);
@@ -92,14 +92,13 @@ void cApp::run() {
   int lastCount = 0;
   while (true) {
     pollTouch();
-
     //while (mPs2->hasChar()) {
-   //   auto ch = mPs2->getChar();
-   //   onKey (ch & 0xFF, ch & 0x100);
-   //   }
+    //  auto ch = mPs2->getChar();
+    //  onKey (ch & 0xFF, ch & 0x100);
+    //  }
 
     //mLcd->startBgnd (kVersion, mscGetSectors());
-    mLcd->startCam (kVersion, (uint16_t*)SDRAM_USER);
+    mLcd->startCam (kVersion, (uint16_t*)SDRAM_USER, 320, 240);
     mLcd->present();
 
     if (false) {

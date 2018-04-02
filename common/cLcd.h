@@ -53,10 +53,9 @@ public:
     }
   //}}}
   //{{{
-  void startCam (const char* title, uint16_t* bgnd) {
+  void startBgnd (const char* title, uint32_t* bgnd) {
 
-    //BSP_LCD_ConvertFrame (bgnd, mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0, 480, 272);
-    BSP_LCD_ConvertFrameCpu (bgnd, mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0, 480, 272);
+    memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), bgnd, 480*272*4);
 
     drawTitle (title);
     if (!BSP_PB_GetState (BUTTON_KEY))
@@ -64,9 +63,24 @@ public:
     }
   //}}}
   //{{{
-  void startBgnd (const char* title, uint32_t* bgnd) {
+  void startCam (const char* title, uint16_t* src, uint16_t xsize, uint16_t ysize) {
 
-    memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), bgnd, 480*272*4);
+    //BSP_LCD_Clear (LCD_COLOR_BLACK);
+    //HAL_Delay(2);
+    BSP_LCD_ConvertFrameCpu (src, xsize, ysize,
+                             mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0,
+                             (BSP_LCD_GetXSize() - xsize) / 2, (BSP_LCD_GetYSize() - ysize) / 2,
+                             BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+    drawTitle (title);
+    if (!BSP_PB_GetState (BUTTON_KEY))
+      drawDebug();
+    }
+  //}}}
+  //{{{
+  void startCam1 (const char* title, uint16_t* src, uint16_t xsize, uint16_t ysize) {
+
+    BSP_LCD_Clear (LCD_COLOR_BLACK);
+    BSP_LCD_ConvertFrame (src, mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0, 480, 272);
 
     drawTitle (title);
     if (!BSP_PB_GetState (BUTTON_KEY))
@@ -154,6 +168,7 @@ private:
 
     char str1[40];
     sprintf (str1, "%s %d", title, (int)mTick);
+
     BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
     BSP_LCD_DisplayStringAtLine (0, str1);
     }
