@@ -10,18 +10,9 @@
                                              |(__STM32746G_DISCO_BSP_VERSION_RC))
 
 const uint32_t GPIO_PIN[LEDn] = {LED1_PIN};
-
-GPIO_TypeDef* BUTTON_PORT[BUTTONn] = {WAKEUP_BUTTON_GPIO_PORT,
-                                      TAMPER_BUTTON_GPIO_PORT,
-                                      KEY_BUTTON_GPIO_PORT};
-
-const uint16_t BUTTON_PIN[BUTTONn] = {WAKEUP_BUTTON_PIN,
-                                      TAMPER_BUTTON_PIN,
-                                      KEY_BUTTON_PIN};
-
-const uint16_t BUTTON_IRQn[BUTTONn] = {WAKEUP_BUTTON_EXTI_IRQn,
-                                       TAMPER_BUTTON_EXTI_IRQn,
-                                       KEY_BUTTON_EXTI_IRQn};
+GPIO_TypeDef* BUTTON_PORT[BUTTONn] = {WAKEUP_BUTTON_GPIO_PORT, TAMPER_BUTTON_GPIO_PORT, KEY_BUTTON_GPIO_PORT};
+const uint16_t BUTTON_PIN[BUTTONn] = {WAKEUP_BUTTON_PIN, TAMPER_BUTTON_PIN, KEY_BUTTON_PIN};
+const uint16_t BUTTON_IRQn[BUTTONn] = {WAKEUP_BUTTON_EXTI_IRQn, TAMPER_BUTTON_EXTI_IRQn, KEY_BUTTON_EXTI_IRQn};
 
 USART_TypeDef* COM_USART[COMn] = {DISCOVERY_COM1};
 GPIO_TypeDef* COM_TX_PORT[COMn] = {DISCOVERY_COM1_TX_GPIO_PORT};
@@ -31,15 +22,8 @@ const uint16_t COM_RX_PIN[COMn] = {DISCOVERY_COM1_RX_PIN};
 const uint16_t COM_TX_AF[COMn] = {DISCOVERY_COM1_TX_AF};
 const uint16_t COM_RX_AF[COMn] = {DISCOVERY_COM1_RX_AF};
 
-static I2C_HandleTypeDef hI2cAudioHandler = {0};
 static I2C_HandleTypeDef hI2cExtHandler = {0};
-
-static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler);
-static void I2Cx_Init (I2C_HandleTypeDef* i2c_handler);
-static HAL_StatusTypeDef I2Cx_ReadMultiple (I2C_HandleTypeDef* i2c_handler, uint8_t Addr, uint16_t Reg, uint16_t MemAddSize, uint8_t *Buffer, uint16_t Length);
-static HAL_StatusTypeDef I2Cx_WriteMultiple (I2C_HandleTypeDef* i2c_handler, uint8_t Addr, uint16_t Reg, uint16_t MemAddSize, uint8_t *Buffer, uint16_t Length);
-static HAL_StatusTypeDef I2Cx_IsDeviceReady (I2C_HandleTypeDef* i2c_handler, uint16_t DevAddress, uint32_t Trials);
-static void I2Cx_Error (I2C_HandleTypeDef* i2c_handler, uint8_t Addr);
+static I2C_HandleTypeDef hI2cAudioHandler = {0};
 
 //{{{
 uint32_t BSP_GetVersion()
@@ -246,6 +230,16 @@ static void I2Cx_Init (I2C_HandleTypeDef* i2c_handler) {
   }
 //}}}
 //{{{
+static void I2Cx_Error(I2C_HandleTypeDef *i2c_handler, uint8_t Addr) {
+
+  /* De-initialize the I2C communication bus */
+  HAL_I2C_DeInit (i2c_handler);
+
+  /* Re-Initialize the I2C communication bus */
+  I2Cx_Init (i2c_handler);
+  }
+//}}}
+//{{{
 static HAL_StatusTypeDef I2Cx_ReadMultiple (I2C_HandleTypeDef *i2c_handler,
                                             uint8_t Addr, uint16_t Reg, uint16_t MemAddress,
                                             uint8_t *Buffer, uint16_t Length) {
@@ -275,16 +269,6 @@ static HAL_StatusTypeDef I2Cx_WriteMultiple (I2C_HandleTypeDef *i2c_handler,
 static HAL_StatusTypeDef I2Cx_IsDeviceReady(I2C_HandleTypeDef *i2c_handler, uint16_t DevAddress, uint32_t Trials) {
 
   return (HAL_I2C_IsDeviceReady (i2c_handler, DevAddress, Trials, 1000));
-  }
-//}}}
-//{{{
-static void I2Cx_Error(I2C_HandleTypeDef *i2c_handler, uint8_t Addr) {
-
-  /* De-initialize the I2C communication bus */
-  HAL_I2C_DeInit (i2c_handler);
-
-  /* Re-Initialize the I2C communication bus */
-  I2Cx_Init (i2c_handler);
   }
 //}}}
 
@@ -330,8 +314,17 @@ void CAMERA_IO_Init() {
 //}}}
 //{{{
 void CAMERA_IO_Write (uint8_t Addr, uint8_t Reg, uint8_t Value) {
-
   I2Cx_WriteMultiple (&hI2cExtHandler, Addr, (uint16_t)Reg, I2C_MEMADD_SIZE_8BIT,(uint8_t*)&Value, 1);
+  }
+//}}}
+//{{{
+void CAMERA_IO_Write16 (uint8_t Addr, uint8_t Reg, uint16_t Value) {
+
+  uint8_t buf[2];
+  buf[0] = Value >> 8;
+  buf[1] = Value & 0xFF;
+
+  I2Cx_WriteMultiple (&hI2cExtHandler, Addr, (uint16_t)Reg, I2C_MEMADD_SIZE_8BIT,(uint8_t*)buf, 2);
   }
 //}}}
 //{{{
@@ -339,6 +332,14 @@ uint8_t CAMERA_IO_Read (uint8_t Addr, uint8_t Reg) {
 
   uint8_t read_value = 0;
   I2Cx_ReadMultiple (&hI2cExtHandler, Addr, Reg, I2C_MEMADD_SIZE_8BIT, (uint8_t*)&read_value, 1);
+  return read_value;
+  }
+//}}}
+//{{{
+uint16_t CAMERA_IO_Read16 (uint8_t Addr, uint8_t Reg) {
+
+  uint16_t read_value = 0;
+  I2Cx_ReadMultiple (&hI2cExtHandler, Addr, Reg, I2C_MEMADD_SIZE_8BIT, (uint8_t*)&read_value, 2);
   return read_value;
   }
 //}}}

@@ -5,7 +5,7 @@
 #endif
 //}}}
 #include "stm32f7xx_hal.h"
-
+//{{{  defines
 typedef enum { LED1 = 0, LED_GREEN = LED1, }Led_TypeDef;
 typedef enum { BUTTON_WAKEUP = 0, BUTTON_TAMPER = 1, BUTTON_KEY = 2 }Button_TypeDef;
 typedef enum { BUTTON_MODE_GPIO = 0, BUTTON_MODE_EXTI = 1 }ButtonMode_TypeDef;
@@ -143,23 +143,29 @@ typedef enum { COM1 = 0, COM2 = 1 }COM_TypeDef;
 #ifndef DISCOVERY_I2Cx_TIMING
 #define DISCOVERY_I2Cx_TIMING                      ((uint32_t)0x40912732)
 #endif /* DISCOVERY_I2Cx_TIMING */
+//}}}
 
-uint32_t  BSP_GetVersion(void);
-void      BSP_LED_Init(Led_TypeDef Led);
-void      BSP_LED_DeInit(Led_TypeDef Led);
-void      BSP_LED_On(Led_TypeDef Led);
-void      BSP_LED_Off(Led_TypeDef Led);
-void      BSP_LED_Toggle(Led_TypeDef Led);
-void      BSP_PB_Init(Button_TypeDef Button, ButtonMode_TypeDef ButtonMode);
-void      BSP_PB_DeInit(Button_TypeDef Button);
-uint32_t  BSP_PB_GetState(Button_TypeDef Button);
-void      BSP_COM_Init(COM_TypeDef COM, UART_HandleTypeDef *husart);
-void      BSP_COM_DeInit(COM_TypeDef COM, UART_HandleTypeDef *huart);
+uint32_t BSP_GetVersion();
+
+void BSP_LED_Init (Led_TypeDef Led);
+void BSP_LED_DeInit (Led_TypeDef Led);
+void BSP_LED_On (Led_TypeDef Led);
+void BSP_LED_Off( Led_TypeDef Led);
+void BSP_LED_Toggle( Led_TypeDef Led);
+
+void BSP_PB_Init (Button_TypeDef Button, ButtonMode_TypeDef ButtonMode);
+void BSP_PB_DeInit (Button_TypeDef Button);
+uint32_t BSP_PB_GetState (Button_TypeDef Button);
+
+void BSP_COM_Init (COM_TypeDef COM, UART_HandleTypeDef *husart);
+void BSP_COM_DeInit (COM_TypeDef COM, UART_HandleTypeDef *huart);
 
 void CAMERA_IO_Init();
 void CAMERA_IO_Write (uint8_t Addr, uint8_t Reg, uint8_t Value);
+void CAMERA_IO_Write16 (uint8_t Addr, uint8_t Reg, uint16_t Value);
 uint8_t CAMERA_IO_Read (uint8_t Addr, uint8_t Reg);
 void CAMERA_Delay (uint32_t Delay);
+uint16_t CAMERA_IO_Read16 (uint8_t Addr, uint8_t Reg);
 
 //{{{
 #ifdef __cplusplus
