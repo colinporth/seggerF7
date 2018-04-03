@@ -26,6 +26,128 @@ static I2C_HandleTypeDef hI2cExtHandler = {0};
 static I2C_HandleTypeDef hI2cAudioHandler = {0};
 
 //{{{
+static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler) {
+
+  GPIO_InitTypeDef  gpio_init_structure;
+
+  if (i2c_handler == (I2C_HandleTypeDef*)(&hI2cAudioHandler)) {
+    // AUDIO and LCD I2C MSP init
+    DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_CLK_ENABLE();
+
+    // Configure I2C Tx as alternate function
+    gpio_init_structure.Pin = DISCOVERY_AUDIO_I2Cx_SCL_PIN;
+    gpio_init_structure.Mode = GPIO_MODE_AF_OD;
+    gpio_init_structure.Pull = GPIO_NOPULL;
+    gpio_init_structure.Speed = GPIO_SPEED_FAST;
+    gpio_init_structure.Alternate = DISCOVERY_AUDIO_I2Cx_SCL_SDA_AF;
+    HAL_GPIO_Init (DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
+
+    // Configure I2C Rx as alternate function
+    gpio_init_structure.Pin = DISCOVERY_AUDIO_I2Cx_SDA_PIN;
+    HAL_GPIO_Init (DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
+
+    DISCOVERY_AUDIO_I2Cx_CLK_ENABLE();
+    DISCOVERY_AUDIO_I2Cx_FORCE_RESET();
+    DISCOVERY_AUDIO_I2Cx_RELEASE_RESET();
+    HAL_NVIC_SetPriority (DISCOVERY_AUDIO_I2Cx_EV_IRQn, 0x0F, 0);
+    HAL_NVIC_EnableIRQ (DISCOVERY_AUDIO_I2Cx_EV_IRQn);
+    HAL_NVIC_SetPriority (DISCOVERY_AUDIO_I2Cx_ER_IRQn, 0x0F, 0);
+    HAL_NVIC_EnableIRQ (DISCOVERY_AUDIO_I2Cx_ER_IRQn);
+    }
+  else {
+    //  External, camera and Arduino connector I2C MSP init
+    DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_CLK_ENABLE();
+
+    // Configure I2C Tx as alternate function
+    gpio_init_structure.Pin = DISCOVERY_EXT_I2Cx_SCL_PIN;
+    gpio_init_structure.Mode = GPIO_MODE_AF_OD;
+    gpio_init_structure.Pull = GPIO_NOPULL;
+    gpio_init_structure.Speed = GPIO_SPEED_FAST;
+    gpio_init_structure.Alternate = DISCOVERY_EXT_I2Cx_SCL_SDA_AF;
+    HAL_GPIO_Init (DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
+
+    // Configure I2C Rx as alternate function
+    gpio_init_structure.Pin = DISCOVERY_EXT_I2Cx_SDA_PIN;
+    HAL_GPIO_Init (DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
+
+    // Enable I2C clock
+    DISCOVERY_EXT_I2Cx_CLK_ENABLE();
+    DISCOVERY_EXT_I2Cx_FORCE_RESET();
+    DISCOVERY_EXT_I2Cx_RELEASE_RESET();
+    HAL_NVIC_SetPriority (DISCOVERY_EXT_I2Cx_EV_IRQn, 0x0F, 0);
+    HAL_NVIC_EnableIRQ (DISCOVERY_EXT_I2Cx_EV_IRQn);
+    HAL_NVIC_SetPriority (DISCOVERY_EXT_I2Cx_ER_IRQn, 0x0F, 0);
+    HAL_NVIC_EnableIRQ (DISCOVERY_EXT_I2Cx_ER_IRQn);
+    }
+  }
+//}}}
+//{{{
+static void I2Cx_Init (I2C_HandleTypeDef* i2c_handler) {
+
+  if(HAL_I2C_GetState(i2c_handler) == HAL_I2C_STATE_RESET) {
+    if (i2c_handler == (I2C_HandleTypeDef*)(&hI2cAudioHandler)) /* Audio and LCD I2C configuration */
+      i2c_handler->Instance = DISCOVERY_AUDIO_I2Cx;
+    else /* External, camera and Arduino connector  I2C configuration */
+      i2c_handler->Instance = DISCOVERY_EXT_I2Cx;
+
+    i2c_handler->Init.Timing           = DISCOVERY_I2Cx_TIMING;
+    i2c_handler->Init.OwnAddress1      = 0;
+    i2c_handler->Init.AddressingMode   = I2C_ADDRESSINGMODE_7BIT;
+    i2c_handler->Init.DualAddressMode  = I2C_DUALADDRESS_DISABLE;
+    i2c_handler->Init.OwnAddress2      = 0;
+    i2c_handler->Init.GeneralCallMode  = I2C_GENERALCALL_DISABLE;
+    i2c_handler->Init.NoStretchMode    = I2C_NOSTRETCH_DISABLE;
+
+    /* Init the I2C */
+    I2Cx_MspInit (i2c_handler);
+    HAL_I2C_Init (i2c_handler);
+    }
+  }
+//}}}
+//{{{
+static void I2Cx_Error(I2C_HandleTypeDef *i2c_handler, uint8_t Addr) {
+
+  /* De-initialize the I2C communication bus */
+  HAL_I2C_DeInit (i2c_handler);
+
+  /* Re-Initialize the I2C communication bus */
+  I2Cx_Init (i2c_handler);
+  }
+//}}}
+//{{{
+static HAL_StatusTypeDef I2Cx_ReadMultiple (I2C_HandleTypeDef *i2c_handler,
+                                            uint8_t Addr, uint16_t Reg, uint16_t MemAddress,
+                                            uint8_t *Buffer, uint16_t Length) {
+
+  /* Check the communication status */
+  HAL_StatusTypeDef status = HAL_I2C_Mem_Read (i2c_handler, Addr, (uint16_t)Reg, MemAddress, Buffer, Length, 1000);
+  if (status != HAL_OK) /* I2C error occurred */
+    I2Cx_Error (i2c_handler, Addr);
+
+  return status;
+  }
+//}}}
+//{{{
+static HAL_StatusTypeDef I2Cx_WriteMultiple (I2C_HandleTypeDef *i2c_handler,
+                                             uint8_t Addr, uint16_t Reg, uint16_t MemAddress,
+                                             uint8_t *Buffer, uint16_t Length) {
+
+  /* Check the communication status */
+  HAL_StatusTypeDef status = HAL_I2C_Mem_Write (i2c_handler, Addr, (uint16_t)Reg, MemAddress, Buffer, Length, 1000);
+  if (status != HAL_OK) /* Re-Initiaize the I2C Bus */
+    I2Cx_Error (i2c_handler, Addr);
+
+  return status;
+  }
+//}}}
+//{{{
+static HAL_StatusTypeDef I2Cx_IsDeviceReady(I2C_HandleTypeDef *i2c_handler, uint16_t DevAddress, uint32_t Trials) {
+
+  return (HAL_I2C_IsDeviceReady (i2c_handler, DevAddress, Trials, 1000));
+  }
+//}}}
+
+//{{{
 uint32_t BSP_GetVersion()
 {
   return __STM32746G_DISCO_BSP_VERSION;
@@ -151,128 +273,6 @@ uint32_t BSP_PB_GetState (Button_TypeDef Button) {
 //}}}
 
 //{{{
-static void I2Cx_MspInit (I2C_HandleTypeDef* i2c_handler) {
-
-  GPIO_InitTypeDef  gpio_init_structure;
-
-  if (i2c_handler == (I2C_HandleTypeDef*)(&hI2cAudioHandler)) {
-    // AUDIO and LCD I2C MSP init
-    DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_CLK_ENABLE();
-
-    // Configure I2C Tx as alternate function
-    gpio_init_structure.Pin = DISCOVERY_AUDIO_I2Cx_SCL_PIN;
-    gpio_init_structure.Mode = GPIO_MODE_AF_OD;
-    gpio_init_structure.Pull = GPIO_NOPULL;
-    gpio_init_structure.Speed = GPIO_SPEED_FAST;
-    gpio_init_structure.Alternate = DISCOVERY_AUDIO_I2Cx_SCL_SDA_AF;
-    HAL_GPIO_Init (DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
-
-    // Configure I2C Rx as alternate function
-    gpio_init_structure.Pin = DISCOVERY_AUDIO_I2Cx_SDA_PIN;
-    HAL_GPIO_Init (DISCOVERY_AUDIO_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
-
-    DISCOVERY_AUDIO_I2Cx_CLK_ENABLE();
-    DISCOVERY_AUDIO_I2Cx_FORCE_RESET();
-    DISCOVERY_AUDIO_I2Cx_RELEASE_RESET();
-    HAL_NVIC_SetPriority (DISCOVERY_AUDIO_I2Cx_EV_IRQn, 0x0F, 0);
-    HAL_NVIC_EnableIRQ (DISCOVERY_AUDIO_I2Cx_EV_IRQn);
-    HAL_NVIC_SetPriority (DISCOVERY_AUDIO_I2Cx_ER_IRQn, 0x0F, 0);
-    HAL_NVIC_EnableIRQ (DISCOVERY_AUDIO_I2Cx_ER_IRQn);
-    }
-  else {
-    //  External, camera and Arduino connector I2C MSP init
-    DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_CLK_ENABLE();
-
-    // Configure I2C Tx as alternate function
-    gpio_init_structure.Pin = DISCOVERY_EXT_I2Cx_SCL_PIN;
-    gpio_init_structure.Mode = GPIO_MODE_AF_OD;
-    gpio_init_structure.Pull = GPIO_NOPULL;
-    gpio_init_structure.Speed = GPIO_SPEED_FAST;
-    gpio_init_structure.Alternate = DISCOVERY_EXT_I2Cx_SCL_SDA_AF;
-    HAL_GPIO_Init (DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
-
-    // Configure I2C Rx as alternate function
-    gpio_init_structure.Pin = DISCOVERY_EXT_I2Cx_SDA_PIN;
-    HAL_GPIO_Init (DISCOVERY_EXT_I2Cx_SCL_SDA_GPIO_PORT, &gpio_init_structure);
-
-    // Enable I2C clock
-    DISCOVERY_EXT_I2Cx_CLK_ENABLE();
-    DISCOVERY_EXT_I2Cx_FORCE_RESET();
-    DISCOVERY_EXT_I2Cx_RELEASE_RESET();
-    HAL_NVIC_SetPriority (DISCOVERY_EXT_I2Cx_EV_IRQn, 0x0F, 0);
-    HAL_NVIC_EnableIRQ (DISCOVERY_EXT_I2Cx_EV_IRQn);
-    HAL_NVIC_SetPriority (DISCOVERY_EXT_I2Cx_ER_IRQn, 0x0F, 0);
-    HAL_NVIC_EnableIRQ (DISCOVERY_EXT_I2Cx_ER_IRQn);
-    }
-  }
-//}}}
-//{{{
-static void I2Cx_Init (I2C_HandleTypeDef* i2c_handler) {
-
-  if(HAL_I2C_GetState(i2c_handler) == HAL_I2C_STATE_RESET) {
-    if (i2c_handler == (I2C_HandleTypeDef*)(&hI2cAudioHandler)) /* Audio and LCD I2C configuration */
-      i2c_handler->Instance = DISCOVERY_AUDIO_I2Cx;
-    else /* External, camera and Arduino connector  I2C configuration */
-      i2c_handler->Instance = DISCOVERY_EXT_I2Cx;
-
-    i2c_handler->Init.Timing           = DISCOVERY_I2Cx_TIMING;
-    i2c_handler->Init.OwnAddress1      = 0;
-    i2c_handler->Init.AddressingMode   = I2C_ADDRESSINGMODE_7BIT;
-    i2c_handler->Init.DualAddressMode  = I2C_DUALADDRESS_DISABLE;
-    i2c_handler->Init.OwnAddress2      = 0;
-    i2c_handler->Init.GeneralCallMode  = I2C_GENERALCALL_DISABLE;
-    i2c_handler->Init.NoStretchMode    = I2C_NOSTRETCH_DISABLE;
-
-    /* Init the I2C */
-    I2Cx_MspInit (i2c_handler);
-    HAL_I2C_Init (i2c_handler);
-    }
-  }
-//}}}
-//{{{
-static void I2Cx_Error(I2C_HandleTypeDef *i2c_handler, uint8_t Addr) {
-
-  /* De-initialize the I2C communication bus */
-  HAL_I2C_DeInit (i2c_handler);
-
-  /* Re-Initialize the I2C communication bus */
-  I2Cx_Init (i2c_handler);
-  }
-//}}}
-//{{{
-static HAL_StatusTypeDef I2Cx_ReadMultiple (I2C_HandleTypeDef *i2c_handler,
-                                            uint8_t Addr, uint16_t Reg, uint16_t MemAddress,
-                                            uint8_t *Buffer, uint16_t Length) {
-
-  /* Check the communication status */
-  HAL_StatusTypeDef status = HAL_I2C_Mem_Read (i2c_handler, Addr, (uint16_t)Reg, MemAddress, Buffer, Length, 1000);
-  if (status != HAL_OK) /* I2C error occurred */
-    I2Cx_Error (i2c_handler, Addr);
-
-  return status;
-  }
-//}}}
-//{{{
-static HAL_StatusTypeDef I2Cx_WriteMultiple (I2C_HandleTypeDef *i2c_handler,
-                                             uint8_t Addr, uint16_t Reg, uint16_t MemAddress,
-                                             uint8_t *Buffer, uint16_t Length) {
-
-  /* Check the communication status */
-  HAL_StatusTypeDef status = HAL_I2C_Mem_Write (i2c_handler, Addr, (uint16_t)Reg, MemAddress, Buffer, Length, 1000);
-  if (status != HAL_OK) /* Re-Initiaize the I2C Bus */
-    I2Cx_Error (i2c_handler, Addr);
-
-  return status;
-  }
-//}}}
-//{{{
-static HAL_StatusTypeDef I2Cx_IsDeviceReady(I2C_HandleTypeDef *i2c_handler, uint16_t DevAddress, uint32_t Trials) {
-
-  return (HAL_I2C_IsDeviceReady (i2c_handler, DevAddress, Trials, 1000));
-  }
-//}}}
-
-//{{{
 void AUDIO_IO_Init() {
   I2Cx_Init (&hI2cAudioHandler);
   }
@@ -340,7 +340,7 @@ uint16_t CAMERA_IO_Read16 (uint8_t Addr, uint8_t Reg) {
 
   uint16_t read_value = 0;
   I2Cx_ReadMultiple (&hI2cExtHandler, Addr, Reg, I2C_MEMADD_SIZE_8BIT, (uint8_t*)&read_value, 2);
-  return read_value;
+  return ((read_value & 0xFF) << 8) | (read_value >> 8);
   }
 //}}}
 //{{{

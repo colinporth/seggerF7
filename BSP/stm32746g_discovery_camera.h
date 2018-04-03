@@ -5,6 +5,7 @@
 #define CAMERA_R320x240                 0x01   /* QVGA Resolution                      */
 #define CAMERA_R480x272                 0x02   /* 480x272 Resolution                   */
 #define CAMERA_R640x480                 0x03   /* VGA Resolution                       */
+#define CAMERA_R800x600                 0x04   /* VGA Resolution                       */
 
 #define CAMERA_BRIGHTNESS_LEVEL0        0x00   /* Brightness level -2         */
 #define CAMERA_BRIGHTNESS_LEVEL1        0x01   /* Brightness level -1         */
