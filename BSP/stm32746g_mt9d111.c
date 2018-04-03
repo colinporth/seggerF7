@@ -112,9 +112,9 @@ static uint32_t getPix (uint32_t resolution) {
   switch (resolution) {
     case CAMERA_R160x120: return  0x2580;
     case CAMERA_R320x240: return  0x9600;
-    case CAMERA_R480x272: return 0xFF00;
+    case CAMERA_R480x272: return  0xFF00;
     case CAMERA_R640x480: return 0x25800;
-    case CAMERA_R800x600: return 0x25800;
+    case CAMERA_R800x600: return 0x3A980;
     default: return 0;
     }
   }
@@ -144,7 +144,7 @@ static uint64_t convertValue (uint32_t value) {
 //{{{
 static void init (uint16_t DeviceAddr, uint32_t resolution) {
 
-  CAMERA_Delay (200);
+  HAL_Delay (200);
 
   //  soft reset
   CAMERA_IO_Write16 (DeviceAddr, 0x65, 0xA000); // Bypass the PLL, R0x65:0 = 0xA000,
@@ -448,8 +448,8 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
   hDcmi->Instance              = DCMI;
   hDcmi->Init.CaptureRate      = DCMI_CR_ALL_FRAME;
   hDcmi->Init.HSPolarity       = DCMI_HSPOLARITY_LOW;
-  hDcmi->Init.SynchroMode      = DCMI_SYNCHRO_HARDWARE;
   hDcmi->Init.VSPolarity       = DCMI_VSPOLARITY_HIGH;
+  hDcmi->Init.SynchroMode      = DCMI_SYNCHRO_HARDWARE;
   hDcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
   hDcmi->Init.PCKPolarity      = DCMI_PCKPOLARITY_RISING;
 
@@ -465,9 +465,7 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
     if (Resolution == CAMERA_R480x272) {
       // 480x272 uses cropped 800x600
       init (CAMERA_I2C_ADDRESS_MT9D111, CAMERA_R800x600);
-      HAL_DCMI_ConfigCROP (hDcmi,
-                           (800 - 480)/2, (600 - 272)/2,
-                           (CAMERA_480x272_RES_X * 2) - 1, CAMERA_480x272_RES_Y - 1);
+      HAL_DCMI_ConfigCROP (hDcmi, (800 - 480)/2, (600 - 272)/2, (480 * 2) - 1, 272 - 1);
       HAL_DCMI_EnableCROP (hDcmi);
       }
     else {
