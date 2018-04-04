@@ -36,6 +36,8 @@ void BSP_CAMERA_SnapshotStart (uint8_t* buff);
 void BSP_CAMERA_ContinuousStart (uint8_t* buff);
 void BSP_CAMERA_ContrastBrightness (uint32_t contrast_level, uint32_t brightness_level);
 
+void BSP_CAMERA_setFocus (int value);
+
 void BSP_CAMERA_Stop();
 void BSP_CAMERA_Suspend();
 void BSP_CAMERA_Resume();

@@ -12,9 +12,9 @@
 #include "stm32746g_discovery_sd.h"
 #include "stm32746g_discovery_camera.h"
 //}}}
-const char* kVersion = "USB Msc/Cam 3/4/18";
+const char* kVersion = "USB Msc/Cam 4/4/18";
 const char kSdPath[40] = "0:/";
-
+int focus = 0;
 //{{{
 class cApp : public cTouch {
 public:
@@ -143,7 +143,13 @@ void cApp::onMove (int x, int y, int z) {
   if (x || y) {
     //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
     //hidSendReport (&gUsbDevice, HID_Buffer);
-    mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d", x, y, z);
+    focus += x;
+    if (focus < 0)
+      focus = 0;
+    else if (focus > 254)
+      focus = 254;
+    BSP_CAMERA_setFocus (focus);
+    mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d %d", x, y, z, focus);
     }
   }
 //}}}

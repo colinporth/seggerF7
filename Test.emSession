@@ -45,7 +45,6 @@
   <ProjectSessionItem path="usb"/>
   <ProjectSessionItem path="usb;usbMsc"/>
   <ProjectSessionItem path="usb;usbMsc;bsp_drivers"/>
-  <ProjectSessionItem path="usb;usbMsc;bsp_drivers;includes"/>
   <ProjectSessionItem path="usb;usbMsc;FatFs"/>
   <ProjectSessionItem path="usb;usbMsc;main"/>
   <ProjectSessionItem path="usb;usbMsc;system"/>
@@ -90,7 +89,7 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="46" y="405" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/stm32746g_mt9d111.c" debugPath="BSP/stm32746g_mt9d111.c" selected="1" top="384" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="454" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/stm32746g_mt9d111.c" debugPath="BSP/stm32746g_mt9d111.c" selected="1" top="449" codecName="Default"/>
  </Files>
  <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

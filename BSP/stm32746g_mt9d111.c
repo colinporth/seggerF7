@@ -27,8 +27,8 @@
 
 DCMI_HandleTypeDef hDcmiHandler;
 
-static DMA_HandleTypeDef hdma_handler;
-static uint32_t CameraCurrentResolution;
+static DMA_HandleTypeDef dmaHandler;
+static uint32_t cameraCurrentResolution;
 
 void DCMI_IRQHandler() { HAL_DCMI_IRQHandler (&hDcmiHandler); }
 void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (hDcmiHandler.DMA_Handle); }
@@ -66,22 +66,21 @@ static void mspInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
   gpio_init_structure.Pin = GPIO_PIN_9 | GPIO_PIN_10  | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_14;
   HAL_GPIO_Init (GPIOH, &gpio_init_structure);
 
-  hdma_handler.Init.Channel             = DMA_CHANNEL_1;
-  hdma_handler.Init.Direction           = DMA_PERIPH_TO_MEMORY;
-  hdma_handler.Init.PeriphInc           = DMA_PINC_DISABLE;
-  hdma_handler.Init.MemInc              = DMA_MINC_ENABLE;
-  hdma_handler.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-  hdma_handler.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
-  hdma_handler.Init.Mode                = DMA_CIRCULAR;
-  hdma_handler.Init.Priority            = DMA_PRIORITY_HIGH;
-  hdma_handler.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
-  hdma_handler.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
-  hdma_handler.Init.MemBurst            = DMA_MBURST_SINGLE;
-  hdma_handler.Init.PeriphBurst         = DMA_PBURST_SINGLE;
-  hdma_handler.Instance = DMA2_Stream1;
-
   // Associate the initialized DMA handle to the DCMI handle
-  __HAL_LINKDMA (hdcmi, DMA_Handle, hdma_handler);
+  dmaHandler.Init.Channel             = DMA_CHANNEL_1;
+  dmaHandler.Init.Direction           = DMA_PERIPH_TO_MEMORY;
+  dmaHandler.Init.PeriphInc           = DMA_PINC_DISABLE;
+  dmaHandler.Init.MemInc              = DMA_MINC_ENABLE;
+  dmaHandler.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+  dmaHandler.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
+  dmaHandler.Init.Mode                = DMA_CIRCULAR;
+  dmaHandler.Init.Priority            = DMA_PRIORITY_HIGH;
+  dmaHandler.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
+  dmaHandler.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
+  dmaHandler.Init.MemBurst            = DMA_MBURST_SINGLE;
+  dmaHandler.Init.PeriphBurst         = DMA_PBURST_SINGLE;
+  dmaHandler.Instance = DMA2_Stream1;
+  __HAL_LINKDMA (hdcmi, DMA_Handle, dmaHandler);
 
   // NVIC configuration for DCMI transfer complete interrupt
   HAL_NVIC_SetPriority (DCMI_IRQn, 0x0F, 0);
@@ -420,7 +419,7 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
     HAL_DCMI_DisableCROP (dcmi);
     }
 
-  CameraCurrentResolution = Resolution;
+  cameraCurrentResolution = Resolution;
 
   return readBack;
   }
@@ -429,7 +428,7 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
 //{{{
 uint32_t BSP_CAMERA_getXSize() {
 
-  switch (CameraCurrentResolution) {
+  switch (cameraCurrentResolution) {
     case CAMERA_R160x120: return 160;
     case CAMERA_R320x240: return 320;
     case CAMERA_R480x272: return 480;
@@ -443,7 +442,7 @@ uint32_t BSP_CAMERA_getXSize() {
 //{{{
 uint32_t BSP_CAMERA_getYSize() {
 
-  switch (CameraCurrentResolution) {
+  switch (cameraCurrentResolution) {
     case CAMERA_R160x120: return 120;
     case CAMERA_R320x240: return 240;
     case CAMERA_R480x272: return 272;
@@ -457,20 +456,40 @@ uint32_t BSP_CAMERA_getYSize() {
 
 //{{{
 void BSP_CAMERA_SnapshotStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_SNAPSHOT, (uint32_t)buff, getDmaLength (CameraCurrentResolution));
+  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_SNAPSHOT, (uint32_t)buff, getDmaLength (cameraCurrentResolution));
   }
 //}}}
 //{{{
 void BSP_CAMERA_ContinuousStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff, getDmaLength (CameraCurrentResolution));
+  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff, getDmaLength (cameraCurrentResolution));
+  }
+//}}}
+//{{{
+void BSP_CAMERA_setFocus (int value) {
+
+  CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xF0, 1);
+
+  if (value <= 1) {
+    CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0x9071); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x00); // SFR GPIO data b1:0 = 0 - disable GPIO1
+    CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0x9081); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 255);  // SFR GPIO wg_t00 = 255 initial off
+    CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0x9083); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0);    // SFR GPIO wg_t10 = 0 no on
+    }
+
+  else {
+    if (value > 254)
+      value = 254;
+
+    CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xF0, 1);
+    CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0x9071); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x02);        // SFR GPIO data b1:0 = enable GPIO1
+    CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0x9081); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 255 - value); // SFR GPIO wg_t00 pwm off
+    CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0x9083); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, value);       // SFR GPIO wg_t10 pwm on
+    }
   }
 //}}}
 
 //{{{
 void BSP_CAMERA_Stop() {
-
   HAL_DCMI_Stop (&hDcmiHandler);
-  BSP_CAMERA_PowerDown();
   }
 //}}}
 
