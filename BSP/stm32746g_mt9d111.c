@@ -397,37 +397,35 @@ static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
 //{{{
 uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
 
-  // Configures the DCMI to interface with the camera module
-  DCMI_HandleTypeDef* hDcmi    = &hDcmiHandler;
-  hDcmi->Instance              = DCMI;
-  hDcmi->Init.CaptureRate      = DCMI_CR_ALL_FRAME;
-  hDcmi->Init.HSPolarity       = DCMI_HSPOLARITY_LOW; // = DCMI_HSPOLARITY_LOW;
-  hDcmi->Init.VSPolarity       = DCMI_HSPOLARITY_LOW;
-  hDcmi->Init.SynchroMode      = DCMI_SYNCHRO_HARDWARE;
-  hDcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-  hDcmi->Init.PCKPolarity      = DCMI_PCKPOLARITY_RISING;
-
   CAMERA_IO_Init();
-
   CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xF0, 0);
   uint32_t readBack = CAMERA_IO_Read16 (CAMERA_I2C_ADDRESS_MT9D111, 0);
-  if (readBack == 0x1519) {
-    mspInit (&hDcmiHandler, NULL);
-    HAL_DCMI_Init (hDcmi);
 
-    // 480x272 uses cropped 800x600
-    if (Resolution == CAMERA_R480x272) {
-      initMt9d111 (CAMERA_I2C_ADDRESS_MT9D111, CAMERA_R800x600);
-      HAL_DCMI_ConfigCROP (hDcmi, (800 - 480)/2, (600 - 272)/2, (480 * 2) - 1, 272 - 1);
-      HAL_DCMI_EnableCROP (hDcmi);
-      }
-    else {
-      initMt9d111 (CAMERA_I2C_ADDRESS_MT9D111, Resolution);
-      HAL_DCMI_DisableCROP (hDcmi);
-      }
+  mspInit (&hDcmiHandler, NULL);
 
-    CameraCurrentResolution = Resolution;
+  // config DCMI
+  DCMI_HandleTypeDef* dcmi = &hDcmiHandler;
+  dcmi->Instance = DCMI;
+  dcmi->Init.CaptureRate = DCMI_CR_ALL_FRAME;
+  dcmi->Init.HSPolarity = DCMI_HSPOLARITY_LOW;
+  dcmi->Init.VSPolarity = DCMI_HSPOLARITY_LOW;
+  dcmi->Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
+  dcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
+  dcmi->Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
+  HAL_DCMI_Init (dcmi);
+
+  // 480x272 uses cropped 800x600
+  if (Resolution == CAMERA_R480x272) {
+    initMt9d111 (CAMERA_I2C_ADDRESS_MT9D111, CAMERA_R800x600);
+    HAL_DCMI_ConfigCROP (dcmi, (800 - 480)/2, (600 - 272)/2, (480 * 2) - 1, 272 - 1);
+    HAL_DCMI_EnableCROP (dcmi);
     }
+  else {
+    initMt9d111 (CAMERA_I2C_ADDRESS_MT9D111, Resolution);
+    HAL_DCMI_DisableCROP (dcmi);
+    }
+
+  CameraCurrentResolution = Resolution;
 
   return readBack;
   }
