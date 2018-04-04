@@ -96,24 +96,15 @@ static void mspInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
   }
 //}}}
 //{{{
-static void mspDeInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
-
-  HAL_NVIC_DisableIRQ (DCMI_IRQn);
-  HAL_NVIC_DisableIRQ (DMA2_Stream1_IRQn);
-
-  HAL_DMA_DeInit (hdcmi->DMA_Handle);
-  __HAL_RCC_DCMI_CLK_DISABLE();
-  }
-//}}}
-//{{{
 static uint32_t getDmaLength (uint32_t resolution) {
 
   switch (resolution) {
-    case CAMERA_R160x120: return  0x2580;
-    case CAMERA_R320x240: return  0x9600;
-    case CAMERA_R480x272: return  0xFF00;
-    case CAMERA_R640x480: return 0x25800;
-    case CAMERA_R800x600: return 0x3A980;
+    case CAMERA_R160x120:   return  0x2580;
+    case CAMERA_R320x240:   return  0x9600;
+    case CAMERA_R480x272:   return  0xFF00;
+    case CAMERA_R640x480:   return 0x25800;
+    case CAMERA_R800x600:   return 0x3A980;
+    case CAMERA_R1600x1200: return 0xEA600;
     default: return 0;
     }
   }
@@ -390,6 +381,10 @@ static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
   // use preview 800x600
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA120); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Sequencer.params.mode - none
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // Sequencer goto preview A - 800x600
+
+  // use 1600x1200
+  //CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA120); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02); // Sequencer.params.mode - capture video
+  //CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
   }
 //}}}
 
@@ -430,14 +425,6 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
   return readBack;
   }
 //}}}
-//{{{
-void BSP_CAMERA_DeInit() {
-
-  hDcmiHandler.Instance = DCMI;
-  HAL_DCMI_DeInit (&hDcmiHandler);
-  mspDeInit (&hDcmiHandler, NULL);
-  }
-//}}}
 
 //{{{
 uint32_t BSP_CAMERA_getXSize() {
@@ -448,6 +435,7 @@ uint32_t BSP_CAMERA_getXSize() {
     case CAMERA_R480x272: return 480;
     case CAMERA_R640x480: return 640;
     case CAMERA_R800x600: return 800;
+    case CAMERA_R1600x1200: return 1600;
     default: return 0;
     }
   }
@@ -461,6 +449,7 @@ uint32_t BSP_CAMERA_getYSize() {
     case CAMERA_R480x272: return 272;
     case CAMERA_R640x480: return 280;
     case CAMERA_R800x600: return 600;
+    case CAMERA_R1600x1200: return 1200;
     default: return 0;
     }
   }
