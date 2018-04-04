@@ -131,8 +131,8 @@ void     BSP_LCD_ConvertFrame (uint16_t* src, uint16_t srcXsize, uint16_t srcYsi
                                uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
 void     BSP_LCD_ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
                                   uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
-void     BSP_LCD_ConvertFrameYCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                                   uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
+void     BSP_LCD_ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
+                                  uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
 
 void     BSP_LCD_DisplayOff();
 void     BSP_LCD_DisplayOn();
