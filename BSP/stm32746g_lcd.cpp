@@ -166,7 +166,7 @@ uint8_t BSP_LCD_Init() {
   BSP_SDRAM_Init();
 
   hDma2dHandler.Instance = DMA2D;
-  HAL_DMA2D_ConfigDeadTime (&hDma2dHandler, 5);
+  HAL_DMA2D_ConfigDeadTime (&hDma2dHandler, 8);
   HAL_DMA2D_EnableDeadTime (&hDma2dHandler);
 
 
@@ -777,6 +777,23 @@ void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsiz
       *dst++ = (rgb & 0x001F) << 3;
       *dst++ = (rgb & 0x07E0) >> 3;
       *dst++ = (rgb & 0xF800) >> 8;
+      *dst++ = 0xFF;
+      }
+    dst += (xsize - srcXsize) * 4;
+    }
+  }
+//}}}
+//{{{
+void BSP_LCD_ConvertFrameYCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+                              uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize) {
+
+  dst += ((y * xsize) + x) * 4;
+  for (auto y = 0; y < srcYsize; y++) {
+    for (auto x = 0; x < srcXsize; x++) {
+      uint8_t y = (*src++) & 0xFF;
+      *dst++ = y;
+      *dst++ = y;
+      *dst++ = y;
       *dst++ = 0xFF;
       }
     dst += (xsize - srcXsize) * 4;

@@ -105,9 +105,8 @@ static void mspDeInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
   __HAL_RCC_DCMI_CLK_DISABLE();
   }
 //}}}
-
 //{{{
-static uint32_t getPix (uint32_t resolution) {
+static uint32_t getDmaLength (uint32_t resolution) {
 
   switch (resolution) {
     case CAMERA_R160x120: return  0x2580;
@@ -120,29 +119,7 @@ static uint32_t getPix (uint32_t resolution) {
   }
 //}}}
 //{{{
-static uint64_t convertValue (uint32_t value) {
-
-  switch (value) {
-    case CAMERA_BRIGHTNESS_LEVEL0: return OV9655_BRIGHTNESS_LEVEL0;
-    case CAMERA_BRIGHTNESS_LEVEL1: return OV9655_BRIGHTNESS_LEVEL1;
-    case CAMERA_BRIGHTNESS_LEVEL2: return OV9655_BRIGHTNESS_LEVEL2;
-    case CAMERA_BRIGHTNESS_LEVEL3: return OV9655_BRIGHTNESS_LEVEL3;
-    case CAMERA_BRIGHTNESS_LEVEL4: return OV9655_BRIGHTNESS_LEVEL4;
-
-    case CAMERA_CONTRAST_LEVEL0: return OV9655_CONTRAST_LEVEL0;
-    case CAMERA_CONTRAST_LEVEL1: return OV9655_CONTRAST_LEVEL1;
-    case CAMERA_CONTRAST_LEVEL2: return OV9655_CONTRAST_LEVEL2;
-    case CAMERA_CONTRAST_LEVEL3: return OV9655_CONTRAST_LEVEL3;
-    case CAMERA_CONTRAST_LEVEL4: return OV9655_CONTRAST_LEVEL4;
-
-    default: return OV9655_CONTRAST_LEVEL0;
-    }
-
-  }
-//}}}
-
-//{{{
-static void init (uint16_t DeviceAddr, uint32_t resolution) {
+static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
 
   HAL_Delay (200);
 
@@ -162,11 +139,9 @@ static void init (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0x20, 0x0300); // Read Mode B = 9:showBorder 8:overSized
   CAMERA_IO_Write16 (DeviceAddr, 0x21, 0x8400); // Read Mode A = 15:binning 10:bothADC
 
-  //  PLL
-  CAMERA_IO_Write16 (DeviceAddr, 0x66, 0x1001);  // PLL Control 1    M:15:8,N:7:0 - M=16, N=1  (24mhz/(N+1))*M / 2*(P+1) = 48mhz
-  CAMERA_IO_Write16 (DeviceAddr, 0x67, 0x0501);  // PLL Control 2 0x05:15:8,P:7:0 - P=1
-  //CAMERA_IO_Write16 (DeviceAddr, 0x66, 0x8011);  // PLL Control 1    M:15:8,N:7:0 - M=79, N=2 (24mhz/(N+1))*M / 2*(P+1) = 80mhz
-  //CAMERA_IO_Write16 (DeviceAddr, 0x67, 0x0500);  // PLL Control 2 0x05:15:8,P:7:0 - P=1
+  //  PLL - M=24,N=1,P=2   (24mhz/(N+1))*M / 2*(P+1) = 36mhz
+  CAMERA_IO_Write16 (DeviceAddr, 0x66, 0x1001);  // PLL Control 1 -    M:15:8 N:7:0
+  CAMERA_IO_Write16 (DeviceAddr, 0x67, 0x0502);  // PLL Control 2 - 0x05:15:8 P:7:0
   CAMERA_IO_Write16 (DeviceAddr, 0x65, 0xA000);  // Clock CNTRL - PLL ON
   CAMERA_IO_Write16 (DeviceAddr, 0x65, 0x2000);  // Clock CNTRL - USE PLL
   HAL_Delay (100);
@@ -385,7 +360,6 @@ static void init (uint16_t DeviceAddr, uint32_t resolution) {
 
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x06); // Sequencer Refresh Mode
   HAL_Delay (200);
-
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x05); // Sequencer Refresh
   HAL_Delay (200);
 
@@ -413,29 +387,9 @@ static void init (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x90B5); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // SFR GPIO reset
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x90B6); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // SFR GPIO suspend
   //}}}
-  //sensorScaling (600);
+  // use preview 800x600
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA120); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Sequencer.params.mode - none
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // Sequencer goto preview A - 800x600
-  }
-//}}}
-//{{{
-static void config (uint16_t DeviceAddr, uint32_t value, uint32_t brightness_value) {
-
-  uint64_t value_tmp;
-  uint32_t br_value;
-
-  /* Convert the input value into ov9655 parameters */
-  value_tmp = convertValue (value);
-  br_value = (uint32_t)convertValue (brightness_value);
-  //CAMERA_IO_Write16 (DeviceAddr, OV9655_SENSOR_BRTN, br_value);
-  //CAMERA_IO_Write16 (DeviceAddr, OV9655_SENSOR_CNST1, value_tmp);
-  }
-//}}}
-//{{{
-static uint16_t readID (uint16_t DeviceAddr) {
-
-  CAMERA_IO_Write16 (DeviceAddr, 0xF0, 0);
-  return (CAMERA_IO_Read16 (DeviceAddr, 0));
   }
 //}}}
 
@@ -453,22 +407,22 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
   hDcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
   hDcmi->Init.PCKPolarity      = DCMI_PCKPOLARITY_RISING;
 
-  BSP_CAMERA_PowerUp();
-
   CAMERA_IO_Init();
-  uint32_t readBack = readID (CAMERA_I2C_ADDRESS_MT9D111);
+
+  CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xF0, 0);
+  uint32_t readBack = CAMERA_IO_Read16 (CAMERA_I2C_ADDRESS_MT9D111, 0);
   if (readBack == 0x1519) {
     mspInit (&hDcmiHandler, NULL);
     HAL_DCMI_Init (hDcmi);
 
+    // 480x272 uses cropped 800x600
     if (Resolution == CAMERA_R480x272) {
-      // 480x272 uses cropped 800x600
-      init (CAMERA_I2C_ADDRESS_MT9D111, CAMERA_R800x600);
+      initMt9d111 (CAMERA_I2C_ADDRESS_MT9D111, CAMERA_R800x600);
       HAL_DCMI_ConfigCROP (hDcmi, (800 - 480)/2, (600 - 272)/2, (480 * 2) - 1, 272 - 1);
       HAL_DCMI_EnableCROP (hDcmi);
       }
     else {
-      init (CAMERA_I2C_ADDRESS_MT9D111, Resolution);
+      initMt9d111 (CAMERA_I2C_ADDRESS_MT9D111, Resolution);
       HAL_DCMI_DisableCROP (hDcmi);
       }
 
@@ -516,16 +470,12 @@ uint32_t BSP_CAMERA_getYSize() {
 
 //{{{
 void BSP_CAMERA_SnapshotStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_SNAPSHOT, (uint32_t)buff, getPix (CameraCurrentResolution));
+  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_SNAPSHOT, (uint32_t)buff, getDmaLength (CameraCurrentResolution));
   }
 //}}}
 //{{{
 void BSP_CAMERA_ContinuousStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff, getPix (CameraCurrentResolution));
-  }
-//}}}
-//{{{
-void BSP_CAMERA_ContrastBrightness (uint32_t contrast_level, uint32_t brightness_level) {
+  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff, getDmaLength (CameraCurrentResolution));
   }
 //}}}
 
@@ -536,44 +486,6 @@ void BSP_CAMERA_Stop() {
   BSP_CAMERA_PowerDown();
   }
 //}}}
-//{{{
-void BSP_CAMERA_PowerUp() {
-
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-
-  // Configure DCMI GPIO as alternate function
-  GPIO_InitTypeDef gpio_init_structure;
-  gpio_init_structure.Pin = GPIO_PIN_13;
-  gpio_init_structure.Mode = GPIO_MODE_OUTPUT_PP;
-  gpio_init_structure.Pull = GPIO_NOPULL;
-  gpio_init_structure.Speed = GPIO_SPEED_HIGH;
-  HAL_GPIO_Init (GPIOH, &gpio_init_structure);
-
-  // De-assert the camera POWER_DOWN pin (active high)
-  HAL_GPIO_WritePin (GPIOH, GPIO_PIN_13, GPIO_PIN_RESET);
-
-  HAL_Delay (3);     // POWER_DOWN de-asserted during 3ms
-  }
-//}}}
-//{{{
-void BSP_CAMERA_PowerDown() {
-
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-
-  // Configure DCMI GPIO as alternate function
-  GPIO_InitTypeDef gpio_init_structure;
-  gpio_init_structure.Pin = GPIO_PIN_13;
-  gpio_init_structure.Mode = GPIO_MODE_OUTPUT_PP;
-  gpio_init_structure.Pull = GPIO_NOPULL;
-  gpio_init_structure.Speed = GPIO_SPEED_HIGH;
-  HAL_GPIO_Init (GPIOH, &gpio_init_structure);
-
-  // Assert the camera POWER_DOWN pin (active high)
-  HAL_GPIO_WritePin (GPIOH, GPIO_PIN_13, GPIO_PIN_SET);
-  }
-//}}}
-void BSP_CAMERA_Suspend() { HAL_DCMI_Suspend (&hDcmiHandler); }
-void BSP_CAMERA_Resume() { HAL_DCMI_Resume (&hDcmiHandler); }
 
 void HAL_DCMI_LineEventCallback (DCMI_HandleTypeDef* hdcmi) {}
 void HAL_DCMI_VsyncEventCallback (DCMI_HandleTypeDef* hdcmi) {}
