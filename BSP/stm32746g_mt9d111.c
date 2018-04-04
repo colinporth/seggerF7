@@ -122,14 +122,15 @@ static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0x0D, 0x0000); // Disable soft reset by setting R0x0D:0 = 0x0000.
   HAL_Delay (100);
 
-  CAMERA_IO_Write16 (DeviceAddr, 0x05, 0x0204); // HBLANK B = 516
-  CAMERA_IO_Write16 (DeviceAddr, 0x06, 0x0014); // VBLANK B = 20
   CAMERA_IO_Write16 (DeviceAddr, 0x07, 0x00FE); // HBLANK A = 254
   CAMERA_IO_Write16 (DeviceAddr, 0x08, 0x000C); // VBLANK A = 12
-  CAMERA_IO_Write16 (DeviceAddr, 0x20, 0x0300); // Read Mode B = 9:showBorder 8:overSized
   CAMERA_IO_Write16 (DeviceAddr, 0x21, 0x8400); // Read Mode A = 15:binning 10:bothADC
 
-  //  PLL - M=24,N=1,P=2   (24mhz/(N+1))*M / 2*(P+1) = 36mhz
+  CAMERA_IO_Write16 (DeviceAddr, 0x05, 0x0204); // HBLANK B = 516
+  CAMERA_IO_Write16 (DeviceAddr, 0x06, 0x0014); // VBLANK B = 20
+  CAMERA_IO_Write16 (DeviceAddr, 0x20, 0x0300); // Read Mode B = 9:showBorder 8:overSized
+
+  //  PLL - M=16,N=1,P=2   (24mhz/(N+1))*M / 2*(P+1) = 32mhz
   CAMERA_IO_Write16 (DeviceAddr, 0x66, 0x1001);  // PLL Control 1 -    M:15:8 N:7:0
   CAMERA_IO_Write16 (DeviceAddr, 0x67, 0x0502);  // PLL Control 2 - 0x05:15:8 P:7:0
   CAMERA_IO_Write16 (DeviceAddr, 0x65, 0xA000);  // Clock CNTRL - PLL ON
@@ -176,7 +177,7 @@ static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
   //{{{  mode a,b params
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x270B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x0030); // mode_config = disable jpeg A,B
 
-  //{{{  [MODE A PARAMETERS]
+  //{{{  preview MODE A
   /*
   ; Max Frame Time: 33.3333 msec
   ; Max Frame Clocks: 1316666.6 clocks (39.500 MHz)
@@ -213,7 +214,7 @@ static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA743); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02);   // Gamma and Contrast Settings A
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA77D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02);   // output format config A = 0x02 swap luma:chroma
 
-  //{{{  [MODE B PARAMETERS]
+  //{{{  capture MODE B
   /*
   ; Max Frame Time: 66.6667 msec
   ; Max Frame Clocks: 2633333.3 clocks (39.500 MHz)
@@ -250,83 +251,48 @@ static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA744); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02);   // Gamma and Contrast Settings B
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA77E); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02);   // output format config B = 0x02 swap luma:chroma
   //}}}
-  //{{{  Custom gamma tables...
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA745);    //Gamma Table 0 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00);  //      = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA746);    //Gamma Table 1 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x14);  //      = 20
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA747);    //Gamma Table 2 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x23);  //      = 35
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA748);    //Gamma Table 3 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x3A);  //      = 58
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA749);    //Gamma Table 4 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x5E);  //      = 94
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74A);    //Gamma Table 5 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x76);  //      = 118
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74B);    //Gamma Table 6 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x88);  //      = 136
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74C);    //Gamma Table 7 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x96);  //      = 150
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74D);    //Gamma Table 8 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xA3);  //      = 163
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74E);    //Gamma Table 9 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xAF);  //      = 175
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74F);    //Gamma Table 10 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xBA);  //      = 186
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA750);    //Gamma Table 11 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xC4);  //      = 196
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA751);    //Gamma Table 12 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xCE);  //      = 206
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA752);    //Gamma Table 13 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xD7);  //      = 215
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA753);    //Gamma Table 14 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xE0);  //      = 224
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA754);    //Gamma Table 15 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xE8);  //      = 232
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA755);    //Gamma Table 16 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xF0);  //      = 240
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA756);    //Gamma Table 17 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xF8);  //      = 248
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA757);    //Gamma Table 18 A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xFF);  //      = 255
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA758);    //Gamma Table 0 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00);  //      = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA759);    //Gamma Table 1 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x14);  //      = 20
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75A);    //Gamma Table 2 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x23);  //      = 35
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75B);    //Gamma Table 3 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x3A);  //      = 58
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75C);    //Gamma Table 4 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x5E);  //      = 94
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75D);    //Gamma Table 5 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x76);  //      = 118
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75E);    //Gamma Table 6 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x88);  //      = 136
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75F);    //Gamma Table 7 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x96);  //      = 150
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA760);    //Gamma Table 8 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xA3);  //      = 163
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA761);    //Gamma Table 9 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xAF);  //      = 175
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA762);    //Gamma Table 10 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xBA);  //      = 186
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA763);    //Gamma Table 11 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xC4);  //      = 196
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA764);    //Gamma Table 12 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xCE);  //      = 206
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA765);    //Gamma Table 13 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xD7);  //      = 215
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA766);    //Gamma Table 14 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xE0);  //      = 224
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA767);    //Gamma Table 15 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xE8);  //      = 232
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA768);    //Gamma Table 16 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xF0);  //      = 240
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA769);    //Gamma Table 17 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xF8);  //      = 248
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA76A);    //Gamma Table 18 B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xFF);  //      = 255
+  //{{{  gamma tables
+  // gamma table A 0 to 18
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA745); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00);  // 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA746); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x14);  // 20
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA747); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x23);  // 35
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA748); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x3A);  // 58
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA749); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x5E);  // 94
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74A); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x76);  // 118
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x88);  // 136
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74C); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x96);  // 150
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xA3);  // 163
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74E); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xAF);  // 175
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA74F); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xBA);  // 186
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA750); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xC4);  // 196
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA751); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xCE);  // 206
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA752); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xD7);  // 215
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA753); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xE0);  // 224
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA754); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xE8);  // 232
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA755); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xF0);  // 240
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA756); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xF8);  // 248
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA757); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xFF);  // 255
+
+  // gamma table B 0 to 18
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA758); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00);  // 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA759); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x14);  // 20
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75A); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x23);  // 35
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x3A);  // 58
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75C); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x5E);  // 94
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x76);  // 118
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75E); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x88);  // 136
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA75F); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x96);  // 150
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA760); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xA3);  // 163
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA761); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xAF);  // 175
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA762); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xBA);  // 186
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA763); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xC4);  // 196
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA764); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xCE);  // 206
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA765); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xD7);  // 215
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA766); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xE0);  // 224
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA767); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xE8);  // 232
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA768); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xF0);  // 240
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA769); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xF8);  // 248
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA76A); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xFF);  // 255
   //}}}
   //{{{  other config
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x276D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0xE0E2); // FIFO_Conf1 A = 57570
@@ -345,8 +311,8 @@ static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA40B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x1F);   // search_f2_60 = 19
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x2411); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x009A); // R9_Step_60 = 94
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x2413); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00B9); // R9_Step_50 = 112
-  //}}}
   HAL_Delay (100);
+  //}}}
 
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x06); // Sequencer Refresh Mode
   HAL_Delay (200);
@@ -377,11 +343,11 @@ static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x90B5); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // SFR GPIO reset
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x90B6); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // SFR GPIO suspend
   //}}}
-  // use preview 800x600
+  // use preview A
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA120); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Sequencer.params.mode - none
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // Sequencer goto preview A - 800x600
 
-  // use 1600x1200
+  // use capture B
   //CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA120); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02); // Sequencer.params.mode - capture video
   //CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
   }
