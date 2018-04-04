@@ -895,14 +895,14 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
 
   BSP_CAMERA_PowerUp();
 
-  uint32_t readBack = readID (CAMERA_I2C_ADDRESS);
+  uint32_t readBack = readID (CAMERA_I2C_ADDRESS_OV9655);
   if (readBack == OV9655_ID) {
     mspInit (&hDcmiHandler, NULL);
     HAL_DCMI_Init (hDcmi);
 
     if (Resolution == CAMERA_R480x272) {
       // 480x272 uses cropped 640x480
-      init (CAMERA_I2C_ADDRESS, CAMERA_R640x480);
+      init (CAMERA_I2C_ADDRESS_OV9655, CAMERA_R640x480);
       HAL_DCMI_ConfigCROP (hDcmi,
                            (CAMERA_VGA_RES_X - CAMERA_480x272_RES_X)/2,
                            (CAMERA_VGA_RES_Y - CAMERA_480x272_RES_Y)/2,
@@ -911,7 +911,7 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
       HAL_DCMI_EnableCROP (hDcmi);
       }
     else {
-      init (CAMERA_I2C_ADDRESS, Resolution);
+      init (CAMERA_I2C_ADDRESS_OV9655, Resolution);
       HAL_DCMI_DisableCROP (hDcmi);
       }
 
@@ -967,7 +967,7 @@ void BSP_CAMERA_ContinuousStart (uint8_t* buff) {
 //}}}
 //{{{
 void BSP_CAMERA_ContrastBrightness (uint32_t contrast_level, uint32_t brightness_level) {
-  config (CAMERA_I2C_ADDRESS, contrast_level, brightness_level);
+  config (CAMERA_I2C_ADDRESS_OV9655, contrast_level, brightness_level);
   }
 //}}}
 

@@ -447,8 +447,8 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
   DCMI_HandleTypeDef* hDcmi    = &hDcmiHandler;
   hDcmi->Instance              = DCMI;
   hDcmi->Init.CaptureRate      = DCMI_CR_ALL_FRAME;
-  hDcmi->Init.HSPolarity       = DCMI_HSPOLARITY_LOW;
-  hDcmi->Init.VSPolarity       = DCMI_VSPOLARITY_HIGH;
+  hDcmi->Init.HSPolarity       = DCMI_HSPOLARITY_LOW; // = DCMI_HSPOLARITY_LOW;
+  hDcmi->Init.VSPolarity       = DCMI_HSPOLARITY_LOW;
   hDcmi->Init.SynchroMode      = DCMI_SYNCHRO_HARDWARE;
   hDcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
   hDcmi->Init.PCKPolarity      = DCMI_PCKPOLARITY_RISING;
@@ -457,7 +457,6 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
 
   CAMERA_IO_Init();
   uint32_t readBack = readID (CAMERA_I2C_ADDRESS_MT9D111);
-
   if (readBack == 0x1519) {
     mspInit (&hDcmiHandler, NULL);
     HAL_DCMI_Init (hDcmi);
