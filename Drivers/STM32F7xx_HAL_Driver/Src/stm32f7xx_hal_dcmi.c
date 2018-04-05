@@ -94,84 +94,70 @@
 #define HAL_TIMEOUT_DCMI_STOP  ((uint32_t)1000) /* Set timeout to 1s  */
 
 //{{{
-static void DCMI_DMAXferCplt(DMA_HandleTypeDef* hdma)
-{
+static void DCMI_DMAXferCplt (DMA_HandleTypeDef* hdma) {
+
 	uint32_t tmp = 0;
 
 	DCMI_HandleTypeDef* hdcmi = ( DCMI_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
 
-	if(hdcmi->XferCount != 0)
-	{
+	if (hdcmi->XferCount != 0) {
 		/* Update memory 0 address location */
 		tmp = ((hdcmi->DMA_Handle->Instance->CR) & DMA_SxCR_CT);
-		if(((hdcmi->XferCount % 2) == 0) && (tmp != 0))
-		{
+		if(((hdcmi->XferCount % 2) == 0) && (tmp != 0)) {
 			tmp = hdcmi->DMA_Handle->Instance->M0AR;
 			HAL_DMAEx_ChangeMemory(hdcmi->DMA_Handle, (tmp + (8*hdcmi->XferSize)), MEMORY0);
 			hdcmi->XferCount--;
-		}
+			}
 		/* Update memory 1 address location */
-		else if((hdcmi->DMA_Handle->Instance->CR & DMA_SxCR_CT) == 0)
-		{
+		else if((hdcmi->DMA_Handle->Instance->CR & DMA_SxCR_CT) == 0) {
 			tmp = hdcmi->DMA_Handle->Instance->M1AR;
 			HAL_DMAEx_ChangeMemory(hdcmi->DMA_Handle, (tmp + (8*hdcmi->XferSize)), MEMORY1);
 			hdcmi->XferCount--;
+			}
 		}
-	}
+
 	/* Update memory 0 address location */
 	else if((hdcmi->DMA_Handle->Instance->CR & DMA_SxCR_CT) != 0)
-	{
 		hdcmi->DMA_Handle->Instance->M0AR = hdcmi->pBuffPtr;
-	}
+
 	/* Update memory 1 address location */
-	else if((hdcmi->DMA_Handle->Instance->CR & DMA_SxCR_CT) == 0)
-	{
+	else if((hdcmi->DMA_Handle->Instance->CR & DMA_SxCR_CT) == 0) {
 		tmp = hdcmi->pBuffPtr;
 		hdcmi->DMA_Handle->Instance->M1AR = (tmp + (4*hdcmi->XferSize));
 		hdcmi->XferCount = hdcmi->XferTransferNumber;
-	}
+		}
 
 	/* Check if the frame is transferred */
-	if(hdcmi->XferCount == hdcmi->XferTransferNumber)
-	{
+	if(hdcmi->XferCount == hdcmi->XferTransferNumber) {
 		/* Enable the Frame interrupt */
 		__HAL_DCMI_ENABLE_IT(hdcmi, DCMI_IT_FRAME);
 
 		/* When snapshot mode, set dcmi state to ready */
 		if((hdcmi->Instance->CR & DCMI_CR_CM) == DCMI_MODE_SNAPSHOT)
-		{
 			hdcmi->State= HAL_DCMI_STATE_READY;
 		}
 	}
-}
 //}}}
 //{{{
-static void DCMI_DMAError(DMA_HandleTypeDef* hdma)
-{
+static void DCMI_DMAError (DMA_HandleTypeDef* hdma) {
+
 	DCMI_HandleTypeDef* hdcmi = ( DCMI_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
 
-	if(hdcmi->DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
-	{
-		/* Initialize the DCMI state*/
+	if(hdcmi->DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE) {
 		hdcmi->State = HAL_DCMI_STATE_READY;
-
-		/* Set DCMI Error Code */
 		hdcmi->ErrorCode |= HAL_DCMI_ERROR_DMA;
-	}
+		}
 
-	/* DCMI error Callback */
-	HAL_DCMI_ErrorCallback(hdcmi);
-}
+	HAL_DCMI_ErrorCallback (hdcmi);
+	}
 //}}}
 
 //{{{
-HAL_StatusTypeDef HAL_DCMI_Init (DCMI_HandleTypeDef* hdcmi)
-{
+HAL_StatusTypeDef HAL_DCMI_Init (DCMI_HandleTypeDef* hdcmi) {
+
 	/* Check the DCMI peripheral state */
-	if(hdcmi == NULL)
-	{
+	if (hdcmi == NULL)
 		 return HAL_ERROR;
-	}
 
 	/* Check function parameters */
 	assert_param(IS_DCMI_ALL_INSTANCE(hdcmi->Instance));
@@ -189,19 +175,16 @@ HAL_StatusTypeDef HAL_DCMI_Init (DCMI_HandleTypeDef* hdcmi)
 	assert_param(IS_DCMI_LINE_SELECT_START(hdcmi->Init.LineSelectStart));
 
 	if(hdcmi->State == HAL_DCMI_STATE_RESET)
-	{
 		/* Init the low level hardware */
 		HAL_DCMI_MspInit(hdcmi);
-	}
 
 	/* Change the DCMI state */
 	hdcmi->State = HAL_DCMI_STATE_BUSY;
-													/* Configures the HS, VS, DE and PC polarity */
+	/* Configures the HS, VS, DE and PC polarity */
 	hdcmi->Instance->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  | DCMI_CR_EDM_0 |\
 													 DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 | DCMI_CR_FCRC_1 | DCMI_CR_JPEG  |\
 													 DCMI_CR_ESS | DCMI_CR_BSM_0 | DCMI_CR_BSM_1 | DCMI_CR_OEBS |\
 													 DCMI_CR_LSM | DCMI_CR_OELS);
-
 	hdcmi->Instance->CR |=  (uint32_t)(hdcmi->Init.SynchroMode | hdcmi->Init.CaptureRate |\
 																		 hdcmi->Init.VSPolarity  | hdcmi->Init.HSPolarity  |\
 																		 hdcmi->Init.PCKPolarity | hdcmi->Init.ExtendedDataMode |\
@@ -210,13 +193,11 @@ HAL_StatusTypeDef HAL_DCMI_Init (DCMI_HandleTypeDef* hdcmi)
 																		 hdcmi->Init.LineSelectStart);
 
 	if(hdcmi->Init.SynchroMode == DCMI_SYNCHRO_EMBEDDED)
-	{
 		hdcmi->Instance->ESCR = (((uint32_t)hdcmi->Init.SyncroCode.FrameStartCode)    |\
 														 ((uint32_t)hdcmi->Init.SyncroCode.LineStartCode << DCMI_ESCR_LSC_Pos)|\
 														 ((uint32_t)hdcmi->Init.SyncroCode.LineEndCode << DCMI_ESCR_LEC_Pos) |\
 														 ((uint32_t)hdcmi->Init.SyncroCode.FrameEndCode << DCMI_ESCR_FEC_Pos));
 
-	}
 
 	/* Enable the Line, Vsync, Error and Overrun interrupts */
 	__HAL_DCMI_ENABLE_IT(hdcmi, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
@@ -228,11 +209,11 @@ HAL_StatusTypeDef HAL_DCMI_Init (DCMI_HandleTypeDef* hdcmi)
 	hdcmi->State  = HAL_DCMI_STATE_READY;
 
 	return HAL_OK;
-}
+	}
 //}}}
 //{{{
-HAL_StatusTypeDef HAL_DCMI_DeInit (DCMI_HandleTypeDef* hdcmi)
-{
+HAL_StatusTypeDef HAL_DCMI_DeInit (DCMI_HandleTypeDef* hdcmi) {
+
 	/* DeInit the low level hardware */
 	HAL_DCMI_MspDeInit(hdcmi);
 
@@ -246,7 +227,7 @@ HAL_StatusTypeDef HAL_DCMI_DeInit (DCMI_HandleTypeDef* hdcmi)
 	__HAL_UNLOCK(hdcmi);
 
 	return HAL_OK;
-}
+	}
 //}}}
 
 //{{{
@@ -287,8 +268,8 @@ HAL_StatusTypeDef HAL_DCMI_Start_DMA (DCMI_HandleTypeDef* hdcmi, uint32_t DCMI_M
 	if (Length <= 0xFFFF)
 		/* Enable the DMA Stream */
 		HAL_DMA_Start_IT(hdcmi->DMA_Handle, (uint32_t)&hdcmi->Instance->DR, (uint32_t)pData, Length);
-	else { /* DCMI_DOUBLE_BUFFER Mode */
-		/* Set the DMA memory1 conversion complete callback */
+	else { 
+		/* DCMI_DOUBLE_BUFFER Mode, Set the DMA memory1 conversion complete callback */
 		hdcmi->DMA_Handle->XferM1CpltCallback = DCMI_DMAXferCplt;
 
 		/* Initialize transfer parameters */
@@ -370,8 +351,8 @@ HAL_StatusTypeDef HAL_DCMI_Stop (DCMI_HandleTypeDef* hdcmi) {
 //}}}
 
 //{{{
-HAL_StatusTypeDef HAL_DCMI_Suspend (DCMI_HandleTypeDef* hdcmi)
-{
+HAL_StatusTypeDef HAL_DCMI_Suspend (DCMI_HandleTypeDef* hdcmi) {
+
 	register uint32_t count = HAL_TIMEOUT_DCMI_STOP * (SystemCoreClock /8/1000);
 	HAL_StatusTypeDef status = HAL_OK;
 
@@ -408,8 +389,8 @@ HAL_StatusTypeDef HAL_DCMI_Suspend (DCMI_HandleTypeDef* hdcmi)
 	}
 //}}}
 //{{{
-HAL_StatusTypeDef HAL_DCMI_Resume (DCMI_HandleTypeDef* hdcmi)
-{
+HAL_StatusTypeDef HAL_DCMI_Resume (DCMI_HandleTypeDef* hdcmi) {
+
 	/* Process locked */
 	__HAL_LOCK(hdcmi);
 
@@ -433,82 +414,53 @@ void HAL_DCMI_IRQHandler (DCMI_HandleTypeDef* hdcmi) {
 
 	uint32_t isr_value = READ_REG(hdcmi->Instance->MISR);
 
-	/* Synchronization error interrupt management *******************************/
+	// Synchronization error interrupt management
 	if ((isr_value & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
 		/* Clear the Synchronization error flag */
 		__HAL_DCMI_CLEAR_FLAG(hdcmi, DCMI_FLAG_ERRRI);
 
-		/* Update error code */
 		hdcmi->ErrorCode |= HAL_DCMI_ERROR_SYNC;
-
-		/* Change DCMI state */
 		hdcmi->State = HAL_DCMI_STATE_ERROR;
-
-		/* Set the synchronization error callback */
 		hdcmi->DMA_Handle->XferAbortCallback = DCMI_DMAError;
-
-		/* Abort the DMA Transfer */
 		HAL_DMA_Abort_IT(hdcmi->DMA_Handle);
 		}
 
-	/* Overflow interrupt management ********************************************/
-	if((isr_value & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
-		/* Clear the Overflow flag */
+	// Overflow interrupt management
+	if ((isr_value & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
 		__HAL_DCMI_CLEAR_FLAG(hdcmi, DCMI_FLAG_OVRRI);
-
-		/* Update error code */
 		hdcmi->ErrorCode |= HAL_DCMI_ERROR_OVR;
-
-		/* Change DCMI state */
 		hdcmi->State = HAL_DCMI_STATE_ERROR;
-
-		/* Set the overflow callback */
 		hdcmi->DMA_Handle->XferAbortCallback = DCMI_DMAError;
-
-		/* Abort the DMA Transfer */
 		HAL_DMA_Abort_IT(hdcmi->DMA_Handle);
 		}
 
-	/* Line Interrupt management ************************************************/
-	if((isr_value & DCMI_FLAG_LINERI) == DCMI_FLAG_LINERI) {
-		/* Clear the Line interrupt flag */
+	// Line Interrupt management
+	if ((isr_value & DCMI_FLAG_LINERI) == DCMI_FLAG_LINERI) {
 		__HAL_DCMI_CLEAR_FLAG(hdcmi, DCMI_FLAG_LINERI);
-
-		/* Line interrupt Callback */
 		HAL_DCMI_LineEventCallback(hdcmi);
 		}
 
-	/* VSYNC interrupt management ***********************************************/
-	if((isr_value & DCMI_FLAG_VSYNCRI) == DCMI_FLAG_VSYNCRI) {
-		/* Clear the VSYNC flag */
+	// VSYNC interrupt management
+	if ((isr_value & DCMI_FLAG_VSYNCRI) == DCMI_FLAG_VSYNCRI) {
 		__HAL_DCMI_CLEAR_FLAG(hdcmi, DCMI_FLAG_VSYNCRI);
-
-		/* VSYNC Callback */
 		HAL_DCMI_VsyncEventCallback(hdcmi);
 		}
 
-	/* FRAME interrupt management ***********************************************/
-	if((isr_value & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
+	// FRAME interrupt management
+	if ((isr_value & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
 		/* When snapshot mode, disable Vsync, Error and Overrun interrupts */
 		if((hdcmi->Instance->CR & DCMI_CR_CM) == DCMI_MODE_SNAPSHOT)
-			/* Disable the Line, Vsync, Error and Overrun interrupts */
 			__HAL_DCMI_DISABLE_IT(hdcmi, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
-
-		/* Disable the Frame interrupt */
 		__HAL_DCMI_DISABLE_IT(hdcmi, DCMI_IT_FRAME);
-
-		/* Clear the End of Frame flag */
 		__HAL_DCMI_CLEAR_FLAG(hdcmi, DCMI_FLAG_FRAMERI);
-
-		/* Frame Callback */
 		HAL_DCMI_FrameEventCallback(hdcmi);
 		}
 	}
 //}}}
 
 //{{{
-HAL_StatusTypeDef HAL_DCMI_ConfigCrop (DCMI_HandleTypeDef* hdcmi, uint32_t X0, uint32_t Y0, uint32_t XSize, uint32_t YSize)
-{
+HAL_StatusTypeDef HAL_DCMI_ConfigCrop (DCMI_HandleTypeDef* hdcmi, uint32_t X0, uint32_t Y0, uint32_t XSize, uint32_t YSize) {
+
 	/* Process Locked */
 	__HAL_LOCK(hdcmi);
 
@@ -532,11 +484,11 @@ HAL_StatusTypeDef HAL_DCMI_ConfigCrop (DCMI_HandleTypeDef* hdcmi, uint32_t X0, u
 	__HAL_UNLOCK(hdcmi);
 
 	return HAL_OK;
-}
+	}
 //}}}
 //{{{
-HAL_StatusTypeDef HAL_DCMI_DisableCrop (DCMI_HandleTypeDef* hdcmi)
-{
+HAL_StatusTypeDef HAL_DCMI_DisableCrop (DCMI_HandleTypeDef* hdcmi) {
+
 	/* Process Locked */
 	__HAL_LOCK(hdcmi);
 
@@ -553,7 +505,7 @@ HAL_StatusTypeDef HAL_DCMI_DisableCrop (DCMI_HandleTypeDef* hdcmi)
 	__HAL_UNLOCK(hdcmi);
 
 	return HAL_OK;
-}
+	}
 //}}}
 //{{{
 HAL_StatusTypeDef HAL_DCMI_EnableCrop (DCMI_HandleTypeDef* hdcmi) {
@@ -577,18 +529,8 @@ HAL_StatusTypeDef HAL_DCMI_EnableCrop (DCMI_HandleTypeDef* hdcmi) {
 	}
 //}}}
 
-//{{{
-HAL_DCMI_StateTypeDef HAL_DCMI_GetState (DCMI_HandleTypeDef* hdcmi)
-{
-	return hdcmi->State;
-}
-//}}}
-//{{{
-uint32_t HAL_DCMI_GetError (DCMI_HandleTypeDef* hdcmi)
-{
-	return hdcmi->ErrorCode;
-}
-//}}}
+HAL_DCMI_StateTypeDef HAL_DCMI_GetState (DCMI_HandleTypeDef* hdcmi) { return hdcmi->State; }
+uint32_t HAL_DCMI_GetError (DCMI_HandleTypeDef* hdcmi) { return hdcmi->ErrorCode; }
 
 __weak void HAL_DCMI_MspInit (DCMI_HandleTypeDef* hdcmi) { UNUSED(hdcmi); }
 __weak void HAL_DCMI_MspDeInit (DCMI_HandleTypeDef* hdcmi) { UNUSED(hdcmi); }

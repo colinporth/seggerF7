@@ -131,10 +131,10 @@ static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0x20, 0x0300); // Read Mode B = 9:showBorder 8:overSized
 
   //  PLL - M=16,N=1,P=2   (24mhz/(N+1))*M / 2*(P+1) = 32mhz
-  CAMERA_IO_Write16 (DeviceAddr, 0x66, 0x1001);  // PLL Control 1 -    M:15:8 N:7:0
-  CAMERA_IO_Write16 (DeviceAddr, 0x67, 0x0502);  // PLL Control 2 - 0x05:15:8 P:7:0
-  CAMERA_IO_Write16 (DeviceAddr, 0x65, 0xA000);  // Clock CNTRL - PLL ON
-  CAMERA_IO_Write16 (DeviceAddr, 0x65, 0x2000);  // Clock CNTRL - USE PLL
+  CAMERA_IO_Write16 (DeviceAddr, 0x66, 0x1001); // PLL Control 1 -    M:15:8 N:7:0
+  CAMERA_IO_Write16 (DeviceAddr, 0x67, 0x0502); // PLL Control 2 - 0x05:15:8 P:7:0
+  CAMERA_IO_Write16 (DeviceAddr, 0x65, 0xA000); // Clock CNTRL - PLL ON
+  CAMERA_IO_Write16 (DeviceAddr, 0x65, 0x2000); // Clock CNTRL - USE PLL
   HAL_Delay (100);
 
   // page 1

@@ -260,12 +260,11 @@ void BSP_LCD_SetLayerAddress_NoReload (uint32_t LayerIndex, uint32_t Address) {
 //}}}
 void BSP_LCD_Reload (uint32_t ReloadType) { HAL_LTDC_Reload (&hLtdcHandler, ReloadType); }
 
+uint16_t BSP_LCD_GetTextHeight() { return Font16.mHeight; }
 uint32_t BSP_LCD_GetTextColor() { return TextColor; }
 uint32_t BSP_LCD_GetBackColor() { return BackColor; }
 void BSP_LCD_SetTextColor (uint32_t Color) { TextColor = Color; }
 void BSP_LCD_SetBackColor (uint32_t Color) { BackColor = Color; }
-
-uint16_t BSP_LCD_GetTextHeight() { return Font16.mHeight; }
 
 //{{{
 uint32_t BSP_LCD_ReadPixel (uint16_t Xpos, uint16_t Ypos) {
