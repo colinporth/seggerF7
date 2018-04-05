@@ -95,21 +95,7 @@ static void mspInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
   }
 //}}}
 //{{{
-static uint32_t getDmaLength (uint32_t resolution) {
-
-  switch (resolution) {
-    case CAMERA_R160x120:   return  0x2580;
-    case CAMERA_R320x240:   return  0x9600;
-    case CAMERA_R480x272:   return  0xFF00;
-    case CAMERA_R640x480:   return 0x25800;
-    case CAMERA_R800x600:   return 0x3A980;
-    case CAMERA_R1600x1200: return 0xEA600;
-    default: return 0;
-    }
-  }
-//}}}
-//{{{
-static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
+static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
 
   HAL_Delay (200);
 
@@ -352,6 +338,20 @@ static void initMt9d111 (uint16_t DeviceAddr, uint32_t resolution) {
   //CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
   }
 //}}}
+//{{{
+static uint32_t getDmaLength (uint32_t resolution) {
+
+  switch (resolution) {
+    case CAMERA_R160x120:   return  0x2580;
+    case CAMERA_R320x240:   return  0x9600;
+    case CAMERA_R480x272:   return  0xFF00;
+    case CAMERA_R640x480:   return 0x25800;
+    case CAMERA_R800x600:   return 0x3A980;
+    case CAMERA_R1600x1200: return 0xEA600;
+    default: return 0;
+    }
+  }
+//}}}
 
 // external
 //{{{
@@ -376,12 +376,12 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
 
   // 480x272 uses cropped 800x600
   if (Resolution == CAMERA_R480x272) {
-    initMt9d111 (CAMERA_I2C_ADDRESS_MT9D111, CAMERA_R800x600);
+    mt9d111Init (CAMERA_I2C_ADDRESS_MT9D111, CAMERA_R800x600);
     HAL_DCMI_ConfigCROP (dcmi, (800 - 480)/2, (600 - 272)/2, (480 * 2) - 1, 272 - 1);
     HAL_DCMI_EnableCROP (dcmi);
     }
   else {
-    initMt9d111 (CAMERA_I2C_ADDRESS_MT9D111, Resolution);
+    mt9d111Init (CAMERA_I2C_ADDRESS_MT9D111, Resolution);
     HAL_DCMI_DisableCROP (dcmi);
     }
 
