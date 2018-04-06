@@ -1,25 +1,101 @@
+// mt9d111.cpp
 //{{{  includes
 #include "stm32746g_discovery.h"
 #include "stm32746g_discovery_camera.h"
 //}}}
-#define CAMERA_480x272_RES_X 480
-#define CAMERA_480x272_RES_Y 272
-#define CAMERA_VGA_RES_X     640
-#define CAMERA_VGA_RES_Y     480
-#define CAMERA_QVGA_RES_X    320
-#define CAMERA_QVGA_RES_Y    240
-#define CAMERA_QQVGA_RES_X   160
-#define CAMERA_QQVGA_RES_Y   120
 
 DCMI_HandleTypeDef hDcmiHandler;
-void DCMI_IRQHandler() { HAL_DCMI_IRQHandler (&hDcmiHandler); }
-void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (hDcmiHandler.DMA_Handle); }
+DMA_HandleTypeDef dmaHandler;
+uint32_t cameraCurrentResolution;
+cLcd* lcdPtr = nullptr;
 
-static DMA_HandleTypeDef dmaHandler;
-static uint32_t cameraCurrentResolution;
+extern "C" {
+  //{{{
+  void DCMI_DMAXferComplete (DMA_HandleTypeDef* hdma) {
+
+    DCMI_HandleTypeDef* hdcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)hdma)->Parent;
+
+    if (hdcmi->XferCount != 0) {
+      uint32_t tmp = ((hdcmi->DMA_Handle->Instance->CR) & DMA_SxCR_CT);
+      if (((hdcmi->XferCount % 2) == 0) && (tmp != 0)) {
+        // Update memory 0 address location
+        uint32_t tmp = hdcmi->DMA_Handle->Instance->M0AR;
+        HAL_DMAEx_ChangeMemory (hdcmi->DMA_Handle, (tmp + (8*hdcmi->XferSize)), MEMORY0);
+        hdcmi->XferCount--;
+        }
+
+      else if ((hdcmi->DMA_Handle->Instance->CR & DMA_SxCR_CT) == 0) {
+        // Update memory 1 address location
+        uint32_t tmp = hdcmi->DMA_Handle->Instance->M1AR;
+        HAL_DMAEx_ChangeMemory (hdcmi->DMA_Handle, (tmp + (8*hdcmi->XferSize)), MEMORY1);
+        hdcmi->XferCount--;
+        }
+      }
+
+    else if ((hdcmi->DMA_Handle->Instance->CR & DMA_SxCR_CT) != 0)
+      // Update memory 0 address location
+      hdcmi->DMA_Handle->Instance->M0AR = hdcmi->pBuffPtr;
+
+    else if ((hdcmi->DMA_Handle->Instance->CR & DMA_SxCR_CT) == 0) {
+      // Update memory 1 address location
+      uint32_t tmp = hdcmi->pBuffPtr;
+      hdcmi->DMA_Handle->Instance->M1AR = (tmp + (4*hdcmi->XferSize));
+      hdcmi->XferCount = hdcmi->XferTransferNumber;
+      }
+
+    // Check if the frame is transferred
+    if (hdcmi->XferCount == hdcmi->XferTransferNumber)
+      // Enable the Frame interrupt
+      __HAL_DCMI_ENABLE_IT (hdcmi, DCMI_IT_FRAME);
+    }
+  //}}}
+  //{{{
+  void DCMI_DMAError (DMA_HandleTypeDef* hdma) {
+
+    DCMI_HandleTypeDef* hdcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)hdma)->Parent;
+    if (hdcmi->DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
+      lcdPtr->debug (LCD_COLOR_RED, "DCMI DMAerror %x", hdcmi->DMA_Handle->ErrorCode);
+    }
+  //}}}
+  //{{{
+  void DCMI_Error (DMA_HandleTypeDef* hdma) {
+    lcdPtr->debug (LCD_COLOR_RED, "DCMIerror");
+    }
+  //}}}
+
+  //{{{
+  void DCMI_IRQHandler() {
+
+    uint32_t isr_value = READ_REG (hDcmiHandler.Instance->MISR);
+    if ((isr_value & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
+      // Synchronization error interrupt
+      __HAL_DCMI_CLEAR_FLAG (&hDcmiHandler, DCMI_FLAG_ERRRI);
+      hDcmiHandler.DMA_Handle->XferAbortCallback = DCMI_Error;
+      HAL_DMA_Abort_IT (hDcmiHandler.DMA_Handle);
+      }
+
+    if ((isr_value & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
+      // Overflow interrupt
+      __HAL_DCMI_CLEAR_FLAG (&hDcmiHandler, DCMI_FLAG_OVRRI);
+      hDcmiHandler.DMA_Handle->XferAbortCallback = DCMI_Error;
+      HAL_DMA_Abort_IT (hDcmiHandler.DMA_Handle);
+      }
+
+    if ((isr_value & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
+      // frame interrupt, in snapshot mode, disable Vsync, Error and Overrun interrupts
+      if ((hDcmiHandler.Instance->CR & DCMI_CR_CM) == DCMI_MODE_SNAPSHOT)
+        __HAL_DCMI_DISABLE_IT (&hDcmiHandler, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
+      __HAL_DCMI_DISABLE_IT (&hDcmiHandler, DCMI_IT_FRAME);
+      __HAL_DCMI_CLEAR_FLAG (&hDcmiHandler, DCMI_FLAG_FRAMERI);
+      lcdPtr->debug (LCD_COLOR_GREEN, "frameIrq");
+      }
+    }
+  //}}}
+  void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (hDcmiHandler.DMA_Handle); }
+  }
 
 //{{{
-static void gpioIrqInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
+void gpioIrqInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
 
   __HAL_RCC_DCMI_CLK_ENABLE();
   __HAL_RCC_DMA2_CLK_ENABLE();
@@ -80,7 +156,7 @@ static void gpioIrqInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
   }
 //}}}
 //{{{
-static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
+void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
 
   HAL_Delay (200);
 
@@ -318,14 +394,102 @@ static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
   }
 //}}}
 
+//{{{
+HAL_StatusTypeDef dcmiInit (DCMI_HandleTypeDef* hdcmi) {
+
+  // Configures the HS, VS, DE and PC polarity
+  hdcmi->Instance->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  | DCMI_CR_EDM_0 |
+                           DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 | DCMI_CR_FCRC_1 | DCMI_CR_JPEG  |
+                           DCMI_CR_ESS | DCMI_CR_BSM_0 | DCMI_CR_BSM_1 | DCMI_CR_OEBS |
+                           DCMI_CR_LSM | DCMI_CR_OELS);
+  hdcmi->Instance->CR |=  (uint32_t)(hdcmi->Init.SynchroMode | hdcmi->Init.CaptureRate |
+                                     hdcmi->Init.VSPolarity  | hdcmi->Init.HSPolarity  |
+                                     hdcmi->Init.PCKPolarity | hdcmi->Init.ExtendedDataMode |
+                                     hdcmi->Init.JPEGMode | hdcmi->Init.ByteSelectMode |
+                                     hdcmi->Init.ByteSelectStart | hdcmi->Init.LineSelectMode |
+                                     hdcmi->Init.LineSelectStart);
+
+  // Enable Error and Overrun interrupts
+  __HAL_DCMI_ENABLE_IT (hdcmi, DCMI_IT_ERR | DCMI_IT_OVR);
+  return HAL_OK;
+  }
+//}}}
+//{{{
+HAL_StatusTypeDef dcmiStart (DCMI_HandleTypeDef* hdcmi, uint32_t DCMI_Mode, uint32_t pData, uint32_t Length) {
+
+  // Enable DCMI by setting DCMIEN bit
+  __HAL_DCMI_ENABLE (hdcmi);
+
+  // Configure the DCMI Mode
+  hdcmi->Instance->CR &= ~(DCMI_CR_CM);
+  hdcmi->Instance->CR |= (uint32_t)(DCMI_Mode);
+
+  hdcmi->DMA_Handle->XferCpltCallback = DCMI_DMAXferComplete;
+  hdcmi->DMA_Handle->XferErrorCallback = DCMI_DMAError;
+  hdcmi->DMA_Handle->XferAbortCallback = NULL;
+
+  // Reset transfer counters value
+  hdcmi->XferCount = 0;
+  hdcmi->XferTransferNumber = 0;
+
+  if (Length <= 0xFFFF)
+    // Enable the DMA Stream
+    HAL_DMA_Start_IT (hdcmi->DMA_Handle, (uint32_t)&hdcmi->Instance->DR, (uint32_t)pData, Length);
+  else {
+    // DCMI_DOUBLE_BUFFER Mode, Set the DMA memory1 conversion complete callback
+    hdcmi->DMA_Handle->XferM1CpltCallback = DCMI_DMAXferComplete;
+
+    // Initialize transfer parameters
+    hdcmi->XferCount = 1;
+    hdcmi->XferSize = Length;
+    hdcmi->pBuffPtr = pData;
+
+    // Get the number of buffer
+    while (hdcmi->XferSize > 0xFFFF) {
+      hdcmi->XferSize = hdcmi->XferSize / 2;
+      hdcmi->XferCount = hdcmi->XferCount * 2;
+      }
+
+    hdcmi->XferCount = hdcmi->XferCount - 2;
+    hdcmi->XferTransferNumber = hdcmi->XferCount;
+    uint32_t memAddress2 = (uint32_t)(pData + (4*hdcmi->XferSize));
+
+    // Start DMA multi buffer transfer
+    HAL_DMAEx_MultiBufferStart_IT (hdcmi->DMA_Handle, (uint32_t)&hdcmi->Instance->DR, (uint32_t)pData, memAddress2, hdcmi->XferSize);
+    }
+
+  // Enable Capture
+  hdcmi->Instance->CR |= DCMI_CR_CAPTURE;
+
+  return HAL_OK;
+  }
+//}}}
+//{{{
+void dcmiConfigCrop (DCMI_HandleTypeDef* hdcmi, uint32_t X0, uint32_t Y0, uint32_t XSize, uint32_t YSize) {
+
+  hdcmi->Instance->CWSIZER = XSize | (YSize << DCMI_CWSIZE_VLINE_Pos);
+  hdcmi->Instance->CWSTRTR = X0 | (Y0 << DCMI_CWSTRT_VST_Pos);
+  hdcmi->Instance->CR |= (uint32_t)DCMI_CR_CROP;
+  }
+//}}}
+//{{{
+void dcmiDisableCrop (DCMI_HandleTypeDef* hdcmi) {
+
+  hdcmi->Instance->CR &= ~(uint32_t)DCMI_CR_CROP;
+  }
+//}}}
+
 // external
 //{{{
-uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
+uint32_t BSP_CAMERA_Init (cLcd* lcd, uint32_t Resolution) {
+
+  lcdPtr = lcd;
 
   // init camera i2c, readBack id
   CAMERA_IO_Init();
   CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xF0, 0);
   uint32_t readBack = CAMERA_IO_Read16 (CAMERA_I2C_ADDRESS_MT9D111, 0);
+  lcdPtr->debug (LCD_COLOR_YELLOW, "cameraId %x", readBack);
 
   gpioIrqInit (&hDcmiHandler, NULL);
 
@@ -338,16 +502,16 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
   dcmi->Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
   dcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
   dcmi->Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
-  HAL_DCMI_Init (dcmi);
+  dcmiInit (dcmi);
 
   // 480x272 uses cropped 800x600
   if (Resolution == CAMERA_R480x272) {
     mt9d111Init (CAMERA_I2C_ADDRESS_MT9D111, CAMERA_R800x600);
-    HAL_DCMI_ConfigCROP (dcmi, (800 - 480)/2, (600 - 272)/2, (480 * 2) - 1, 272 - 1);
+    dcmiConfigCrop (dcmi, (800 - 480)/2, (600 - 272)/2, (480 * 2) - 1, 272 - 1);
     }
   else {
     mt9d111Init (CAMERA_I2C_ADDRESS_MT9D111, Resolution);
-    HAL_DCMI_DisableCROP (dcmi);
+    dcmiDisableCrop (dcmi);
     }
 
   cameraCurrentResolution = Resolution;
@@ -388,10 +552,8 @@ uint32_t BSP_CAMERA_getYSize() {
 //{{{
 void BSP_CAMERA_Start (uint8_t* buff, int continuous) {
 
-  HAL_DCMI_Start_DMA (&hDcmiHandler,
-                      continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT,
-                      (uint32_t)buff,
-                      BSP_CAMERA_getXSize (cameraCurrentResolution) * BSP_CAMERA_getYSize (cameraCurrentResolution) / 2);
+  dcmiStart (&hDcmiHandler, continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT,
+             (uint32_t)buff, BSP_CAMERA_getXSize() * BSP_CAMERA_getYSize() / 2);
   }
 //}}}
 //{{{
@@ -405,11 +567,6 @@ void BSP_CAMERA_Capture() {
   // use capture B
   CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA120); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x02); // Sequencer.params.mode - capture video
   CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA103); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
-  }
-//}}}
-//{{{
-void BSP_CAMERA_Stop() {
-  HAL_DCMI_Stop (&hDcmiHandler);
   }
 //}}}
 

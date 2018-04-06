@@ -7,7 +7,7 @@
  </Bookmarks>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
   <BreakpointListItem trigger="" line="3255" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="FatFs/ff.c" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="412" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="410" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="517" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="53" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="682" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
@@ -45,9 +45,7 @@
   <ProjectSessionItem path="usb"/>
   <ProjectSessionItem path="usb;usbMsc"/>
   <ProjectSessionItem path="usb;usbMsc;bsp_drivers"/>
-  <ProjectSessionItem path="usb;usbMsc;FatFs"/>
-  <ProjectSessionItem path="usb;usbMsc;hal_drivers"/>
-  <ProjectSessionItem path="usb;usbMsc;hal_drivers;includes"/>
+  <ProjectSessionItem path="usb;usbMsc;bsp_drivers;includes"/>
   <ProjectSessionItem path="usb;usbMsc;main"/>
   <ProjectSessionItem path="usb;usbMsc;system"/>
  </Project>
@@ -90,10 +88,6 @@
  <Watch4>
   <Watches active="0" update="Never"/>
  </Watch4>
- <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="49" y="114" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="0" top="89" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="38" y="744" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/stm32746g_lcd.cpp" debugPath="BSP/stm32746g_lcd.cpp" selected="0" top="713" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="212" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dma.h" debugPath="Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dma.h" selected="1" top="182" codecName="Default"/>
- </Files>
+ <Files/>
  <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>
