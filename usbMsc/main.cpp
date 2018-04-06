@@ -62,37 +62,35 @@ cApp* gApp;
 
 extern "C" {
   void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); }
-
   //{{{
   void DCMI_DMAXferCplt (DMA_HandleTypeDef* hdma) {
 
-    uint32_t tmp = 0;
-
-    DCMI_HandleTypeDef* hdcmi = ( DCMI_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
+    DCMI_HandleTypeDef* hdcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)hdma)->Parent;
 
     if (hdcmi->XferCount != 0) {
-      // Update memory 0 address location
-      tmp = ((hdcmi->DMA_Handle->Instance->CR) & DMA_SxCR_CT);
-      if(((hdcmi->XferCount % 2) == 0) && (tmp != 0)) {
-        tmp = hdcmi->DMA_Handle->Instance->M0AR;
+      uint32_t tmp = ((hdcmi->DMA_Handle->Instance->CR) & DMA_SxCR_CT);
+      if (((hdcmi->XferCount % 2) == 0) && (tmp != 0)) {
+        // Update memory 0 address location
+        uint32_t tmp = hdcmi->DMA_Handle->Instance->M0AR;
         HAL_DMAEx_ChangeMemory (hdcmi->DMA_Handle, (tmp + (8*hdcmi->XferSize)), MEMORY0);
         hdcmi->XferCount--;
         }
-      // Update memory 1 address location
+
       else if ((hdcmi->DMA_Handle->Instance->CR & DMA_SxCR_CT) == 0) {
-        tmp = hdcmi->DMA_Handle->Instance->M1AR;
+        // Update memory 1 address location
+        uint32_t tmp = hdcmi->DMA_Handle->Instance->M1AR;
         HAL_DMAEx_ChangeMemory (hdcmi->DMA_Handle, (tmp + (8*hdcmi->XferSize)), MEMORY1);
         hdcmi->XferCount--;
         }
       }
 
-    // Update memory 0 address location
     else if ((hdcmi->DMA_Handle->Instance->CR & DMA_SxCR_CT) != 0)
+      // Update memory 0 address location
       hdcmi->DMA_Handle->Instance->M0AR = hdcmi->pBuffPtr;
 
-    // Update memory 1 address location */
     else if ((hdcmi->DMA_Handle->Instance->CR & DMA_SxCR_CT) == 0) {
-      tmp = hdcmi->pBuffPtr;
+      // Update memory 1 address location
+      uint32_t tmp = hdcmi->pBuffPtr;
       hdcmi->DMA_Handle->Instance->M1AR = (tmp + (4*hdcmi->XferSize));
       hdcmi->XferCount = hdcmi->XferTransferNumber;
       }
@@ -112,11 +110,7 @@ extern "C" {
   void DCMI_DMAError (DMA_HandleTypeDef* hdma) {
 
     DCMI_HandleTypeDef* hdcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)hdma)->Parent;
-    if (hdcmi->DMA_Handle->ErrorCode == HAL_DMA_ERROR_FE) {
-      // dmaFifoError common ?
-      //gApp->getLcd()->debug (LCD_COLOR_RED, "DCMI DMAerror %x", hdcmi->DMA_Handle->ErrorCode);
-      }
-    else
+    if (hdcmi->DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE) 
       gApp->getLcd()->debug (LCD_COLOR_RED, "DCMI DMAerror %x", hdcmi->DMA_Handle->ErrorCode);
     }
   //}}}
@@ -132,19 +126,19 @@ extern "C" {
     hdcmi->State = HAL_DCMI_STATE_BUSY;
 
     // Configures the HS, VS, DE and PC polarity
-    hdcmi->Instance->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  | DCMI_CR_EDM_0 |\
-                             DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 | DCMI_CR_FCRC_1 | DCMI_CR_JPEG  |\
-                             DCMI_CR_ESS | DCMI_CR_BSM_0 | DCMI_CR_BSM_1 | DCMI_CR_OEBS |\
+    hdcmi->Instance->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  | DCMI_CR_EDM_0 |
+                             DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 | DCMI_CR_FCRC_1 | DCMI_CR_JPEG  |
+                             DCMI_CR_ESS | DCMI_CR_BSM_0 | DCMI_CR_BSM_1 | DCMI_CR_OEBS |
                              DCMI_CR_LSM | DCMI_CR_OELS);
-    hdcmi->Instance->CR |=  (uint32_t)(hdcmi->Init.SynchroMode | hdcmi->Init.CaptureRate |\
-                                       hdcmi->Init.VSPolarity  | hdcmi->Init.HSPolarity  |\
-                                       hdcmi->Init.PCKPolarity | hdcmi->Init.ExtendedDataMode |\
-                                       hdcmi->Init.JPEGMode | hdcmi->Init.ByteSelectMode |\
-                                       hdcmi->Init.ByteSelectStart | hdcmi->Init.LineSelectMode |\
+    hdcmi->Instance->CR |=  (uint32_t)(hdcmi->Init.SynchroMode | hdcmi->Init.CaptureRate |
+                                       hdcmi->Init.VSPolarity  | hdcmi->Init.HSPolarity  |
+                                       hdcmi->Init.PCKPolarity | hdcmi->Init.ExtendedDataMode |
+                                       hdcmi->Init.JPEGMode | hdcmi->Init.ByteSelectMode |
+                                       hdcmi->Init.ByteSelectStart | hdcmi->Init.LineSelectMode |
                                        hdcmi->Init.LineSelectStart);
 
-    // Enable the Line, Vsync, Error and Overrun interrupts
-    __HAL_DCMI_ENABLE_IT (hdcmi, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
+    // Enable Error and Overrun interrupts
+    __HAL_DCMI_ENABLE_IT (hdcmi, DCMI_IT_ERR | DCMI_IT_OVR);
 
     // Update error code
     hdcmi->ErrorCode = HAL_DCMI_ERROR_NONE;
@@ -161,13 +155,13 @@ extern "C" {
     // Initialize the second memory address
     uint32_t SecondMemAddress = 0;
 
-    /* Lock the DCMI peripheral state */
+    // Lock the DCMI peripheral state
     hdcmi->State = HAL_DCMI_STATE_BUSY;
 
-    /* Enable DCMI by setting DCMIEN bit */
+    // Enable DCMI by setting DCMIEN bit
     __HAL_DCMI_ENABLE (hdcmi);
 
-    /* Configure the DCMI Mode */
+    // Configure the DCMI Mode
     hdcmi->Instance->CR &= ~(DCMI_CR_CM);
     hdcmi->Instance->CR |= (uint32_t)(DCMI_Mode);
 
@@ -175,40 +169,39 @@ extern "C" {
     hdcmi->DMA_Handle->XferErrorCallback = DCMI_DMAError;
     hdcmi->DMA_Handle->XferAbortCallback = NULL;
 
-    /* Reset transfer counters value */
+    // Reset transfer counters value
     hdcmi->XferCount = 0;
     hdcmi->XferTransferNumber = 0;
 
     if (Length <= 0xFFFF)
-      /* Enable the DMA Stream */
+      // Enable the DMA Stream
       HAL_DMA_Start_IT (hdcmi->DMA_Handle, (uint32_t)&hdcmi->Instance->DR, (uint32_t)pData, Length);
     else {
-      /* DCMI_DOUBLE_BUFFER Mode, Set the DMA memory1 conversion complete callback */
+      // DCMI_DOUBLE_BUFFER Mode, Set the DMA memory1 conversion complete callback
       hdcmi->DMA_Handle->XferM1CpltCallback = DCMI_DMAXferCplt;
 
-      /* Initialize transfer parameters */
+      // Initialize transfer parameters
       hdcmi->XferCount = 1;
       hdcmi->XferSize = Length;
       hdcmi->pBuffPtr = pData;
 
-      /* Get the number of buffer */
-      while(hdcmi->XferSize > 0xFFFF) {
-        hdcmi->XferSize = (hdcmi->XferSize/2);
-        hdcmi->XferCount = hdcmi->XferCount*2;
+      // Get the number of buffer
+      while (hdcmi->XferSize > 0xFFFF) {
+        hdcmi->XferSize = hdcmi->XferSize / 2;
+        hdcmi->XferCount = hdcmi->XferCount * 2;
         }
 
-      hdcmi->XferCount = (hdcmi->XferCount - 2);
+      hdcmi->XferCount = hdcmi->XferCount - 2;
       hdcmi->XferTransferNumber = hdcmi->XferCount;
       SecondMemAddress = (uint32_t)(pData + (4*hdcmi->XferSize));
 
-      /* Start DMA multi buffer transfer */
+      // Start DMA multi buffer transfer
       HAL_DMAEx_MultiBufferStart_IT (hdcmi->DMA_Handle, (uint32_t)&hdcmi->Instance->DR, (uint32_t)pData, SecondMemAddress, hdcmi->XferSize);
       }
 
-    /* Enable Capture */
+    // Enable Capture 
     hdcmi->Instance->CR |= DCMI_CR_CAPTURE;
 
-    /* Return function status */
     return HAL_OK;
     }
   //}}}
@@ -234,18 +227,6 @@ extern "C" {
       HAL_DMA_Abort_IT (hdcmi->DMA_Handle);
       }
 
-    if ((isr_value & DCMI_FLAG_LINERI) == DCMI_FLAG_LINERI) {
-      // line Interrupt
-      __HAL_DCMI_CLEAR_FLAG (hdcmi, DCMI_FLAG_LINERI);
-      //gApp->getLcd()->debug (LCD_COLOR_YELLOW, "lineIrq %d", line++);
-      }
-
-    if ((isr_value & DCMI_FLAG_VSYNCRI) == DCMI_FLAG_VSYNCRI) {
-      // vsync interrupt
-      __HAL_DCMI_CLEAR_FLAG(hdcmi, DCMI_FLAG_VSYNCRI);
-      //gApp->getLcd()->debug (LCD_COLOR_YELLOW, "vsyncIrq");
-      }
-
     if ((isr_value & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
       // frame interrupt, in snapshot mode, disable Vsync, Error and Overrun interrupts */
       if ((hdcmi->Instance->CR & DCMI_CR_CM) == DCMI_MODE_SNAPSHOT)
@@ -262,21 +243,10 @@ extern "C" {
   //{{{
   HAL_StatusTypeDef HAL_DCMI_ConfigCrop (DCMI_HandleTypeDef* hdcmi, uint32_t X0, uint32_t Y0, uint32_t XSize, uint32_t YSize) {
 
-    /* Lock the DCMI peripheral state */
-    hdcmi->State = HAL_DCMI_STATE_BUSY;
-
-    /* Check the parameters */
-    assert_param(IS_DCMI_WINDOW_COORDINATE(X0));
-    assert_param(IS_DCMI_WINDOW_HEIGHT(Y0));
-    assert_param(IS_DCMI_WINDOW_COORDINATE(XSize));
-    assert_param(IS_DCMI_WINDOW_COORDINATE(YSize));
-
-    /* Configure CROP */
     hdcmi->Instance->CWSIZER = (XSize | (YSize << DCMI_CWSIZE_VLINE_Pos));
     hdcmi->Instance->CWSTRTR = (X0 | (Y0 << DCMI_CWSTRT_VST_Pos));
-
-    /* Initialize the DCMI state*/
-    hdcmi->State  = HAL_DCMI_STATE_READY;
+    hdcmi->Instance->CR |= (uint32_t)DCMI_CR_CROP;
+    hdcmi->State = HAL_DCMI_STATE_READY;
 
     return HAL_OK;
     }
@@ -284,30 +254,8 @@ extern "C" {
   //{{{
   HAL_StatusTypeDef HAL_DCMI_DisableCrop (DCMI_HandleTypeDef* hdcmi) {
 
-    /* Lock the DCMI peripheral state */
-    hdcmi->State = HAL_DCMI_STATE_BUSY;
-
-    /* Disable DCMI Crop feature */
     hdcmi->Instance->CR &= ~(uint32_t)DCMI_CR_CROP;
-
-    /* Change the DCMI state*/
     hdcmi->State = HAL_DCMI_STATE_READY;
-
-    return HAL_OK;
-    }
-  //}}}
-  //{{{
-  HAL_StatusTypeDef HAL_DCMI_EnableCrop (DCMI_HandleTypeDef* hdcmi) {
-
-    /* Lock the DCMI peripheral state */
-    hdcmi->State = HAL_DCMI_STATE_BUSY;
-
-    /* Enable DCMI Crop feature */
-    hdcmi->Instance->CR |= (uint32_t)DCMI_CR_CROP;
-
-    /* Change the DCMI state*/
-    hdcmi->State = HAL_DCMI_STATE_READY;
-
     return HAL_OK;
     }
   //}}}

@@ -344,7 +344,6 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
   if (Resolution == CAMERA_R480x272) {
     mt9d111Init (CAMERA_I2C_ADDRESS_MT9D111, CAMERA_R800x600);
     HAL_DCMI_ConfigCROP (dcmi, (800 - 480)/2, (600 - 272)/2, (480 * 2) - 1, 272 - 1);
-    HAL_DCMI_EnableCROP (dcmi);
     }
   else {
     mt9d111Init (CAMERA_I2C_ADDRESS_MT9D111, Resolution);
