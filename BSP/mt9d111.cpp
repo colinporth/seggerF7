@@ -389,13 +389,10 @@ void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x90B5); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // SFR GPIO reset
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x90B6); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // SFR GPIO suspend
   //}}}
-
-  BSP_CAMERA_Preview();
   }
 //}}}
-
 //{{{
-HAL_StatusTypeDef dcmiInit (DCMI_HandleTypeDef* hdcmi) {
+void dcmiInit (DCMI_HandleTypeDef* hdcmi) {
 
   // Configures the HS, VS, DE and PC polarity
   hdcmi->Instance->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  | DCMI_CR_EDM_0 |
@@ -411,11 +408,10 @@ HAL_StatusTypeDef dcmiInit (DCMI_HandleTypeDef* hdcmi) {
 
   // Enable Error and Overrun interrupts
   __HAL_DCMI_ENABLE_IT (hdcmi, DCMI_IT_ERR | DCMI_IT_OVR);
-  return HAL_OK;
   }
 //}}}
 //{{{
-HAL_StatusTypeDef dcmiStart (DCMI_HandleTypeDef* hdcmi, uint32_t DCMI_Mode, uint32_t pData, uint32_t Length) {
+void dcmiStart (DCMI_HandleTypeDef* hdcmi, uint32_t DCMI_Mode, uint32_t pData, uint32_t Length) {
 
   // Enable DCMI by setting DCMIEN bit
   __HAL_DCMI_ENABLE (hdcmi);
@@ -460,8 +456,6 @@ HAL_StatusTypeDef dcmiStart (DCMI_HandleTypeDef* hdcmi, uint32_t DCMI_Mode, uint
 
   // Enable Capture
   hdcmi->Instance->CR |= DCMI_CR_CAPTURE;
-
-  return HAL_OK;
   }
 //}}}
 //{{{
@@ -505,16 +499,15 @@ uint32_t BSP_CAMERA_Init (cLcd* lcd, uint32_t Resolution) {
   dcmiInit (dcmi);
 
   // 480x272 uses cropped 800x600
-  if (Resolution == CAMERA_R480x272) {
-    mt9d111Init (CAMERA_I2C_ADDRESS_MT9D111, CAMERA_R800x600);
-    dcmiConfigCrop (dcmi, (800 - 480)/2, (600 - 272)/2, (480 * 2) - 1, 272 - 1);
-    }
-  else {
-    mt9d111Init (CAMERA_I2C_ADDRESS_MT9D111, Resolution);
-    dcmiDisableCrop (dcmi);
-    }
+  mt9d111Init (CAMERA_I2C_ADDRESS_MT9D111, (Resolution == CAMERA_R480x272) ? CAMERA_R800x600 : Resolution);
 
+  if (Resolution == CAMERA_R480x272)
+    dcmiConfigCrop (dcmi, (800 - 480)/2, (600 - 272)/2, (480 * 2) - 1, 272 - 1);
+  else
+    dcmiDisableCrop (dcmi);
   cameraCurrentResolution = Resolution;
+
+  BSP_CAMERA_Preview();
 
   return readBack;
   }

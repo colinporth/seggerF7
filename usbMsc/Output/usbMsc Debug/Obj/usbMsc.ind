@@ -10,7 +10,7 @@
 "Output/usbMsc Debug/Obj/stm32746g_discovery_ts.o"
 "Output/usbMsc Debug/Obj/ft5336.o"
 "Output/usbMsc Debug/Obj/stm32746g_lcd.o"
-"Output/usbMsc Debug/Obj/stm32746g_mt9d111.o"
+"Output/usbMsc Debug/Obj/mt9d111.o"
 "Output/usbMsc Debug/Obj/stm32f7xx_ll_fmc.o"
 "Output/usbMsc Debug/Obj/stm32f7xx_ll_usb.o"
 "Output/usbMsc Debug/Obj/stm32f7xx_hal.o"
