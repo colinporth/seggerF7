@@ -12,12 +12,11 @@
 #define CAMERA_QQVGA_RES_Y   120
 
 DCMI_HandleTypeDef hDcmiHandler;
+void DCMI_IRQHandler() { HAL_DCMI_IRQHandler (&hDcmiHandler); }
+void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (hDcmiHandler.DMA_Handle); }
 
 static DMA_HandleTypeDef dmaHandler;
 static uint32_t cameraCurrentResolution;
-
-void DCMI_IRQHandler() { HAL_DCMI_IRQHandler (&hDcmiHandler); }
-void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (hDcmiHandler.DMA_Handle); }
 
 //{{{
 static void gpioIrqInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
@@ -102,7 +101,7 @@ static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0x06, 0x0014); // VBLANK B = 20
   CAMERA_IO_Write16 (DeviceAddr, 0x20, 0x0300); // Read Mode B = 9:showBorder 8:overSized
 
-  //  PLL - M=18,N=1,P=2   (24mhz/(N+1))*M / 2*(P+1) = 32mhz
+  // PLL - M=18,N=1,P=2 - (24mhz/(N+1))*M / 2*(P+1) = 36mhz
   CAMERA_IO_Write16 (DeviceAddr, 0x66, 0x1201); // PLLControl1 -    M:N
   CAMERA_IO_Write16 (DeviceAddr, 0x67, 0x0502); // PLLControl2 - 0x05:P
   CAMERA_IO_Write16 (DeviceAddr, 0x65, 0xA000); // Clock CNTRL - PLL ON
@@ -113,42 +112,8 @@ static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0xF0, 1);
   CAMERA_IO_Write16 (DeviceAddr, 0x97, 0x22); // outputFormat - RGB565, swap odd even
 
-  //{{{  sequencer
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA122); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // Enter Preview: Auto Exposure = 1
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA123); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Enter Preview: Flicker Detection = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA124); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // Enter Preview: Auto White Balance = 1
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA125); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Enter Preview: Auto Focus = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA126); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // Enter Preview: Histogram = 1
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA127); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Enter Preview: Strobe Control  = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA128); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Enter Preview: Skip Control = 0
-
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA129); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x03); // In Preview: Auto Exposure = 3
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12A); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02); // In Preview: Flicker Detection = 2
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x03); // In Preview: Auto White Balance = 3
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12C); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // In Preview: Auto Focus = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x03); // In Preview: Histogram  = 3
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12E); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // In Preview: Strobe Control = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12F); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // In Preview: Skip Control = 0
-
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA130); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x04); // Exit Preview: Auto Exposure = 4
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA131); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Exit Preview: Flicker Detection = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA132); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // Exit Preview: Auto White Balance = 1
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA133); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Exit Preview: Auto Focus = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA134); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // Exit Preview: Histogram = 1
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA135); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Exit Preview: Strobe Control = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA136); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Exit Preview: Skip Control = 0
-
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA137); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Auto Exposure = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA138); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Flicker Detection = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA139); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Auto White Balance  = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA13A); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Auto Focus = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA13B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Histogram = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA13C); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Strobe Control = 0
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA13D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Skip Control = 0
-  //}}}
-  //{{{  preview A, capture B params
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x270B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x0030); // mode_config = disable jpeg A,B
-
+  //{{{  preview A, capture B params
   //{{{  preview A
   /*
   ; Max Frame Time: 33.3333 msec
@@ -286,6 +251,39 @@ static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
   HAL_Delay (100);
   //}}}
 
+  //{{{  sequencer
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA122); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // EnterPreview: Auto Exposure = 1
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA123); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // EnterPreview: Flicker Detection = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA124); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // EnterPreview: Auto White Balance = 1
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA125); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // EnterPreview: Auto Focus = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA126); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // EnterPreview: Histogram = 1
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA127); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // EnterPreview: Strobe Control  = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA128); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // EnterPreview: Skip Control = 0
+
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA129); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x03); // InPreview: Auto Exposure = 3
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12A); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02); // InPreview: Flicker Detection = 2
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x03); // InPreview: Auto White Balance = 3
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12C); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // InPreview: Auto Focus = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x03); // InPreview: Histogram  = 3
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12E); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // InPreview: Strobe Control = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA12F); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // InPreview: Skip Control = 0
+
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA130); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x04); // ExitPreview: Auto Exposure = 4
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA131); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // ExitPreview: Flicker Detection = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA132); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // ExitPreview: Auto White Balance = 1
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA133); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // ExitPreview: Auto Focus = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA134); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // ExitPreview: Histogram = 1
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA135); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // ExitPreview: Strobe Control = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA136); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // ExitPreview: Skip Control = 0
+
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA137); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Auto Exposure = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA138); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Flicker Detection = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA139); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Auto White Balance  = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA13A); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Auto Focus = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA13B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Histogram = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA13C); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Strobe Control = 0
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA13D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Skip Control = 0
+  //}}}
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x06); // Sequencer Refresh Mode
   HAL_Delay (200);
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x05); // Sequencer Refresh
@@ -315,13 +313,8 @@ static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x90B5); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // SFR GPIO reset
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x90B6); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // SFR GPIO suspend
   //}}}
-  // use preview A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA120); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Sequencer.params.mode - none
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // Sequencer goto preview A - 800x600
 
-  // use capture B
-  //CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA120); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02); // Sequencer.params.mode - capture video
-  //CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
+  BSP_CAMERA_Preview();
   }
 //}}}
 
@@ -394,11 +387,33 @@ uint32_t BSP_CAMERA_getYSize() {
 //}}}
 
 //{{{
-void BSP_CAMERA_ContinuousStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff,
+void BSP_CAMERA_Start (uint8_t* buff, int continuous) {
+
+  HAL_DCMI_Start_DMA (&hDcmiHandler,
+                      continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT,
+                      (uint32_t)buff,
                       BSP_CAMERA_getXSize (cameraCurrentResolution) * BSP_CAMERA_getYSize (cameraCurrentResolution) / 2);
   }
 //}}}
+//{{{
+void BSP_CAMERA_Preview() {
+  CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA120); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x00); // Sequencer.params.mode - none
+  CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA103); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x01); // Sequencer goto preview A - 800x600
+  }
+//}}}
+//{{{
+void BSP_CAMERA_Capture() {
+  // use capture B
+  CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA120); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x02); // Sequencer.params.mode - capture video
+  CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA103); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
+  }
+//}}}
+//{{{
+void BSP_CAMERA_Stop() {
+  HAL_DCMI_Stop (&hDcmiHandler);
+  }
+//}}}
+
 //{{{
 void BSP_CAMERA_setFocus (int value) {
 
@@ -421,21 +436,3 @@ void BSP_CAMERA_setFocus (int value) {
     }
   }
 //}}}
-
-//{{{
-void BSP_CAMERA_Stop() {
-  HAL_DCMI_Stop (&hDcmiHandler);
-  }
-//}}}
-
-//{{{
-void BSP_CAMERA_Preview() {
-  CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA120); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x00); // Sequencer.params.mode - none
-  CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA103); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x01); // Sequencer goto preview A - 800x600
-  }
-//}}}
-
-void HAL_DCMI_LineEventCallback (DCMI_HandleTypeDef* hdcmi) {}
-void HAL_DCMI_VsyncEventCallback (DCMI_HandleTypeDef* hdcmi) {}
-void HAL_DCMI_FrameEventCallback (DCMI_HandleTypeDef* hdcmi) {}
-void HAL_DCMI_ErrorCallback (DCMI_HandleTypeDef* hdcmi) {}

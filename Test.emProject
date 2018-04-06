@@ -285,7 +285,6 @@
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dcmi.h" />
       </folder>
-      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_dcmi.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_dma_ex.c" />
     </folder>
     <folder Name="rtt">

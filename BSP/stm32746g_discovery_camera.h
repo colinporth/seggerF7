@@ -31,12 +31,12 @@ uint32_t BSP_CAMERA_Init (uint32_t Resolution);
 uint32_t BSP_CAMERA_getXSize();
 uint32_t BSP_CAMERA_getYSize();
 
-void BSP_CAMERA_ContinuousStart (uint8_t* buff);
+void BSP_CAMERA_Start (uint8_t* buff, int continuous);
+void BSP_CAMERA_Preview();
+void BSP_CAMERA_Capture();
+void BSP_CAMERA_Stop();
 
 void BSP_CAMERA_setFocus (int value);
-void BSP_CAMERA_Preview();
-
-void BSP_CAMERA_Stop();
 
 void BSP_CAMERA_LineEventCallback();
 void BSP_CAMERA_VsyncEventCallback();
