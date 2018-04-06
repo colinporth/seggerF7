@@ -2,19 +2,6 @@
 #include "stm32746g_discovery.h"
 #include "stm32746g_discovery_camera.h"
 //}}}
-//{{{  OV9655 Registers definition
-#define OV9655_BRIGHTNESS_LEVEL0        0xB0     /* Brightness level -2         */
-#define OV9655_BRIGHTNESS_LEVEL1        0x98     /* Brightness level -1         */
-#define OV9655_BRIGHTNESS_LEVEL2        0x00     /* Brightness level 0          */
-#define OV9655_BRIGHTNESS_LEVEL3        0x18     /* Brightness level +1         */
-#define OV9655_BRIGHTNESS_LEVEL4        0x30     /* Brightness level +2         */
-
-#define OV9655_CONTRAST_LEVEL0          0x30     /* Contrast level -2           */
-#define OV9655_CONTRAST_LEVEL1          0x38     /* Contrast level -1           */
-#define OV9655_CONTRAST_LEVEL2          0x40     /* Contrast level 0            */
-#define OV9655_CONTRAST_LEVEL3          0x50     /* Contrast level +1           */
-#define OV9655_CONTRAST_LEVEL4          0x60     /* Contrast level +2           */
-
 #define CAMERA_480x272_RES_X 480
 #define CAMERA_480x272_RES_Y 272
 #define CAMERA_VGA_RES_X     640
@@ -23,7 +10,6 @@
 #define CAMERA_QVGA_RES_Y    240
 #define CAMERA_QQVGA_RES_X   160
 #define CAMERA_QQVGA_RES_Y   120
-//}}}
 
 DCMI_HandleTypeDef hDcmiHandler;
 
@@ -34,7 +20,7 @@ void DCMI_IRQHandler() { HAL_DCMI_IRQHandler (&hDcmiHandler); }
 void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (hDcmiHandler.DMA_Handle); }
 
 //{{{
-static void mspInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
+static void gpioIrqInit (DCMI_HandleTypeDef* hdcmi, void* Params) {
 
   __HAL_RCC_DCMI_CLK_ENABLE();
   __HAL_RCC_DMA2_CLK_ENABLE();
@@ -338,30 +324,17 @@ static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
   //CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA103); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
   }
 //}}}
-//{{{
-static uint32_t getDmaLength (uint32_t resolution) {
-
-  switch (resolution) {
-    case CAMERA_R160x120:   return  0x2580;
-    case CAMERA_R320x240:   return  0x9600;
-    case CAMERA_R480x272:   return  0xFF00;
-    case CAMERA_R640x480:   return 0x25800;
-    case CAMERA_R800x600:   return 0x3A980;
-    case CAMERA_R1600x1200: return 0xEA600;
-    default: return 0;
-    }
-  }
-//}}}
 
 // external
 //{{{
 uint32_t BSP_CAMERA_Init (uint32_t Resolution) {
 
+  // init camera i2c, readBack id
   CAMERA_IO_Init();
   CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xF0, 0);
   uint32_t readBack = CAMERA_IO_Read16 (CAMERA_I2C_ADDRESS_MT9D111, 0);
 
-  mspInit (&hDcmiHandler, NULL);
+  gpioIrqInit (&hDcmiHandler, NULL);
 
   // config DCMI
   DCMI_HandleTypeDef* dcmi = &hDcmiHandler;
@@ -421,13 +394,9 @@ uint32_t BSP_CAMERA_getYSize() {
 //}}}
 
 //{{{
-void BSP_CAMERA_SnapshotStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_SNAPSHOT, (uint32_t)buff, getDmaLength (cameraCurrentResolution));
-  }
-//}}}
-//{{{
 void BSP_CAMERA_ContinuousStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff, getDmaLength (cameraCurrentResolution));
+  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff, 
+                      BSP_CAMERA_getXSize (cameraCurrentResolution) * BSP_CAMERA_getYSize (cameraCurrentResolution) / 2);
   }
 //}}}
 //{{{
