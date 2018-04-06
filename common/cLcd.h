@@ -61,7 +61,7 @@ public:
     //if ((BSP_CAMERA_getXSize() < BSP_LCD_GetXSize()) || (BSP_CAMERA_getYSize() < BSP_LCD_GetYSize()))
     //  BSP_LCD_Clear (LCD_COLOR_BLACK);
 
-    BSP_LCD_ConvertFrameYuv ((uint8_t*)src, BSP_CAMERA_getXSize(), BSP_CAMERA_getYSize(),
+    BSP_LCD_ConvertFrameCpu (src, BSP_CAMERA_getXSize(), BSP_CAMERA_getYSize(),
                              mFlip ? (uint8_t*)SDRAM_SCREEN1 : (uint8_t*)SDRAM_SCREEN0,
                              (BSP_LCD_GetXSize() - BSP_CAMERA_getXSize()) / 2, (BSP_LCD_GetYSize() - BSP_CAMERA_getYSize()) / 2,
                               BSP_LCD_GetXSize(), BSP_LCD_GetYSize());

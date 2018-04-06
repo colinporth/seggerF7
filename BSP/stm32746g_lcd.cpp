@@ -755,14 +755,10 @@ void BSP_LCD_ConvertFrame (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
   hDma2dHandler.LayerCfg[1].InputOffset = 0;
 
   dst += ((y * xsize) + x) * 4;
-  for (auto y = 0; y < srcYsize; y++) {
-    HAL_DMA2D_Init (&hDma2dHandler);
-    HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1);
-    HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, srcXsize, 1);
-    HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
-    src += srcXsize;
-    dst += xsize * 4;
-    }
+  HAL_DMA2D_Init (&hDma2dHandler);
+  HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1);
+  HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, srcXsize, srcYsize);
+  HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
   }
 //}}}
 //{{{
@@ -773,9 +769,9 @@ void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsiz
   for (auto y = 0; y < srcYsize; y++) {
     for (auto x = 0; x < srcXsize; x++) {
       uint16_t rgb = *src++;
-      *dst++ = (rgb & 0x001F) << 3;
-      *dst++ = (rgb & 0x07E0) >> 3;
-      *dst++ = (rgb & 0xF800) >> 8;
+      *dst++ = (rgb & 0x001F) << 3; // blue
+      *dst++ = (rgb & 0x07E0) >> 3; // green
+      *dst++ = (rgb & 0xF800) >> 8; //red
       *dst++ = 0xFF;
       }
     dst += (xsize - srcXsize) * 4;

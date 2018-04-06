@@ -27,30 +27,22 @@
 #endif
 //}}}
 uint32_t BSP_CAMERA_Init (uint32_t Resolution);
-void BSP_CAMERA_DeInit();
 
 uint32_t BSP_CAMERA_getXSize();
 uint32_t BSP_CAMERA_getYSize();
 
-void BSP_CAMERA_SnapshotStart (uint8_t* buff);
 void BSP_CAMERA_ContinuousStart (uint8_t* buff);
-void BSP_CAMERA_ContrastBrightness (uint32_t contrast_level, uint32_t brightness_level);
 
 void BSP_CAMERA_setFocus (int value);
+void BSP_CAMERA_Preview();
 
 void BSP_CAMERA_Stop();
-void BSP_CAMERA_Suspend();
-void BSP_CAMERA_Resume();
-void BSP_CAMERA_PowerUp();
-void BSP_CAMERA_PowerDown();
 
 void BSP_CAMERA_LineEventCallback();
 void BSP_CAMERA_VsyncEventCallback();
 void BSP_CAMERA_FrameEventCallback();
 void BSP_CAMERA_ErrorCallback();
 
-void BSP_CAMERA_MspInit (DCMI_HandleTypeDef* hdcmi, void* Params);
-void BSP_CAMERA_MspDeInit (DCMI_HandleTypeDef* hdcmi, void* Params);
 //{{{
 #ifdef __cplusplus
 }

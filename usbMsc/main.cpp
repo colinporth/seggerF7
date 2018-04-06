@@ -101,6 +101,9 @@ void cApp::run() {
     mLcd->drawDebug();
     mLcd->present();
 
+    if (BSP_PB_GetState (BUTTON_KEY))
+      BSP_CAMERA_Preview();
+
     if (false) {
     //if (hasSdChanged()) {
       //{{{  check num files

@@ -102,16 +102,16 @@ static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0x06, 0x0014); // VBLANK B = 20
   CAMERA_IO_Write16 (DeviceAddr, 0x20, 0x0300); // Read Mode B = 9:showBorder 8:overSized
 
-  //  PLL - M=16,N=1,P=2   (24mhz/(N+1))*M / 2*(P+1) = 32mhz
-  CAMERA_IO_Write16 (DeviceAddr, 0x66, 0x1001); // PLL Control 1 -    M:15:8 N:7:0
-  CAMERA_IO_Write16 (DeviceAddr, 0x67, 0x0502); // PLL Control 2 - 0x05:15:8 P:7:0
+  //  PLL - M=18,N=1,P=2   (24mhz/(N+1))*M / 2*(P+1) = 32mhz
+  CAMERA_IO_Write16 (DeviceAddr, 0x66, 0x1201); // PLLControl1 -    M:N
+  CAMERA_IO_Write16 (DeviceAddr, 0x67, 0x0502); // PLLControl2 - 0x05:P
   CAMERA_IO_Write16 (DeviceAddr, 0x65, 0xA000); // Clock CNTRL - PLL ON
   CAMERA_IO_Write16 (DeviceAddr, 0x65, 0x2000); // Clock CNTRL - USE PLL
   HAL_Delay (100);
 
   // page 1
   CAMERA_IO_Write16 (DeviceAddr, 0xF0, 1);
-  CAMERA_IO_Write16 (DeviceAddr, 0x97, 0x0002); // output format configuration luma:chroma swap
+  CAMERA_IO_Write16 (DeviceAddr, 0x97, 0x22); // outputFormat - RGB565, swap odd even
 
   //{{{  sequencer
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA122); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x01); // Enter Preview: Auto Exposure = 1
@@ -146,10 +146,10 @@ static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA13C); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Strobe Control = 0
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA13D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x00); // Capture: Skip Control = 0
   //}}}
-  //{{{  mode a,b params
+  //{{{  preview A, capture B params
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x270B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x0030); // mode_config = disable jpeg A,B
 
-  //{{{  preview MODE A
+  //{{{  preview A
   /*
   ; Max Frame Time: 33.3333 msec
   ; Max Frame Clocks: 1316666.6 clocks (39.500 MHz)
@@ -184,9 +184,9 @@ static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x272B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0);      // Crop_Y0 A = 0
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x272D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 600);    // Crop_Y1 A = 600
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA743); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02);   // Gamma and Contrast Settings A
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA77D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02);   // output format config A = 0x02 swap luma:chroma
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA77D); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x22);   // outputFormat A - RGB565, swap odd even
 
-  //{{{  capture MODE B
+  //{{{  capture
   /*
   ; Max Frame Time: 66.6667 msec
   ; Max Frame Clocks: 2633333.3 clocks (39.500 MHz)
@@ -221,7 +221,7 @@ static void mt9d111Init (uint16_t DeviceAddr, uint32_t resolution) {
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x2739); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0);      // Crop_Y0 B = 0
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0x273B); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 1200);   // Crop_Y1 B = 1200
   CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA744); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02);   // Gamma and Contrast Settings B
-  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA77E); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x02);   // output format config B = 0x02 swap luma:chroma
+  CAMERA_IO_Write16 (DeviceAddr, 0xC6, 0xA77E); CAMERA_IO_Write16 (DeviceAddr, 0xC8, 0x22);   // outputFormat B - RGB565, swap odd even
   //}}}
   //{{{  gamma tables
   // gamma table A 0 to 18
@@ -395,7 +395,7 @@ uint32_t BSP_CAMERA_getYSize() {
 
 //{{{
 void BSP_CAMERA_ContinuousStart (uint8_t* buff) {
-  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff, 
+  HAL_DCMI_Start_DMA (&hDcmiHandler, DCMI_MODE_CONTINUOUS, (uint32_t)buff,
                       BSP_CAMERA_getXSize (cameraCurrentResolution) * BSP_CAMERA_getYSize (cameraCurrentResolution) / 2);
   }
 //}}}
@@ -425,6 +425,13 @@ void BSP_CAMERA_setFocus (int value) {
 //{{{
 void BSP_CAMERA_Stop() {
   HAL_DCMI_Stop (&hDcmiHandler);
+  }
+//}}}
+
+//{{{
+void BSP_CAMERA_Preview() {
+  CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA120); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x00); // Sequencer.params.mode - none
+  CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA103); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x01); // Sequencer goto preview A - 800x600
   }
 //}}}
 
