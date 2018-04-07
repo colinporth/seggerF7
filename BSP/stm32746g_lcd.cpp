@@ -751,38 +751,41 @@ void BSP_LCD_ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t
   }
 //}}}
 //{{{
-void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint32_t* dst, uint16_t xsize, uint16_t ysize) {
+void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+                              uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
-  src += (((600/2) - ysize) / 2) * 800;
+  src += (((srcYsize/2) - ysize) / 2) * srcXsize;
 
 #ifdef RGB565
   auto dst565 = (uint16_t*)dst;
-  dst565 += (xsize - 400)/2;
+  dst565 += (xsize - srcXsize/2)/2;
   for (uint16_t y = 0; y < ysize; y++) {
-    for (auto x = 0; x < 400; x++) {
+    for (auto x = 0; x < srcXsize/2; x++) {
         *dst565++ = *src;
       src += 2;
       }
-    dst565 += xsize-400;
-    src += 800;
+    dst565 += xsize-(srcXsize/2);
+    src += srcXsize;
     }
 #else
-  dst += (xsize - 400)/2;
+  dst += (xsize - srcXsize/2))/2;
   for (uint16_t y = 0; y < ysize; y++) {
-    for (auto x = 0; x < 400; x++) {
+    for (auto x = 0; x < srcXsize/2); x++) {
       *dst++ = 0xFF000000 | ((*src & 0xF800) << 8) | ((*src & 0x07E0) << 5) | ((*src & 0x001F) << 3);
       src += 2;
       }
-    dst += xsize-400;
-    src += 800;
+    dst += xsize-(srcXsize/2);
+    src += srcXsize;
     }
 #endif
   }
 //}}}
 //{{{
-void BSP_LCD_ConvertFrameCpu1 (uint16_t* src, uint32_t* dst, uint16_t xsize, uint16_t ysize) {
+void BSP_LCD_ConvertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+                               uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
-  src += ((800-xsize)/2) + (((600 - ysize) / 2) * 800);
+  src += ((srcXsize-xsize)/2) + (((srcYsize - ysize) / 2) * srcXsize);
+
 #ifdef RGB565
   auto dst565 = (uint16_t*)dst;
   for (uint16_t y = 0; y < ysize; y++) {
@@ -796,7 +799,7 @@ void BSP_LCD_ConvertFrameCpu1 (uint16_t* src, uint32_t* dst, uint16_t xsize, uin
       *dst++ = 0xFF000000 | ((*src & 0xF800) << 8) | ((*src & 0x07E0) << 5) | ((*src & 0x001F) << 3);
       src++;
       }
-    src += 800-(xsize*2);
+    src += srcXsize - xsize;
     }
 #endif
   }

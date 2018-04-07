@@ -1,7 +1,7 @@
 // mt9d111.cpp
 //{{{  includes
 #include "stm32746g_discovery.h"
-#include "camera.h"
+#include "cCamera.h"
 //}}}
 
 #define i2cAddress 0x90
@@ -68,7 +68,7 @@ extern "C" {
 
     uint32_t misr = READ_REG (DCMI->MISR);
     if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
-      // Synchronization error interrupt
+      // synchronization error interrupt
       __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_ERRRI);
       dcmiHandler.DMA_Handle->XferAbortCallback = dcmiError;
       HAL_DMA_Abort_IT (dcmiHandler.DMA_Handle);
@@ -76,7 +76,7 @@ extern "C" {
       }
 
     if ((misr & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
-      // Overflow interrupt
+      // overflow interrupt
       __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_OVRRI);
       dcmiHandler.DMA_Handle->XferAbortCallback = dcmiError;
       HAL_DMA_Abort_IT (dcmiHandler.DMA_Handle);
@@ -84,7 +84,7 @@ extern "C" {
       }
 
     if ((misr & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
-      // frame interrupt, in snapshot mode, disable Vsync, Error and Overrun interrupts
+      // frame interrupt, snapshot mode disable Vsync, Error and Overrun interrupts
       if ((DCMI->CR & DCMI_CR_CM) == DCMI_MODE_SNAPSHOT)
         __HAL_DCMI_DISABLE_IT (&dcmiHandler, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
       __HAL_DCMI_DISABLE_IT (&dcmiHandler, DCMI_IT_FRAME);
