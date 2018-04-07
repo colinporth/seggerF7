@@ -87,7 +87,7 @@ void cApp::run() {
   //  }
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
-  cameraInit (mLcd, CAMERA_R800x600);
+  cameraInit (mLcd, CAMERA_800x600);
   cameraStart (SDRAM_USER, true);
 
   int lastCount = 0;

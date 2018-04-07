@@ -3,12 +3,11 @@
 #include "stm32746g_discovery.h"
 #include "../common/cLcd.h"
 
-#define CAMERA_R160x120                 0x00   /* QQVGA Resolution                     */
-#define CAMERA_R320x240                 0x01   /* QVGA Resolution                      */
-#define CAMERA_R480x272                 0x02   /* 480x272 Resolution                   */
-#define CAMERA_R640x480                 0x03   /* VGA Resolution                       */
-#define CAMERA_R800x600                 0x04   /* VGA Resolution                       */
-#define CAMERA_R1600x1200               0x05   /* VGA Resolution                       */
+#define CAMERA_160x120    0x00
+#define CAMERA_320x240    0x01
+#define CAMERA_640x480    0x02
+#define CAMERA_800x600    0x03
+#define CAMERA_1600x1200  0x04
 
 void cameraInit (cLcd* lcd, uint32_t resolution);
 

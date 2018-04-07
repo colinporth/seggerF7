@@ -478,7 +478,7 @@ void cameraInit (cLcd* lcd, uint32_t resolution) {
   mt9d111Init (resolution);
   cameraCurrentResolution = resolution;
 
-  cameraPreview();
+  cameraCapture();
   }
 //}}}
 
@@ -486,12 +486,11 @@ void cameraInit (cLcd* lcd, uint32_t resolution) {
 uint32_t cameraGetXSize() {
 
   switch (cameraCurrentResolution) {
-    case CAMERA_R160x120: return 160;
-    case CAMERA_R320x240: return 320;
-    case CAMERA_R480x272: return 480;
-    case CAMERA_R640x480: return 640;
-    case CAMERA_R800x600: return 800;
-    case CAMERA_R1600x1200: return 1600;
+    case CAMERA_160x120: return 160;
+    case CAMERA_320x240: return 320;
+    case CAMERA_640x480: return 640;
+    case CAMERA_800x600: return 800;
+    case CAMERA_1600x1200: return 1600;
     default: return 0;
     }
   }
@@ -500,12 +499,11 @@ uint32_t cameraGetXSize() {
 uint32_t cameraGetYSize() {
 
   switch (cameraCurrentResolution) {
-    case CAMERA_R160x120: return 120;
-    case CAMERA_R320x240: return 240;
-    case CAMERA_R480x272: return 272;
-    case CAMERA_R640x480: return 280;
-    case CAMERA_R800x600: return 600;
-    case CAMERA_R1600x1200: return 1200;
+    case CAMERA_160x120: return 120;
+    case CAMERA_320x240: return 240;
+    case CAMERA_640x480: return 280;
+    case CAMERA_800x600: return 600;
+    case CAMERA_1600x1200: return 1200;
     default: return 0;
     }
   }
