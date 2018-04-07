@@ -7,64 +7,62 @@
 #define i2cAddress 0x90
 
 DCMI_HandleTypeDef dcmiHandler;
-DMA_HandleTypeDef dmaHandler;
-uint32_t cameraCurrentResolution;
 cLcd* lcdPtr = nullptr;
 
-extern "C" {
-  //{{{
-  void dcmiDmaXferComplete (DMA_HandleTypeDef* dma) {
+//{{{
+void dcmiDmaXferComplete (DMA_HandleTypeDef* dma) {
 
-    DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)dma)->Parent;
+  DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)dma)->Parent;
 
-    if (dcmi->XferCount != 0) {
-      uint32_t tmp = (DMA2_Stream1->CR) & DMA_SxCR_CT;
-      if (((dcmi->XferCount % 2) == 0) && (tmp != 0)) {
-        // Update memory 0 address location
-        uint32_t tmp = DMA2_Stream1->M0AR;
-        HAL_DMAEx_ChangeMemory (dcmi->DMA_Handle, (tmp + (8*dcmi->XferSize)), MEMORY0);
-        dcmi->XferCount--;
-        }
-
-      else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0) {
-        // Update memory 1 address location
-        uint32_t tmp = DMA2_Stream1->M1AR;
-        HAL_DMAEx_ChangeMemory (dcmi->DMA_Handle, (tmp + (8*dcmi->XferSize)), MEMORY1);
-        dcmi->XferCount--;
-        }
-      }
-
-    else if ((DMA2_Stream1->CR & DMA_SxCR_CT) != 0)
+  if (dcmi->XferCount != 0) {
+    uint32_t tmp = (DMA2_Stream1->CR) & DMA_SxCR_CT;
+    if (((dcmi->XferCount % 2) == 0) && (tmp != 0)) {
       // Update memory 0 address location
-      DMA2_Stream1->M0AR = dcmi->pBuffPtr;
+      uint32_t tmp = DMA2_Stream1->M0AR;
+      HAL_DMAEx_ChangeMemory (dcmi->DMA_Handle, (tmp + (8*dcmi->XferSize)), MEMORY0);
+      dcmi->XferCount--;
+      }
 
     else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0) {
       // Update memory 1 address location
-      uint32_t tmp = dcmi->pBuffPtr;
-      DMA2_Stream1->M1AR = tmp + (4*dcmi->XferSize);
-      dcmi->XferCount = dcmi->XferTransferNumber;
+      uint32_t tmp = DMA2_Stream1->M1AR;
+      HAL_DMAEx_ChangeMemory (dcmi->DMA_Handle, (tmp + (8*dcmi->XferSize)), MEMORY1);
+      dcmi->XferCount--;
       }
-
-    // Check if the frame is transferred
-    if (dcmi->XferCount == dcmi->XferTransferNumber)
-      // Enable the Frame interrupt
-      __HAL_DCMI_ENABLE_IT (dcmi, DCMI_IT_FRAME);
     }
-  //}}}
-  //{{{
-  void dcmiDmaError (DMA_HandleTypeDef* dma) {
 
-    DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)dma)->Parent;
-    if (dcmi->DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
-      lcdPtr->debug (LCD_COLOR_RED, "DCMI DMAerror %x", dcmi->DMA_Handle->ErrorCode);
-    }
-  //}}}
-  //{{{
-  void dcmiError (DMA_HandleTypeDef* dma) {
-    lcdPtr->debug (LCD_COLOR_RED, "DCMIerror");
-    }
-  //}}}
+  else if ((DMA2_Stream1->CR & DMA_SxCR_CT) != 0)
+    // Update memory 0 address location
+    DMA2_Stream1->M0AR = dcmi->pBuffPtr;
 
+  else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0) {
+    // Update memory 1 address location
+    uint32_t tmp = dcmi->pBuffPtr;
+    DMA2_Stream1->M1AR = tmp + (4*dcmi->XferSize);
+    dcmi->XferCount = dcmi->XferTransferNumber;
+    }
+
+  // Check if the frame is transferred
+  if (dcmi->XferCount == dcmi->XferTransferNumber)
+    // Enable the Frame interrupt
+    __HAL_DCMI_ENABLE_IT (dcmi, DCMI_IT_FRAME);
+  }
+//}}}
+//{{{
+void dcmiDmaError (DMA_HandleTypeDef* dma) {
+
+  DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)dma)->Parent;
+  if (dcmi->DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
+    lcdPtr->debug (LCD_COLOR_RED, "DCMI DMAerror %x", dcmi->DMA_Handle->ErrorCode);
+  }
+//}}}
+//{{{
+void dcmiError (DMA_HandleTypeDef* dma) {
+  lcdPtr->debug (LCD_COLOR_RED, "DCMIerror");
+  }
+//}}}
+
+extern "C" {
   //{{{
   void DCMI_IRQHandler() {
 
@@ -74,6 +72,7 @@ extern "C" {
       __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_ERRRI);
       dcmiHandler.DMA_Handle->XferAbortCallback = dcmiError;
       HAL_DMA_Abort_IT (dcmiHandler.DMA_Handle);
+      lcdPtr->debug (LCD_COLOR_RED, "syncIrq");
       }
 
     if ((misr & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
@@ -81,6 +80,7 @@ extern "C" {
       __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_OVRRI);
       dcmiHandler.DMA_Handle->XferAbortCallback = dcmiError;
       HAL_DMA_Abort_IT (dcmiHandler.DMA_Handle);
+      lcdPtr->debug (LCD_COLOR_RED, "overflowIrq");
       }
 
     if ((misr & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
@@ -89,15 +89,107 @@ extern "C" {
         __HAL_DCMI_DISABLE_IT (&dcmiHandler, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
       __HAL_DCMI_DISABLE_IT (&dcmiHandler, DCMI_IT_FRAME);
       __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_FRAMERI);
-      lcdPtr->debug (LCD_COLOR_GREEN, "frameIrq");
+      //lcdPtr->debug (LCD_COLOR_GREEN, "frameIrq");
       }
     }
   //}}}
   void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (dcmiHandler.DMA_Handle); }
   }
 
+// public
 //{{{
-void mt9d111Init (uint32_t resolution) {
+void cCamera::init (cLcd* lcd, uint32_t resolution) {
+
+  lcdPtr = lcd;
+
+  // init camera i2c, readBack id
+  CAMERA_IO_Init();
+  CAMERA_IO_Write16 (i2cAddress, 0xF0, 0);
+  lcdPtr->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (i2cAddress, 0));
+
+  dcmiInit (&dcmiHandler);
+  mt9d111Init (resolution);
+  cameraCurrentResolution = resolution;
+
+  //cameraCapture();
+  }
+//}}}
+
+//{{{
+uint32_t cCamera::getXSize() {
+
+  switch (cameraCurrentResolution) {
+    case CAMERA_160x120: return 160;
+    case CAMERA_320x240: return 320;
+    case CAMERA_640x480: return 640;
+    case CAMERA_800x600: return 800;
+    case CAMERA_1600x1200: return 1600;
+    default: return 0;
+    }
+  }
+//}}}
+//{{{
+uint32_t cCamera::getYSize() {
+
+  switch (cameraCurrentResolution) {
+    case CAMERA_160x120: return 120;
+    case CAMERA_320x240: return 240;
+    case CAMERA_640x480: return 280;
+    case CAMERA_800x600: return 600;
+    case CAMERA_1600x1200: return 1200;
+    default: return 0;
+    }
+  }
+//}}}
+
+//{{{
+void cCamera::setFocus (int value) {
+
+  CAMERA_IO_Write16 (i2cAddress, 0xF0, 1);
+
+  if (value <= 1) {
+    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9071); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // SFR GPIO data b1:0 = 0 - disable GPIO1
+    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9081); CAMERA_IO_Write16 (i2cAddress, 0xC8, 255);  // SFR GPIO wg_t00 = 255 initial off
+    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9083); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0);    // SFR GPIO wg_t10 = 0 no on
+    }
+
+  else {
+    if (value > 254)
+      value = 254;
+
+    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9071); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02);        // SFR GPIO data b1:0 = enable GPIO1
+    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9081); CAMERA_IO_Write16 (i2cAddress, 0xC8, 255 - value); // SFR GPIO wg_t00 pwm off
+    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9083); CAMERA_IO_Write16 (i2cAddress, 0xC8, value);       // SFR GPIO wg_t10 pwm on
+    }
+  }
+//}}}
+
+//{{{
+void cCamera::start (uint32_t buffer, bool continuous) {
+
+  dcmiStart (&dcmiHandler, continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT, buffer, getXSize()*getYSize()/2);
+  }
+//}}}
+//{{{
+void cCamera::preview() {
+
+  lcdPtr->debug (LCD_COLOR_YELLOW, "preview");
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Sequencer.params.mode - none
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // Sequencer goto preview A - 800x600
+  }
+//}}}
+//{{{
+void cCamera::capture() {
+
+  lcdPtr->debug (LCD_COLOR_YELLOW, "capture");
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
+  }
+//}}}
+
+// private
+//{{{
+void cCamera::mt9d111Init (uint32_t resolution) {
 
   //  soft reset
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Bypass the PLL, R0x65:0 = 0xA000,
@@ -329,7 +421,7 @@ void mt9d111Init (uint32_t resolution) {
   }
 //}}}
 //{{{
-void dcmiInit (DCMI_HandleTypeDef* dcmi) {
+void cCamera::dcmiInit (DCMI_HandleTypeDef* dcmi) {
 
   //{{{  config clocks
   __HAL_RCC_DCMI_CLK_ENABLE();
@@ -417,7 +509,7 @@ void dcmiInit (DCMI_HandleTypeDef* dcmi) {
   }
 //}}}
 //{{{
-void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length) {
+void cCamera::dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length) {
 
   // enable DCMI by setting DCMIEN bit
   __HAL_DCMI_ENABLE (dcmi);
@@ -461,94 +553,5 @@ void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uin
 
   // enable capture
   DCMI->CR |= DCMI_CR_CAPTURE;
-  }
-//}}}
-
-// external
-//{{{
-void cameraInit (cLcd* lcd, uint32_t resolution) {
-
-  lcdPtr = lcd;
-
-  // init camera i2c, readBack id
-  CAMERA_IO_Init();
-  CAMERA_IO_Write16 (i2cAddress, 0xF0, 0);
-  lcdPtr->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (i2cAddress, 0));
-
-  dcmiInit (&dcmiHandler);
-  mt9d111Init (resolution);
-  cameraCurrentResolution = resolution;
-
-  cameraPreview();
-  }
-//}}}
-
-//{{{
-uint32_t cameraGetXSize() {
-
-  switch (cameraCurrentResolution) {
-    case CAMERA_160x120: return 160;
-    case CAMERA_320x240: return 320;
-    case CAMERA_640x480: return 640;
-    case CAMERA_800x600: return 800;
-    case CAMERA_1600x1200: return 1600;
-    default: return 0;
-    }
-  }
-//}}}
-//{{{
-uint32_t cameraGetYSize() {
-
-  switch (cameraCurrentResolution) {
-    case CAMERA_160x120: return 120;
-    case CAMERA_320x240: return 240;
-    case CAMERA_640x480: return 280;
-    case CAMERA_800x600: return 600;
-    case CAMERA_1600x1200: return 1200;
-    default: return 0;
-    }
-  }
-//}}}
-
-//{{{
-void cameraStart (uint32_t buffer, bool continuous) {
-
-  dcmiStart (&dcmiHandler, continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT,
-             buffer, cameraGetXSize() * cameraGetYSize() / 2);
-  }
-//}}}
-//{{{
-void cameraPreview() {
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Sequencer.params.mode - none
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // Sequencer goto preview A - 800x600
-  }
-//}}}
-//{{{
-void cameraCapture() {
-  // use capture B
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
-  }
-//}}}
-
-//{{{
-void cameraSetFocus (int value) {
-
-  CAMERA_IO_Write16 (i2cAddress, 0xF0, 1);
-
-  if (value <= 1) {
-    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9071); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // SFR GPIO data b1:0 = 0 - disable GPIO1
-    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9081); CAMERA_IO_Write16 (i2cAddress, 0xC8, 255);  // SFR GPIO wg_t00 = 255 initial off
-    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9083); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0);    // SFR GPIO wg_t10 = 0 no on
-    }
-
-  else {
-    if (value > 254)
-      value = 254;
-
-    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9071); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02);        // SFR GPIO data b1:0 = enable GPIO1
-    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9081); CAMERA_IO_Write16 (i2cAddress, 0xC8, 255 - value); // SFR GPIO wg_t00 pwm off
-    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x9083); CAMERA_IO_Write16 (i2cAddress, 0xC8, value);       // SFR GPIO wg_t10 pwm on
-    }
   }
 //}}}

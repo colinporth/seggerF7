@@ -9,13 +9,24 @@
 #define CAMERA_800x600    0x03
 #define CAMERA_1600x1200  0x04
 
-void cameraInit (cLcd* lcd, uint32_t resolution);
+class cCamera {
+public:
+  void init (cLcd* lcd, uint32_t resolution);
 
-uint32_t cameraGetXSize();
-uint32_t cameraGetYSize();
+  uint32_t getXSize();
+  uint32_t getYSize();
 
-void cameraStart (uint32_t buffer, bool continuous);
-void cameraPreview();
-void cameraCapture();
+  void setFocus (int value);
 
-void cameraSetFocus (int value);
+  void start (uint32_t buffer, bool continuous);
+  void preview();
+  void capture();
+
+private:
+  DMA_HandleTypeDef dmaHandler;
+  uint32_t cameraCurrentResolution;
+
+  void mt9d111Init (uint32_t resolution);
+  void dcmiInit (DCMI_HandleTypeDef* dcmi);
+  void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length);
+  };

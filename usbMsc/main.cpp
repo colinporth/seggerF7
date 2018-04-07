@@ -16,6 +16,7 @@ const char* kVersion = "USB Msc/Cam 7/4/18";
 const char kSdPath[40] = "0:/";
 
 int focus = 0;
+cCamera camera;
 
 //{{{
 class cApp : public cTouch {
@@ -87,8 +88,8 @@ void cApp::run() {
   //  }
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
-  cameraInit (mLcd, CAMERA_800x600);
-  cameraStart (SDRAM_USER, true);
+  camera.init (mLcd, CAMERA_800x600);
+  camera.start (SDRAM_USER, true);
 
   int lastCount = 0;
   while (true) {
@@ -151,7 +152,7 @@ void cApp::onMove (int x, int y, int z) {
       focus = 0;
     else if (focus > 254)
       focus = 254;
-    cameraSetFocus (focus);
+    camera.setFocus (focus);
     mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d %d", x, y, z, focus);
     }
   }
