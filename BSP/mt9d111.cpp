@@ -68,22 +68,22 @@ extern "C" {
   //{{{
   void DCMI_IRQHandler() {
 
-    uint32_t isr_value = READ_REG (DCMI->MISR);
-    if ((isr_value & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
+    uint32_t misr = READ_REG (DCMI->MISR);
+    if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
       // Synchronization error interrupt
       __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_ERRRI);
       dcmiHandler.DMA_Handle->XferAbortCallback = dcmiError;
       HAL_DMA_Abort_IT (dcmiHandler.DMA_Handle);
       }
 
-    if ((isr_value & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
+    if ((misr & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
       // Overflow interrupt
       __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_OVRRI);
       dcmiHandler.DMA_Handle->XferAbortCallback = dcmiError;
       HAL_DMA_Abort_IT (dcmiHandler.DMA_Handle);
       }
 
-    if ((isr_value & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
+    if ((misr & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
       // frame interrupt, in snapshot mode, disable Vsync, Error and Overrun interrupts
       if ((DCMI->CR & DCMI_CR_CM) == DCMI_MODE_SNAPSHOT)
         __HAL_DCMI_DISABLE_IT (&dcmiHandler, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
@@ -128,29 +128,27 @@ void mt9d111Init (uint32_t resolution) {
   CAMERA_IO_Write16 (i2cAddress, 0x97, 0x22); // outputFormat - RGB565, swap odd even
 
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x270B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0030); // mode_config = disable jpeg A,B
-  //{{{  preview A, capture B params
   //{{{  preview A
-  /*
-  ; Max Frame Time: 33.3333 msec
-  ; Max Frame Clocks: 1316666.6 clocks (39.500 MHz)
-  ; No. of ADCs: 1
-  ; Skip Mode: 1x cols, 1x rows, Bin Mode: Yes
-  ; Active Sensor Columns: 808 pixels / 1616 clocks
-  ; Active Sensor Rows: 608 rows
-  ; Horiz Blanking: 254 pixels / 508 clocks
-  ; Vert Blanking: 11 rows
-  ; Extra Delay: 955 clocks
-  ;
-  ; Actual Frame Clocks: 1316666 clocks
-  ; Row Time: 53.772 usec / 2124 clocks
-  ; Frame time: 33.333316 msec
-  ; Frames per Sec: 30 fps
-  ;
-  ; Max Shutter Delay: 402
-  ; 50Hz Flicker Period: 185.97 lines
-  ; 60Hz Flicker Period: 154.97 lines
-  */
-  //}}}
+  // Max Frame Time: 33.3333 msec
+  // Max Frame Clocks: 1316666.6 clocks (39.500 MHz)
+  // No. of ADCs: 1
+  // Skip Mode: 1x cols, 1x rows, Bin Mode: Yes
+
+  // Active Sensor Columns: 808 pixels / 1616 clocks
+  // Active Sensor Rows: 608 rows
+  // Horiz Blanking: 254 pixels / 508 clocks
+  // Vert Blanking: 11 rows
+  // Extra Delay: 955 clocks
+  // Actual Frame Clocks: 1316666 clocks
+  // Row Time: 53.772 usec / 2124 clocks
+
+  // Frame time: 33.333316 msec
+  // Frames per Sec: 30 fps
+  // Max Shutter Delay: 402
+
+  // 50Hz Flicker Period: 185.97 lines
+  // 60Hz Flicker Period: 154.97 lines
+
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2703); CAMERA_IO_Write16 (i2cAddress, 0xC8, 800);    // Output Width A  = 800
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2705); CAMERA_IO_Write16 (i2cAddress, 0xC8, 600);    // Output Height A = 600
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x270F); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x001C); // Row Start A = 28
@@ -165,29 +163,28 @@ void mt9d111Init (uint32_t resolution) {
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x272D); CAMERA_IO_Write16 (i2cAddress, 0xC8, 600);    // Crop_Y1 A = 600
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA743); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02);   // Gamma and Contrast Settings A
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA77D); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x22);   // outputFormat A - RGB565, swap odd even
-
-  //{{{  capture
-  /*
-  ; Max Frame Time: 66.6667 msec
-  ; Max Frame Clocks: 2633333.3 clocks (39.500 MHz)
-  ; No. of ADCs: 2
-  ; Skip Mode: 1x cols, 1x rows, Bin Mode: No
-  ; Active Sensor Columns: 1608 pixels
-  ; Active Sensor Rows: 1208 rows
-  ; Horiz Blanking: 516 pixels
-  ; Vert Blanking: 31 rows
-  ; Extra Delay: 1697 clocks
-  ;
-  ; Actual Frame Clocks: 2633333 clocks
-  ; Row Time: 53.772 usec / 2124 clocks
-  ; Frame time: 66.666658 msec
-  ; Frames per Sec: 15 fps
-  ;
-  ; Max Shutter Delay: 1663
-  ; 50Hz Flicker Period: 185.97 lines
-  ; 60Hz Flicker Period: 154.97 lines
-  */
   //}}}
+  //{{{  capture B
+  // Max Frame Time: 66.6667 msec
+  // Max Frame Clocks: 2633333.3 clocks (39.500 MHz)
+  // No. of ADCs: 2
+  // Skip Mode: 1x cols, 1x rows, Bin Mode: No
+
+  // Active Sensor Columns: 1608 pixels
+  // Active Sensor Rows: 1208 rows
+  // Horiz Blanking: 516 pixels
+  // Vert Blanking: 31 rows
+  // Extra Delay: 1697 clocks
+  // Actual Frame Clocks: 2633333 clocks
+  // Row Time: 53.772 usec / 2124 clocks
+
+  // Frame time: 66.666658 msec
+  // Frames per Sec: 15 fps
+  // Max Shutter Delay: 1663
+
+  // 50Hz Flicker Period: 185.97 lines
+  // 60Hz Flicker Period: 154.97 lines
+
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2707); CAMERA_IO_Write16 (i2cAddress, 0xC8, 1600);   // Output Width B  = 1600
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2709); CAMERA_IO_Write16 (i2cAddress, 0xC8, 1200);   // Output Height B = 1200
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x271B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x001C); // Row Start B = 28
@@ -333,16 +330,7 @@ void mt9d111Init (uint32_t resolution) {
 //{{{
 void dcmiInit (DCMI_HandleTypeDef* dcmi) {
 
-  // config DCMI
-  dcmi->Instance = DCMI;
-  dcmi->Init.CaptureRate = DCMI_CR_ALL_FRAME;
-  dcmi->Init.HSPolarity = DCMI_HSPOLARITY_LOW;
-  dcmi->Init.VSPolarity = DCMI_HSPOLARITY_LOW;
-  dcmi->Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
-  dcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-  dcmi->Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
-
-  //{{{  cinfig clocks
+  //{{{  config clocks
   __HAL_RCC_DCMI_CLK_ENABLE();
   __HAL_RCC_DMA2_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -373,6 +361,15 @@ void dcmiInit (DCMI_HandleTypeDef* dcmi) {
   gpio_init_structure.Pin = GPIO_PIN_9 | GPIO_PIN_10  | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_14;
   HAL_GPIO_Init (GPIOH, &gpio_init_structure);
   //}}}
+
+  // config DCMI
+  dcmi->Instance = DCMI;
+  dcmi->Init.CaptureRate = DCMI_CR_ALL_FRAME;
+  dcmi->Init.HSPolarity = DCMI_HSPOLARITY_LOW;
+  dcmi->Init.VSPolarity = DCMI_HSPOLARITY_LOW;
+  dcmi->Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
+  dcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
+  dcmi->Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
 
   // Associate the initialized DMA handle to the DCMI handle
   dmaHandler.Init.Channel             = DMA_CHANNEL_1;
