@@ -12,7 +12,7 @@
 #include "stm32746g_discovery_sd.h"
 #include "stm32746g_discovery_camera.h"
 //}}}
-const char* kVersion = "USB Msc/Cam 6/4/18";
+const char* kVersion = "USB Msc/Cam 7/4/18";
 const char kSdPath[40] = "0:/";
 
 int focus = 0;
