@@ -94,7 +94,11 @@ void FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t 
 void FillBuffer (uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine, uint32_t color) {
 
   hDma2dHandler.Init.Mode = DMA2D_R2M;
-  hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
+  #ifdef RGB565
+    hDma2dHandler.Init.ColorMode = DMA2D_RGB565;
+  #else
+    hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
+  #endif
   hDma2dHandler.Init.OutputOffset = OffLine;
 
   HAL_DMA2D_Init (&hDma2dHandler);
@@ -202,7 +206,8 @@ void BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
   layer_cfg.WindowX1 = BSP_LCD_GetXSize();
   layer_cfg.WindowY0 = 0;
   layer_cfg.WindowY1 = BSP_LCD_GetYSize();
-  layer_cfg.PixelFormat = LTDC_PIXEL_FORMAT_ARGB8888;
+  layer_cfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
+  //layer_cfg.PixelFormat = LTDC_PIXEL_FORMAT_ARGB8888;
   layer_cfg.FBStartAdress = FB_Address;
   layer_cfg.Alpha = 255;
   layer_cfg.Alpha0 = 0;
@@ -307,7 +312,12 @@ void BSP_LCD_DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
   const uint16_t byteAlignedWidth = (width+7)/8;
   const uint16_t offset = 8*(byteAlignedWidth) - width-1;
   const uint8_t* fontChar = &Font16.mTable [(ascii-' ') * Font16.mHeight * byteAlignedWidth];
-  auto fbPtr = ((uint32_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress) + (y * BSP_LCD_GetXSize()) + x;
+
+  #ifdef RGB565
+    auto fbPtr = ((uint16_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress) + (y * BSP_LCD_GetXSize()) + x;
+  #else
+    auto fbPtr = ((uint32_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdress) + (y * BSP_LCD_GetXSize()) + x;
+  #endif
 
   for (auto fontLine = 0u; fontLine < Font16.mHeight; fontLine++) {
     auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
@@ -742,28 +752,53 @@ void BSP_LCD_ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t
 //{{{
 void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
-  for (uint16_t y = 0; y < 272; y++) {
+#ifdef RGB565
+  auto dst565 = (uint16_t*)dst;
+  for (uint16_t y = 0; y < ysize; y++) {
+    for (auto x = 0; x < 400; x++) {
+        *dst565++ = *src;
+      src += 2;
+      }
+      dst565 += xsize-400;
+    src += 800;
+    }
+#else
+  for (uint16_t y = 0; y < ysize; y++) {
     for (auto x = 0; x < 400; x++) {
       *dst++ = 0xFF000000 | ((*src & 0xF800) << 8) | ((*src & 0x07E0) << 5) | ((*src & 0x001F) << 3);
       src += 2;
       }
-    dst += 480-400;
+    dst += xsize-400;
     src += 800;
     }
+#endif
   }
 //}}}
 //{{{
 void BSP_LCD_ConvertFrameCpu1 (uint16_t* src, uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
+#ifdef RGB565
+  auto dst565 = (uint16_t*)dst;
   src += 200 + (75*800);
-  for (uint16_t y = 0; y < 272; y++) {
+  for (uint16_t y = 0; y < ysize; y++) {
+    for (auto x = 0; x < 400; x++) {
+        *dst565++ = *src;
+      src++;
+      }
+      dst565 += xsize-400;
+    src += 400;
+    }
+#else
+  src += 200 + (75*800);
+  for (uint16_t y = 0; y < ysize; y++) {
     for (auto x = 0; x < 400; x++) {
       *dst++ = 0xFF000000 | ((*src & 0xF800) << 8) | ((*src & 0x07E0) << 5) | ((*src & 0x001F) << 3);
       src++;
       }
-    dst += 480-400;
+    dst += xsize-400;
     src += 400;
     }
+#endif
   }
 //}}}
 //{{{
