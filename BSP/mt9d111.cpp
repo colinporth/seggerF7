@@ -6,38 +6,45 @@
 
 #define i2cAddress 0x90
 
-DCMI_HandleTypeDef dcmiHandler;
+DCMI_HandleTypeDef dcmiInfo;
 cLcd* lcdPtr = nullptr;
 
 //{{{
 void dcmiDmaXferComplete (DMA_HandleTypeDef* dma) {
 
-  if (dcmiHandler.XferCount > 2) {
-    if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmiHandler.XferCount % 2) == 0)) // Update M0AR for next frameChunk
-      DMA2_Stream1->M0AR += 8 * dcmiHandler.XferSize;
-    else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0) // Update M1AR for next frameChunk
-      DMA2_Stream1->M1AR += 8 * dcmiHandler.XferSize;
-    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiHandler.XferCount);
-    dcmiHandler.XferCount--;
+  if (dcmiInfo.XferCount > 2) {
+    // next frameChunk
+    if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmiInfo.XferCount % 2) == 0))
+      // Update M0AR for next frameChunk
+      DMA2_Stream1->M0AR += 8 * dcmiInfo.XferSize;
+    else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0) 
+      // Update M1AR for next frameChunk
+      DMA2_Stream1->M1AR += 8 * dcmiInfo.XferSize;
+    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
+    dcmiInfo.XferCount--;
     }
-  else if (DMA2_Stream1->CR & DMA_SxCR_CT) { // last but one, reset M0AR for next frame
-    DMA2_Stream1->M0AR = dcmiHandler.pBuffPtr;
-    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiHandler.XferCount);
-    dcmiHandler.XferCount--;
+
+  else if (DMA2_Stream1->CR & DMA_SxCR_CT) { 
+    // last chunk but one, reset M0AR for next frame
+    DMA2_Stream1->M0AR = dcmiInfo.pBuffPtr;
+    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
+    dcmiInfo.XferCount--;
     }
-  else { // last, reset M1AR for next frame
-    DMA2_Stream1->M1AR = dcmiHandler.pBuffPtr + (4 * dcmiHandler.XferSize);
-    __HAL_DCMI_ENABLE_IT (&dcmiHandler, DCMI_IT_FRAME);
-    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiHandler.XferCount);
-    dcmiHandler.XferCount = dcmiHandler.XferTransferNumber;
+
+  else { 
+    // last chunk, reset M1AR,XferCount for next frame
+    DMA2_Stream1->M1AR = dcmiInfo.pBuffPtr + (4 * dcmiInfo.XferSize);
+    __HAL_DCMI_ENABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
+    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
+    dcmiInfo.XferCount = dcmiInfo.XferTransferNumber;
     }
   }
 //}}}
 //{{{
 void dcmiDmaError (DMA_HandleTypeDef* dma) {
 
-  if (dcmiHandler.DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
-    lcdPtr->debug (LCD_COLOR_RED, "DCMI DMAerror %x", dcmiHandler.DMA_Handle->ErrorCode);
+  if (dcmiInfo.DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
+    lcdPtr->debug (LCD_COLOR_RED, "DCMI DMAerror %x", dcmiInfo.DMA_Handle->ErrorCode);
   }
 //}}}
 //{{{
@@ -54,31 +61,31 @@ extern "C" {
 
     if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
       // synchronization error interrupt
-      __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_ERRRI);
-      dcmiHandler.DMA_Handle->XferAbortCallback = dcmiError;
-      HAL_DMA_Abort_IT (dcmiHandler.DMA_Handle);
+      __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_ERRRI);
+      dcmiInfo.DMA_Handle->XferAbortCallback = dcmiError;
+      HAL_DMA_Abort_IT (dcmiInfo.DMA_Handle);
       lcdPtr->debug (LCD_COLOR_RED, "syncIrq");
       }
 
     if ((misr & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
       // overflow interrupt
-      __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_OVRRI);
-      dcmiHandler.DMA_Handle->XferAbortCallback = dcmiError;
-      HAL_DMA_Abort_IT (dcmiHandler.DMA_Handle);
+      __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_OVRRI);
+      dcmiInfo.DMA_Handle->XferAbortCallback = dcmiError;
+      HAL_DMA_Abort_IT (dcmiInfo.DMA_Handle);
       //lcdPtr->debug (LCD_COLOR_RED, "overflowIrq");
       }
 
     if ((misr & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
       // frame interrupt, snapshot mode disable Vsync, Error and Overrun interrupts
       if ((DCMI->CR & DCMI_CR_CM) == DCMI_MODE_SNAPSHOT)
-        __HAL_DCMI_DISABLE_IT (&dcmiHandler, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
-      __HAL_DCMI_DISABLE_IT (&dcmiHandler, DCMI_IT_FRAME);
-      __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_FRAMERI);
+        __HAL_DCMI_DISABLE_IT (&dcmiInfo, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
+      __HAL_DCMI_DISABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
+      __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_FRAMERI);
       lcdPtr->debug (LCD_COLOR_GREEN, "frameIrq");
       }
     }
   //}}}
-  void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (dcmiHandler.DMA_Handle); }
+  void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (dcmiInfo.DMA_Handle); }
   }
 
 // public
@@ -98,7 +105,7 @@ void cCamera::init (cLcd* lcd, bool useCapture) {
   mt9d111Init (useCapture);
 
   // startup dcmi
-  dcmiInit (&dcmiHandler);
+  dcmiInit (&dcmiInfo);
   }
 //}}}
 
@@ -127,7 +134,7 @@ void cCamera::setFocus (int value) {
 //{{{
 void cCamera::start (uint32_t buffer, bool continuous) {
 
-  dcmiStart (&dcmiHandler, continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT, buffer, getXsize()*getYsize()/2);
+  dcmiStart (&dcmiInfo, continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT, buffer, getXsize()*getYsize()/2);
   }
 //}}}
 //{{{

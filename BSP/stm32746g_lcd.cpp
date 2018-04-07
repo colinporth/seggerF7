@@ -759,24 +759,28 @@ void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsiz
 
 #ifdef RGB565
   auto dst565 = (uint16_t*)dst;
-  dst565 += (xsize - (srcXsize/srcScale)) / 2;
   for (uint16_t y = 0; y < ysize; y++) {
+    for (auto x = 0; x < (xsize - (srcXsize/srcScale)) / 2; x++)
+      *dst565++ = 0;
     for (auto x = 0; x < srcXsize/srcScale; x++) {
       *dst565++ = *src;
       src += srcScale;
       }
     src += srcXsize;
-    dst565 += xsize - (srcXsize/srcScale);
+    for (auto x = 0; x < (xsize - (srcXsize/srcScale)) / 2; x++)
+      *dst565++ = 0;
     }
 #else
-  dst += (xsize - srcXsize/2))/2;
   for (uint16_t y = 0; y < ysize; y++) {
+    for (auto x = 0; x < (xsize - (srcXsize/srcScale)) / 2; x++)
+      *dst++ = 0xFF000000;
     for (auto x = 0; x < srcXsize/2); x++) {
       *dst++ = 0xFF000000 | ((*src & 0xF800) << 8) | ((*src & 0x07E0) << 5) | ((*src & 0x001F) << 3);
       src += 2;
       }
-    dst += xsize-(srcXsize/2);
     src += srcXsize;
+    for (auto x = 0; x < (xsize - (srcXsize/srcScale)) / 2; x++)
+      *dst++ = 0xFF000000;
     }
 #endif
   }
