@@ -10,7 +10,7 @@
 
 #include "../common/cLcd.h"
 #include "stm32746g_discovery_sd.h"
-#include "stm32746g_discovery_camera.h"
+#include "camera.h"
 //}}}
 const char* kVersion = "USB Msc/Cam 7/4/18";
 const char kSdPath[40] = "0:/";
@@ -88,10 +88,10 @@ void cApp::run() {
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
   //mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (CAMERA_R800x600));
-  BSP_CAMERA_Init (mLcd, CAMERA_R480x272);
+  cameraInit (mLcd, CAMERA_R480x272);
   HAL_Delay (100);
 
-  BSP_CAMERA_Start ((uint8_t*)SDRAM_USER, true);
+  cameraStart ((uint8_t*)SDRAM_USER, true);
 
   int lastCount = 0;
   while (true) {
@@ -108,7 +108,7 @@ void cApp::run() {
     mLcd->present();
 
     if (BSP_PB_GetState (BUTTON_KEY)) {
-      BSP_CAMERA_Start ((uint8_t*)SDRAM_USER, false);
+      cameraStart ((uint8_t*)SDRAM_USER, false);
       gApp->getLcd()->debug (LCD_COLOR_CYAN, "grab");
       }
 
@@ -159,7 +159,7 @@ void cApp::onMove (int x, int y, int z) {
       focus = 0;
     else if (focus > 254)
       focus = 254;
-    BSP_CAMERA_setFocus (focus);
+    cameraSetFocus (focus);
     mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d %d", x, y, z, focus);
     }
   }

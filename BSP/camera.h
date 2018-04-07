@@ -1,3 +1,4 @@
+// camera.h
 #pragma once
 #include "stm32746g_discovery.h"
 #include "../common/cLcd.h"
@@ -9,13 +10,13 @@
 #define CAMERA_R800x600                 0x04   /* VGA Resolution                       */
 #define CAMERA_R1600x1200               0x05   /* VGA Resolution                       */
 
-uint32_t BSP_CAMERA_Init (cLcd* lcd, uint32_t Resolution);
+uint32_t cameraInit (cLcd* lcd, uint32_t Resolution);
 
-uint32_t BSP_CAMERA_getXSize();
-uint32_t BSP_CAMERA_getYSize();
+uint32_t cameraGetXSize();
+uint32_t cameraGetYSize();
 
-void BSP_CAMERA_Start (uint8_t* buff, int continuous);
-void BSP_CAMERA_Preview();
-void BSP_CAMERA_Capture();
+void cameraStart (uint8_t* buff, int continuous);
+void cameraPreview();
+void cameraCapture();
 
-void BSP_CAMERA_setFocus (int value);
+void cameraSetFocus (int value);

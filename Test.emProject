@@ -176,7 +176,7 @@
         <file file_name="../BSP/stm32746g_discovery_ts.h" />
         <file file_name="../BSP/stm32746g_lcd.h" />
         <file file_name="../BSP/ts.h" />
-        <file file_name="../BSP/stm32746g_discovery_camera.h" />
+        <file file_name="../BSP/camera.h" />
       </folder>
       <file file_name="../BSP/font16.c" />
       <file file_name="../BSP/stm32746g_discovery.c" />

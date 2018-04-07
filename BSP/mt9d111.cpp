@@ -1,7 +1,7 @@
 // mt9d111.cpp
 //{{{  includes
 #include "stm32746g_discovery.h"
-#include "stm32746g_discovery_camera.h"
+#include "camera.h"
 //}}}
 
 DCMI_HandleTypeDef dcmiHandler;
@@ -451,7 +451,7 @@ void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uin
     dcmi->XferTransferNumber = dcmi->XferCount;
 
     // start DMA multi buffer transfer
-    HAL_DMAEx_MultiBufferStart_IT (dcmi->DMA_Handle, (uint32_t)&dcmi->Instance->DR, 
+    HAL_DMAEx_MultiBufferStart_IT (dcmi->DMA_Handle, (uint32_t)&dcmi->Instance->DR,
                                    data, data + (4*dcmi->XferSize), dcmi->XferSize);
     }
 
@@ -462,7 +462,7 @@ void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uin
 
 // external
 //{{{
-uint32_t BSP_CAMERA_Init (cLcd* lcd, uint32_t Resolution) {
+uint32_t cameraInit (cLcd* lcd, uint32_t Resolution) {
 
   lcdPtr = lcd;
 
@@ -496,14 +496,14 @@ uint32_t BSP_CAMERA_Init (cLcd* lcd, uint32_t Resolution) {
     DCMI->CR &= ~(uint32_t)DCMI_CR_CROP;
   cameraCurrentResolution = Resolution;
 
-  BSP_CAMERA_Preview();
+  cameraPreview();
 
   return readBack;
   }
 //}}}
 
 //{{{
-uint32_t BSP_CAMERA_getXSize() {
+uint32_t cameraGetXSize() {
 
   switch (cameraCurrentResolution) {
     case CAMERA_R160x120: return 160;
@@ -517,7 +517,7 @@ uint32_t BSP_CAMERA_getXSize() {
   }
 //}}}
 //{{{
-uint32_t BSP_CAMERA_getYSize() {
+uint32_t cameraGetYSize() {
 
   switch (cameraCurrentResolution) {
     case CAMERA_R160x120: return 120;
@@ -532,20 +532,20 @@ uint32_t BSP_CAMERA_getYSize() {
 //}}}
 
 //{{{
-void BSP_CAMERA_Start (uint8_t* buff, int continuous) {
+void cameraStart (uint8_t* buff, int continuous) {
 
   dcmiStart (&dcmiHandler, continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT,
-             (uint32_t)buff, BSP_CAMERA_getXSize() * BSP_CAMERA_getYSize() / 2);
+             (uint32_t)buff, cameraGetXSize() * cameraGetYSize() / 2);
   }
 //}}}
 //{{{
-void BSP_CAMERA_Preview() {
+void cameraPreview() {
   CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA120); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x00); // Sequencer.params.mode - none
   CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA103); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x01); // Sequencer goto preview A - 800x600
   }
 //}}}
 //{{{
-void BSP_CAMERA_Capture() {
+void cameraCapture() {
   // use capture B
   CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA120); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x02); // Sequencer.params.mode - capture video
   CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC6, 0xA103); CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
@@ -553,7 +553,7 @@ void BSP_CAMERA_Capture() {
 //}}}
 
 //{{{
-void BSP_CAMERA_setFocus (int value) {
+void cameraSetFocus (int value) {
 
   CAMERA_IO_Write16 (CAMERA_I2C_ADDRESS_MT9D111, 0xF0, 1);
 
