@@ -92,7 +92,7 @@ extern "C" {
         __HAL_DCMI_DISABLE_IT (&dcmiHandler, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
       __HAL_DCMI_DISABLE_IT (&dcmiHandler, DCMI_IT_FRAME);
       __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_FRAMERI);
-      //lcdPtr->debug (LCD_COLOR_GREEN, "frameIrq");
+      lcdPtr->debug (LCD_COLOR_GREEN, "frameIrq");
       }
     }
   //}}}
@@ -101,47 +101,32 @@ extern "C" {
 
 // public
 //{{{
-void cCamera::init (cLcd* lcd, uint32_t resolution) {
+void cCamera::init (cLcd* lcd, bool useCapture) {
 
   lcdPtr = lcd;
+
+  gpioInit();
 
   // init camera i2c, readBack id
   CAMERA_IO_Init();
   CAMERA_IO_Write16 (i2cAddress, 0xF0, 0);
   lcdPtr->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (i2cAddress, 0));
 
-  (resolution == CAMERA_1600x1200) ? capture() : preview();
+  // init camera registers
+  mt9d111Init (useCapture);
+  if (useCapture) {
+    mXsize = 1600; 
+    mYsize = 1200;
+    capture();
+    }
+  else {
+    mXsize = 800;
+    mYsize = 600;
+    preview();
+    }
 
+  // startup dcmi
   dcmiInit (&dcmiHandler);
-  mt9d111Init (resolution);
-  cameraCurrentResolution = resolution;
-  }
-//}}}
-
-//{{{
-uint32_t cCamera::getXSize() {
-
-  switch (cameraCurrentResolution) {
-    case CAMERA_160x120: return 160;
-    case CAMERA_320x240: return 320;
-    case CAMERA_640x480: return 640;
-    case CAMERA_800x600: return 800;
-    case CAMERA_1600x1200: return 1600;
-    default: return 0;
-    }
-  }
-//}}}
-//{{{
-uint32_t cCamera::getYSize() {
-
-  switch (cameraCurrentResolution) {
-    case CAMERA_160x120: return 120;
-    case CAMERA_320x240: return 240;
-    case CAMERA_640x480: return 280;
-    case CAMERA_800x600: return 600;
-    case CAMERA_1600x1200: return 1200;
-    default: return 0;
-    }
   }
 //}}}
 
@@ -170,7 +155,7 @@ void cCamera::setFocus (int value) {
 //{{{
 void cCamera::start (uint32_t buffer, bool continuous) {
 
-  dcmiStart (&dcmiHandler, continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT, buffer, getXSize()*getYSize()/2);
+  dcmiStart (&dcmiHandler, continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT, buffer, getXsize()*getYsize()/2);
   }
 //}}}
 //{{{
@@ -191,6 +176,41 @@ void cCamera::capture() {
 //}}}
 
 // private
+//{{{
+void cCamera::gpioInit() {
+
+  //  config clocks
+  __HAL_RCC_DCMI_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+
+  //  config gpio alternate function
+  GPIO_InitTypeDef gpio_init_structure;
+  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
+  gpio_init_structure.Pull = GPIO_PULLUP;
+  gpio_init_structure.Speed = GPIO_SPEED_HIGH;
+  gpio_init_structure.Alternate = GPIO_AF13_DCMI;
+
+  gpio_init_structure.Pin = GPIO_PIN_4 | GPIO_PIN_6;
+  HAL_GPIO_Init (GPIOA, &gpio_init_structure);
+
+  gpio_init_structure.Pin = GPIO_PIN_3;
+  HAL_GPIO_Init (GPIOD, &gpio_init_structure);
+
+  gpio_init_structure.Pin = GPIO_PIN_5 | GPIO_PIN_6;
+  HAL_GPIO_Init (GPIOE, &gpio_init_structure);
+
+  gpio_init_structure.Pin = GPIO_PIN_9;
+  HAL_GPIO_Init (GPIOG, &gpio_init_structure);
+
+  gpio_init_structure.Pin = GPIO_PIN_9 | GPIO_PIN_10  | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_14;
+  HAL_GPIO_Init (GPIOH, &gpio_init_structure);
+  }
+//}}}
 //{{{
 void cCamera::mt9d111Init (uint32_t resolution) {
 
@@ -431,38 +451,6 @@ void cCamera::mt9d111Init (uint32_t resolution) {
 //}}}
 //{{{
 void cCamera::dcmiInit (DCMI_HandleTypeDef* dcmi) {
-
-  //{{{  config clocks
-  __HAL_RCC_DCMI_CLK_ENABLE();
-  __HAL_RCC_DMA2_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOE_CLK_ENABLE();
-  __HAL_RCC_GPIOG_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-  //}}}
-  //{{{  config gpio alternate function
-  GPIO_InitTypeDef gpio_init_structure;
-  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
-  gpio_init_structure.Pull = GPIO_PULLUP;
-  gpio_init_structure.Speed = GPIO_SPEED_HIGH;
-  gpio_init_structure.Alternate = GPIO_AF13_DCMI;
-
-  gpio_init_structure.Pin = GPIO_PIN_4 | GPIO_PIN_6;
-  HAL_GPIO_Init (GPIOA, &gpio_init_structure);
-
-  gpio_init_structure.Pin = GPIO_PIN_3;
-  HAL_GPIO_Init (GPIOD, &gpio_init_structure);
-
-  gpio_init_structure.Pin = GPIO_PIN_5 | GPIO_PIN_6;
-  HAL_GPIO_Init (GPIOE, &gpio_init_structure);
-
-  gpio_init_structure.Pin = GPIO_PIN_9;
-  HAL_GPIO_Init (GPIOG, &gpio_init_structure);
-
-  gpio_init_structure.Pin = GPIO_PIN_9 | GPIO_PIN_10  | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_14;
-  HAL_GPIO_Init (GPIOH, &gpio_init_structure);
-  //}}}
 
   // config DCMI
   dcmi->Instance = DCMI;

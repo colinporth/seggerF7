@@ -12,7 +12,6 @@
 #include "stm32746g_discovery_sd.h"
 #include "cCamera.h"
 //}}}
-const char* kVersion = "USB Msc/Cam 7/4/18";
 const char kSdPath[40] = "0:/";
 
 int focus = 0;
@@ -52,7 +51,6 @@ private:
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
-  bool mButton = false;
   int mFiles = 0;
 
   DWORD mVsn = 0;
@@ -69,18 +67,14 @@ extern "C" {
 //{{{
 void cApp::run() {
 
-  mButton = BSP_PB_GetState (BUTTON_KEY);
-
   // init lcd
   mLcd = new cLcd (16);
   mLcd->init();
-
+  //{{{  removed
   //mPs2 = new cPs2 (mLcd);
   //mPs2->initKeyboard();
-
-  mscInit (mLcd);
-  mscStart();
-
+  //mscInit (mLcd);
+  //mscStart();
   //if (f_mount ((FATFS*)malloc (sizeof (FATFS)), kSdPath, 0) == FR_OK) {
   //  char pathName[256] = "/";
   //  readDirectory (pathName);
@@ -88,36 +82,39 @@ void cApp::run() {
   //  }
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
-  bool use1600 = false; //mButton;
-  camera.init (mLcd, use1600 ? CAMERA_1600x1200 : CAMERA_800x600);
+  //}}}
+  bool useCapture = BSP_PB_GetState (BUTTON_KEY);
+  camera.init (mLcd, useCapture);
   camera.start (SDRAM_USER, true);
 
   int lastCount = 0;
   while (true) {
     pollTouch();
+    //{{{  removed
     //while (mPs2->hasChar()) {
     //  auto ch = mPs2->getChar();
     //  onKey (ch & 0xFF, ch & 0x100);
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
-    mLcd->startCam ((uint16_t*)SDRAM_USER, use1600?1600:800, use1600?1200:600, BSP_PB_GetState (BUTTON_KEY));
-    mLcd->drawTitle (kVersion);
+    //}}}
+    mLcd->startCam ((uint16_t*)SDRAM_USER, camera.getXsize(), camera.getYsize(), BSP_PB_GetState (BUTTON_KEY));
+    mLcd->drawTitle (useCapture ? "7/4/18 1600x1200" : "7/4/18 800x600");
     mLcd->drawDebug();
     mLcd->present();
-
-    if (false) {
+    //{{{  removed
     //if (hasSdChanged()) {
       //{{{  check num files
-      char pathName[256] = "/";
-      auto count = getCountFiles (pathName);
-      if (count != lastCount) {
-        f_getlabel (kSdPath, mLabel, &mVsn);
-        mLcd->debug (LCD_COLOR_WHITE, "Label <%s> - %d files", mLabel, count);
-        lastCount = count;
-        reportFree();
-        }
-      }
+      //char pathName[256] = "/";
+      //auto count = getCountFiles (pathName);
+      //if (count != lastCount) {
+        //f_getlabel (kSdPath, mLabel, &mVsn);
+        //mLcd->debug (LCD_COLOR_WHITE, "Label <%s> - %d files", mLabel, count);
+        //lastCount = count;
+        //reportFree();
+        //}
+      //}
       //}}}
+    //}}}
     }
   }
 //}}}
