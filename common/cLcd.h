@@ -44,9 +44,7 @@ public:
 
   //{{{
   void start() {
-
     BSP_LCD_Clear (LCD_COLOR_BLACK);
-
     }
   //}}}
   //{{{
@@ -56,11 +54,15 @@ public:
   //}}}
   //{{{
   void startCam (uint16_t* src, bool zoom) {
-    //BSP_LCD_ConvertFrame (src, mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0, BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+
     if (zoom)
-      BSP_LCD_ConvertFrameCpu1 (src, (uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
-    else
-      BSP_LCD_ConvertFrameCpu (src, (uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+      BSP_LCD_ConvertFrameCpu1 (src, getBuffer(), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+    else {
+      if (lastZoom[mFlip])
+        BSP_LCD_Clear (LCD_COLOR_BLACK);
+      BSP_LCD_ConvertFrameCpu (src, getBuffer(), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+      }
+    lastZoom[mFlip] = zoom;
     }
   //}}}
   //{{{
@@ -176,6 +178,7 @@ private:
   unsigned mDebugLine = 0;
   cDebugItem mLines[kDebugMaxLines];
   int mScroll = 0;
+  bool lastZoom[2] = {false, false};
   };
 
 //{{{

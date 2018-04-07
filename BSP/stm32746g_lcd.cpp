@@ -1,5 +1,6 @@
 // stm32746g_lcd.cpp
 //{{{  includes
+#include "../common/system.h"
 #include "stm32746g_lcd.h"
 #include "font.h"
 
@@ -469,12 +470,12 @@ void BSP_LCD_DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
 void BSP_LCD_DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
 
   // Draw horizontal lines
-  BSP_LCD_DrawHLine(Xpos, Ypos, Width);
-  BSP_LCD_DrawHLine(Xpos, (Ypos+ Height), Width);
+  BSP_LCD_DrawHLine (Xpos, Ypos, Width);
+  BSP_LCD_DrawHLine (Xpos, (Ypos+ Height), Width);
 
   // Draw vertical lines
-  BSP_LCD_DrawVLine(Xpos, Ypos, Height);
-  BSP_LCD_DrawVLine((Xpos + Width), Ypos, Height);
+  BSP_LCD_DrawVLine (Xpos, Ypos, Height);
+  BSP_LCD_DrawVLine ((Xpos + Width), Ypos, Height);
   }
 //}}}
 //{{{
@@ -752,17 +753,21 @@ void BSP_LCD_ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t
 //{{{
 void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
+  src += (((600/2) - ysize) / 2) * 800;
+
 #ifdef RGB565
   auto dst565 = (uint16_t*)dst;
+  dst565 += (xsize - 400)/2;
   for (uint16_t y = 0; y < ysize; y++) {
     for (auto x = 0; x < 400; x++) {
         *dst565++ = *src;
       src += 2;
       }
-      dst565 += xsize-400;
+    dst565 += xsize-400;
     src += 800;
     }
 #else
+  dst += (xsize - 400)/2;
   for (uint16_t y = 0; y < ysize; y++) {
     for (auto x = 0; x < 400; x++) {
       *dst++ = 0xFF000000 | ((*src & 0xF800) << 8) | ((*src & 0x07E0) << 5) | ((*src & 0x001F) << 3);
@@ -777,26 +782,21 @@ void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint32_t* dst, uint16_t xsize, uint
 //{{{
 void BSP_LCD_ConvertFrameCpu1 (uint16_t* src, uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
+  src += ((800-xsize)/2) + (((600 - ysize) / 2) * 800);
 #ifdef RGB565
   auto dst565 = (uint16_t*)dst;
-  src += 200 + (75*800);
   for (uint16_t y = 0; y < ysize; y++) {
-    for (auto x = 0; x < 400; x++) {
-        *dst565++ = *src;
-      src++;
-      }
-      dst565 += xsize-400;
-    src += 400;
+    memcpy (dst565, src, xsize*2);
+    src += 800;
+    dst565 += xsize;
     }
 #else
-  src += 200 + (75*800);
   for (uint16_t y = 0; y < ysize; y++) {
-    for (auto x = 0; x < 400; x++) {
+    for (auto x = 0; x < xsize; x++) {
       *dst++ = 0xFF000000 | ((*src & 0xF800) << 8) | ((*src & 0x07E0) << 5) | ((*src & 0x001F) << 3);
       src++;
       }
-    dst += xsize-400;
-    src += 400;
+    src += 800-(xsize*2);
     }
 #endif
   }
