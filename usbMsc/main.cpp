@@ -88,7 +88,7 @@ void cApp::run() {
   //  }
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
-  bool use1600 = true; //mButton;
+  bool use1600 = false; //mButton;
   camera.init (mLcd, use1600 ? CAMERA_1600x1200 : CAMERA_800x600);
   camera.start (SDRAM_USER, true);
 
