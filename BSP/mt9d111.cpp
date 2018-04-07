@@ -12,40 +12,32 @@ cLcd* lcdPtr = nullptr;
 //{{{
 void dcmiDmaXferComplete (DMA_HandleTypeDef* dma) {
 
-  DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)dma)->Parent;
-
-  if (dcmi->XferCount > 2) {
-    if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmi->XferCount % 2) == 0)) // Update M0AR for next frameChunk
-      DMA2_Stream1->M0AR += 8*dcmi->XferSize;
+  if (dcmiHandler.XferCount > 2) {
+    if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmiHandler.XferCount % 2) == 0)) // Update M0AR for next frameChunk
+      DMA2_Stream1->M0AR += 8 * dcmiHandler.XferSize;
     else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0) // Update M1AR for next frameChunk
-      DMA2_Stream1->M1AR += 8*dcmi->XferSize;
-    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmi->XferCount);
-    dcmi->XferCount--;
+      DMA2_Stream1->M1AR += 8 * dcmiHandler.XferSize;
+    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiHandler.XferCount);
+    dcmiHandler.XferCount--;
     }
-
-  else {
-    if (DMA2_Stream1->CR & DMA_SxCR_CT) {
-      // reset M0AR for next frame
-      DMA2_Stream1->M0AR = dcmi->pBuffPtr;
-      lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmi->XferCount);
-      dcmi->XferCount--;
-      }
-    else {
-      // reset M1AR for next frame
-      DMA2_Stream1->M1AR = dcmi->pBuffPtr + (4*dcmi->XferSize);
-      __HAL_DCMI_ENABLE_IT (dcmi, DCMI_IT_FRAME);
-      lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmi->XferCount);
-      dcmi->XferCount = dcmi->XferTransferNumber;
-      }
+  else if (DMA2_Stream1->CR & DMA_SxCR_CT) { // last but one, reset M0AR for next frame
+    DMA2_Stream1->M0AR = dcmiHandler.pBuffPtr;
+    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiHandler.XferCount);
+    dcmiHandler.XferCount--;
+    }
+  else { // last, reset M1AR for next frame
+    DMA2_Stream1->M1AR = dcmiHandler.pBuffPtr + (4 * dcmiHandler.XferSize);
+    __HAL_DCMI_ENABLE_IT (&dcmiHandler, DCMI_IT_FRAME);
+    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiHandler.XferCount);
+    dcmiHandler.XferCount = dcmiHandler.XferTransferNumber;
     }
   }
 //}}}
 //{{{
 void dcmiDmaError (DMA_HandleTypeDef* dma) {
 
-  DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)dma)->Parent;
-  if (dcmi->DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
-    lcdPtr->debug (LCD_COLOR_RED, "DCMI DMAerror %x", dcmi->DMA_Handle->ErrorCode);
+  if (dcmiHandler.DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
+    lcdPtr->debug (LCD_COLOR_RED, "DCMI DMAerror %x", dcmiHandler.DMA_Handle->ErrorCode);
   }
 //}}}
 //{{{
@@ -59,6 +51,7 @@ extern "C" {
   void DCMI_IRQHandler() {
 
     uint32_t misr = READ_REG (DCMI->MISR);
+
     if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
       // synchronization error interrupt
       __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_ERRRI);
@@ -103,16 +96,6 @@ void cCamera::init (cLcd* lcd, bool useCapture) {
 
   // init camera registers
   mt9d111Init (useCapture);
-  if (useCapture) {
-    mXsize = 1600;
-    mYsize = 1200;
-    capture();
-    }
-  else {
-    mXsize = 800;
-    mYsize = 600;
-    preview();
-    }
 
   // startup dcmi
   dcmiInit (&dcmiHandler);
@@ -201,7 +184,7 @@ void cCamera::gpioInit() {
   }
 //}}}
 //{{{
-void cCamera::mt9d111Init (uint32_t resolution) {
+void cCamera::mt9d111Init (bool useCapture) {
 
   //  soft reset
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Bypass the PLL, R0x65:0 = 0xA000,
@@ -436,6 +419,17 @@ void cCamera::mt9d111Init (uint32_t resolution) {
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x90B5); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // SFR GPIO reset
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x90B6); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // SFR GPIO suspend
   //}}}
+
+  if (useCapture) {
+    mXsize = 1600;
+    mYsize = 1200;
+    capture();
+    }
+  else {
+    mXsize = 800;
+    mYsize = 600;
+    preview();
+    }
   }
 //}}}
 //{{{
