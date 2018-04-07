@@ -17,21 +17,21 @@ void dcmiDmaXferComplete (DMA_HandleTypeDef* dma) {
     if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmiInfo.XferCount % 2) == 0))
       // Update M0AR for next frameChunk
       DMA2_Stream1->M0AR += 8 * dcmiInfo.XferSize;
-    else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0) 
+    else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0)
       // Update M1AR for next frameChunk
       DMA2_Stream1->M1AR += 8 * dcmiInfo.XferSize;
     lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
     dcmiInfo.XferCount--;
     }
 
-  else if (DMA2_Stream1->CR & DMA_SxCR_CT) { 
+  else if (DMA2_Stream1->CR & DMA_SxCR_CT) {
     // last chunk but one, reset M0AR for next frame
     DMA2_Stream1->M0AR = dcmiInfo.pBuffPtr;
     lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
     dcmiInfo.XferCount--;
     }
 
-  else { 
+  else {
     // last chunk, reset M1AR,XferCount for next frame
     DMA2_Stream1->M1AR = dcmiInfo.pBuffPtr + (4 * dcmiInfo.XferSize);
     __HAL_DCMI_ENABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
@@ -137,22 +137,6 @@ void cCamera::start (uint32_t buffer, bool continuous) {
   dcmiStart (&dcmiInfo, continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT, buffer, getXsize()*getYsize()/2);
   }
 //}}}
-//{{{
-void cCamera::preview() {
-
-  lcdPtr->debug (LCD_COLOR_YELLOW, "preview");
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Sequencer.params.mode - none
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // Sequencer goto preview A - 800x600
-  }
-//}}}
-//{{{
-void cCamera::capture() {
-
-  lcdPtr->debug (LCD_COLOR_YELLOW, "capture");
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
-  }
-//}}}
 
 // private
 //{{{
@@ -195,9 +179,9 @@ void cCamera::mt9d111Init (bool useCapture) {
 
   //  soft reset
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Bypass the PLL, R0x65:0 = 0xA000,
-  CAMERA_IO_Write16 (i2cAddress, 0xF0, 1); // page 1
+  CAMERA_IO_Write16 (i2cAddress, 0xF0, 1);      // page 1
   CAMERA_IO_Write16 (i2cAddress, 0xC3, 0x0501); // Perform MCU reset by setting R0xC3:1 = 0x0501.
-  CAMERA_IO_Write16 (i2cAddress, 0xF0, 0); // page 0
+  CAMERA_IO_Write16 (i2cAddress, 0xF0, 0);      // page 0
   CAMERA_IO_Write16 (i2cAddress, 0x0D, 0x0021); // Enable soft reset by setting R0x0D:0 = 0x0021. Bit 0 is used for the sensor core reset
   CAMERA_IO_Write16 (i2cAddress, 0x0D, 0x0000); // Disable soft reset by setting R0x0D:0 = 0x0000.
   HAL_Delay (100);
@@ -218,7 +202,7 @@ void cCamera::mt9d111Init (bool useCapture) {
 
   // page 1
   CAMERA_IO_Write16 (i2cAddress, 0xF0, 1);
-  CAMERA_IO_Write16 (i2cAddress, 0x97, 0x22); // outputFormat - RGB565, swap odd even
+  CAMERA_IO_Write16 (i2cAddress, 0x97, 0x22);   // outputFormat - RGB565, swap odd even
   //{{{  sequencer
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA122); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // EnterPreview: Auto Exposure = 1
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA123); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // EnterPreview: Flicker Detection = 0
@@ -430,12 +414,16 @@ void cCamera::mt9d111Init (bool useCapture) {
   if (useCapture) {
     mXsize = 1600;
     mYsize = 1200;
-    capture();
+    lcdPtr->debug (LCD_COLOR_YELLOW, "capture");
+    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
+    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
     }
   else {
     mXsize = 800;
     mYsize = 600;
-    preview();
+    lcdPtr->debug (LCD_COLOR_YELLOW, "preview");
+    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Sequencer.params.mode - none
+    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // Sequencer goto preview A - 800x600
     }
   }
 //}}}
