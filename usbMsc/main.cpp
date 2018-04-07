@@ -87,10 +87,7 @@ void cApp::run() {
   //  }
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
-  //mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", BSP_CAMERA_Init (CAMERA_R800x600));
-  cameraInit (mLcd, CAMERA_R480x272);
-  HAL_Delay (100);
-
+  cameraInit (mLcd, CAMERA_R800x600);
   cameraStart ((uint8_t*)SDRAM_USER, true);
 
   int lastCount = 0;

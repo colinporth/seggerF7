@@ -94,7 +94,6 @@ typedef enum { COM1 = 0, COM2 = 1 }COM_TypeDef;
 
 #define LCD_I2C_ADDRESS                  ((uint16_t)0x70)
 #define CAMERA_I2C_ADDRESS_OV9655        ((uint16_t)0x60)
-#define CAMERA_I2C_ADDRESS_MT9D111       ((uint16_t)0x90)
 #define AUDIO_I2C_ADDRESS                ((uint16_t)0x34)
 #define EEPROM_I2C_ADDRESS_A01           ((uint16_t)0xA0)
 #define EEPROM_I2C_ADDRESS_A02           ((uint16_t)0xA6)
