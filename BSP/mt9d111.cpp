@@ -11,7 +11,7 @@ cLcd* lcdPtr = nullptr;
 
 extern "C" {
   //{{{
-  void DCMI_DMAXferComplete (DMA_HandleTypeDef* hdma) {
+  void dcmiDmaXferComplete (DMA_HandleTypeDef* hdma) {
 
     DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)hdma)->Parent;
 
@@ -50,7 +50,7 @@ extern "C" {
     }
   //}}}
   //{{{
-  void DCMI_DMAError (DMA_HandleTypeDef* hdma) {
+  void dcmiDmaError (DMA_HandleTypeDef* hdma) {
 
     DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)hdma)->Parent;
     if (dcmi->DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
@@ -58,7 +58,7 @@ extern "C" {
     }
   //}}}
   //{{{
-  void DCMI_Error (DMA_HandleTypeDef* hdma) {
+  void dcmiError (DMA_HandleTypeDef* hdma) {
     lcdPtr->debug (LCD_COLOR_RED, "DCMIerror");
     }
   //}}}
@@ -70,14 +70,14 @@ extern "C" {
     if ((isr_value & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
       // Synchronization error interrupt
       __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_ERRRI);
-      dcmiHandler.DMA_Handle->XferAbortCallback = DCMI_Error;
+      dcmiHandler.DMA_Handle->XferAbortCallback = dcmiError;
       HAL_DMA_Abort_IT (dcmiHandler.DMA_Handle);
       }
 
     if ((isr_value & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
       // Overflow interrupt
       __HAL_DCMI_CLEAR_FLAG (&dcmiHandler, DCMI_FLAG_OVRRI);
-      dcmiHandler.DMA_Handle->XferAbortCallback = DCMI_Error;
+      dcmiHandler.DMA_Handle->XferAbortCallback = dcmiError;
       HAL_DMA_Abort_IT (dcmiHandler.DMA_Handle);
       }
 
@@ -412,34 +412,34 @@ void dcmiInit (DCMI_HandleTypeDef* dcmi) {
   }
 //}}}
 //{{{
-void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t pData, uint32_t Length) {
+void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length) {
 
-  // Enable DCMI by setting DCMIEN bit
+  // enable DCMI by setting DCMIEN bit
   __HAL_DCMI_ENABLE (dcmi);
 
-  // Configure the DCMI Mode
+  // config the DCMI Mode
   DCMI->CR &= ~(DCMI_CR_CM);
   DCMI->CR |= (uint32_t)(DCMI_Mode);
 
-  dcmi->DMA_Handle->XferCpltCallback = DCMI_DMAXferComplete;
-  dcmi->DMA_Handle->XferErrorCallback = DCMI_DMAError;
+  dcmi->DMA_Handle->XferCpltCallback = dcmiDmaXferComplete;
+  dcmi->DMA_Handle->XferErrorCallback = dcmiDmaError;
   dcmi->DMA_Handle->XferAbortCallback = NULL;
 
   // Reset transfer counters value
   dcmi->XferCount = 0;
   dcmi->XferTransferNumber = 0;
 
-  if (Length <= 0xFFFF)
-    // Enable the DMA Stream
-    HAL_DMA_Start_IT (dcmi->DMA_Handle, (uint32_t)&dcmi->Instance->DR, (uint32_t)pData, Length);
+  if (length <= 0xFFFF)
+    // enable the DMA Stream
+    HAL_DMA_Start_IT (dcmi->DMA_Handle, (uint32_t)&dcmi->Instance->DR, data, length);
   else {
-    // DCMI_DOUBLE_BUFFER Mode, Set the DMA memory1 conversion complete callback
-    dcmi->DMA_Handle->XferM1CpltCallback = DCMI_DMAXferComplete;
+    // DCMI_DOUBLE_BUFFER Mode, set the DMA memory1 conversion complete callback
+    dcmi->DMA_Handle->XferM1CpltCallback = dcmiDmaXferComplete;
 
     // Initialize transfer parameters
     dcmi->XferCount = 1;
-    dcmi->XferSize = Length;
-    dcmi->pBuffPtr = pData;
+    dcmi->XferSize = length;
+    dcmi->pBuffPtr = data;
 
     // Get the number of buffer
     while (dcmi->XferSize > 0xFFFF) {
@@ -449,13 +449,13 @@ void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t pData, ui
 
     dcmi->XferCount = dcmi->XferCount - 2;
     dcmi->XferTransferNumber = dcmi->XferCount;
-    uint32_t memAddress2 = (uint32_t)(pData + (4*dcmi->XferSize));
 
-    // Start DMA multi buffer transfer
-    HAL_DMAEx_MultiBufferStart_IT (dcmi->DMA_Handle, (uint32_t)&dcmi->Instance->DR, (uint32_t)pData, memAddress2, dcmi->XferSize);
+    // start DMA multi buffer transfer
+    HAL_DMAEx_MultiBufferStart_IT (dcmi->DMA_Handle, (uint32_t)&dcmi->Instance->DR, 
+                                   data, data + (4*dcmi->XferSize), dcmi->XferSize);
     }
 
-  // Enable Capture
+  // enable Capture
   DCMI->CR |= DCMI_CR_CAPTURE;
   }
 //}}}
