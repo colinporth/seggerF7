@@ -740,17 +740,15 @@ void BSP_LCD_ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t
   }
 //}}}
 //{{{
-void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize) {
+void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
-  uint8_t* dstBytePtr = (uint8_t*)dst;
-  for (auto y = 0; y < ysize; y++) {
-    for (auto x = 0; x < xsize; x++) {
-      uint16_t rgb = *src++;
-      *dstBytePtr++ = (rgb & 0x001F) << 3; // blue
-      *dstBytePtr++ = (rgb & 0x07E0) >> 3; // green
-      *dstBytePtr++ = (rgb & 0xF800) >> 8; // red
-      *dstBytePtr++ = 0xFF;
+  for (uint16_t y = 0; y < 272; y++) {
+    for (auto x = 0; x < 400; x++) {
+      *dst++ = 0xFF000000 | ((*src & 0xF800) << 8) | ((*src & 0x07E0) << 5) | ((*src & 0x001F) << 3);
+      src += 2;
       }
+    dst += 480-400;
+    src += 800;
     }
   }
 //}}}

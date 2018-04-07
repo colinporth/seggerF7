@@ -57,7 +57,7 @@ public:
   //{{{
   void startCam (uint16_t* src) {
     //BSP_LCD_ConvertFrame (src, mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0, BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
-    BSP_LCD_ConvertFrameCpu (src, mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0, BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+    BSP_LCD_ConvertFrameCpu (src, (uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
     }
   //}}}
   //{{{

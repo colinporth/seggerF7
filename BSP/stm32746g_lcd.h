@@ -129,7 +129,7 @@ void BSP_LCD_FillPolygon (pPoint Points, uint16_t PointCount);
 void BSP_LCD_FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius);
 
 void BSP_LCD_ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize);
-void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize);
+void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint32_t* dst, uint16_t xsize, uint16_t ysize);
 void BSP_LCD_ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                               uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
 

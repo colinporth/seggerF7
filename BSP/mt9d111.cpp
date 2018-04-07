@@ -485,16 +485,9 @@ uint32_t cameraInit (cLcd* lcd, uint32_t Resolution) {
   dcmi->Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
   dcmiInit (dcmi);
 
-  mt9d111Init (CAMERA_I2C_ADDRESS_MT9D111, (Resolution == CAMERA_R480x272) ? CAMERA_R800x600 : Resolution);
-  if (Resolution == CAMERA_R480x272) {
-    // 480x272 uses cropped 800x600, config and enable crop
-    DCMI->CWSIZER = (480 * 2) - 1 | (272 - 1 << DCMI_CWSIZE_VLINE_Pos);
-    DCMI->CWSTRTR = (800 - 480)/2 | ((600 - 272)/2 << DCMI_CWSTRT_VST_Pos);
-    DCMI->CR |= (uint32_t)DCMI_CR_CROP;
-    }
-  else // disable crop
-    DCMI->CR &= ~(uint32_t)DCMI_CR_CROP;
-  cameraCurrentResolution = Resolution;
+  mt9d111Init (CAMERA_I2C_ADDRESS_MT9D111, CAMERA_R800x600 );
+  DCMI->CR &= ~(uint32_t)DCMI_CR_CROP;
+  cameraCurrentResolution = CAMERA_R800x600;
 
   cameraPreview();
 
