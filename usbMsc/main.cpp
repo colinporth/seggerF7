@@ -88,7 +88,7 @@ void cApp::run() {
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
   cameraInit (mLcd, CAMERA_R800x600);
-  cameraStart ((uint8_t*)SDRAM_USER, true);
+  cameraStart (SDRAM_USER, true);
 
   int lastCount = 0;
   while (true) {
@@ -105,7 +105,7 @@ void cApp::run() {
     mLcd->present();
 
     if (BSP_PB_GetState (BUTTON_KEY)) {
-      cameraStart ((uint8_t*)SDRAM_USER, false);
+      cameraStart (SDRAM_USER, false);
       gApp->getLcd()->debug (LCD_COLOR_CYAN, "grab");
       }
 

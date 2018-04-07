@@ -97,70 +97,7 @@ extern "C" {
   }
 
 //{{{
-void gpioIrqInit (DCMI_HandleTypeDef* dcmi, void* Params) {
-
-  __HAL_RCC_DCMI_CLK_ENABLE();
-  __HAL_RCC_DMA2_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOE_CLK_ENABLE();
-  __HAL_RCC_GPIOG_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-
-  // Configure DCMI GPIO as alternate function
-  GPIO_InitTypeDef gpio_init_structure;
-  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
-  gpio_init_structure.Pull = GPIO_PULLUP;
-  gpio_init_structure.Speed = GPIO_SPEED_HIGH;
-  gpio_init_structure.Alternate = GPIO_AF13_DCMI;
-
-  gpio_init_structure.Pin = GPIO_PIN_4 | GPIO_PIN_6;
-  HAL_GPIO_Init (GPIOA, &gpio_init_structure);
-
-  gpio_init_structure.Pin = GPIO_PIN_3;
-  HAL_GPIO_Init (GPIOD, &gpio_init_structure);
-
-  gpio_init_structure.Pin = GPIO_PIN_5 | GPIO_PIN_6;
-  HAL_GPIO_Init (GPIOE, &gpio_init_structure);
-
-  gpio_init_structure.Pin = GPIO_PIN_9;
-  HAL_GPIO_Init (GPIOG, &gpio_init_structure);
-
-  gpio_init_structure.Pin = GPIO_PIN_9 | GPIO_PIN_10  | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_14;
-  HAL_GPIO_Init (GPIOH, &gpio_init_structure);
-
-  // Associate the initialized DMA handle to the DCMI handle
-  dmaHandler.Init.Channel             = DMA_CHANNEL_1;
-  dmaHandler.Init.Direction           = DMA_PERIPH_TO_MEMORY;
-  dmaHandler.Init.PeriphInc           = DMA_PINC_DISABLE;
-  dmaHandler.Init.MemInc              = DMA_MINC_ENABLE;
-  dmaHandler.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-  dmaHandler.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
-  dmaHandler.Init.Mode                = DMA_CIRCULAR;
-  dmaHandler.Init.Priority            = DMA_PRIORITY_HIGH;
-  dmaHandler.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
-  dmaHandler.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
-  dmaHandler.Init.MemBurst            = DMA_MBURST_SINGLE;
-  dmaHandler.Init.PeriphBurst         = DMA_PBURST_SINGLE;
-  dmaHandler.Instance = DMA2_Stream1;
-  __HAL_LINKDMA (dcmi, DMA_Handle, dmaHandler);
-
-  // NVIC configuration for DCMI transfer complete interrupt
-  HAL_NVIC_SetPriority (DCMI_IRQn, 0x0F, 0);
-  HAL_NVIC_EnableIRQ (DCMI_IRQn);
-
-  // NVIC configuration for DMA2D transfer complete interrupt
-  HAL_NVIC_SetPriority (DMA2_Stream1_IRQn, 0x0F, 0);
-  HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
-
-  // Configure the DMA stream
-  HAL_DMA_Init (dcmi->DMA_Handle);
-  }
-//}}}
-//{{{
 void mt9d111Init (uint32_t resolution) {
-
-  HAL_Delay (200);
 
   //  soft reset
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Bypass the PLL, R0x65:0 = 0xA000,
@@ -363,9 +300,9 @@ void mt9d111Init (uint32_t resolution) {
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA13D); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Capture: Skip Control = 0
   //}}}
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x06); // Sequencer Refresh Mode
-  HAL_Delay (200);
+  HAL_Delay (100);
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x05); // Sequencer Refresh
-  HAL_Delay (200);
+  HAL_Delay (100);
 
   //{{{  focus init
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x90B6); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // SFR GPIO suspend
@@ -395,6 +332,74 @@ void mt9d111Init (uint32_t resolution) {
 //}}}
 //{{{
 void dcmiInit (DCMI_HandleTypeDef* dcmi) {
+
+  // config DCMI
+  dcmi->Instance = DCMI;
+  dcmi->Init.CaptureRate = DCMI_CR_ALL_FRAME;
+  dcmi->Init.HSPolarity = DCMI_HSPOLARITY_LOW;
+  dcmi->Init.VSPolarity = DCMI_HSPOLARITY_LOW;
+  dcmi->Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
+  dcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
+  dcmi->Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
+
+  //{{{  cinfig clocks
+  __HAL_RCC_DCMI_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+  //}}}
+  //{{{  config gpio alternate function
+  GPIO_InitTypeDef gpio_init_structure;
+  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
+  gpio_init_structure.Pull = GPIO_PULLUP;
+  gpio_init_structure.Speed = GPIO_SPEED_HIGH;
+  gpio_init_structure.Alternate = GPIO_AF13_DCMI;
+
+  gpio_init_structure.Pin = GPIO_PIN_4 | GPIO_PIN_6;
+  HAL_GPIO_Init (GPIOA, &gpio_init_structure);
+
+  gpio_init_structure.Pin = GPIO_PIN_3;
+  HAL_GPIO_Init (GPIOD, &gpio_init_structure);
+
+  gpio_init_structure.Pin = GPIO_PIN_5 | GPIO_PIN_6;
+  HAL_GPIO_Init (GPIOE, &gpio_init_structure);
+
+  gpio_init_structure.Pin = GPIO_PIN_9;
+  HAL_GPIO_Init (GPIOG, &gpio_init_structure);
+
+  gpio_init_structure.Pin = GPIO_PIN_9 | GPIO_PIN_10  | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_14;
+  HAL_GPIO_Init (GPIOH, &gpio_init_structure);
+  //}}}
+
+  // Associate the initialized DMA handle to the DCMI handle
+  dmaHandler.Init.Channel             = DMA_CHANNEL_1;
+  dmaHandler.Init.Direction           = DMA_PERIPH_TO_MEMORY;
+  dmaHandler.Init.PeriphInc           = DMA_PINC_DISABLE;
+  dmaHandler.Init.MemInc              = DMA_MINC_ENABLE;
+  dmaHandler.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+  dmaHandler.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
+  dmaHandler.Init.Mode                = DMA_CIRCULAR;
+  dmaHandler.Init.Priority            = DMA_PRIORITY_HIGH;
+  dmaHandler.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
+  dmaHandler.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
+  dmaHandler.Init.MemBurst            = DMA_MBURST_SINGLE;
+  dmaHandler.Init.PeriphBurst         = DMA_PBURST_SINGLE;
+  dmaHandler.Instance = DMA2_Stream1;
+  __HAL_LINKDMA (dcmi, DMA_Handle, dmaHandler);
+
+  // NVIC configuration for DCMI transfer complete interrupt
+  HAL_NVIC_SetPriority (DCMI_IRQn, 0x0F, 0);
+  HAL_NVIC_EnableIRQ (DCMI_IRQn);
+
+  // NVIC configuration for DMA2D transfer complete interrupt
+  HAL_NVIC_SetPriority (DMA2_Stream1_IRQn, 0x0F, 0);
+  HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
+
+  // Configure the DMA stream
+  HAL_DMA_Init (dcmi->DMA_Handle);
 
   // Configures the HS, VS, DE and PC polarity
   DCMI->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  |
@@ -463,35 +468,20 @@ void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uin
 
 // external
 //{{{
-uint32_t cameraInit (cLcd* lcd, uint32_t resolution) {
+void cameraInit (cLcd* lcd, uint32_t resolution) {
 
   lcdPtr = lcd;
 
   // init camera i2c, readBack id
   CAMERA_IO_Init();
   CAMERA_IO_Write16 (i2cAddress, 0xF0, 0);
-  uint32_t readBack = CAMERA_IO_Read16 (i2cAddress, 0);
-  lcdPtr->debug (LCD_COLOR_YELLOW, "cameraId %x", readBack);
+  lcdPtr->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (i2cAddress, 0));
 
-  gpioIrqInit (&dcmiHandler, NULL);
-
-  // config DCMI
-  DCMI_HandleTypeDef* dcmi = &dcmiHandler;
-  dcmi->Instance = DCMI;
-  dcmi->Init.CaptureRate = DCMI_CR_ALL_FRAME;
-  dcmi->Init.HSPolarity = DCMI_HSPOLARITY_LOW;
-  dcmi->Init.VSPolarity = DCMI_HSPOLARITY_LOW;
-  dcmi->Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
-  dcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-  dcmi->Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
-  dcmiInit (dcmi);
-
+  dcmiInit (&dcmiHandler);
   mt9d111Init (resolution);
   cameraCurrentResolution = resolution;
 
   cameraPreview();
-
-  return readBack;
   }
 //}}}
 
@@ -525,10 +515,10 @@ uint32_t cameraGetYSize() {
 //}}}
 
 //{{{
-void cameraStart (uint8_t* buff, int continuous) {
+void cameraStart (uint32_t buffer, bool continuous) {
 
   dcmiStart (&dcmiHandler, continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT,
-             (uint32_t)buff, cameraGetXSize() * cameraGetYSize() / 2);
+             buffer, cameraGetXSize() * cameraGetYSize() / 2);
   }
 //}}}
 //{{{

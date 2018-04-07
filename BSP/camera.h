@@ -10,12 +10,12 @@
 #define CAMERA_R800x600                 0x04   /* VGA Resolution                       */
 #define CAMERA_R1600x1200               0x05   /* VGA Resolution                       */
 
-uint32_t cameraInit (cLcd* lcd, uint32_t Resolution);
+void cameraInit (cLcd* lcd, uint32_t resolution);
 
 uint32_t cameraGetXSize();
 uint32_t cameraGetYSize();
 
-void cameraStart (uint8_t* buff, int continuous);
+void cameraStart (uint32_t buffer, bool continuous);
 void cameraPreview();
 void cameraCapture();
 
