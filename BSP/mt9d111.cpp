@@ -11,12 +11,12 @@ cLcd* lcdPtr = nullptr;
 
 extern "C" {
   //{{{
-  void dcmiDmaXferComplete (DMA_HandleTypeDef* hdma) {
+  void dcmiDmaXferComplete (DMA_HandleTypeDef* dma) {
 
-    DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)hdma)->Parent;
+    DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)dma)->Parent;
 
     if (dcmi->XferCount != 0) {
-      uint32_t tmp = ((DMA2_Stream1->CR) & DMA_SxCR_CT);
+      uint32_t tmp = (DMA2_Stream1->CR) & DMA_SxCR_CT;
       if (((dcmi->XferCount % 2) == 0) && (tmp != 0)) {
         // Update memory 0 address location
         uint32_t tmp = DMA2_Stream1->M0AR;
@@ -39,7 +39,7 @@ extern "C" {
     else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0) {
       // Update memory 1 address location
       uint32_t tmp = dcmi->pBuffPtr;
-      DMA2_Stream1->M1AR = (tmp + (4*dcmi->XferSize));
+      DMA2_Stream1->M1AR = tmp + (4*dcmi->XferSize);
       dcmi->XferCount = dcmi->XferTransferNumber;
       }
 
@@ -50,15 +50,15 @@ extern "C" {
     }
   //}}}
   //{{{
-  void dcmiDmaError (DMA_HandleTypeDef* hdma) {
+  void dcmiDmaError (DMA_HandleTypeDef* dma) {
 
-    DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)hdma)->Parent;
+    DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)dma)->Parent;
     if (dcmi->DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
       lcdPtr->debug (LCD_COLOR_RED, "DCMI DMAerror %x", dcmi->DMA_Handle->ErrorCode);
     }
   //}}}
   //{{{
-  void dcmiError (DMA_HandleTypeDef* hdma) {
+  void dcmiError (DMA_HandleTypeDef* dma) {
     lcdPtr->debug (LCD_COLOR_RED, "DCMIerror");
     }
   //}}}
@@ -396,16 +396,16 @@ void dcmiInit (DCMI_HandleTypeDef* dcmi) {
 
   // Configures the HS, VS, DE and PC polarity
   DCMI->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  |
-                          DCMI_CR_EDM_0  | DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 |
-                          DCMI_CR_FCRC_1 | DCMI_CR_JPEG   | DCMI_CR_ESS |
-                          DCMI_CR_BSM_0  | DCMI_CR_BSM_1  | DCMI_CR_OEBS |
-                          DCMI_CR_LSM | DCMI_CR_OELS);
+                DCMI_CR_EDM_0  | DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 |
+                DCMI_CR_FCRC_1 | DCMI_CR_JPEG   | DCMI_CR_ESS |
+                DCMI_CR_BSM_0  | DCMI_CR_BSM_1  | DCMI_CR_OEBS |
+                DCMI_CR_LSM | DCMI_CR_OELS);
   DCMI->CR |=  (uint32_t)(dcmi->Init.SynchroMode     | dcmi->Init.CaptureRate |
-                                    dcmi->Init.VSPolarity      | dcmi->Init.HSPolarity  |
-                                    dcmi->Init.PCKPolarity     | dcmi->Init.ExtendedDataMode |
-                                    dcmi->Init.JPEGMode        | dcmi->Init.ByteSelectMode |
-                                    dcmi->Init.ByteSelectStart | dcmi->Init.LineSelectMode |
-                                    dcmi->Init.LineSelectStart);
+                          dcmi->Init.VSPolarity      | dcmi->Init.HSPolarity  |
+                          dcmi->Init.PCKPolarity     | dcmi->Init.ExtendedDataMode |
+                          dcmi->Init.JPEGMode        | dcmi->Init.ByteSelectMode |
+                          dcmi->Init.ByteSelectStart | dcmi->Init.LineSelectMode |
+                          dcmi->Init.LineSelectStart);
 
   // Enable Error and Overrun interrupts
   __HAL_DCMI_ENABLE_IT (dcmi, DCMI_IT_ERR | DCMI_IT_OVR);
@@ -425,7 +425,7 @@ void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uin
   dcmi->DMA_Handle->XferErrorCallback = dcmiDmaError;
   dcmi->DMA_Handle->XferAbortCallback = NULL;
 
-  // Reset transfer counters value
+  // reset transfer counters value
   dcmi->XferCount = 0;
   dcmi->XferTransferNumber = 0;
 
@@ -450,12 +450,12 @@ void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uin
     dcmi->XferCount = dcmi->XferCount - 2;
     dcmi->XferTransferNumber = dcmi->XferCount;
 
-    // start DMA multi buffer transfer
+    // start DMA multiBuffer transfer
     HAL_DMAEx_MultiBufferStart_IT (dcmi->DMA_Handle, (uint32_t)&dcmi->Instance->DR,
                                    data, data + (4*dcmi->XferSize), dcmi->XferSize);
     }
 
-  // enable Capture
+  // enable capture
   DCMI->CR |= DCMI_CR_CAPTURE;
   }
 //}}}
