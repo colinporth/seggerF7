@@ -16,16 +16,16 @@ void dcmiDmaXferComplete (DMA_HandleTypeDef* dma) {
 
   if (dcmi->XferCount != 0) {
     if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmi->XferCount % 2) == 0)) {
-      // Update memory 0 address
+      // Update memory0 address
       HAL_DMAEx_ChangeMemory (dcmi->DMA_Handle, DMA2_Stream1->M0AR + (8*dcmi->XferSize), MEMORY0);
       dcmi->XferCount--;
-      lcdPtr->debug (LCD_COLOR_GREEN, "dma0 %d",dcmi->XferCount);
+      lcdPtr->debug (LCD_COLOR_GREEN, "dma0 %2d %x", dcmi->XferCount, DMA2_Stream1->M0AR + (8*dcmi->XferSize));
       }
     else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0) {
-      // Update memory 1 address
+      // Update memory1 address
       HAL_DMAEx_ChangeMemory (dcmi->DMA_Handle, DMA2_Stream1->M1AR + (8*dcmi->XferSize), MEMORY1);
       dcmi->XferCount--;
-      lcdPtr->debug (LCD_COLOR_GREEN, "dma1 %d",dcmi->XferCount);
+      lcdPtr->debug (LCD_COLOR_GREEN, "dma1 %2d %x", dcmi->XferCount, DMA2_Stream1->M1AR + (8*dcmi->XferSize));
       }
     else
       lcdPtr->debug (LCD_COLOR_RED, "dma x");
@@ -33,15 +33,15 @@ void dcmiDmaXferComplete (DMA_HandleTypeDef* dma) {
 
   else {
     if (DMA2_Stream1->CR & DMA_SxCR_CT) {
-      // Update memory 0 address
+      // Update memory0 address
       DMA2_Stream1->M0AR = dcmi->pBuffPtr;
-      lcdPtr->debug (LCD_COLOR_GREEN, "dma0");
+      lcdPtr->debug (LCD_COLOR_GREEN, "dma0 %x", dcmi->pBuffPtr);
       }
     else {
-      // Update memory 1 address
+      // Update memory1 address
       DMA2_Stream1->M1AR = dcmi->pBuffPtr + (4*dcmi->XferSize);
       dcmi->XferCount = dcmi->XferTransferNumber;
-      lcdPtr->debug (LCD_COLOR_GREEN, "dma1");
+      lcdPtr->debug (LCD_COLOR_GREEN, "dma1 %x", dcmi->pBuffPtr + (4*dcmi->XferSize));
       }
     }
 
@@ -110,11 +110,11 @@ void cCamera::init (cLcd* lcd, uint32_t resolution) {
   CAMERA_IO_Write16 (i2cAddress, 0xF0, 0);
   lcdPtr->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (i2cAddress, 0));
 
+  (resolution == CAMERA_1600x1200) ? capture() : preview();
+
   dcmiInit (&dcmiHandler);
   mt9d111Init (resolution);
   cameraCurrentResolution = resolution;
-
-  preview();
   }
 //}}}
 
@@ -542,9 +542,9 @@ void cCamera::dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t 
     dcmi->DMA_Handle->XferM1CpltCallback = dcmiDmaXferComplete;
 
     // Initialize transfer parameters
+    dcmi->pBuffPtr = data;
     dcmi->XferCount = 1;
     dcmi->XferSize = length;
-    dcmi->pBuffPtr = data;
 
     // Get the number of buffer
     while (dcmi->XferSize > 0xFFFF) {

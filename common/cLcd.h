@@ -53,14 +53,14 @@ public:
     }
   //}}}
   //{{{
-  void startCam (uint16_t* src, bool zoom) {
+  void startCam (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom ) {
 
     if (zoom)
-      BSP_LCD_ConvertFrameCpu1 (src, 800, 600, getBuffer(), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+      BSP_LCD_ConvertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
     else {
       if (lastZoom[mFlip])
         BSP_LCD_Clear (LCD_COLOR_BLACK);
-      BSP_LCD_ConvertFrameCpu (src, 800, 600, getBuffer(), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+      BSP_LCD_ConvertFrameCpu (src, srcXsize, srcYsize, getBuffer(), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
       }
     lastZoom[mFlip] = zoom;
     }

@@ -88,8 +88,8 @@ void cApp::run() {
   //  }
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
-  camera.init (mLcd, CAMERA_800x600);
-  //camera.init (mLcd, CAMERA_1600x1200);
+  bool use1600 = true; //mButton;
+  camera.init (mLcd, use1600 ? CAMERA_1600x1200 : CAMERA_800x600);
   camera.start (SDRAM_USER, true);
 
   int lastCount = 0;
@@ -99,9 +99,8 @@ void cApp::run() {
     //  auto ch = mPs2->getChar();
     //  onKey (ch & 0xFF, ch & 0x100);
     //  }
-
     //mLcd->startBgnd (kVersion, mscGetSectors());
-    mLcd->startCam ((uint16_t*)SDRAM_USER, BSP_PB_GetState (BUTTON_KEY));
+    mLcd->startCam ((uint16_t*)SDRAM_USER, use1600?1600:800, use1600?1200:600, BSP_PB_GetState (BUTTON_KEY));
     mLcd->drawTitle (kVersion);
     mLcd->drawDebug();
     mLcd->present();
