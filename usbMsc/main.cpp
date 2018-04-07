@@ -99,15 +99,10 @@ void cApp::run() {
     //  }
 
     //mLcd->startBgnd (kVersion, mscGetSectors());
-    mLcd->startCam ((uint16_t*)SDRAM_USER);
+    mLcd->startCam ((uint16_t*)SDRAM_USER, BSP_PB_GetState (BUTTON_KEY));
     mLcd->drawTitle (kVersion);
     mLcd->drawDebug();
     mLcd->present();
-
-    if (BSP_PB_GetState (BUTTON_KEY)) {
-      cameraStart (SDRAM_USER, false);
-      gApp->getLcd()->debug (LCD_COLOR_CYAN, "grab");
-      }
 
     if (false) {
     //if (hasSdChanged()) {
