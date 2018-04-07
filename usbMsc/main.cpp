@@ -97,7 +97,7 @@ void cApp::run() {
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
-    mLcd->startCam ((uint16_t*)SDRAM_USER, camera.getXsize(), camera.getYsize(), BSP_PB_GetState (BUTTON_KEY));
+    mLcd->startBgnd ((uint16_t*)SDRAM_USER, camera.getXsize(), camera.getYsize(), BSP_PB_GetState (BUTTON_KEY));
     mLcd->drawTitle (useCapture ? "7/4/18 1600x1200" : "7/4/18 800x600");
     mLcd->drawDebug();
     mLcd->present();

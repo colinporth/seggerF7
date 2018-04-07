@@ -53,7 +53,7 @@ public:
     }
   //}}}
   //{{{
-  void startCam (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom ) {
+  void startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
 
     if (zoom)
       BSP_LCD_ConvertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());

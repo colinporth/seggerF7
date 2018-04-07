@@ -14,41 +14,30 @@ void dcmiDmaXferComplete (DMA_HandleTypeDef* dma) {
 
   DCMI_HandleTypeDef* dcmi = (DCMI_HandleTypeDef*)((DMA_HandleTypeDef*)dma)->Parent;
 
-  if (dcmi->XferCount != 0) {
-    if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmi->XferCount % 2) == 0)) {
-      // Update memory0 address
-      HAL_DMAEx_ChangeMemory (dcmi->DMA_Handle, DMA2_Stream1->M0AR + (8*dcmi->XferSize), MEMORY0);
-      dcmi->XferCount--;
-      lcdPtr->debug (LCD_COLOR_GREEN, "dma0 %2d %x", dcmi->XferCount, DMA2_Stream1->M0AR + (8*dcmi->XferSize));
-      }
-    else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0) {
-      // Update memory1 address
-      HAL_DMAEx_ChangeMemory (dcmi->DMA_Handle, DMA2_Stream1->M1AR + (8*dcmi->XferSize), MEMORY1);
-      dcmi->XferCount--;
-      lcdPtr->debug (LCD_COLOR_GREEN, "dma1 %2d %x", dcmi->XferCount, DMA2_Stream1->M1AR + (8*dcmi->XferSize));
-      }
-    else
-      lcdPtr->debug (LCD_COLOR_RED, "dma x");
+  if (dcmi->XferCount > 2) {
+    if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmi->XferCount % 2) == 0)) // Update M0AR for next frameChunk
+      DMA2_Stream1->M0AR += 8*dcmi->XferSize;
+    else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0) // Update M1AR for next frameChunk
+      DMA2_Stream1->M1AR += 8*dcmi->XferSize;
+    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmi->XferCount);
+    dcmi->XferCount--;
     }
 
   else {
     if (DMA2_Stream1->CR & DMA_SxCR_CT) {
-      // Update memory0 address
+      // reset M0AR for next frame
       DMA2_Stream1->M0AR = dcmi->pBuffPtr;
-      lcdPtr->debug (LCD_COLOR_GREEN, "dma0 %x", dcmi->pBuffPtr);
+      lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmi->XferCount);
+      dcmi->XferCount--;
       }
     else {
-      // Update memory1 address
+      // reset M1AR for next frame
       DMA2_Stream1->M1AR = dcmi->pBuffPtr + (4*dcmi->XferSize);
+      __HAL_DCMI_ENABLE_IT (dcmi, DCMI_IT_FRAME);
+      lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmi->XferCount);
       dcmi->XferCount = dcmi->XferTransferNumber;
-      lcdPtr->debug (LCD_COLOR_GREEN, "dma1 %x", dcmi->pBuffPtr + (4*dcmi->XferSize));
       }
     }
-
-  // Check if the frame is transferred
-  if (dcmi->XferCount == dcmi->XferTransferNumber)
-    // Enable the Frame interrupt
-    __HAL_DCMI_ENABLE_IT (dcmi, DCMI_IT_FRAME);
   }
 //}}}
 //{{{
@@ -115,7 +104,7 @@ void cCamera::init (cLcd* lcd, bool useCapture) {
   // init camera registers
   mt9d111Init (useCapture);
   if (useCapture) {
-    mXsize = 1600; 
+    mXsize = 1600;
     mYsize = 1200;
     capture();
     }
@@ -514,41 +503,23 @@ void cCamera::dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t 
   // config the DCMI Mode
   DCMI->CR = (DCMI->CR & ~(DCMI_CR_CM)) | DCMI_Mode;
 
-  dcmi->DMA_Handle->XferCpltCallback = dcmiDmaXferComplete;
-  dcmi->DMA_Handle->XferErrorCallback = dcmiDmaError;
   dcmi->DMA_Handle->XferAbortCallback = NULL;
+  dcmi->DMA_Handle->XferErrorCallback = dcmiDmaError;
+  dcmi->DMA_Handle->XferCpltCallback = dcmiDmaXferComplete;
+  dcmi->DMA_Handle->XferM1CpltCallback = dcmiDmaXferComplete;
 
-  // reset transfer counters value
-  dcmi->XferCount = 0;
-  dcmi->XferTransferNumber = 0;
-
-  if (length <= 0xFFFF)
-    // enable the DMA Stream
-    HAL_DMA_Start_IT (dcmi->DMA_Handle, (uint32_t)&dcmi->Instance->DR, data, length);
-  else {
-    // DCMI_DOUBLE_BUFFER Mode, set the DMA memory1 conversion complete callback
-    dcmi->DMA_Handle->XferM1CpltCallback = dcmiDmaXferComplete;
-
-    // Initialize transfer parameters
-    dcmi->pBuffPtr = data;
-    dcmi->XferCount = 1;
-    dcmi->XferSize = length;
-
-    // Get the number of buffer
-    while (dcmi->XferSize > 0xFFFF) {
-      dcmi->XferSize = dcmi->XferSize / 2;
-      dcmi->XferCount = dcmi->XferCount * 2;
-      }
-
-    lcdPtr->debug (LCD_COLOR_YELLOW, "dma start %d %d %d", length, dcmi->XferCount, dcmi->XferSize);
-
-    dcmi->XferCount = dcmi->XferCount - 2;
-    dcmi->XferTransferNumber = dcmi->XferCount;
-
-    // start DMA multiBuffer transfer
-    HAL_DMAEx_MultiBufferStart_IT (dcmi->DMA_Handle, (uint32_t)&dcmi->Instance->DR,
-                                   data, data + (4*dcmi->XferSize), dcmi->XferSize);
+  // calc the number of xfers with xferSize <= 64k
+  dcmi->pBuffPtr = data;
+  dcmi->XferTransferNumber = 1;
+  dcmi->XferSize = length;
+  while (dcmi->XferSize > 0xFFFF) {
+    dcmi->XferSize = dcmi->XferSize / 2;
+    dcmi->XferTransferNumber = dcmi->XferTransferNumber * 2;
     }
+  dcmi->XferCount = dcmi->XferTransferNumber;
+  HAL_DMAEx_MultiBufferStart_IT (dcmi->DMA_Handle, (uint32_t)&dcmi->Instance->DR,
+                                 data, data + (4*dcmi->XferSize), dcmi->XferSize);
+  lcdPtr->debug (LCD_COLOR_YELLOW, "dmaStart len:%d xferCount:%d xferSize:%d", length, dcmi->XferCount, dcmi->XferSize);
 
   // enable capture
   DCMI->CR |= DCMI_CR_CAPTURE;
