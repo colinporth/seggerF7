@@ -48,8 +48,8 @@ public:
     }
   //}}}
   //{{{
-  void startBgnd (uint32_t* bgnd) {
-    memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), bgnd, 480*272*4);
+  void startBgnd (uint16_t* bgnd) {
+    memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), bgnd, 480*272*2);
     }
   //}}}
   //{{{
@@ -57,7 +57,7 @@ public:
 
     if (zoom)
       BSP_LCD_ConvertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
-    else 
+    else
       BSP_LCD_ConvertFrameCpu (src, srcXsize, srcYsize, getBuffer(), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
     }
   //}}}

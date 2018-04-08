@@ -12,7 +12,7 @@ public:
 
   void setFocus (int value);
 
-  void start (uint32_t buffer, bool continuous);
+  void start (uint32_t buffer);
 
 private:
   void gpioInit();

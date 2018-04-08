@@ -85,7 +85,7 @@ void cApp::run() {
   //}}}
   bool useCapture = BSP_PB_GetState (BUTTON_KEY);
   camera.init (mLcd, useCapture);
-  camera.start (SDRAM_USER, true);
+  camera.start (SDRAM_USER);
 
   int lastCount = 0;
   while (true) {

@@ -6,6 +6,21 @@
 
 #define i2cAddress 0x90
 
+//{{{
+struct tDcmiInfo {
+  DCMI_TypeDef                  *Instance;           /*!< DCMI Register base address   */
+  DCMI_InitTypeDef              Init;                /*!< DCMI parameters              */
+  HAL_LockTypeDef               Lock;                /*!< DCMI locking object          */
+  __IO HAL_DCMI_StateTypeDef    State;               /*!< DCMI state                   */
+  __IO uint32_t                 XferCount;           /*!< DMA transfer counter         */
+  __IO uint32_t                 XferSize;            /*!< DMA transfer size            */
+  uint32_t                      XferTransferNumber;  /*!< DMA transfer number          */
+  uint32_t                      pBuffPtr;            /*!< Pointer to DMA output buffer */
+  DMA_HandleTypeDef             *DMA_Handle;         /*!< Pointer to the DMA handler   */
+  __IO uint32_t                 ErrorCode;           /*!< DCMI Error code              */
+  } tDcmiInfo;
+//}}}
+
 DCMI_HandleTypeDef dcmiInfo;
 cLcd* lcdPtr = nullptr;
 
@@ -20,23 +35,23 @@ void dcmiDmaXferComplete (DMA_HandleTypeDef* dma) {
     else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0)
       // Update M1AR for next frameChunk
       DMA2_Stream1->M1AR += 8 * dcmiInfo.XferSize;
-    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
     dcmiInfo.XferCount--;
+    //lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
     }
 
   else if (DMA2_Stream1->CR & DMA_SxCR_CT) {
     // last chunk but one, reset M0AR for next frame
     DMA2_Stream1->M0AR = dcmiInfo.pBuffPtr;
-    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
     dcmiInfo.XferCount--;
+    //lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
     }
 
   else {
     // last chunk, reset M1AR,XferCount for next frame
     DMA2_Stream1->M1AR = dcmiInfo.pBuffPtr + (4 * dcmiInfo.XferSize);
     __HAL_DCMI_ENABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
-    lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
     dcmiInfo.XferCount = dcmiInfo.XferTransferNumber;
+    //lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer last");
     }
   }
 //}}}
@@ -81,7 +96,7 @@ extern "C" {
         __HAL_DCMI_DISABLE_IT (&dcmiInfo, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
       __HAL_DCMI_DISABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
       __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_FRAMERI);
-      lcdPtr->debug (LCD_COLOR_GREEN, "frameIrq");
+      //lcdPtr->debug (LCD_COLOR_GREEN, "frameIrq");
       }
     }
   //}}}
@@ -132,9 +147,9 @@ void cCamera::setFocus (int value) {
 //}}}
 
 //{{{
-void cCamera::start (uint32_t buffer, bool continuous) {
+void cCamera::start (uint32_t buffer) {
 
-  dcmiStart (&dcmiInfo, continuous ? DCMI_MODE_CONTINUOUS : DCMI_MODE_SNAPSHOT, buffer, getXsize()*getYsize()/2);
+  dcmiStart (&dcmiInfo, DCMI_MODE_CONTINUOUS, buffer, getXsize()*getYsize()/2);
   }
 //}}}
 
@@ -186,19 +201,22 @@ void cCamera::mt9d111Init (bool useCapture) {
   CAMERA_IO_Write16 (i2cAddress, 0x0D, 0x0000); // Disable soft reset by setting R0x0D:0 = 0x0000.
   HAL_Delay (100);
 
-  CAMERA_IO_Write16 (i2cAddress, 0x05, 0x0204); // HBLANK B = 516
-  CAMERA_IO_Write16 (i2cAddress, 0x06, 0x0014); // VBLANK B = 20
-  CAMERA_IO_Write16 (i2cAddress, 0x07, 0x00FE); // HBLANK A = 254
-  CAMERA_IO_Write16 (i2cAddress, 0x08, 0x000C); // VBLANK A = 12
-  CAMERA_IO_Write16 (i2cAddress, 0x20, 0x0300); // Read Mode B = 9:showBorder 8:overSized
-  CAMERA_IO_Write16 (i2cAddress, 0x21, 0x8400); // Read Mode A = 15:binning 10:bothADC
-
   // PLL - M=18,N=1,P=2 - (24mhz/(N+1))*M / 2*(P+1) = 36mhz
-  CAMERA_IO_Write16 (i2cAddress, 0x66, 0x1201); // PLLControl1 -    M:N
+  // PLL - M=14,N=1,P=2 - (24mhz/(N+1))*M / 2*(P+1) = 28mhz
+  // PLL - M=12,N=1,P=2 - (24mhz/(N+1))*M / 2*(P+1) = 24mhz
+  CAMERA_IO_Write16 (i2cAddress, 0x66, 0x0C01); // PLLControl1 -    M:N
   CAMERA_IO_Write16 (i2cAddress, 0x67, 0x0502); // PLLControl2 - 0x05:P
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Clock CNTRL - PLL ON
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0x2000); // Clock CNTRL - USE PLL
   HAL_Delay (100);
+
+  CAMERA_IO_Write16 (i2cAddress, 0x07, 0x00FE); // preview A HBLANK = 254
+  CAMERA_IO_Write16 (i2cAddress, 0x08, 0x000C); // preview A VBLANK = 12
+  CAMERA_IO_Write16 (i2cAddress, 0x21, 0x8400); // preview A Read Mode = binning,useOneADC
+
+  CAMERA_IO_Write16 (i2cAddress, 0x05, 0x0204); // capture B HBLANK = 516
+  CAMERA_IO_Write16 (i2cAddress, 0x06, 0x0014); // capture B VBLANK = 20
+  CAMERA_IO_Write16 (i2cAddress, 0x20, 0x0300); // capture B Read Mode = showBorder,overSized
 
   // page 1
   CAMERA_IO_Write16 (i2cAddress, 0xF0, 1);

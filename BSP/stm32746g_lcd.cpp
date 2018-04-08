@@ -799,7 +799,7 @@ void BSP_LCD_ConvertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsi
   auto dst565 = (uint16_t*)dst;
   for (uint16_t y = 0; y < ysize; y++) {
     memcpy (dst565, src, xsize*2);
-    src += 800;
+    src += srcXsize;
     dst565 += xsize;
     }
 #else
