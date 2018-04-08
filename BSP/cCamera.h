@@ -13,6 +13,8 @@ public:
   void setFocus (int value);
 
   void start (uint32_t buffer);
+  void preview();
+  void capture();
 
 private:
   void gpioInit();

@@ -83,8 +83,8 @@ void cApp::run() {
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
   //}}}
-  bool useCapture = BSP_PB_GetState (BUTTON_KEY);
-  camera.init (mLcd, useCapture);
+  bool lastPressed = BSP_PB_GetState (BUTTON_KEY);
+  camera.init (mLcd, false);
   camera.start (SDRAM_USER);
 
   int lastCount = 0;
@@ -98,9 +98,17 @@ void cApp::run() {
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
     mLcd->startBgnd ((uint16_t*)SDRAM_USER, camera.getXsize(), camera.getYsize(), BSP_PB_GetState (BUTTON_KEY));
-    mLcd->drawTitle (useCapture ? "7/4/18 1600x1200" : "7/4/18 800x600");
+    mLcd->drawTitle ("8/4/18 800x600");
     mLcd->drawDebug();
     mLcd->present();
+
+    bool pressed =  BSP_PB_GetState (BUTTON_KEY);
+    if (pressed && !lastPressed)
+      camera.capture();
+    else if (!pressed && lastPressed)
+      camera.preview();
+    lastPressed = pressed;
+
     //{{{  removed
     //if (hasSdChanged()) {
       //{{{  check num files

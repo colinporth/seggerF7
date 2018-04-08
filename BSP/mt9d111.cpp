@@ -121,6 +121,8 @@ void cCamera::init (cLcd* lcd, bool useCapture) {
 
   // startup dcmi
   dcmiInit (&dcmiInfo);
+
+  preview();
   }
 //}}}
 
@@ -150,6 +152,24 @@ void cCamera::setFocus (int value) {
 void cCamera::start (uint32_t buffer) {
 
   dcmiStart (&dcmiInfo, DCMI_MODE_CONTINUOUS, buffer, getXsize()*getYsize()/2);
+  }
+//}}}
+//{{{
+void cCamera::preview() {
+  mXsize = 800;
+  mYsize = 600;
+  lcdPtr->debug (LCD_COLOR_YELLOW, "preview");
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Sequencer.params.mode - none
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // Sequencer goto preview A - 800x600
+  }
+//}}}
+//{{{
+void cCamera::capture() {
+  mXsize = 800;
+  mYsize = 600;
+  lcdPtr->debug (LCD_COLOR_YELLOW, "capture");
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
   }
 //}}}
 
@@ -192,7 +212,7 @@ void cCamera::gpioInit() {
 //{{{
 void cCamera::mt9d111Init (bool useCapture) {
 
-  //  soft reset
+  //{{{  soft reset
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Bypass the PLL, R0x65:0 = 0xA000,
   CAMERA_IO_Write16 (i2cAddress, 0xF0, 1);      // page 1
   CAMERA_IO_Write16 (i2cAddress, 0xC3, 0x0501); // Perform MCU reset by setting R0xC3:1 = 0x0501.
@@ -200,23 +220,24 @@ void cCamera::mt9d111Init (bool useCapture) {
   CAMERA_IO_Write16 (i2cAddress, 0x0D, 0x0021); // Enable soft reset by setting R0x0D:0 = 0x0021. Bit 0 is used for the sensor core reset
   CAMERA_IO_Write16 (i2cAddress, 0x0D, 0x0000); // Disable soft reset by setting R0x0D:0 = 0x0000.
   HAL_Delay (100);
+  //}}}
 
-  // PLL - M=18,N=1,P=2 - (24mhz/(N+1))*M / 2*(P+1) = 36mhz
-  // PLL - M=14,N=1,P=2 - (24mhz/(N+1))*M / 2*(P+1) = 28mhz
-  // PLL - M=12,N=1,P=2 - (24mhz/(N+1))*M / 2*(P+1) = 24mhz
-  CAMERA_IO_Write16 (i2cAddress, 0x66, 0x0C01); // PLLControl1 -    M:N
+  CAMERA_IO_Write16 (i2cAddress, 0x05, 0x0247); // capture B HBLANK
+  CAMERA_IO_Write16 (i2cAddress, 0x06, 0x000B); // capture B VBLANK
+  CAMERA_IO_Write16 (i2cAddress, 0x07, 0x0136); // preview A HBLANK
+  CAMERA_IO_Write16 (i2cAddress, 0x08, 0x000B); // preview A VBLANK
+  CAMERA_IO_Write16 (i2cAddress, 0x20, 0x8300); // capture B Read Mode
+  CAMERA_IO_Write16 (i2cAddress, 0x21, 0x8400); // preview A Read Mode
+
+  // PLL - M=16,N=1,P=3 - (24mhz/(N+1))*M / 2*(P+1) = 24mhz
+  //CAMERA_IO_Write16 (i2cAddress, 0x66, 0x1001); // PLLControl1 -    M:N
+  //CAMERA_IO_Write16 (i2cAddress, 0x67, 0x0503); // PLLControl2 - 0x05:P
+  // PLL - M=16,N=1,P=2 - (24mhz/(N+1))*M / 2*(P+1) = 32mhz
+  CAMERA_IO_Write16 (i2cAddress, 0x66, 0x1001); // PLLControl1 -    M:N
   CAMERA_IO_Write16 (i2cAddress, 0x67, 0x0502); // PLLControl2 - 0x05:P
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Clock CNTRL - PLL ON
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0x2000); // Clock CNTRL - USE PLL
   HAL_Delay (100);
-
-  CAMERA_IO_Write16 (i2cAddress, 0x07, 0x00FE); // preview A HBLANK = 254
-  CAMERA_IO_Write16 (i2cAddress, 0x08, 0x000C); // preview A VBLANK = 12
-  CAMERA_IO_Write16 (i2cAddress, 0x21, 0x8400); // preview A Read Mode = binning,useOneADC
-
-  CAMERA_IO_Write16 (i2cAddress, 0x05, 0x0204); // capture B HBLANK = 516
-  CAMERA_IO_Write16 (i2cAddress, 0x06, 0x0014); // capture B VBLANK = 20
-  CAMERA_IO_Write16 (i2cAddress, 0x20, 0x0300); // capture B Read Mode = showBorder,overSized
 
   // page 1
   CAMERA_IO_Write16 (i2cAddress, 0xF0, 1);
@@ -254,87 +275,63 @@ void cCamera::mt9d111Init (bool useCapture) {
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA13C); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Capture: Strobe Control = 0
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA13D); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Capture: Skip Control = 0
   //}}}
+  //{{{  register wizard
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2703); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0320); // Output Width A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2705); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0258); // Output Height A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2707); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0320); // Output Width B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2709); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0258); // Output Height B
 
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x270B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0030); // mode_config = disable jpeg A,B
-  //{{{  preview A
-  // Max Frame Time: 33.3333 msec
-  // Max Frame Clocks: 1316666.6 clocks (39.500 MHz)
-  // No. of ADCs: 1
-  // Skip Mode: 1x cols, 1x rows, Bin Mode: Yes
 
-  // Active Sensor Columns: 808 pixels / 1616 clocks
-  // Active Sensor Rows: 608 rows
-  // Horiz Blanking: 254 pixels / 508 clocks
-  // Vert Blanking: 11 rows
-  // Extra Delay: 955 clocks
-  // Actual Frame Clocks: 1316666 clocks
-  // Row Time: 53.772 usec / 2124 clocks
-
-  // Frame time: 33.333316 msec
-  // Frames per Sec: 30 fps
-  // Max Shutter Delay: 402
-
-  // 50Hz Flicker Period: 185.97 lines
-  // 60Hz Flicker Period: 154.97 lines
-
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2703); CAMERA_IO_Write16 (i2cAddress, 0xC8, 800);    // Output Width A  = 800
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2705); CAMERA_IO_Write16 (i2cAddress, 0xC8, 600);    // Output Height A = 600
-
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x270F); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x001C); // Row Start A = 28
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2711); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x003C); // Column Start A = 60
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2713); CAMERA_IO_Write16 (i2cAddress, 0xC8, 1200);   // Row Height A = 1200
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2715); CAMERA_IO_Write16 (i2cAddress, 0xC8, 1600);   // Column Width A = 1600
-
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2717); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0384); // Extra Delay A = 900
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2719); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0011); // Row Speed A = 17
-
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2727); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0);      // Crop_X0 A = 0
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2729); CAMERA_IO_Write16 (i2cAddress, 0xC8, 800);    // Crop_X1 A = 800
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x272B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0);      // Crop_Y0 A = 0
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x272D); CAMERA_IO_Write16 (i2cAddress, 0xC8, 600);    // Crop_Y1 A = 600
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x270F); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x001C); // Row Start A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2711); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x003C); // Column Start A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2713); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x04b0); // Row Height A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2715); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0640); // Column Width A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2717); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0256); // Extra Delay A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2719); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0011); // Row Speed A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2727); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0);      // Crop_X0 A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2729); CAMERA_IO_Write16 (i2cAddress, 0xC8, 800);    // Crop_X1 A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x272B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0);      // Crop_Y0 A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x272D); CAMERA_IO_Write16 (i2cAddress, 0xC8, 600);    // Crop_Y1 A
 
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA743); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02);   // Gamma and Contrast Settings A
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA77D); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x22);   // outputFormat A - RGB565, swap odd even
-  //}}}
-  //{{{  capture B
-  // Max Frame Time: 66.6667 msec
-  // Max Frame Clocks: 2633333.3 clocks (39.500 MHz)
-  // No. of ADCs: 2
-  // Skip Mode: 1x cols, 1x rows, Bin Mode: No
 
-  // Active Sensor Columns: 1608 pixels
-  // Active Sensor Rows: 1208 rows
-  // Horiz Blanking: 516 pixels
-  // Vert Blanking: 31 rows
-  // Extra Delay: 1697 clocks
-  // Actual Frame Clocks: 2633333 clocks
-  // Row Time: 53.772 usec / 2124 clocks
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x271B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x001C); // Row Start B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x271D); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x003C); // Column Start B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x271F); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x04b0); // Row Height B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2721); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0640); // Column Width B
 
-  // Frame time: 66.666658 msec
-  // Frames per Sec: 15 fps
-  // Max Shutter Delay: 1663
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2723); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x023F); // Extra Delay B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2725); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0011); // Row Speed B
 
-  // 50Hz Flicker Period: 185.97 lines
-  // 60Hz Flicker Period: 154.97 lines
-
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2707); CAMERA_IO_Write16 (i2cAddress, 0xC8, 1600);   // Output Width B  = 1600
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2709); CAMERA_IO_Write16 (i2cAddress, 0xC8, 1200);   // Output Height B = 1200
-
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x271B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x001C); // Row Start B = 28
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x271D); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x003C); // Column Start B = 60
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x271F); CAMERA_IO_Write16 (i2cAddress, 0xC8, 1200);   // Row Height B = 1200
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2721); CAMERA_IO_Write16 (i2cAddress, 0xC8, 1600);   // Column Width B = 1600
-
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2723); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01A7); // Extra Delay B = 423
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2725); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0011); // Row Speed B = 17
-
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2735); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0);      // Crop_X0 B = 0
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2737); CAMERA_IO_Write16 (i2cAddress, 0xC8, 1600);   // Crop_X1 B = 1600
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2739); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0);      // Crop_Y0 B = 0
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x273B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 1200);   // Crop_Y1 B = 1200
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2735); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0);      // Crop_X0 B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2737); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0320); // Crop_X1 B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2739); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0);      // Crop_Y0 B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x273B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0258); // Crop_Y1 B
 
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA744); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02);   // Gamma and Contrast Settings B
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA77E); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x22);   // outputFormat B - RGB565, swap odd even
+
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA217); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x08);   // IndexTH23 = 8
+
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x276D); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0xE0E2); // FIFO_Conf1 A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA76F); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0xE1);   // FIFO_Conf2 A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2774); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0xE0E1); // FIFO_Conf1 B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA776); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0xE1);   // FIFO_Conf2 B
+
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x220B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0048); // Max R12 B (Shutter Delay)
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2228); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x022B); // RowTime (msclk per)/4
+
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x222F); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x003B); // R9 Step
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA408); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x000D); // search_f1_50
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA409); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x000F); // search_f2_50
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA40A); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x000A); // search_f1_60
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA40B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x000C); // search_f2_60
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2411); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x003B); // R9_Step_60
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2413); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0047); // R9_Step_50
+
+  HAL_Delay (100);
   //}}}
   //{{{  gamma tables
   // gamma table A 0 to 18
@@ -379,25 +376,6 @@ void cCamera::mt9d111Init (bool useCapture) {
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA769); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0xF8);  // 248
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA76A); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0xFF);  // 255
   //}}}
-  //{{{  other config
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x276D); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0xE0E2); // FIFO_Conf1 A = 57570
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA76F); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0xE1);   // FIFO_Conf2 A = 225
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2774); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0xE0E1); // FIFO_Conf1 B = 57569
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA776); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0xE1);   // FIFO_Conf2 B = 225
-
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x220B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0192); // Max R12 B (Shutter Delay) = 402
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA217); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x08);   // IndexTH23 = 8
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2228); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x020F); // RowTime (msclk per)/4 = 527
-
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x222F); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x009A); // R9 Step = 94
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA408); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x24);   // search_f1_50 = 21
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA409); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x26);   // search_f2_50 = 23
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA40A); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x1D);   // search_f1_60 = 17
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA40B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x1F);   // search_f2_60 = 19
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2411); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x009A); // R9_Step_60 = 94
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2413); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00B9); // R9_Step_50 = 112
-  HAL_Delay (100);
-  //}}}
 
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x06); // Sequencer Refresh Mode
   HAL_Delay (200);
@@ -428,21 +406,6 @@ void cCamera::mt9d111Init (bool useCapture) {
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x90B5); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // SFR GPIO reset
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x90B6); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // SFR GPIO suspend
   //}}}
-
-  if (useCapture) {
-    mXsize = 1600;
-    mYsize = 1200;
-    lcdPtr->debug (LCD_COLOR_YELLOW, "capture");
-    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
-    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200
-    }
-  else {
-    mXsize = 800;
-    mYsize = 600;
-    lcdPtr->debug (LCD_COLOR_YELLOW, "preview");
-    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Sequencer.params.mode - none
-    CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // Sequencer goto preview A - 800x600
-    }
   }
 //}}}
 //{{{
