@@ -18,7 +18,7 @@ struct tDcmiInfo {
   uint32_t                      pBuffPtr;            /*!< Pointer to DMA output buffer */
   DMA_HandleTypeDef             *DMA_Handle;         /*!< Pointer to the DMA handler   */
   __IO uint32_t                 ErrorCode;           /*!< DCMI Error code              */
-  } tDcmiInfo;
+  };
 //}}}
 
 DCMI_HandleTypeDef dcmiInfo;
@@ -49,9 +49,9 @@ void dcmiDmaXferComplete (DMA_HandleTypeDef* dma) {
   else {
     // last chunk, reset M1AR,XferCount for next frame
     DMA2_Stream1->M1AR = dcmiInfo.pBuffPtr + (4 * dcmiInfo.XferSize);
-    __HAL_DCMI_ENABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
+    //__HAL_DCMI_ENABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
     dcmiInfo.XferCount = dcmiInfo.XferTransferNumber;
-    //lcdPtr->debug (LCD_COLOR_GREEN, "dmaXfer last");
+    //lcdPtr->debug (LCD_COLOR_GREEN, "dmaFrameDone");
     }
   }
 //}}}
@@ -87,17 +87,14 @@ extern "C" {
       __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_OVRRI);
       dcmiInfo.DMA_Handle->XferAbortCallback = dcmiError;
       HAL_DMA_Abort_IT (dcmiInfo.DMA_Handle);
-      //lcdPtr->debug (LCD_COLOR_RED, "overflowIrq");
+      lcdPtr->debug (LCD_COLOR_RED, "overflowIrq");
       }
 
-    if ((misr & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
-      // frame interrupt, snapshot mode disable Vsync, Error and Overrun interrupts
-      if ((DCMI->CR & DCMI_CR_CM) == DCMI_MODE_SNAPSHOT)
-        __HAL_DCMI_DISABLE_IT (&dcmiInfo, DCMI_IT_LINE | DCMI_IT_VSYNC | DCMI_IT_ERR | DCMI_IT_OVR);
-      __HAL_DCMI_DISABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
-      __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_FRAMERI);
-      //lcdPtr->debug (LCD_COLOR_GREEN, "frameIrq");
-      }
+    //if ((misr & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
+    //  __HAL_DCMI_DISABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
+    //  __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_FRAMERI);
+    //  lcdPtr->debug (LCD_COLOR_GREEN, "frameIrq");
+    //  }
     }
   //}}}
   void DMA2_Stream1_IRQHandler() { HAL_DMA_IRQHandler (dcmiInfo.DMA_Handle); }
@@ -117,12 +114,12 @@ void cCamera::init (cLcd* lcd, bool useCapture) {
   lcdPtr->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (i2cAddress, 0));
 
   // init camera registers
-  mt9d111Init (useCapture);
+  mt9d111Init();
 
   // startup dcmi
   dcmiInit (&dcmiInfo);
 
-  preview();
+  capture();
   }
 //}}}
 
@@ -210,7 +207,7 @@ void cCamera::gpioInit() {
   }
 //}}}
 //{{{
-void cCamera::mt9d111Init (bool useCapture) {
+void cCamera::mt9d111Init() {
 
   //{{{  soft reset
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Bypass the PLL, R0x65:0 = 0xA000,

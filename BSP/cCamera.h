@@ -18,7 +18,7 @@ public:
 
 private:
   void gpioInit();
-  void mt9d111Init (bool useCapture);
+  void mt9d111Init();
   void dcmiInit (DCMI_HandleTypeDef* dcmi);
   void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length);
 

@@ -83,7 +83,6 @@ void cApp::run() {
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
   //}}}
-  bool lastPressed = BSP_PB_GetState (BUTTON_KEY);
   camera.init (mLcd, false);
   camera.start (SDRAM_USER);
 
@@ -101,14 +100,6 @@ void cApp::run() {
     mLcd->drawTitle ("8/4/18 800x600");
     mLcd->drawDebug();
     mLcd->present();
-
-    bool pressed =  BSP_PB_GetState (BUTTON_KEY);
-    if (pressed && !lastPressed)
-      camera.capture();
-    else if (!pressed && lastPressed)
-      camera.preview();
-    lastPressed = pressed;
-
     //{{{  removed
     //if (hasSdChanged()) {
       //{{{  check num files
