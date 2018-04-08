@@ -86,6 +86,9 @@ void cApp::run() {
   camera.init (mLcd, false);
   camera.start (SDRAM_USER);
 
+  bool previewMode = true;
+  bool lastButton = false;
+
   int lastCount = 0;
   while (true) {
     pollTouch();
@@ -114,6 +117,13 @@ void cApp::run() {
       //}
       //}}}
     //}}}
+
+    bool button = BSP_PB_GetState (BUTTON_KEY);
+    if (button && (button != lastButton)) {
+      previewMode = !previewMode;
+      previewMode ? camera.preview() : camera.capture();
+      }
+    lastButton = button;
     }
   }
 //}}}
