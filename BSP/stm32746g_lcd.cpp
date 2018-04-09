@@ -30,6 +30,231 @@ LCD_DrawPropTypeDef DrawProp[MAX_LAYER_NUMBER];
 uint32_t TextColor = LCD_COLOR_WHITE;
 uint32_t BackColor = LCD_COLOR_BLACK;
 //}}}
+
+//{{{
+void mspInit (LTDC_HandleTypeDef* hltdc, void* Params) {
+
+  // Enable the LTDC and DMA2D clocks
+  __HAL_RCC_LTDC_CLK_ENABLE();
+  __HAL_RCC_DMA2D_CLK_ENABLE();
+
+  // Enable GPIOs clock
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
+  __HAL_RCC_GPIOI_CLK_ENABLE();
+  __HAL_RCC_GPIOJ_CLK_ENABLE();
+  __HAL_RCC_GPIOK_CLK_ENABLE();
+  LCD_DISP_GPIO_CLK_ENABLE();
+  LCD_BL_CTRL_GPIO_CLK_ENABLE();
+
+  // GPIOE configuration
+  GPIO_InitTypeDef gpio_init_structure;
+  gpio_init_structure.Pin       = GPIO_PIN_4;
+  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
+  gpio_init_structure.Pull      = GPIO_NOPULL;
+  gpio_init_structure.Speed     = GPIO_SPEED_FAST;
+  gpio_init_structure.Alternate = GPIO_AF14_LTDC;
+  HAL_GPIO_Init (GPIOE, &gpio_init_structure);
+
+  // GPIOG configuration
+  gpio_init_structure.Pin       = GPIO_PIN_12;
+  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
+  gpio_init_structure.Alternate = GPIO_AF9_LTDC;
+  HAL_GPIO_Init (GPIOG, &gpio_init_structure);
+
+  // GPIOI LTDC alternate configuration
+  gpio_init_structure.Pin       = GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
+  gpio_init_structure.Alternate = GPIO_AF14_LTDC;
+  HAL_GPIO_Init (GPIOI, &gpio_init_structure);
+
+  // GPIOJ configuration
+  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_4 |
+                                  GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9 |
+                                  GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
+  gpio_init_structure.Alternate = GPIO_AF14_LTDC;
+  HAL_GPIO_Init (GPIOJ, &gpio_init_structure);
+
+  // GPIOK configuration
+  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_4 | \
+                                  GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
+  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
+  gpio_init_structure.Alternate = GPIO_AF14_LTDC;
+  HAL_GPIO_Init (GPIOK, &gpio_init_structure);
+
+  // LCD_DISP GPIO configuration
+  gpio_init_structure.Pin       = LCD_DISP_PIN;     // LCD_DISP pin has to be manually controlled
+  gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
+  HAL_GPIO_Init (LCD_DISP_GPIO_PORT, &gpio_init_structure);
+
+  // LCD_BL_CTRL GPIO configuration
+  gpio_init_structure.Pin       = LCD_BL_CTRL_PIN;  // LCD_BL_CTRL pin has to be manually controlled
+  gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
+  HAL_GPIO_Init (LCD_BL_CTRL_GPIO_PORT, &gpio_init_structure);
+  }
+//}}}
+
+//{{{
+HAL_StatusTypeDef ltdcReload (LTDC_HandleTypeDef* hltdc, uint32_t ReloadType) {
+
+  // Enable the Reload interrupt
+  __HAL_LTDC_ENABLE_IT (hltdc, LTDC_IT_RR);
+
+  // Apply Reload type
+  hltdc->Instance->SRCR = ReloadType;
+
+  return HAL_OK;
+  }
+//}}}
+//{{{
+__weak void ltdcReloadEventCallback (LTDC_HandleTypeDef* hltdc) {
+  UNUSED(hltdc);
+  }
+//}}}
+//{{{
+void HAL_LTDC_IRQHandler (LTDC_HandleTypeDef *hltdc) {
+
+  //  transfer Error Interrupt
+  if (__HAL_LTDC_GET_FLAG(hltdc, LTDC_FLAG_TE) != RESET) {
+    if (__HAL_LTDC_GET_IT_SOURCE(hltdc, LTDC_IT_TE) != RESET) {
+      /* Disable the transfer Error interrupt */
+      __HAL_LTDC_DISABLE_IT(hltdc, LTDC_IT_TE);
+      /* Clear the transfer error flag */
+      __HAL_LTDC_CLEAR_FLAG(hltdc, LTDC_FLAG_TE);
+      }
+    }
+
+  //  FIFO underrun Interrupt
+  if(__HAL_LTDC_GET_FLAG(hltdc, LTDC_FLAG_FU) != RESET) {
+    if(__HAL_LTDC_GET_IT_SOURCE(hltdc, LTDC_IT_FU) != RESET) {
+      /* Disable the FIFO underrun interrupt */
+      __HAL_LTDC_DISABLE_IT(hltdc, LTDC_IT_FU);
+      /* Clear the FIFO underrun flag */
+      __HAL_LTDC_CLEAR_FLAG(hltdc, LTDC_FLAG_FU);
+      }
+    }
+
+  //  Line Interrupt
+  if(__HAL_LTDC_GET_FLAG(hltdc, LTDC_FLAG_LI) != RESET) {
+    if(__HAL_LTDC_GET_IT_SOURCE(hltdc, LTDC_IT_LI) != RESET) {
+      /* Disable the Line interrupt */
+      __HAL_LTDC_DISABLE_IT(hltdc, LTDC_IT_LI);
+
+      /* Clear the Line interrupt flag */
+      __HAL_LTDC_CLEAR_FLAG(hltdc, LTDC_FLAG_LI);
+      }
+    }
+
+  //  Register reload Interrupt
+  if (__HAL_LTDC_GET_FLAG(hltdc, LTDC_FLAG_RR) != RESET) {
+    if (__HAL_LTDC_GET_IT_SOURCE(hltdc, LTDC_IT_RR) != RESET) {
+      /* Disable the register reload interrupt */
+      __HAL_LTDC_DISABLE_IT(hltdc, LTDC_IT_RR);
+      /* Clear the register reload flag */
+      __HAL_LTDC_CLEAR_FLAG(hltdc, LTDC_FLAG_RR);
+
+      // Register reload interrupt Callback
+      HAL_LTDC_ReloadEventCallback (hltdc);
+      }
+    }
+  }
+//}}}
+
+//{{{
+void LTDC_SetConfig (LTDC_HandleTypeDef* hltdc, LTDC_LayerCfgTypeDef* pLayerCfg, uint32_t LayerIdx) {
+
+  // Configures the horizontal start and stop position */
+  uint32_t tmp = ((pLayerCfg->WindowX1 + ((hltdc->Instance->BPCR & LTDC_BPCR_AHBP) >> 16)) << 16);
+  LTDC_LAYER (hltdc, LayerIdx)->WHPCR &= ~(LTDC_LxWHPCR_WHSTPOS | LTDC_LxWHPCR_WHSPPOS);
+  LTDC_LAYER (hltdc, LayerIdx)->WHPCR = ((pLayerCfg->WindowX0 + ((hltdc->Instance->BPCR & LTDC_BPCR_AHBP) >> 16) + 1) | tmp);
+
+  // Configures the vertical start and stop position */
+  tmp = ((pLayerCfg->WindowY1 + (hltdc->Instance->BPCR & LTDC_BPCR_AVBP)) << 16);
+  LTDC_LAYER (hltdc, LayerIdx)->WVPCR &= ~(LTDC_LxWVPCR_WVSTPOS | LTDC_LxWVPCR_WVSPPOS);
+  LTDC_LAYER (hltdc, LayerIdx)->WVPCR  = ((pLayerCfg->WindowY0 + (hltdc->Instance->BPCR & LTDC_BPCR_AVBP) + 1) | tmp);
+
+  // Specifies the pixel format */
+  LTDC_LAYER (hltdc, LayerIdx)->PFCR &= ~(LTDC_LxPFCR_PF);
+  LTDC_LAYER (hltdc, LayerIdx)->PFCR = (pLayerCfg->PixelFormat);
+
+  // Configures the default color values */
+  tmp = ((uint32_t)(pLayerCfg->Backcolor.Green) << 8);
+  uint32_t tmp1 = ((uint32_t)(pLayerCfg->Backcolor.Red) << 16);
+  uint32_t tmp2 = (pLayerCfg->Alpha0 << 24);
+  LTDC_LAYER (hltdc, LayerIdx)->DCCR &= ~(LTDC_LxDCCR_DCBLUE | LTDC_LxDCCR_DCGREEN | LTDC_LxDCCR_DCRED | LTDC_LxDCCR_DCALPHA);
+  LTDC_LAYER (hltdc, LayerIdx)->DCCR = (pLayerCfg->Backcolor.Blue | tmp | tmp1 | tmp2);
+
+  // Specifies the constant alpha value */
+  LTDC_LAYER (hltdc, LayerIdx)->CACR &= ~(LTDC_LxCACR_CONSTA);
+  LTDC_LAYER (hltdc, LayerIdx)->CACR = (pLayerCfg->Alpha);
+
+  // Specifies the blending factors */
+  LTDC_LAYER (hltdc, LayerIdx)->BFCR &= ~(LTDC_LxBFCR_BF2 | LTDC_LxBFCR_BF1);
+  LTDC_LAYER (hltdc, LayerIdx)->BFCR = (pLayerCfg->BlendingFactor1 | pLayerCfg->BlendingFactor2);
+
+  // Configures the color frame buffer start address */
+  LTDC_LAYER (hltdc, LayerIdx)->CFBAR &= ~(LTDC_LxCFBAR_CFBADD);
+  LTDC_LAYER (hltdc, LayerIdx)->CFBAR = (pLayerCfg->FBStartAdress);
+
+  if (pLayerCfg->PixelFormat == LTDC_PIXEL_FORMAT_ARGB8888)
+    tmp = 4;
+  else if (pLayerCfg->PixelFormat == LTDC_PIXEL_FORMAT_RGB888)
+    tmp = 3;
+  else if ((pLayerCfg->PixelFormat == LTDC_PIXEL_FORMAT_ARGB4444) ||
+           (pLayerCfg->PixelFormat == LTDC_PIXEL_FORMAT_RGB565)   ||
+           (pLayerCfg->PixelFormat == LTDC_PIXEL_FORMAT_ARGB1555) ||
+           (pLayerCfg->PixelFormat == LTDC_PIXEL_FORMAT_AL88))
+    tmp = 2;
+  else
+    tmp = 1;
+
+  // Configures the color frame buffer pitch in byte */
+  LTDC_LAYER (hltdc, LayerIdx)->CFBLR  &= ~(LTDC_LxCFBLR_CFBLL | LTDC_LxCFBLR_CFBP);
+  LTDC_LAYER (hltdc, LayerIdx)->CFBLR  = (((pLayerCfg->ImageWidth * tmp) << 16) | (((pLayerCfg->WindowX1 - pLayerCfg->WindowX0) * tmp)  + 3));
+
+  // Configures the frame buffer line number */
+  LTDC_LAYER (hltdc, LayerIdx)->CFBLNR  &= ~(LTDC_LxCFBLNR_CFBLNBR);
+  LTDC_LAYER (hltdc, LayerIdx)->CFBLNR  = (pLayerCfg->ImageHeight);
+
+  // Enable LTDC_Layer by setting LEN bit */
+  LTDC_LAYER (hltdc, LayerIdx)->CR |= (uint32_t)LTDC_LxCR_LEN;
+  }
+//}}}
+//{{{
+HAL_StatusTypeDef ltdcConfigLayer (LTDC_HandleTypeDef* hltdc, LTDC_LayerCfgTypeDef* pLayerCfg, uint32_t LayerIdx) {
+
+  // Copy new layer configuration into handle structure
+  hltdc->LayerCfg[LayerIdx] = *pLayerCfg;
+
+  // Configure the LTDC Layer
+  LTDC_SetConfig (hltdc, pLayerCfg, LayerIdx);
+
+  // Sets the Reload type
+  hltdc->Instance->SRCR = LTDC_SRCR_IMR;
+
+  return HAL_OK;
+  }
+//}}}
+//{{{
+HAL_StatusTypeDef ltdcSetAlpha (LTDC_HandleTypeDef* hltdc, uint32_t Alpha, uint32_t LayerIdx) {
+
+  // Get layer configuration from handle structure
+  LTDC_LayerCfgTypeDef* pLayerCfg = &hltdc->LayerCfg[LayerIdx];
+
+  // Reconfigure the Alpha value
+  pLayerCfg->Alpha = Alpha;
+
+  // Set LTDC parameters
+  LTDC_SetConfig(hltdc, pLayerCfg, LayerIdx);
+
+  // Sets the Reload type
+  hltdc->Instance->SRCR = LTDC_SRCR_IMR;
+
+  return HAL_OK;
+  }
+//}}}
+
 //{{{
 void FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3)
 {
@@ -141,8 +366,17 @@ uint8_t BSP_LCD_Init() {
   hLtdcHandler.Init.TotalHeigh = (RK043FN48H_HEIGHT + RK043FN48H_VSYNC + RK043FN48H_VBP + RK043FN48H_VFP - 1);
   hLtdcHandler.Init.TotalWidth = (RK043FN48H_WIDTH + RK043FN48H_HSYNC + RK043FN48H_HBP + RK043FN48H_HFP - 1);
 
-  // LCD clock configuration
-  BSP_LCD_ClockConfig (&hLtdcHandler, NULL);
+  // RK043FN48H LCD clock configuration
+  // PLLSAI_VCO Input = HSE_VALUE/PLLM = 1 Mhz
+  // PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz
+  // PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/5 = 38.4 Mhz
+  // LTDC clock frequency = PLLLCDCLK / LTDC_PLLSAI_DIVR_4 = 38.4/4 = 9.6Mhz
+  RCC_PeriphCLKInitTypeDef periph_clk_init_struct;
+  periph_clk_init_struct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
+  periph_clk_init_struct.PLLSAI.PLLSAIN = 192;
+  periph_clk_init_struct.PLLSAI.PLLSAIR = RK043FN48H_FREQUENCY_DIVIDER;
+  periph_clk_init_struct.PLLSAIDivR = RCC_PLLSAIDIVR_4;
+  HAL_RCCEx_PeriphCLKConfig (&periph_clk_init_struct);
 
   // Initialize the LCD pixel width and pixel height
   hLtdcHandler.LayerCfg->ImageWidth = RK043FN48H_WIDTH;
@@ -160,9 +394,47 @@ uint8_t BSP_LCD_Init() {
   hLtdcHandler.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
   hLtdcHandler.Instance = LTDC;
 
-  if (HAL_LTDC_GetState(&hLtdcHandler) == HAL_LTDC_STATE_RESET)
-    BSP_LCD_MspInit (&hLtdcHandler, NULL);
-  HAL_LTDC_Init (&hLtdcHandler);
+  mspInit (&hLtdcHandler, NULL);
+
+  // Configures the HS, VS, DE and PC polarity */
+  hLtdcHandler.Instance->GCR &= ~(LTDC_GCR_HSPOL | LTDC_GCR_VSPOL | LTDC_GCR_DEPOL | LTDC_GCR_PCPOL);
+  hLtdcHandler.Instance->GCR |=  (uint32_t)(hLtdcHandler.Init.HSPolarity | hLtdcHandler.Init.VSPolarity | \
+  hLtdcHandler.Init.DEPolarity | hLtdcHandler.Init.PCPolarity);
+
+  // Sets Synchronization size */
+  hLtdcHandler.Instance->SSCR &= ~(LTDC_SSCR_VSH | LTDC_SSCR_HSW);
+  uint32_t tmp = (hLtdcHandler.Init.HorizontalSync << 16);
+  hLtdcHandler.Instance->SSCR |= (tmp | hLtdcHandler.Init.VerticalSync);
+
+  // Sets Accumulated Back porch */
+  hLtdcHandler.Instance->BPCR &= ~(LTDC_BPCR_AVBP | LTDC_BPCR_AHBP);
+  tmp = (hLtdcHandler.Init.AccumulatedHBP << 16);
+  hLtdcHandler.Instance->BPCR |= (tmp | hLtdcHandler.Init.AccumulatedVBP);
+
+  // Sets Accumulated Active Width */
+  hLtdcHandler.Instance->AWCR &= ~(LTDC_AWCR_AAH | LTDC_AWCR_AAW);
+  tmp = (hLtdcHandler.Init.AccumulatedActiveW << 16);
+  hLtdcHandler.Instance->AWCR |= (tmp | hLtdcHandler.Init.AccumulatedActiveH);
+
+  // Sets Total Width */
+  hLtdcHandler.Instance->TWCR &= ~(LTDC_TWCR_TOTALH | LTDC_TWCR_TOTALW);
+  tmp = (hLtdcHandler.Init.TotalWidth << 16);
+  hLtdcHandler.Instance->TWCR |= (tmp | hLtdcHandler.Init.TotalHeigh);
+
+  // Sets the background color value */
+  tmp = ((uint32_t)(hLtdcHandler.Init.Backcolor.Green) << 8);
+  uint32_t tmp1 = ((uint32_t)(hLtdcHandler.Init.Backcolor.Red) << 16);
+  hLtdcHandler.Instance->BCCR &= ~(LTDC_BCCR_BCBLUE | LTDC_BCCR_BCGREEN | LTDC_BCCR_BCRED);
+  hLtdcHandler.Instance->BCCR |= (tmp1 | tmp | hLtdcHandler.Init.Backcolor.Blue);
+
+  // Enable the transfer Error interrupt */
+  __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_TE);
+
+  // Enable the FIFO underrun interrupt */
+  __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_FU);
+
+  // Enable LTDC by setting LTDCEN bit */
+  __HAL_LTDC_ENABLE (&hLtdcHandler);
 
   // Assert display enable LCD_DISP pin
   HAL_GPIO_WritePin (LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_SET);
@@ -220,7 +492,7 @@ void BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
   layer_cfg.ImageWidth = BSP_LCD_GetXSize();
   layer_cfg.ImageHeight = BSP_LCD_GetYSize();
 
-  HAL_LTDC_ConfigLayer (&hLtdcHandler, &layer_cfg, LayerIndex);
+  ltdcConfigLayer (&hLtdcHandler, &layer_cfg, LayerIndex);
   }
 //}}}
 
@@ -237,35 +509,11 @@ void BSP_LCD_SetLayerVisible (uint32_t LayerIndex, FunctionalState State) {
   }
 //}}}
 //{{{
-void BSP_LCD_SetLayerVisible_NoReload (uint32_t LayerIndex, FunctionalState State) {
-
-  if (State == ENABLE)
-    __HAL_LTDC_LAYER_ENABLE(&hLtdcHandler, LayerIndex);
-  else
-    __HAL_LTDC_LAYER_DISABLE(&hLtdcHandler, LayerIndex);
-  }
-//}}}
-//{{{
 void BSP_LCD_SetTransparency (uint32_t LayerIndex, uint8_t Transparency) {
-  HAL_LTDC_SetAlpha (&hLtdcHandler, Transparency, LayerIndex);
+  ltdcSetAlpha (&hLtdcHandler, Transparency, LayerIndex);
   }
 //}}}
-//{{{
-void BSP_LCD_SetTransparency_NoReload (uint32_t LayerIndex, uint8_t Transparency) {
-  HAL_LTDC_SetAlpha_NoReload (&hLtdcHandler, Transparency, LayerIndex);
-  }
-//}}}
-//{{{
-void BSP_LCD_SetLayerAddress (uint32_t LayerIndex, uint32_t Address) {
-  HAL_LTDC_SetAddress (&hLtdcHandler, Address, LayerIndex);
-  }
-//}}}
-//{{{
-void BSP_LCD_SetLayerAddress_NoReload (uint32_t LayerIndex, uint32_t Address) {
-  HAL_LTDC_SetAddress_NoReload (&hLtdcHandler, Address, LayerIndex);
-  }
-//}}}
-void BSP_LCD_Reload (uint32_t ReloadType) { HAL_LTDC_Reload (&hLtdcHandler, ReloadType); }
+void BSP_LCD_Reload (uint32_t ReloadType) { ltdcReload (&hLtdcHandler, ReloadType); }
 
 uint16_t BSP_LCD_GetTextHeight() { return Font16.mHeight; }
 uint32_t BSP_LCD_GetTextColor() { return TextColor; }
@@ -1657,128 +1905,5 @@ void BSP_LCD_DisplayOff() {
   __HAL_LTDC_DISABLE(&hLtdcHandler);
   HAL_GPIO_WritePin (LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_RESET);      // De-assert LCD_DISP pin
   HAL_GPIO_WritePin (LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, GPIO_PIN_RESET);// De-assert LCD_BL_CTRL pin
-  }
-//}}}
-
-//{{{
-__weak void BSP_LCD_MspInit (LTDC_HandleTypeDef* hltdc, void* Params) {
-
-  GPIO_InitTypeDef gpio_init_structure;
-
-  // Enable the LTDC and DMA2D clocks
-  __HAL_RCC_LTDC_CLK_ENABLE();
-  __HAL_RCC_DMA2D_CLK_ENABLE();
-
-  // Enable GPIOs clock
-  __HAL_RCC_GPIOE_CLK_ENABLE();
-  __HAL_RCC_GPIOG_CLK_ENABLE();
-  __HAL_RCC_GPIOI_CLK_ENABLE();
-  __HAL_RCC_GPIOJ_CLK_ENABLE();
-  __HAL_RCC_GPIOK_CLK_ENABLE();
-  LCD_DISP_GPIO_CLK_ENABLE();
-  LCD_BL_CTRL_GPIO_CLK_ENABLE();
-
-  // LTDC Pins configuration **
-  // GPIOE configuration
-  gpio_init_structure.Pin       = GPIO_PIN_4;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
-  gpio_init_structure.Pull      = GPIO_NOPULL;
-  gpio_init_structure.Speed     = GPIO_SPEED_FAST;
-  gpio_init_structure.Alternate = GPIO_AF14_LTDC;
-  HAL_GPIO_Init (GPIOE, &gpio_init_structure);
-
-  // GPIOG configuration
-  gpio_init_structure.Pin       = GPIO_PIN_12;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
-  gpio_init_structure.Alternate = GPIO_AF9_LTDC;
-  HAL_GPIO_Init (GPIOG, &gpio_init_structure);
-
-  // GPIOI LTDC alternate configuration
-  gpio_init_structure.Pin       = GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
-  gpio_init_structure.Alternate = GPIO_AF14_LTDC;
-  HAL_GPIO_Init (GPIOI, &gpio_init_structure);
-
-  // GPIOJ configuration
-  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_4 |
-                                  GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9 |
-                                  GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
-  gpio_init_structure.Alternate = GPIO_AF14_LTDC;
-  HAL_GPIO_Init (GPIOJ, &gpio_init_structure);
-
-  // GPIOK configuration
-  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_4 | \
-                                  GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
-  gpio_init_structure.Alternate = GPIO_AF14_LTDC;
-  HAL_GPIO_Init (GPIOK, &gpio_init_structure);
-
-  // LCD_DISP GPIO configuration
-  gpio_init_structure.Pin       = LCD_DISP_PIN;     // LCD_DISP pin has to be manually controlled
-  gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
-  HAL_GPIO_Init (LCD_DISP_GPIO_PORT, &gpio_init_structure);
-
-  // LCD_BL_CTRL GPIO configuration
-  gpio_init_structure.Pin       = LCD_BL_CTRL_PIN;  // LCD_BL_CTRL pin has to be manually controlled
-  gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
-  HAL_GPIO_Init (LCD_BL_CTRL_GPIO_PORT, &gpio_init_structure);
-  }
-//}}}
-//{{{
-__weak void BSP_LCD_MspDeInit (LTDC_HandleTypeDef *hltdc, void *Params) {
-
-  GPIO_InitTypeDef  gpio_init_structure;
-
-  // Disable LTDC block
-  __HAL_LTDC_DISABLE (hltdc);
-
-  // LTDC Pins deactivation
-
-  // GPIOE deactivation
-  gpio_init_structure.Pin = GPIO_PIN_4;
-  HAL_GPIO_DeInit (GPIOE, gpio_init_structure.Pin);
-
-  // GPIOG deactivation
-  gpio_init_structure.Pin = GPIO_PIN_12;
-  HAL_GPIO_DeInit (GPIOG, gpio_init_structure.Pin);
-
-  // GPIOI deactivation
-  gpio_init_structure.Pin  = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_12 | \
-                             GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  HAL_GPIO_DeInit (GPIOI, gpio_init_structure.Pin);
-
-  // GPIOJ deactivation
-  gpio_init_structure.Pin  = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | \
-                             GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | \
-                             GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | \
-                             GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  HAL_GPIO_DeInit (GPIOJ, gpio_init_structure.Pin);
-
-  // GPIOK deactivation
-  gpio_init_structure.Pin  = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_4 | \
-                             GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
-  HAL_GPIO_DeInit (GPIOK, gpio_init_structure.Pin);
-
-  // Disable LTDC clock
-  __HAL_RCC_LTDC_CLK_DISABLE();
-
-  // GPIO pins clock can be shut down in the application  by surcharging this __weak function
-  }
-//}}}
-//{{{
-__weak void BSP_LCD_ClockConfig (LTDC_HandleTypeDef *hltdc, void *Params) {
-// RK043FN48H LCD clock configuration
-// PLLSAI_VCO Input = HSE_VALUE/PLLM = 1 Mhz
-// PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz
-// PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/5 = 38.4 Mhz
-// LTDC clock frequency = PLLLCDCLK / LTDC_PLLSAI_DIVR_4 = 38.4/4 = 9.6Mhz
-
-  RCC_PeriphCLKInitTypeDef periph_clk_init_struct;
-  periph_clk_init_struct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
-  periph_clk_init_struct.PLLSAI.PLLSAIN = 192;
-  periph_clk_init_struct.PLLSAI.PLLSAIR = RK043FN48H_FREQUENCY_DIVIDER;
-  periph_clk_init_struct.PLLSAIDivR = RCC_PLLSAIDIVR_4;
-  HAL_RCCEx_PeriphCLKConfig (&periph_clk_init_struct);
   }
 //}}}

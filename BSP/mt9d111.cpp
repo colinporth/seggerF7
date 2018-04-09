@@ -221,18 +221,16 @@ extern "C" {
     uint32_t misr = READ_REG (DCMI->MISR);
 
     if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
-      // synchronization error interrupt
+      // synchronizationError interrupt
       __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_ERRRI);
-      dcmiInfo.DMA_Handle->XferAbortCallback = dcmiError;
-    __HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
+      __HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
       lcdPtr->debug (LCD_COLOR_RED, "syncIrq");
       }
 
     if ((misr & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
-      // overflow interrupt
+      // overflowError interrupt
       __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_OVRRI);
-      dcmiInfo.DMA_Handle->XferAbortCallback = dcmiError;
-    __HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
+      __HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
       lcdPtr->debug (LCD_COLOR_RED, "overflowIrq");
       }
 
@@ -375,7 +373,7 @@ void cCamera::mt9d111Init() {
   //CAMERA_IO_Write16 (i2cAddress, 0x66, 0x1001); // PLLControl1 -    M:N
   //CAMERA_IO_Write16 (i2cAddress, 0x67, 0x0503); // PLLControl2 - 0x05:P
   // PLL - M=16,N=1,P=2 - (24mhz/(N+1))*M / 2*(P+1) = 32mhz
-  CAMERA_IO_Write16 (i2cAddress, 0x66, 0x1001); // PLLControl1 -    M:N
+  CAMERA_IO_Write16 (i2cAddress, 0x66, 0x0801); // PLLControl1 -    M:N
   CAMERA_IO_Write16 (i2cAddress, 0x67, 0x0502); // PLLControl2 - 0x05:P
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Clock CNTRL - PLL ON
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0x2000); // Clock CNTRL - USE PLL
@@ -614,11 +612,6 @@ void cCamera::dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t 
 
   // config the DCMI Mode
   DCMI->CR = (DCMI->CR & ~(DCMI_CR_CM)) | DCMI_Mode;
-
-  dcmi->DMA_Handle->XferAbortCallback = NULL;
-  dcmi->DMA_Handle->XferErrorCallback = dmaError;
-  dcmi->DMA_Handle->XferCpltCallback = dmaXferComplete;
-  dcmi->DMA_Handle->XferM1CpltCallback = dmaXferComplete;
 
   // calc the number of xfers with xferSize <= 64k
   dcmi->pBuffPtr = data;

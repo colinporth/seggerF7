@@ -105,12 +105,8 @@ inline uint32_t BSP_LCD_GetYSize() { return RK043FN48H_HEIGHT; }
 
 void BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FrameBuffer);
 void BSP_LCD_SetTransparency (uint32_t LayerIndex, uint8_t Transparency);
-void BSP_LCD_SetTransparency_NoReload (uint32_t LayerIndex, uint8_t Transparency);
-void BSP_LCD_SetLayerAddress (uint32_t LayerIndex, uint32_t Address);
-void BSP_LCD_SetLayerAddress_NoReload (uint32_t LayerIndex, uint32_t Address);
 void BSP_LCD_SelectLayer (uint32_t LayerIndex);
 void BSP_LCD_SetLayerVisible (uint32_t LayerIndex, FunctionalState State);
-void BSP_LCD_SetLayerVisible_NoReload (uint32_t LayerIndex, FunctionalState State);
 void BSP_LCD_Reload (uint32_t ReloadType);
 
 uint16_t BSP_LCD_GetTextHeight();

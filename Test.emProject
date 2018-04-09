@@ -178,7 +178,6 @@
         <file file_name="../BSP/ts.h" />
         <file file_name="../BSP/cCamera.h" />
       </folder>
-      <file file_name="../BSP/font16.c" />
       <file file_name="../BSP/stm32746g_discovery.c" />
       <file file_name="../BSP/stm32746g_discovery_sd.c" />
       <file file_name="../BSP/stm32746g_discovery_sdram.c" />
@@ -186,6 +185,7 @@
       <file file_name="../BSP/ft5336.cpp" />
       <file file_name="../BSP/stm32746g_lcd.cpp" />
       <file file_name="../BSP/mt9d111.cpp" />
+      <file file_name="../BSP/font16.c" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />
@@ -198,7 +198,6 @@
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_flash_ex.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_gpio.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_i2c.c" />
-      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_ltdc.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pcd.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pwr.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pwr_ex.c" />
