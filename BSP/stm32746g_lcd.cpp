@@ -355,7 +355,7 @@ uint8_t BSP_LCD_Init() {
 
   hDma2dHandler.Instance = DMA2D;
   __HAL_RCC_DMA2D_CLK_ENABLE();
-  HAL_DMA2D_ConfigDeadTime (&hDma2dHandler, 20);
+  HAL_DMA2D_ConfigDeadTime (&hDma2dHandler, 10);
   HAL_DMA2D_EnableDeadTime (&hDma2dHandler);
 
   return LCD_OK;
