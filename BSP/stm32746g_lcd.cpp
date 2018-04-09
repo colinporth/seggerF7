@@ -83,59 +83,72 @@ extern "C" {
   }
 
 //{{{
-void setConfig (LTDC_HandleTypeDef* hltdc, LTDC_LayerCfgTypeDef* pLayerCfg, uint32_t LayerIdx) {
+void setLayer (uint32_t layerIndex, LTDC_LayerCfgTypeDef* layerConfig) {
 
-  // Configures the horizontal start and stop position
-  uint32_t tmp = ((pLayerCfg->WindowX1 + ((hltdc->Instance->BPCR & LTDC_BPCR_AHBP) >> 16)) << 16);
-  LTDC_LAYER (hltdc, LayerIdx)->WHPCR &= ~(LTDC_LxWHPCR_WHSTPOS | LTDC_LxWHPCR_WHSPPOS);
-  LTDC_LAYER (hltdc, LayerIdx)->WHPCR = ((pLayerCfg->WindowX0 + ((hltdc->Instance->BPCR & LTDC_BPCR_AHBP) >> 16) + 1) | tmp);
+  // Config the horizontal start and stop position
+  uint32_t tmp = (layerConfig->WindowX1 + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16)) << 16;
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->WHPCR &= ~(LTDC_LxWHPCR_WHSTPOS | LTDC_LxWHPCR_WHSPPOS);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->WHPCR = ((layerConfig->WindowX0 + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16) + 1) | tmp);
 
-  // Configures the vertical start and stop position
-  tmp = ((pLayerCfg->WindowY1 + (hltdc->Instance->BPCR & LTDC_BPCR_AVBP)) << 16);
-  LTDC_LAYER (hltdc, LayerIdx)->WVPCR &= ~(LTDC_LxWVPCR_WVSTPOS | LTDC_LxWVPCR_WVSPPOS);
-  LTDC_LAYER (hltdc, LayerIdx)->WVPCR  = ((pLayerCfg->WindowY0 + (hltdc->Instance->BPCR & LTDC_BPCR_AVBP) + 1) | tmp);
+  // config the vertical start and stop position
+  tmp = (layerConfig->WindowY1 + (LTDC->BPCR & LTDC_BPCR_AVBP)) << 16;
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->WVPCR &= ~(LTDC_LxWVPCR_WVSTPOS | LTDC_LxWVPCR_WVSPPOS);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->WVPCR  = ((layerConfig->WindowY0 + (LTDC->BPCR & LTDC_BPCR_AVBP) + 1) | tmp);
 
   // Specifies the pixel format
-  LTDC_LAYER (hltdc, LayerIdx)->PFCR &= ~(LTDC_LxPFCR_PF);
-  LTDC_LAYER (hltdc, LayerIdx)->PFCR = (pLayerCfg->PixelFormat);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->PFCR &= ~(LTDC_LxPFCR_PF);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->PFCR = (layerConfig->PixelFormat);
 
-  // Configures the default color values
-  tmp = ((uint32_t)(pLayerCfg->Backcolor.Green) << 8);
-  uint32_t tmp1 = ((uint32_t)(pLayerCfg->Backcolor.Red) << 16);
-  uint32_t tmp2 = (pLayerCfg->Alpha0 << 24);
-  LTDC_LAYER (hltdc, LayerIdx)->DCCR &= ~(LTDC_LxDCCR_DCBLUE | LTDC_LxDCCR_DCGREEN | LTDC_LxDCCR_DCRED | LTDC_LxDCCR_DCALPHA);
-  LTDC_LAYER (hltdc, LayerIdx)->DCCR = (pLayerCfg->Backcolor.Blue | tmp | tmp1 | tmp2);
+  // config the default color values
+  tmp = ((uint32_t)(layerConfig->Backcolor.Green) << 8);
+  uint32_t tmp1 = ((uint32_t)(layerConfig->Backcolor.Red) << 16);
+  uint32_t tmp2 = (layerConfig->Alpha0 << 24);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->DCCR &= ~(LTDC_LxDCCR_DCBLUE | LTDC_LxDCCR_DCGREEN | LTDC_LxDCCR_DCRED | LTDC_LxDCCR_DCALPHA);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->DCCR = (layerConfig->Backcolor.Blue | tmp | tmp1 | tmp2);
 
   // Specifies the constant alpha value
-  LTDC_LAYER (hltdc, LayerIdx)->CACR &= ~(LTDC_LxCACR_CONSTA);
-  LTDC_LAYER (hltdc, LayerIdx)->CACR = (pLayerCfg->Alpha);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->CACR &= ~(LTDC_LxCACR_CONSTA);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->CACR = (layerConfig->Alpha);
 
   // Specifies the blending factors
-  LTDC_LAYER (hltdc, LayerIdx)->BFCR &= ~(LTDC_LxBFCR_BF2 | LTDC_LxBFCR_BF1);
-  LTDC_LAYER (hltdc, LayerIdx)->BFCR = (pLayerCfg->BlendingFactor1 | pLayerCfg->BlendingFactor2);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->BFCR &= ~(LTDC_LxBFCR_BF2 | LTDC_LxBFCR_BF1);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->BFCR = (layerConfig->BlendingFactor1 | layerConfig->BlendingFactor2);
 
-  // Configures the color frame buffer start address
-  LTDC_LAYER (hltdc, LayerIdx)->CFBAR &= ~(LTDC_LxCFBAR_CFBADD);
-  LTDC_LAYER (hltdc, LayerIdx)->CFBAR = (pLayerCfg->FBStartAdress);
+  // config the color frame buffer start address
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBAR &= ~(LTDC_LxCFBAR_CFBADD);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBAR = (layerConfig->FBStartAdress);
 
-  if (pLayerCfg->PixelFormat == LTDC_PIXEL_FORMAT_ARGB8888)
-    tmp = 4;
-  else
-    tmp = 2;
+  // config the color frame buffer pitch in byte
+  tmp = (layerConfig->PixelFormat == LTDC_PIXEL_FORMAT_ARGB8888) ? 4 : 2;
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBLR &= ~(LTDC_LxCFBLR_CFBLL | LTDC_LxCFBLR_CFBP);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBLR = ((layerConfig->ImageWidth * tmp) << 16) |
+                                                   (((layerConfig->WindowX1 - layerConfig->WindowX0) * tmp)  + 3);
 
-  // Configures the color frame buffer pitch in byte
-  LTDC_LAYER (hltdc, LayerIdx)->CFBLR &= ~(LTDC_LxCFBLR_CFBLL | LTDC_LxCFBLR_CFBP);
-  LTDC_LAYER (hltdc, LayerIdx)->CFBLR = (((pLayerCfg->ImageWidth * tmp) << 16) | (((pLayerCfg->WindowX1 - pLayerCfg->WindowX0) * tmp)  + 3));
-
-  // Configures the frame buffer line number
-  LTDC_LAYER (hltdc, LayerIdx)->CFBLNR &= ~(LTDC_LxCFBLNR_CFBLNBR);
-  LTDC_LAYER (hltdc, LayerIdx)->CFBLNR = (pLayerCfg->ImageHeight);
+  // config the frame buffer line number
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBLNR &= ~(LTDC_LxCFBLNR_CFBLNBR);
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBLNR = (layerConfig->ImageHeight);
 
   // Enable LTDC_Layer by setting LEN bit
-  LTDC_LAYER (hltdc, LayerIdx)->CR |= (uint32_t)LTDC_LxCR_LEN;
+  LTDC_LAYER (&hLtdcHandler, layerIndex)->CR |= (uint32_t)LTDC_LxCR_LEN;
   }
 //}}}
+//{{{
+void FillBuffer (uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine, uint32_t color) {
 
+  hDma2dHandler.Init.Mode = DMA2D_R2M;
+  #ifdef RGB565
+    hDma2dHandler.Init.ColorMode = DMA2D_RGB565;
+  #else
+    hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
+  #endif
+  hDma2dHandler.Init.OutputOffset = OffLine;
+
+  HAL_DMA2D_Init (&hDma2dHandler);
+  HAL_DMA2D_ConfigLayer (&hDma2dHandler, layer);
+  HAL_DMA2D_Start (&hDma2dHandler, color, dst, xsize, ysize);
+  HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
+  }
+//}}}
 //{{{
 void FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3)
 {
@@ -198,23 +211,6 @@ void FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t 
   }
 //}}}
 //{{{
-void FillBuffer (uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine, uint32_t color) {
-
-  hDma2dHandler.Init.Mode = DMA2D_R2M;
-  #ifdef RGB565
-    hDma2dHandler.Init.ColorMode = DMA2D_RGB565;
-  #else
-    hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
-  #endif
-  hDma2dHandler.Init.OutputOffset = OffLine;
-
-  HAL_DMA2D_Init (&hDma2dHandler);
-  HAL_DMA2D_ConfigLayer (&hDma2dHandler, layer);
-  HAL_DMA2D_Start (&hDma2dHandler, color, dst, xsize, ysize);
-  HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
-  }
-//}}}
-//{{{
 void ConvertLineToARGB8888 (void* src, void* dst, uint32_t xSize, uint32_t ColorMode) {
 
   hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
@@ -237,79 +233,58 @@ void ConvertLineToARGB8888 (void* src, void* dst, uint32_t xSize, uint32_t Color
 //{{{
 uint8_t BSP_LCD_Init() {
 
-  //{{{  Enable the LTDC and DMA2D clocks
-  __HAL_RCC_LTDC_CLK_ENABLE();
-  __HAL_RCC_DMA2D_CLK_ENABLE();
-  //}}}
-  //{{{  Enable GPIOs clock
+  //{{{  gpio config
+  // Enable GPIOs clock
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
   __HAL_RCC_GPIOI_CLK_ENABLE();
   __HAL_RCC_GPIOJ_CLK_ENABLE();
   __HAL_RCC_GPIOK_CLK_ENABLE();
+
   LCD_DISP_GPIO_CLK_ENABLE();
   LCD_BL_CTRL_GPIO_CLK_ENABLE();
-  //}}}
-  //{{{  GPIOE configuration
+
+  // gpio configuration
   GPIO_InitTypeDef gpio_init_structure;
-  gpio_init_structure.Pin       = GPIO_PIN_4;
   gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Pull      = GPIO_NOPULL;
   gpio_init_structure.Speed     = GPIO_SPEED_FAST;
-  gpio_init_structure.Alternate = GPIO_AF14_LTDC;
-  HAL_GPIO_Init (GPIOE, &gpio_init_structure);
-  //}}}
-  //{{{  GPIOG configuration
+
+  // GPIOG configuration
   gpio_init_structure.Pin       = GPIO_PIN_12;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF9_LTDC;
   HAL_GPIO_Init (GPIOG, &gpio_init_structure);
-  //}}}
-  //{{{  GPIOI LTDC alternate configuration
+
+  // GPIOI LTDC alternate configuration
   gpio_init_structure.Pin       = GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF14_LTDC;
   HAL_GPIO_Init (GPIOI, &gpio_init_structure);
-  //}}}
-  //{{{  GPIOJ configuration
+
+  gpio_init_structure.Pin       = GPIO_PIN_4;
+  HAL_GPIO_Init (GPIOE, &gpio_init_structure);
+
+  // GPIOJ configuration
   gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_4 |
                                   GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9 |
                                   GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
-  gpio_init_structure.Alternate = GPIO_AF14_LTDC;
   HAL_GPIO_Init (GPIOJ, &gpio_init_structure);
-  //}}}
-  //{{{  GPIOK configuration
+
+  // GPIOK configuration
   gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_4 | \
                                   GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
-  gpio_init_structure.Alternate = GPIO_AF14_LTDC;
   HAL_GPIO_Init (GPIOK, &gpio_init_structure);
-  //}}}
-  //{{{  LCD_DISP GPIO configuration
-  gpio_init_structure.Pin       = LCD_DISP_PIN;     // LCD_DISP pin has to be manually controlled
-  gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
+
+  // LCD_DISP GPIO configuration
+  gpio_init_structure.Pin = LCD_DISP_PIN;     // LCD_DISP pin has to be manually controlled
+  gpio_init_structure.Mode = GPIO_MODE_OUTPUT_PP;
   HAL_GPIO_Init (LCD_DISP_GPIO_PORT, &gpio_init_structure);
-  //}}}
-  //{{{  LCD_BL_CTRL GPIO configuration
-  gpio_init_structure.Pin       = LCD_BL_CTRL_PIN;  // LCD_BL_CTRL pin has to be manually controlled
-  gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
+
+  // LCD_BL_CTRL GPIO configuration
+  gpio_init_structure.Pin = LCD_BL_CTRL_PIN;  // LCD_BL_CTRL pin has to be manually controlled
   HAL_GPIO_Init (LCD_BL_CTRL_GPIO_PORT, &gpio_init_structure);
   //}}}
-  //{{{  RK043FN48H LCD clock configuration
-  // PLLSAI_VCO Input = HSE_VALUE/PLLM = 1 Mhz
-  // PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz
-  // PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/5 = 38.4 Mhz
-  // LTDC clock frequency = PLLLCDCLK / LTDC_PLLSAI_DIVR_4 = 38.4/4 = 9.6Mhz
-  RCC_PeriphCLKInitTypeDef periph_clk_init_struct;
-  periph_clk_init_struct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
-  periph_clk_init_struct.PLLSAI.PLLSAIN = 192;
-  periph_clk_init_struct.PLLSAI.PLLSAIR = RK043FN48H_FREQUENCY_DIVIDER;
-  periph_clk_init_struct.PLLSAIDivR = RCC_PLLSAIDIVR_4;
-  HAL_RCCEx_PeriphCLKConfig (&periph_clk_init_struct);
-  //}}}
-
-  //{{{  init hLtdcHandler
+  BSP_SDRAM_Init();
+  //{{{  init hLtdcHandler, ltdc
   hLtdcHandler.Instance = LTDC;
   hLtdcHandler.LayerCfg->ImageWidth = RK043FN48H_WIDTH;
   hLtdcHandler.LayerCfg->ImageHeight = RK043FN48H_HEIGHT;
@@ -328,58 +303,66 @@ uint8_t BSP_LCD_Init() {
   hLtdcHandler.Init.VSPolarity = LTDC_VSPOLARITY_AL;
   hLtdcHandler.Init.DEPolarity = LTDC_DEPOLARITY_AL;
   hLtdcHandler.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
+
+  //{{{  RK043FN48H LCD clock configuration
+  // PLLSAI_VCO Input = HSE_VALUE/PLLM = 1 Mhz
+  // PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz
+  // PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/5 = 38.4 Mhz
+  // LTDC clock frequency = PLLLCDCLK / LTDC_PLLSAI_DIVR_4 = 38.4/4 = 9.6Mhz
+  RCC_PeriphCLKInitTypeDef periph_clk_init_struct;
+  periph_clk_init_struct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
+  periph_clk_init_struct.PLLSAI.PLLSAIN = 192;
+  periph_clk_init_struct.PLLSAI.PLLSAIR = RK043FN48H_FREQUENCY_DIVIDER;
+  periph_clk_init_struct.PLLSAIDivR = RCC_PLLSAIDIVR_4;
+  HAL_RCCEx_PeriphCLKConfig (&periph_clk_init_struct);
   //}}}
-  //{{{  config ltdc from  hLtdcHandler
-  // Configures the HS, VS, DE and PC polarity
-  hLtdcHandler.Instance->GCR &= ~(LTDC_GCR_HSPOL | LTDC_GCR_VSPOL | LTDC_GCR_DEPOL | LTDC_GCR_PCPOL);
-  hLtdcHandler.Instance->GCR |=  (uint32_t)(hLtdcHandler.Init.HSPolarity | hLtdcHandler.Init.VSPolarity |
+  __HAL_RCC_LTDC_CLK_ENABLE();
+
+  // config the HS, VS, DE and PC polarity
+  LTDC->GCR &= ~(LTDC_GCR_HSPOL | LTDC_GCR_VSPOL | LTDC_GCR_DEPOL | LTDC_GCR_PCPOL);
+  LTDC->GCR |=  (uint32_t)(hLtdcHandler.Init.HSPolarity | hLtdcHandler.Init.VSPolarity |
                                             hLtdcHandler.Init.DEPolarity | hLtdcHandler.Init.PCPolarity);
 
-  // Sets Synchronization size
-  hLtdcHandler.Instance->SSCR &= ~(LTDC_SSCR_VSH | LTDC_SSCR_HSW);
+  // set Synchronization size
+  LTDC->SSCR &= ~(LTDC_SSCR_VSH | LTDC_SSCR_HSW);
   uint32_t tmp = (hLtdcHandler.Init.HorizontalSync << 16);
-  hLtdcHandler.Instance->SSCR |= (tmp | hLtdcHandler.Init.VerticalSync);
+  LTDC->SSCR |= (tmp | hLtdcHandler.Init.VerticalSync);
 
-  // Sets Accumulated Back porch
-  hLtdcHandler.Instance->BPCR &= ~(LTDC_BPCR_AVBP | LTDC_BPCR_AHBP);
+  // Set Accumulated Back porch
+  LTDC->BPCR &= ~(LTDC_BPCR_AVBP | LTDC_BPCR_AHBP);
   tmp = (hLtdcHandler.Init.AccumulatedHBP << 16);
-  hLtdcHandler.Instance->BPCR |= (tmp | hLtdcHandler.Init.AccumulatedVBP);
+  LTDC->BPCR |= (tmp | hLtdcHandler.Init.AccumulatedVBP);
 
-  // Sets Accumulated Active Width
-  hLtdcHandler.Instance->AWCR &= ~(LTDC_AWCR_AAH | LTDC_AWCR_AAW);
+  // Set Accumulated Active Width
+  LTDC->AWCR &= ~(LTDC_AWCR_AAH | LTDC_AWCR_AAW);
   tmp = (hLtdcHandler.Init.AccumulatedActiveW << 16);
-  hLtdcHandler.Instance->AWCR |= (tmp | hLtdcHandler.Init.AccumulatedActiveH);
+  LTDC->AWCR |= (tmp | hLtdcHandler.Init.AccumulatedActiveH);
 
-  // Sets Total Width
-  hLtdcHandler.Instance->TWCR &= ~(LTDC_TWCR_TOTALH | LTDC_TWCR_TOTALW);
+  // Set Total Width
+  LTDC->TWCR &= ~(LTDC_TWCR_TOTALH | LTDC_TWCR_TOTALW);
   tmp = (hLtdcHandler.Init.TotalWidth << 16);
-  hLtdcHandler.Instance->TWCR |= (tmp | hLtdcHandler.Init.TotalHeigh);
+  LTDC->TWCR |= (tmp | hLtdcHandler.Init.TotalHeigh);
 
-  // Sets the background color value
+  // Set background color value
   tmp = ((uint32_t)(hLtdcHandler.Init.Backcolor.Green) << 8);
   uint32_t tmp1 = ((uint32_t)(hLtdcHandler.Init.Backcolor.Red) << 16);
-  hLtdcHandler.Instance->BCCR &= ~(LTDC_BCCR_BCBLUE | LTDC_BCCR_BCGREEN | LTDC_BCCR_BCRED);
-  hLtdcHandler.Instance->BCCR |= (tmp1 | tmp | hLtdcHandler.Init.Backcolor.Blue);
-  //}}}
+  LTDC->BCCR &= ~(LTDC_BCCR_BCBLUE | LTDC_BCCR_BCGREEN | LTDC_BCCR_BCRED);
+  LTDC->BCCR |= (tmp1 | tmp | hLtdcHandler.Init.Backcolor.Blue);
 
-  // Enable the transfer Error interrupt
+  // Enable transferError,fifoUnderrun interrupt
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_TE);
-
-  // Enable the FIFO underrun interrupt
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_FU);
 
   // Enable LTDC by setting LTDCEN bit
   __HAL_LTDC_ENABLE (&hLtdcHandler);
+  //}}}
 
-  // turn on display enable LCD_DISP pin
+  // turn on display,backlight pins
   HAL_GPIO_WritePin (LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_SET);
-
-  // turn on backlight LCD_BL_CTRL pin
   HAL_GPIO_WritePin (LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, GPIO_PIN_SET);
 
-  BSP_SDRAM_Init();
-
   hDma2dHandler.Instance = DMA2D;
+  __HAL_RCC_DMA2D_CLK_ENABLE();
   HAL_DMA2D_ConfigDeadTime (&hDma2dHandler, 20);
   HAL_DMA2D_EnableDeadTime (&hDma2dHandler);
 
@@ -389,34 +372,27 @@ uint8_t BSP_LCD_Init() {
 //{{{
 void BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
 
-
-  // Layer Init
-  LCD_LayerCfgTypeDef layerCfg;
-  layerCfg.WindowX0 = 0;
-  layerCfg.WindowX1 = BSP_LCD_GetXSize();
-  layerCfg.WindowY0 = 0;
-  layerCfg.WindowY1 = BSP_LCD_GetYSize();
-  layerCfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
-  //layerCfg.PixelFormat = LTDC_PIXEL_FORMAT_ARGB8888;
-  layerCfg.FBStartAdress = FB_Address;
-  layerCfg.Alpha = 255;
-  layerCfg.Alpha0 = 0;
-  layerCfg.Backcolor.Blue = 0;
-  layerCfg.Backcolor.Green = 0;
-  layerCfg.Backcolor.Red = 0;
-  layerCfg.BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
-  layerCfg.BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
-  layerCfg.ImageWidth = BSP_LCD_GetXSize();
-  layerCfg.ImageHeight = BSP_LCD_GetYSize();
-
-  // Copy new layer configuration into handle structure
-  hLtdcHandler.LayerCfg[LayerIndex] = layerCfg;
+  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = FB_Address;
+  hLtdcHandler.LayerCfg[LayerIndex].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;  // LTDC_PIXEL_FORMAT_ARGB8888;
+  hLtdcHandler.LayerCfg[LayerIndex].ImageWidth = BSP_LCD_GetXSize();
+  hLtdcHandler.LayerCfg[LayerIndex].ImageHeight = BSP_LCD_GetYSize();
+  hLtdcHandler.LayerCfg[LayerIndex].WindowX0 = 0;
+  hLtdcHandler.LayerCfg[LayerIndex].WindowX1 = BSP_LCD_GetXSize();
+  hLtdcHandler.LayerCfg[LayerIndex].WindowY0 = 0;
+  hLtdcHandler.LayerCfg[LayerIndex].WindowY1 = BSP_LCD_GetYSize();
+  hLtdcHandler.LayerCfg[LayerIndex].Alpha = 255;
+  hLtdcHandler.LayerCfg[LayerIndex].Alpha0 = 0;
+  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Blue = 0;
+  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Green = 0;
+  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Red = 0;
+  hLtdcHandler.LayerCfg[LayerIndex].BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
+  hLtdcHandler.LayerCfg[LayerIndex].BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
 
   // Configure the LTDC Layer
-  setConfig (&hLtdcHandler, &layerCfg, LayerIndex);
+  setLayer (LayerIndex, &hLtdcHandler.LayerCfg[LayerIndex]);
 
   // Sets the Reload type
-  hLtdcHandler.Instance->SRCR = LTDC_SRCR_IMR;
+  LTDC->SRCR = LTDC_SRCR_IMR;
   }
 //}}}
 
@@ -442,10 +418,10 @@ void BSP_LCD_SetTransparency (uint32_t LayerIndex, uint8_t Transparency) {
   layerCfg->Alpha = Transparency;
 
   // Set LTDC parameters
-  setConfig (&hLtdcHandler, layerCfg, LayerIndex);
+  setLayer (LayerIndex, layerCfg);
 
   // Sets the Reload type
-  hLtdcHandler.Instance->SRCR = LTDC_SRCR_IMR;
+  LTDC->SRCR = LTDC_SRCR_IMR;
   }
 //}}}
 

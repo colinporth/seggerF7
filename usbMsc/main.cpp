@@ -13,6 +13,7 @@
 #include "cCamera.h"
 //}}}
 const char kSdPath[40] = "0:/";
+const char* kVersion = "Camera 9/4/18 800x600";
 
 int focus = 0;
 cCamera camera;
@@ -100,7 +101,7 @@ void cApp::run() {
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
     mLcd->startBgnd ((uint16_t*)SDRAM_USER, camera.getXsize(), camera.getYsize(), BSP_PB_GetState (BUTTON_KEY));
-    mLcd->drawTitle ("8/4/18 800x600");
+    mLcd->drawTitle (kVersion);
     mLcd->drawDebug();
     mLcd->present();
     //{{{  removed
