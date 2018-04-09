@@ -27,13 +27,9 @@ public:
     BSP_LCD_LayerDefaultInit (0, SDRAM_SCREEN0);
     BSP_LCD_SelectLayer(0);
     BSP_LCD_Clear (LCD_COLOR_BLACK);
-    BSP_LCD_SetLayerVisible (0, ENABLE);
     BSP_LCD_SetTransparency (0, 255);
 
     BSP_LCD_LayerDefaultInit (1, SDRAM_SCREEN1);
-    BSP_LCD_SelectLayer(1);
-    BSP_LCD_Clear (LCD_COLOR_BLACK);
-    BSP_LCD_SetLayerVisible (1, ENABLE);
     BSP_LCD_SetTransparency (1, 0);
 
     BSP_LCD_DisplayOn();
@@ -99,6 +95,7 @@ public:
 
     BSP_LCD_SetTransparency (mFlip, 255);
     BSP_LCD_SetTransparency (!mFlip, 0);
+
     mFlip = !mFlip;
     BSP_LCD_SelectLayer (mFlip);
     }

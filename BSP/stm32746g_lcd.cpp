@@ -393,19 +393,15 @@ void BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
 
   // Sets the Reload type
   LTDC->SRCR = LTDC_SRCR_IMR;
+
+  __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, LayerIndex);
+  __HAL_LTDC_RELOAD_CONFIG (&hLtdcHandler);
   }
 //}}}
 
-void BSP_LCD_SelectLayer (uint32_t LayerIndex) { ActiveLayer = LayerIndex; }
 //{{{
-void BSP_LCD_SetLayerVisible (uint32_t LayerIndex, FunctionalState State) {
-
-  if (State == ENABLE)
-    __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, LayerIndex);
-  else
-    __HAL_LTDC_LAYER_DISABLE (&hLtdcHandler, LayerIndex);
-
-  __HAL_LTDC_RELOAD_CONFIG (&hLtdcHandler);
+void BSP_LCD_SelectLayer (uint32_t LayerIndex) { 
+  ActiveLayer = LayerIndex; 
   }
 //}}}
 //{{{
