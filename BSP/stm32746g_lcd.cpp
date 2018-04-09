@@ -10,15 +10,6 @@ extern const sFONT Font16;
 #define POLY_X(Z)           ((int32_t)((Points + Z)->X))
 #define POLY_Y(Z)           ((int32_t)((Points + Z)->Y))
 #define ABS(X)              ((X) > 0 ? (X) : -(X))
-
-#define  RK043FN48H_HSYNC   ((uint16_t)41)   // Horizontal synchronization
-#define  RK043FN48H_HBP     ((uint16_t)13)   // Horizontal back porch
-#define  RK043FN48H_HFP     ((uint16_t)32)   // Horizontal front porch
-#define  RK043FN48H_VSYNC   ((uint16_t)10)   // Vertical synchronization
-#define  RK043FN48H_VBP     ((uint16_t)2)    // Vertical back porch
-#define  RK043FN48H_VFP     ((uint16_t)2)    // Vertical front porch
-
-#define  RK043FN48H_FREQUENCY_DIVIDER    5            // LCD Frequency divider
 //}}}
 
 //{{{  vars
@@ -285,6 +276,26 @@ uint8_t BSP_LCD_Init() {
   //}}}
   BSP_SDRAM_Init();
   //{{{  init hLtdcHandler, ltdc
+  #define  RK043FN48H_HSYNC   41   // Horizontal synchronization
+  #define  RK043FN48H_HBP     13   // Horizontal back porch
+  #define  RK043FN48H_HFP     32   // Horizontal front porch
+  #define  RK043FN48H_VSYNC   10   // Vertical synchronization
+  #define  RK043FN48H_VBP     2    // Vertical back porch
+  #define  RK043FN48H_VFP     2    // Vertical front porch
+
+  // RK043FN48H LCD clock configuration
+  // PLLSAI_VCO Input  = HSE_VALUE/PLLM              - 1 Mhz
+  // PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN  - 192 Mhz
+  // PLLLCDCLK         = PLLSAI_VCO_Output / PLLSAIR - 192 / 5 = 38.4 Mhz
+  // LTDCclock         = PLLLCDCLK / PLLSAI_DIVR_4   - 38.4 / 4 = 9.6Mhz
+  RCC_PeriphCLKInitTypeDef clockConfig;
+  clockConfig.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
+  clockConfig.PLLSAI.PLLSAIN = 192;
+  clockConfig.PLLSAI.PLLSAIR = 5; 
+  clockConfig.PLLSAIDivR = RCC_PLLSAIDIVR_4;
+  HAL_RCCEx_PeriphCLKConfig (&clockConfig);
+  __HAL_RCC_LTDC_CLK_ENABLE();
+
   hLtdcHandler.Instance = LTDC;
   hLtdcHandler.LayerCfg->ImageWidth = RK043FN48H_WIDTH;
   hLtdcHandler.LayerCfg->ImageHeight = RK043FN48H_HEIGHT;
@@ -303,20 +314,6 @@ uint8_t BSP_LCD_Init() {
   hLtdcHandler.Init.VSPolarity = LTDC_VSPOLARITY_AL;
   hLtdcHandler.Init.DEPolarity = LTDC_DEPOLARITY_AL;
   hLtdcHandler.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
-
-  //{{{  RK043FN48H LCD clock configuration
-  // PLLSAI_VCO Input = HSE_VALUE/PLLM = 1 Mhz
-  // PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN = 192 Mhz
-  // PLLLCDCLK = PLLSAI_VCO Output/PLLSAIR = 192/5 = 38.4 Mhz
-  // LTDC clock frequency = PLLLCDCLK / LTDC_PLLSAI_DIVR_4 = 38.4/4 = 9.6Mhz
-  RCC_PeriphCLKInitTypeDef periph_clk_init_struct;
-  periph_clk_init_struct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
-  periph_clk_init_struct.PLLSAI.PLLSAIN = 192;
-  periph_clk_init_struct.PLLSAI.PLLSAIR = RK043FN48H_FREQUENCY_DIVIDER;
-  periph_clk_init_struct.PLLSAIDivR = RCC_PLLSAIDIVR_4;
-  HAL_RCCEx_PeriphCLKConfig (&periph_clk_init_struct);
-  //}}}
-  __HAL_RCC_LTDC_CLK_ENABLE();
 
   // config the HS, VS, DE and PC polarity
   LTDC->GCR &= ~(LTDC_GCR_HSPOL | LTDC_GCR_VSPOL | LTDC_GCR_DEPOL | LTDC_GCR_PCPOL);
