@@ -24,49 +24,42 @@ uint32_t BackColor = LCD_COLOR_BLACK;
 //}}}
 
 extern "C" {
+  // LTDC_ER_IRQHandler
   //{{{
-  void HAL_LTDC_IRQHandler (LTDC_HandleTypeDef *hltdc) {
+  void LTDC_IRQHandler() {
 
     // transfer Error Interrupt
-    if (__HAL_LTDC_GET_FLAG(hltdc, LTDC_FLAG_TE) != RESET) {
-      if (__HAL_LTDC_GET_IT_SOURCE(hltdc, LTDC_IT_TE) != RESET) {
-        // Disable the transfer Error interrupt */
-        __HAL_LTDC_DISABLE_IT(hltdc, LTDC_IT_TE);
-        // Clear the transfer error flag
-        __HAL_LTDC_CLEAR_FLAG(hltdc, LTDC_FLAG_TE);
+    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_TE) != RESET) {
+      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_TE) != RESET) {
+        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_TE);
+        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_TE);
         }
       }
 
     // FIFO underrun Interrupt
-    if (__HAL_LTDC_GET_FLAG(hltdc, LTDC_FLAG_FU) != RESET) {
-      if (__HAL_LTDC_GET_IT_SOURCE(hltdc, LTDC_IT_FU) != RESET) {
-        // Disable the FIFO underrun interrupt
-        __HAL_LTDC_DISABLE_IT(hltdc, LTDC_IT_FU);
-        // Clear the FIFO underrun flag
-        __HAL_LTDC_CLEAR_FLAG(hltdc, LTDC_FLAG_FU);
+    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_FU) != RESET) {
+      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_FU) != RESET) {
+        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_FU);
+        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_FU);
         }
       }
 
     // line Interrupt
-    if (__HAL_LTDC_GET_FLAG(hltdc, LTDC_FLAG_LI) != RESET) {
-      if (__HAL_LTDC_GET_IT_SOURCE(hltdc, LTDC_IT_LI) != RESET) {
-        // Disable the Line interrupt
-        __HAL_LTDC_DISABLE_IT(hltdc, LTDC_IT_LI);
-        // Clear the Line interrupt flag
-        __HAL_LTDC_CLEAR_FLAG(hltdc, LTDC_FLAG_LI);
+    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_LI) != RESET) {
+      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_LI) != RESET) {
+        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_LI);
+        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_LI);
         }
       }
 
     // register reload Interrupt
-    if (__HAL_LTDC_GET_FLAG (hltdc, LTDC_FLAG_RR) != RESET) {
-      if (__HAL_LTDC_GET_IT_SOURCE (hltdc, LTDC_IT_RR) != RESET) {
-        // Disable the register reload interrupt
-        __HAL_LTDC_DISABLE_IT(hltdc, LTDC_IT_RR);
-        // Clear the register reload flag
-        __HAL_LTDC_CLEAR_FLAG(hltdc, LTDC_FLAG_RR);
+    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_RR) != RESET) {
+      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_RR) != RESET) {
+        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_RR);
+        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_RR);
 
         // Register reload interrupt Callback
-        HAL_LTDC_ReloadEventCallback (hltdc);
+        //HAL_LTDC_ReloadEventCallback (&hLtdcHandler);
         }
       }
     }
@@ -291,7 +284,7 @@ uint8_t BSP_LCD_Init() {
   RCC_PeriphCLKInitTypeDef clockConfig;
   clockConfig.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
   clockConfig.PLLSAI.PLLSAIN = 192;
-  clockConfig.PLLSAI.PLLSAIR = 5; 
+  clockConfig.PLLSAI.PLLSAIR = 5;
   clockConfig.PLLSAIDivR = RCC_PLLSAIDIVR_4;
   HAL_RCCEx_PeriphCLKConfig (&clockConfig);
   __HAL_RCC_LTDC_CLK_ENABLE();
