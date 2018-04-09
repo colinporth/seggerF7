@@ -370,11 +370,8 @@ void cCamera::mt9d111Init() {
   CAMERA_IO_Write16 (i2cAddress, 0x21, 0x8400); // preview A Read Mode
 
   // PLL - M=16,N=1,P=3 - (24mhz/(N+1))*M / 2*(P+1) = 24mhz
-  //CAMERA_IO_Write16 (i2cAddress, 0x66, 0x1001); // PLLControl1 -    M:N
-  //CAMERA_IO_Write16 (i2cAddress, 0x67, 0x0503); // PLLControl2 - 0x05:P
-  // PLL - M=16,N=1,P=2 - (24mhz/(N+1))*M / 2*(P+1) = 32mhz
-  CAMERA_IO_Write16 (i2cAddress, 0x66, 0x0801); // PLLControl1 -    M:N
-  CAMERA_IO_Write16 (i2cAddress, 0x67, 0x0502); // PLLControl2 - 0x05:P
+  CAMERA_IO_Write16 (i2cAddress, 0x66, 0x1001); // PLLControl1 -    M:N
+  CAMERA_IO_Write16 (i2cAddress, 0x67, 0x0503); // PLLControl2 - 0x05:P
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Clock CNTRL - PLL ON
   CAMERA_IO_Write16 (i2cAddress, 0x65, 0x2000); // Clock CNTRL - USE PLL
   HAL_Delay (100);
