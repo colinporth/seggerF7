@@ -67,7 +67,9 @@ extern "C" {
   }
 
 //{{{
-void setLayer (uint32_t layerIndex, LTDC_LayerCfgTypeDef* layerConfig) {
+void setLayer (uint32_t layerIndex) {
+
+  auto layerConfig = &hLtdcHandler.LayerCfg[layerIndex];
 
   // Config horizontal start and stop position
   uint32_t tmp = (layerConfig->WindowX1 + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16)) << 16;
@@ -380,7 +382,7 @@ void BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
   hLtdcHandler.LayerCfg[LayerIndex].BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
 
   // Configure the LTDC Layer
-  setLayer (LayerIndex, &hLtdcHandler.LayerCfg[LayerIndex]);
+  setLayer (LayerIndex);
 
   // Sets the Reload type
   LTDC->SRCR = LTDC_SRCR_IMR;
@@ -398,14 +400,9 @@ void BSP_LCD_SelectLayer (uint32_t LayerIndex) {
 //{{{
 void BSP_LCD_SetTransparency (uint32_t LayerIndex, uint8_t Transparency) {
 
-  // Get layer configuration from handle structure
-  LTDC_LayerCfgTypeDef* layerCfg = &hLtdcHandler.LayerCfg[LayerIndex];
-
-  // Reconfigure the Alpha value
-  layerCfg->Alpha = Transparency;
-
-  // Set LTDC parameters
-  setLayer (LayerIndex, layerCfg);
+  // change layer Alpha
+  hLtdcHandler.LayerCfg[LayerIndex].Alpha = Transparency;
+  setLayer (LayerIndex);
 
   // Sets the Reload type
   LTDC->SRCR = LTDC_SRCR_IMR;
@@ -438,6 +435,60 @@ uint32_t BSP_LCD_ReadPixel (uint16_t Xpos, uint16_t Ypos) {
   else
     // Read data value from SDRAM memory
     return *(__IO uint8_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*BSP_LCD_GetXSize() + Xpos)));
+  }
+//}}}
+//{{{
+void BSP_LCD_DrawPixel (uint16_t Xpos, uint16_t Ypos, uint32_t RGB_Code) {
+// Write data value to all SDRAM memory
+
+  if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565)
+    *(__IO uint16_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*BSP_LCD_GetXSize() + Xpos))) = (uint16_t)RGB_Code;
+  else
+    *(__IO uint32_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*BSP_LCD_GetXSize() + Xpos))) = RGB_Code;
+  }
+//}}}
+//{{{
+void BSP_LCD_DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
+
+  uint32_t index = 0, width = 0, height = 0, bit_pixel = 0;
+  uint32_t address;
+  uint32_t input_color_mode = 0;
+
+  // Get bitmap data address offset
+  index = pbmp[10] + (pbmp[11] << 8) + (pbmp[12] << 16)  + (pbmp[13] << 24);
+
+  // Read bitmap width
+  width = pbmp[18] + (pbmp[19] << 8) + (pbmp[20] << 16)  + (pbmp[21] << 24);
+
+  // Read bitmap height
+  height = pbmp[22] + (pbmp[23] << 8) + (pbmp[24] << 16)  + (pbmp[25] << 24);
+
+  // Read bit/pixel
+  bit_pixel = pbmp[28] + (pbmp[29] << 8);
+
+  // Set the address
+  address = hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (((BSP_LCD_GetXSize()*Ypos) + Xpos)*(4));
+
+  // Get the layer pixel format
+  if ((bit_pixel/8) == 4)
+    input_color_mode = CM_ARGB8888;
+  else if ((bit_pixel/8) == 2)
+    input_color_mode = CM_RGB565;
+  else
+    input_color_mode = CM_RGB888;
+
+  // Bypass the bitmap header
+  pbmp += (index + (width * (height - 1) * (bit_pixel/8)));
+
+  // Convert picture to ARGB8888 pixel format
+  for (index=0; index < height; index++) {
+    // Pixel format conversion
+    ConvertLineToARGB8888((uint32_t*)pbmp, (uint32_t*)address, width, input_color_mode);
+
+    // Increment the source and destination buffers
+    address+=  (BSP_LCD_GetXSize()*4);
+    pbmp -= width*(bit_pixel/8);
+    }
   }
 //}}}
 
@@ -538,19 +589,209 @@ void BSP_LCD_DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* pt
 //}}}
 
 //{{{
-void BSP_LCD_DrawHLine (uint16_t Xpos, uint16_t Ypos, uint16_t Length) {
-  FillBuffer (ActiveLayer,
-              hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + 4*(BSP_LCD_GetXSize()*Ypos + Xpos), Length,
-              1, 0, TextColor);
+void BSP_LCD_Clear (uint32_t Color) {
+  FillBuffer (ActiveLayer, hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite, BSP_LCD_GetXSize(), BSP_LCD_GetYSize(), 0, Color);
   }
-
 //}}}
 //{{{
-void BSP_LCD_DrawVLine (uint16_t Xpos, uint16_t Ypos, uint16_t Length) {
+void BSP_LCD_DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
+
+  // Draw horizontal lines
+  BSP_LCD_FillRect (Xpos, Ypos, Width, 1);
+  BSP_LCD_FillRect (Xpos, (Ypos+ Height), Width, 1);
+
+  // Draw vertical lines
+  BSP_LCD_FillRect (Xpos, Ypos, 1, Height);
+  BSP_LCD_FillRect ((Xpos + Width), Ypos, 1, Height);
+  }
+//}}}
+//{{{
+void BSP_LCD_FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
 
   FillBuffer (ActiveLayer,
               hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + 4*(BSP_LCD_GetXSize()*Ypos + Xpos),
-              1, Length, (BSP_LCD_GetXSize() - 1), TextColor);
+              Width, Height, (BSP_LCD_GetXSize() - Width), TextColor);
+  }
+//}}}
+//{{{
+void BSP_LCD_DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
+
+  int32_t decision;    // Decision Variable
+  uint32_t current_x;   // Current X Value
+  uint32_t current_y;   // Current Y Value
+
+  decision = 3 - (Radius << 1);
+  current_x = 0;
+  current_y = Radius;
+
+  while (current_x <= current_y) {
+    BSP_LCD_DrawPixel ((Xpos + current_x), (Ypos - current_y), TextColor);
+    BSP_LCD_DrawPixel ((Xpos - current_x), (Ypos - current_y), TextColor);
+    BSP_LCD_DrawPixel ((Xpos + current_y), (Ypos - current_x), TextColor);
+    BSP_LCD_DrawPixel ((Xpos - current_y), (Ypos - current_x), TextColor);
+    BSP_LCD_DrawPixel ((Xpos + current_x), (Ypos + current_y), TextColor);
+    BSP_LCD_DrawPixel ((Xpos - current_x), (Ypos + current_y), TextColor);
+    BSP_LCD_DrawPixel ((Xpos + current_y), (Ypos + current_x), TextColor);
+    BSP_LCD_DrawPixel ((Xpos - current_y), (Ypos + current_x), TextColor);
+
+    if (decision < 0)
+      decision += (current_x << 2) + 6;
+    else {
+      decision += ((current_x - current_y) << 2) + 10;
+      current_y--;
+      }
+    current_x++;
+    }
+  }
+//}}}
+//{{{
+void BSP_LCD_FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
+
+  int32_t decision = 3 - (Radius << 1);
+  uint32_t current_x = 0;
+  uint32_t current_y = Radius;
+
+  while (current_x <= current_y) {
+    if (current_y > 0) {
+      BSP_LCD_FillRect (Xpos - current_y, Ypos + current_x, 1, 2*current_y);
+      BSP_LCD_FillRect (Xpos - current_y, Ypos - current_x, 1, 2*current_y);
+      }
+    if (current_x > 0) {
+      BSP_LCD_FillRect (Xpos - current_x, Ypos - current_y, 1, 2*current_x);
+      BSP_LCD_FillRect (Xpos - current_x, Ypos + current_y, 1, 2*current_x);
+      }
+    if (decision < 0)
+      decision += (current_x << 2) + 6;
+    else {
+      decision += ((current_x - current_y) << 2) + 10;
+      current_y--;
+      }
+    current_x++;
+    }
+
+  BSP_LCD_DrawCircle (Xpos, Ypos, Radius);
+  }
+//}}}
+//{{{
+void BSP_LCD_DrawPolygon (pPoint Points, uint16_t PointCount) {
+
+  int16_t x = 0, y = 0;
+
+  if (PointCount < 2)
+    return;
+
+  BSP_LCD_DrawLine (Points->X, Points->Y, (Points+PointCount-1)->X, (Points+PointCount-1)->Y);
+
+  while(--PointCount) {
+    x = Points->X;
+    y = Points->Y;
+    Points++;
+    BSP_LCD_DrawLine (x, y, Points->X, Points->Y);
+    }
+  }
+//}}}
+//{{{
+void BSP_LCD_FillPolygon (pPoint Points, uint16_t PointCount) {
+
+  int16_t X = 0, Y = 0, X2 = 0, Y2 = 0, X_center = 0, Y_center = 0, X_first = 0, Y_first = 0, pixelX = 0, pixelY = 0, counter = 0;
+  uint16_t  image_left = 0, image_right = 0, image_top = 0, image_bottom = 0;
+
+  image_left = image_right = Points->X;
+  image_top= image_bottom = Points->Y;
+
+  for (counter = 1; counter < PointCount; counter++) {
+    pixelX = POLY_X(counter);
+    if(pixelX < image_left)
+      image_left = pixelX;
+    if(pixelX > image_right)
+      image_right = pixelX;
+
+    pixelY = POLY_Y(counter);
+    if(pixelY < image_top)
+      image_top = pixelY;
+    if(pixelY > image_bottom)
+      image_bottom = pixelY;
+    }
+
+  if (PointCount < 2)
+    return;
+
+  X_center = (image_left + image_right)/2;
+  Y_center = (image_bottom + image_top)/2;
+
+  X_first = Points->X;
+  Y_first = Points->Y;
+
+  while(--PointCount) {
+    X = Points->X;
+    Y = Points->Y;
+    Points++;
+    X2 = Points->X;
+    Y2 = Points->Y;
+
+    FillTriangle(X, X2, X_center, Y, Y2, Y_center);
+    FillTriangle(X, X_center, X2, Y, Y_center, Y2);
+    FillTriangle(X_center, X2, X, Y_center, Y2, Y);
+    }
+
+  FillTriangle(X_first, X2, X_center, Y_first, Y2, Y_center);
+  FillTriangle(X_first, X_center, X2, Y_first, Y_center, Y2);
+  FillTriangle(X_center, X2, X_first, Y_center, Y2, Y_first);
+  }
+//}}}
+//{{{
+void BSP_LCD_DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
+
+  int x = 0, y = -YRadius, err = 2-2*XRadius, e2;
+  float k = 0, rad1 = 0, rad2 = 0;
+
+  rad1 = XRadius;
+  rad2 = YRadius;
+
+  k = (float)(rad2/rad1);
+
+  do {
+    BSP_LCD_DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos+y), TextColor);
+    BSP_LCD_DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos+y), TextColor);
+    BSP_LCD_DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos-y), TextColor);
+    BSP_LCD_DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos-y), TextColor);
+
+    e2 = err;
+    if (e2 <= x) {
+      err += ++x*2+1;
+      if (-y == x && e2 <= y)
+        e2 = 0;
+      }
+    if (e2 > y)
+      err += ++y*2+1;
+    }
+
+  while (y <= 0);
+  }
+//}}}
+//{{{
+void BSP_LCD_FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
+
+  int x = 0, y = -YRadius, err = 2-2*XRadius, e2;
+  float k = 0, rad1 = 0, rad2 = 0;
+
+  rad1 = XRadius;
+  rad2 = YRadius;
+
+  k = (float)(rad2/rad1);
+  do {
+    BSP_LCD_FillRect((Xpos-(uint16_t)(x/k)), (Ypos+y), 1, (2*(uint16_t)(x/k) + 1));
+    BSP_LCD_FillRect((Xpos-(uint16_t)(x/k)), (Ypos-y), 1, (2*(uint16_t)(x/k) + 1));
+
+    e2 = err;
+    if (e2 <= x) {
+      err += ++x*2+1;
+      if (-y == x && e2 <= y) e2 = 0;
+      }
+    if (e2 > y) err += ++y*2+1;
+    }
+
+  while (y <= 0);
   }
 //}}}
 //{{{
@@ -609,271 +850,6 @@ void BSP_LCD_DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
     x += xinc2;         // Change the x as appropriate
     y += yinc2;         // Change the y as appropriate
     }
-  }
-//}}}
-//{{{
-void BSP_LCD_DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
-
-  // Draw horizontal lines
-  BSP_LCD_DrawHLine (Xpos, Ypos, Width);
-  BSP_LCD_DrawHLine (Xpos, (Ypos+ Height), Width);
-
-  // Draw vertical lines
-  BSP_LCD_DrawVLine (Xpos, Ypos, Height);
-  BSP_LCD_DrawVLine ((Xpos + Width), Ypos, Height);
-  }
-//}}}
-//{{{
-void BSP_LCD_DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
-
-  int32_t decision;    // Decision Variable
-  uint32_t current_x;   // Current X Value
-  uint32_t current_y;   // Current Y Value
-
-  decision = 3 - (Radius << 1);
-  current_x = 0;
-  current_y = Radius;
-
-  while (current_x <= current_y) {
-    BSP_LCD_DrawPixel ((Xpos + current_x), (Ypos - current_y), TextColor);
-    BSP_LCD_DrawPixel ((Xpos - current_x), (Ypos - current_y), TextColor);
-    BSP_LCD_DrawPixel ((Xpos + current_y), (Ypos - current_x), TextColor);
-    BSP_LCD_DrawPixel ((Xpos - current_y), (Ypos - current_x), TextColor);
-    BSP_LCD_DrawPixel ((Xpos + current_x), (Ypos + current_y), TextColor);
-    BSP_LCD_DrawPixel ((Xpos - current_x), (Ypos + current_y), TextColor);
-    BSP_LCD_DrawPixel ((Xpos + current_y), (Ypos + current_x), TextColor);
-    BSP_LCD_DrawPixel ((Xpos - current_y), (Ypos + current_x), TextColor);
-
-    if (decision < 0)
-      decision += (current_x << 2) + 6;
-    else {
-      decision += ((current_x - current_y) << 2) + 10;
-      current_y--;
-      }
-    current_x++;
-    }
-  }
-//}}}
-//{{{
-void BSP_LCD_DrawPolygon (pPoint Points, uint16_t PointCount) {
-
-  int16_t x = 0, y = 0;
-
-  if (PointCount < 2)
-    return;
-
-  BSP_LCD_DrawLine (Points->X, Points->Y, (Points+PointCount-1)->X, (Points+PointCount-1)->Y);
-
-  while(--PointCount) {
-    x = Points->X;
-    y = Points->Y;
-    Points++;
-    BSP_LCD_DrawLine (x, y, Points->X, Points->Y);
-    }
-  }
-//}}}
-//{{{
-void BSP_LCD_DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
-
-  int x = 0, y = -YRadius, err = 2-2*XRadius, e2;
-  float k = 0, rad1 = 0, rad2 = 0;
-
-  rad1 = XRadius;
-  rad2 = YRadius;
-
-  k = (float)(rad2/rad1);
-
-  do {
-    BSP_LCD_DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos+y), TextColor);
-    BSP_LCD_DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos+y), TextColor);
-    BSP_LCD_DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos-y), TextColor);
-    BSP_LCD_DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos-y), TextColor);
-
-    e2 = err;
-    if (e2 <= x) {
-      err += ++x*2+1;
-      if (-y == x && e2 <= y)
-        e2 = 0;
-      }
-    if (e2 > y)
-      err += ++y*2+1;
-    }
-
-  while (y <= 0);
-  }
-//}}}
-//{{{
-void BSP_LCD_DrawPixel (uint16_t Xpos, uint16_t Ypos, uint32_t RGB_Code) {
-// Write data value to all SDRAM memory
-
-  if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565)
-    *(__IO uint16_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*BSP_LCD_GetXSize() + Xpos))) = (uint16_t)RGB_Code;
-  else
-    *(__IO uint32_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*BSP_LCD_GetXSize() + Xpos))) = RGB_Code;
-  }
-//}}}
-//{{{
-void BSP_LCD_DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
-
-  uint32_t index = 0, width = 0, height = 0, bit_pixel = 0;
-  uint32_t address;
-  uint32_t input_color_mode = 0;
-
-  // Get bitmap data address offset
-  index = pbmp[10] + (pbmp[11] << 8) + (pbmp[12] << 16)  + (pbmp[13] << 24);
-
-  // Read bitmap width
-  width = pbmp[18] + (pbmp[19] << 8) + (pbmp[20] << 16)  + (pbmp[21] << 24);
-
-  // Read bitmap height
-  height = pbmp[22] + (pbmp[23] << 8) + (pbmp[24] << 16)  + (pbmp[25] << 24);
-
-  // Read bit/pixel
-  bit_pixel = pbmp[28] + (pbmp[29] << 8);
-
-  // Set the address
-  address = hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (((BSP_LCD_GetXSize()*Ypos) + Xpos)*(4));
-
-  // Get the layer pixel format
-  if ((bit_pixel/8) == 4)
-    input_color_mode = CM_ARGB8888;
-  else if ((bit_pixel/8) == 2)
-    input_color_mode = CM_RGB565;
-  else
-    input_color_mode = CM_RGB888;
-
-  // Bypass the bitmap header
-  pbmp += (index + (width * (height - 1) * (bit_pixel/8)));
-
-  // Convert picture to ARGB8888 pixel format
-  for (index=0; index < height; index++) {
-    // Pixel format conversion
-    ConvertLineToARGB8888((uint32_t*)pbmp, (uint32_t*)address, width, input_color_mode);
-
-    // Increment the source and destination buffers
-    address+=  (BSP_LCD_GetXSize()*4);
-    pbmp -= width*(bit_pixel/8);
-    }
-  }
-//}}}
-
-//{{{
-void BSP_LCD_Clear (uint32_t Color) {
-  FillBuffer (ActiveLayer, hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite, BSP_LCD_GetXSize(), BSP_LCD_GetYSize(), 0, Color);
-  }
-//}}}
-//{{{
-void BSP_LCD_FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
-
-  FillBuffer (ActiveLayer,
-              hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + 4*(BSP_LCD_GetXSize()*Ypos + Xpos),
-              Width, Height, (BSP_LCD_GetXSize() - Width), TextColor);
-  }
-//}}}
-//{{{
-void BSP_LCD_FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
-
-  int32_t  decision;     // Decision Variable
-  uint32_t  current_x;   // Current X Value
-  uint32_t  current_y;   // Current Y Value
-  decision = 3 - (Radius << 1);
-  current_x = 0;
-  current_y = Radius;
-
-  while (current_x <= current_y) {
-    if(current_y > 0) {
-      BSP_LCD_DrawHLine (Xpos - current_y, Ypos + current_x, 2*current_y);
-      BSP_LCD_DrawHLine (Xpos - current_y, Ypos - current_x, 2*current_y);
-      }
-
-    if(current_x > 0) {
-      BSP_LCD_DrawHLine (Xpos - current_x, Ypos - current_y, 2*current_x);
-      BSP_LCD_DrawHLine (Xpos - current_x, Ypos + current_y, 2*current_x);
-      }
-    if (decision < 0)
-      decision += (current_x << 2) + 6;
-    else {
-      decision += ((current_x - current_y) << 2) + 10;
-      current_y--;
-      }
-    current_x++;
-    }
-
-  BSP_LCD_DrawCircle (Xpos, Ypos, Radius);
-  }
-//}}}
-//{{{
-void BSP_LCD_FillPolygon (pPoint Points, uint16_t PointCount) {
-
-  int16_t X = 0, Y = 0, X2 = 0, Y2 = 0, X_center = 0, Y_center = 0, X_first = 0, Y_first = 0, pixelX = 0, pixelY = 0, counter = 0;
-  uint16_t  image_left = 0, image_right = 0, image_top = 0, image_bottom = 0;
-
-  image_left = image_right = Points->X;
-  image_top= image_bottom = Points->Y;
-
-  for (counter = 1; counter < PointCount; counter++) {
-    pixelX = POLY_X(counter);
-    if(pixelX < image_left)
-      image_left = pixelX;
-    if(pixelX > image_right)
-      image_right = pixelX;
-
-    pixelY = POLY_Y(counter);
-    if(pixelY < image_top)
-      image_top = pixelY;
-    if(pixelY > image_bottom)
-      image_bottom = pixelY;
-    }
-
-  if (PointCount < 2)
-    return;
-
-  X_center = (image_left + image_right)/2;
-  Y_center = (image_bottom + image_top)/2;
-
-  X_first = Points->X;
-  Y_first = Points->Y;
-
-  while(--PointCount) {
-    X = Points->X;
-    Y = Points->Y;
-    Points++;
-    X2 = Points->X;
-    Y2 = Points->Y;
-
-    FillTriangle(X, X2, X_center, Y, Y2, Y_center);
-    FillTriangle(X, X_center, X2, Y, Y_center, Y2);
-    FillTriangle(X_center, X2, X, Y_center, Y2, Y);
-    }
-
-  FillTriangle(X_first, X2, X_center, Y_first, Y2, Y_center);
-  FillTriangle(X_first, X_center, X2, Y_first, Y_center, Y2);
-  FillTriangle(X_center, X2, X_first, Y_center, Y2, Y_first);
-  }
-//}}}
-//{{{
-void BSP_LCD_FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
-
-  int x = 0, y = -YRadius, err = 2-2*XRadius, e2;
-  float k = 0, rad1 = 0, rad2 = 0;
-
-  rad1 = XRadius;
-  rad2 = YRadius;
-
-  k = (float)(rad2/rad1);
-  do {
-    BSP_LCD_DrawHLine((Xpos-(uint16_t)(x/k)), (Ypos+y), (2*(uint16_t)(x/k) + 1));
-    BSP_LCD_DrawHLine((Xpos-(uint16_t)(x/k)), (Ypos-y), (2*(uint16_t)(x/k) + 1));
-
-    e2 = err;
-    if (e2 <= x) {
-      err += ++x*2+1;
-      if (-y == x && e2 <= y) e2 = 0;
-      }
-    if (e2 > y) err += ++y*2+1;
-    }
-
-  while (y <= 0);
   }
 //}}}
 

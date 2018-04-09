@@ -126,8 +126,6 @@ void BSP_LCD_DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignMode
 void BSP_LCD_DisplayStringAtLine (uint16_t line, char* ptr);
 void BSP_LCD_DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr);
 
-void BSP_LCD_DrawHLine (uint16_t Xpos, uint16_t Ypos, uint16_t Length);
-void BSP_LCD_DrawVLine (uint16_t Xpos, uint16_t Ypos, uint16_t Length);
 void BSP_LCD_DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 void BSP_LCD_DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
 void BSP_LCD_DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
