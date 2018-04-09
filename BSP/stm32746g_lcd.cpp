@@ -389,6 +389,8 @@ void BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
 
   __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, LayerIndex);
   __HAL_LTDC_RELOAD_CONFIG (&hLtdcHandler);
+
+  ActiveLayer = LayerIndex;
   }
 //}}}
 
@@ -405,6 +407,18 @@ void BSP_LCD_SetTransparency (uint32_t LayerIndex, uint8_t Transparency) {
   setLayer (LayerIndex);
 
   // Sets the Reload type
+  LTDC->SRCR = LTDC_SRCR_IMR;
+  }
+//}}}
+//{{{
+void BSP_LCD_SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddress) {
+
+  // change layer addresses
+  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = address;
+  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = writeAddress;
+  setLayer (LayerIndex);
+
+  // set reload type
   LTDC->SRCR = LTDC_SRCR_IMR;
   }
 //}}}

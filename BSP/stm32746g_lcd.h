@@ -104,10 +104,10 @@ inline uint32_t BSP_LCD_GetXSize() { return RK043FN48H_WIDTH; }
 inline uint32_t BSP_LCD_GetYSize() { return RK043FN48H_HEIGHT; }
 
 void BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FrameBuffer);
-void BSP_LCD_SetTransparency (uint32_t LayerIndex, uint8_t Transparency);
+
 void BSP_LCD_SelectLayer (uint32_t LayerIndex);
-void BSP_LCD_SetLayerVisible (uint32_t LayerIndex, FunctionalState State);
-void BSP_LCD_Reload (uint32_t ReloadType);
+void BSP_LCD_SetTransparency (uint32_t LayerIndex, uint8_t Transparency);
+void BSP_LCD_SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddress);
 
 uint16_t BSP_LCD_GetTextHeight();
 uint32_t BSP_LCD_GetTextColor();
@@ -148,10 +148,6 @@ void BSP_LCD_ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize
 
 void BSP_LCD_DisplayOff();
 void BSP_LCD_DisplayOn();
-
-void BSP_LCD_MspInit (LTDC_HandleTypeDef *hltdc, void *Params);
-void BSP_LCD_MspDeInit (LTDC_HandleTypeDef *hltdc, void *Params);
-void BSP_LCD_ClockConfig (LTDC_HandleTypeDef *hltdc, void *Params);
 
 //{{{
 #ifdef __cplusplus

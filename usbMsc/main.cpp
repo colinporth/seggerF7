@@ -85,7 +85,7 @@ void cApp::run() {
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
   //}}}
   camera.init (mLcd, false);
-  camera.start (SDRAM_USER);
+  camera.start (SDRAM_USER_565);
 
   bool previewMode = true;
   bool lastButton = false;
@@ -100,7 +100,7 @@ void cApp::run() {
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
-    mLcd->startBgnd ((uint16_t*)SDRAM_USER, camera.getXsize(), camera.getYsize(), BSP_PB_GetState (BUTTON_KEY));
+    mLcd->startBgnd ((uint16_t*)SDRAM_USER_565, camera.getXsize(), camera.getYsize(), BSP_PB_GetState (BUTTON_KEY));
     mLcd->drawTitle (kVersion);
     mLcd->drawDebug();
     mLcd->present();

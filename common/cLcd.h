@@ -25,18 +25,12 @@ public:
     BSP_LCD_Init();
 
     BSP_LCD_LayerDefaultInit (0, SDRAM_SCREEN0);
-    BSP_LCD_SelectLayer(0);
     BSP_LCD_Clear (LCD_COLOR_BLACK);
-    BSP_LCD_SetTransparency (0, 255);
-
-    BSP_LCD_LayerDefaultInit (1, SDRAM_SCREEN1);
-    BSP_LCD_SetTransparency (1, 0);
-
     BSP_LCD_DisplayOn();
     }
   //}}}
 
-  uint32_t* getBuffer() { return (uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0); }
+  uint32_t* getBuffer() { return (uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0); }
 
   //{{{
   void start() {
@@ -45,7 +39,7 @@ public:
   //}}}
   //{{{
   void startBgnd (uint16_t* bgnd) {
-    memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1 : SDRAM_SCREEN0), bgnd, 480*272*2);
+    memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0), bgnd, 480*272*2);
     }
   //}}}
   //{{{
@@ -93,11 +87,8 @@ public:
     HAL_Delay (wait);
     mTick = HAL_GetTick();
 
-    BSP_LCD_SetTransparency (mFlip, 255);
-    BSP_LCD_SetTransparency (!mFlip, 0);
-
     mFlip = !mFlip;
-    BSP_LCD_SelectLayer (mFlip);
+    BSP_LCD_SetAddress (0, mFlip ? SDRAM_SCREEN0 : SDRAM_SCREEN1_565, mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0);
     }
   //}}}
 
