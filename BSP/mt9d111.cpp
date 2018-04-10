@@ -136,7 +136,7 @@ extern "C" {
           if ((DMA2_Stream1->CR & DMA_SxCR_CT) != 0)
             // update M0AR for next dma chunk
             DMA2_Stream1->M0AR += 8 * dcmiInfo.XferSize;
-          else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0)
+          else 
             // update M1AR for next dma chunk
             DMA2_Stream1->M1AR += 8 * dcmiInfo.XferSize;
           cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d", dcmiInfo.XferCount);
