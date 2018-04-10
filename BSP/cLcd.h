@@ -5,9 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-
-#include "stm32f7xx.h"
-#include "stm32f7xx_hal.h"
+#include <stdint.h>
 //}}}
 //{{{
 #ifdef __cplusplus
