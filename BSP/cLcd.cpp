@@ -358,7 +358,7 @@ void cLcd::debug (uint32_t colour, const char* format, ... ) {
 
 //{{{
 void cLcd::SelectLayer (uint32_t LayerIndex) {
-  ActiveLayer = LayerIndex;
+  mCurLayer = LayerIndex;
   }
 //}}}
 //{{{
@@ -388,33 +388,33 @@ void cLcd::SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddr
 //{{{
 uint32_t cLcd::ReadPixel (uint16_t Xpos, uint16_t Ypos) {
 
-  if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB8888)
+  if (hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB8888)
     // Read data value from SDRAM memory
-    return *(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos)));
+    return *(__IO uint32_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos)));
 
-  else if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB888)
+  else if (hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB888)
     // Read data value from SDRAM memory
-    return (*(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos))) & 0x00FFFFFF);
+    return (*(__IO uint32_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos))) & 0x00FFFFFF);
 
-  else if ((hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565) || \
-           (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB4444) || \
-           (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_AL88))
+  else if ((hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565) || \
+           (hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB4444) || \
+           (hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_AL88))
     // Read data value from SDRAM memory
-    return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos)));
+    return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos)));
 
   else
     // Read data value from SDRAM memory
-    return *(__IO uint8_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos)));
+    return *(__IO uint8_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos)));
   }
 //}}}
 //{{{
 void cLcd::DrawPixel (uint16_t Xpos, uint16_t Ypos, uint32_t RGB_Code) {
 // Write data value to all SDRAM memory
 
-  if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565)
-    *(__IO uint16_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos))) = (uint16_t)RGB_Code;
+  if (hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565)
+    *(__IO uint16_t*) (hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos))) = (uint16_t)RGB_Code;
   else
-    *(__IO uint32_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos))) = RGB_Code;
+    *(__IO uint32_t*) (hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos))) = RGB_Code;
   }
 //}}}
 //{{{
@@ -437,7 +437,7 @@ void cLcd::DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
   bit_pixel = pbmp[28] + (pbmp[29] << 8);
 
   // Set the address
-  address = hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (((getWidth()*Ypos) + Xpos)*(4));
+  address = hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (((getWidth()*Ypos) + Xpos)*(4));
 
   // Get the layer pixel format
   if ((bit_pixel/8) == 4)
@@ -466,10 +466,10 @@ void cLcd::DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
 void cLcd::clearStringLine (uint32_t Line) {
 
   // Draw rectangle with background color
-  uint32_t color_backup = TextColor;
-  TextColor = BackColor;
+  uint32_t color_backup = mTextColor;
+  mTextColor = mBackColor;
   FillRect (0, Line * Font16.mHeight, getWidth(), Font16.mHeight);
-  TextColor = color_backup;
+  mTextColor = color_backup;
   }
 //}}}
 //{{{
@@ -481,9 +481,9 @@ void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
   const uint8_t* fontChar = &Font16.mTable [(ascii-' ') * Font16.mHeight * byteAlignedWidth];
 
   #ifdef RGB565
-    auto fbPtr = ((uint16_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite) + (y * getWidth()) + x;
+    auto fbPtr = ((uint16_t*)hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite) + (y * getWidth()) + x;
   #else
-    auto fbPtr = ((uint32_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite) + (y * getWidth()) + x;
+    auto fbPtr = ((uint32_t*)hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite) + (y * getWidth()) + x;
   #endif
 
   for (auto fontLine = 0u; fontLine < Font16.mHeight; fontLine++) {
@@ -496,7 +496,7 @@ void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
       auto endPtr = fbPtr + width;
       while (fbPtr != endPtr) {
         if (fontLineBits & bit)
-          *fbPtr = TextColor;
+          *fbPtr = mTextColor;
         fbPtr++;
         bit >>= 1;
         }
@@ -560,7 +560,7 @@ void cLcd::DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr)
 
 //{{{
 void cLcd::clear (uint32_t Color) {
-  FillBuffer (ActiveLayer, hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite, getWidth(), getHeight(), 0, Color);
+  FillBuffer (mCurLayer, hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite, getWidth(), getHeight(), 0, Color);
   }
 //}}}
 //{{{
@@ -578,9 +578,9 @@ void cLcd::DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Heig
 //{{{
 void cLcd::FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
 
-  FillBuffer (ActiveLayer,
-              hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + 4*(getWidth()*Ypos + Xpos),
-              Width, Height, (getWidth() - Width), TextColor);
+  FillBuffer (mCurLayer,
+              hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + 4*(getWidth()*Ypos + Xpos),
+              Width, Height, (getWidth() - Width), mTextColor);
   }
 //}}}
 //{{{
@@ -595,14 +595,14 @@ void cLcd::DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
   current_y = Radius;
 
   while (current_x <= current_y) {
-    DrawPixel ((Xpos + current_x), (Ypos - current_y), TextColor);
-    DrawPixel ((Xpos - current_x), (Ypos - current_y), TextColor);
-    DrawPixel ((Xpos + current_y), (Ypos - current_x), TextColor);
-    DrawPixel ((Xpos - current_y), (Ypos - current_x), TextColor);
-    DrawPixel ((Xpos + current_x), (Ypos + current_y), TextColor);
-    DrawPixel ((Xpos - current_x), (Ypos + current_y), TextColor);
-    DrawPixel ((Xpos + current_y), (Ypos + current_x), TextColor);
-    DrawPixel ((Xpos - current_y), (Ypos + current_x), TextColor);
+    DrawPixel ((Xpos + current_x), (Ypos - current_y), mTextColor);
+    DrawPixel ((Xpos - current_x), (Ypos - current_y), mTextColor);
+    DrawPixel ((Xpos + current_y), (Ypos - current_x), mTextColor);
+    DrawPixel ((Xpos - current_y), (Ypos - current_x), mTextColor);
+    DrawPixel ((Xpos + current_x), (Ypos + current_y), mTextColor);
+    DrawPixel ((Xpos - current_x), (Ypos + current_y), mTextColor);
+    DrawPixel ((Xpos + current_y), (Ypos + current_x), mTextColor);
+    DrawPixel ((Xpos - current_y), (Ypos + current_x), mTextColor);
 
     if (decision < 0)
       decision += (current_x << 2) + 6;
@@ -721,10 +721,10 @@ void cLcd::DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
   k = (float)(rad2/rad1);
 
   do {
-    DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos+y), TextColor);
-    DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos+y), TextColor);
-    DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos-y), TextColor);
-    DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos-y), TextColor);
+    DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos+y), mTextColor);
+    DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos+y), mTextColor);
+    DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos-y), mTextColor);
+    DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos-y), mTextColor);
 
     e2 = err;
     if (e2 <= x) {
@@ -810,7 +810,7 @@ void cLcd::DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
     }
 
   for (int16_t curpixel = 0; curpixel <= num_pixels; curpixel++) {
-    DrawPixel (x, y, TextColor);
+    DrawPixel (x, y, mTextColor);
     num += num_add;     // Increase the numerator by the top of the fraction
     if (num >= den) {   // Check if numerator >= denominator
       num -= den;       // Calculate the new numerator value
@@ -1843,7 +1843,7 @@ void cLcd::layerInit (uint16_t LayerIndex, uint32_t FB_Address) {
   __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, LayerIndex);
   __HAL_LTDC_RELOAD_CONFIG (&hLtdcHandler);
 
-  ActiveLayer = LayerIndex;
+  mCurLayer = LayerIndex;
   }
 //}}}
 

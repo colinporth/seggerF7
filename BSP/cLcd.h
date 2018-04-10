@@ -79,10 +79,10 @@ public:
   uint32_t getCameraBuffer();
 
   uint16_t GetTextHeight();
-  uint32_t GetTextColor() { return TextColor; }
-  uint32_t GetBackColor() { return BackColor; }
-  void SetTextColor (uint32_t Color) { TextColor = Color; }
-  void SetBackColor (uint32_t Color) { BackColor = Color; }
+  uint32_t GetTextColor() { return mTextColor; }
+  uint32_t GetBackColor() { return mBackColor; }
+  void SetTextColor (uint32_t color) { mTextColor = color; }
+  void SetBackColor (uint32_t color) { mBackColor = color; }
 
   // flipped display
   void start();
@@ -167,16 +167,9 @@ private:
     };
   //}}}
 
-  //{{{  LCD_DrawPropTypeDef
-  typedef struct {
-    uint32_t TextColor;
-    uint32_t BackColor;
-    } LCD_DrawPropTypeDef;
-  //}}}
-  LCD_DrawPropTypeDef DrawProp[2];
-  uint32_t ActiveLayer = 0;
-  uint32_t TextColor = LCD_COLOR_WHITE;
-  uint32_t BackColor = LCD_COLOR_BLACK;
+  uint32_t mCurLayer = 0;
+  uint32_t mTextColor = LCD_COLOR_WHITE;
+  uint32_t mBackColor = LCD_COLOR_BLACK;
 
   bool mFlip = false;
   uint32_t mTick = 0;
