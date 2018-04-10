@@ -12,7 +12,7 @@ public:
   uint32_t getHeight() { return mHeight; }
   bool getCaptureMode() { return mCaptureMode; }
 
-  int getFrames() { return mFrames; }
+  char* getString();
 
   void setFocus (int value);
 
@@ -35,5 +35,8 @@ private:
   uint32_t mHeight = 0;
   bool mCaptureMode = false;
 
-  int mFrames;
+  int mFrames = 0;
+  char mStr[40] = { 0 };
+  uint32_t mTicks = 0;
+  uint32_t mTookTicks = 0;
   };

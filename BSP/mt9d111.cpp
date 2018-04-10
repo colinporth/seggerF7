@@ -59,6 +59,12 @@ void cCamera::init() {
 //}}}
 
 //{{{
+char* cCamera::getString() {
+  sprintf (mStr, "%d %dfps", mFrames, 1000/mTookTicks);
+  return mStr;
+  }
+//}}}
+//{{{
 void cCamera::setFocus (int value) {
 
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "setFocus %d", value);
@@ -315,8 +321,12 @@ void cCamera::dcmiIrqHandler() {
   if ((misr & DCMI_FLAG_VSYNCRI) == DCMI_FLAG_VSYNCRI) {
     __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_VSYNCRI);
     uint32_t rx = DMA2_Stream1->NDTR;
-    cLcd::mLcd->debug (LCD_COLOR_GREEN, "v:%d:%d", dcmiInfo.XferCount, rx);
+
+    auto ticks = HAL_GetTick();
+    mTookTicks = ticks - mTicks;
+    mTicks = ticks;
     mFrames++;
+    //cLcd::mLcd->debug (LCD_COLOR_GREEN, "v:%d:%d", dcmiInfo.XferCount, rx);
     }
   }
 //}}}
