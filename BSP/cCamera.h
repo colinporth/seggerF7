@@ -22,6 +22,7 @@ private:
 
   void preview();
   void capture();
+  void jpeg();
 
   DMA_HandleTypeDef dmaHandler;
   uint32_t cameraCurrentResolution = 0;

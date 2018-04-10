@@ -30,37 +30,6 @@ typedef struct {
 DCMI_HandleTypeDef dcmiInfo;
 
 //{{{
-void dmaXferComplete (DMA_HandleTypeDef* dma) {
-
-  if (dcmiInfo.XferCount > 2) {
-    // next frameChunk
-    if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmiInfo.XferCount % 2) == 0))
-      // Update M0AR for next frameChunk
-      DMA2_Stream1->M0AR += 8 * dcmiInfo.XferSize;
-    else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0)
-      // Update M1AR for next frameChunk
-      DMA2_Stream1->M1AR += 8 * dcmiInfo.XferSize;
-    dcmiInfo.XferCount--;
-    //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
-    }
-
-  else if (DMA2_Stream1->CR & DMA_SxCR_CT) {
-    // last chunk but one, reset M0AR for next frame
-    DMA2_Stream1->M0AR = dcmiInfo.pBuffPtr;
-    dcmiInfo.XferCount--;
-    //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
-    }
-
-  else {
-    // last chunk, reset M1AR,XferCount for next frame
-    DMA2_Stream1->M1AR = dcmiInfo.pBuffPtr + (4 * dcmiInfo.XferSize);
-    //__HAL_DCMI_ENABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
-    dcmiInfo.XferCount = dcmiInfo.XferTransferNumber;
-    //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dmaFrameDone");
-    }
-  }
-//}}}
-//{{{
 void dmaError (DMA_HandleTypeDef* dma) {
 
   if (dcmiInfo.DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
@@ -134,33 +103,6 @@ void dmaInit (DMA_HandleTypeDef *hdma) {
   regs->IFCR = 0x3FU << hdma->StreamIndex;
   }
 //}}}
-//{{{
-void dmaMultiBufferStart (DMA_HandleTypeDef* hdma, uint32_t src, uint32_t dst, uint32_t dst2, uint32_t length) {
-
-  // Enable the Double buffer mode
-  hdma->Instance->CR |= (uint32_t)DMA_SxCR_DBM;
-
-  // Config src, dst address, length
-  hdma->Instance->NDTR = length;
-  hdma->Instance->PAR = src;
-  hdma->Instance->M0AR = dst;
-  hdma->Instance->M1AR = dst2;
-
-  // Clear all flags
-  __HAL_DMA_CLEAR_FLAG (hdma, __HAL_DMA_GET_TC_FLAG_INDEX (hdma));
-  __HAL_DMA_CLEAR_FLAG (hdma, __HAL_DMA_GET_HT_FLAG_INDEX (hdma));
-  __HAL_DMA_CLEAR_FLAG (hdma, __HAL_DMA_GET_TE_FLAG_INDEX (hdma));
-  __HAL_DMA_CLEAR_FLAG (hdma, __HAL_DMA_GET_DME_FLAG_INDEX (hdma));
-  __HAL_DMA_CLEAR_FLAG (hdma, __HAL_DMA_GET_FE_FLAG_INDEX (hdma));
-
-  // enable interrupts
-  hdma->Instance->CR  |= DMA_IT_TC | DMA_IT_TE | DMA_IT_DME;
-  hdma->Instance->FCR |= DMA_IT_FE;
-
-  // Enable peripheral
-  __HAL_DMA_ENABLE (hdma);
-  }
-//}}}
 
 extern "C" {
   //{{{
@@ -171,7 +113,7 @@ extern "C" {
     tDmaBaseRegisters* regs = (tDmaBaseRegisters*)hdma->StreamBaseAddress;
     uint32_t tmpisr = regs->ISR;
 
-    // transferError Interrupt
+    //{{{  transferError Interrupt
     if ((tmpisr & (DMA_FLAG_TEIF0_4 << hdma->StreamIndex)) != RESET) {
       if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_TE) != RESET) {
         // Disable the transfer error interrupt
@@ -181,36 +123,57 @@ extern "C" {
         cLcd::mLcd->debug (LCD_COLOR_RED, "dmaTransferError");
         }
       }
-
-    // fifoError Interrupt
+    //}}}
+    //{{{  fifoError Interrupt
     if ((tmpisr & (DMA_FLAG_FEIF0_4 << hdma->StreamIndex)) != RESET)
       if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_FE) != RESET) {
         // Clear the fifoError flag
         regs->IFCR = DMA_FLAG_FEIF0_4 << hdma->StreamIndex;
         //cLcd::mLcd->debug (LCD_COLOR_RED, "dmaFifoError");
         }
-
-    // directMode Error Interrupt
+    //}}}
+    //{{{  directMode Error Interrupt
     if ((tmpisr & (DMA_FLAG_DMEIF0_4 << hdma->StreamIndex)) != RESET)
       if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_DME) != RESET) {
         // Clear the directMode error flag
         regs->IFCR = DMA_FLAG_DMEIF0_4 << hdma->StreamIndex;
         cLcd::mLcd->debug (LCD_COLOR_RED, "dmaDirectModeError");
         }
+    //}}}
 
     // transferComplete Interrupt
     if ((tmpisr & (DMA_FLAG_TCIF0_4 << hdma->StreamIndex)) != RESET) {
       if(__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_TC) != RESET) {
-        // Clear the transferComplete flag
+        // clear the transferComplete flag
         regs->IFCR = DMA_FLAG_TCIF0_4 << hdma->StreamIndex;
 
-        if (((hdma->Instance->CR) & (uint32_t)(DMA_SxCR_DBM)) != RESET)
-          dmaXferComplete (hdma);
-        else {
-          // Disable the transfer complete interrupt if the DMA mode is not CIRCULAR
-          if ((hdma->Instance->CR & DMA_SxCR_CIRC) == RESET) // Disable the transfer complete interrupt
-            hdma->Instance->CR  &= ~(DMA_IT_TC);
-          dmaXferComplete (hdma);
+        if (((hdma->Instance->CR) & (uint32_t)(DMA_SxCR_DBM)) != RESET) {
+          if (dcmiInfo.XferCount < dcmiInfo.XferTransferNumber-2) {
+            // next frameChunk
+            if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmiInfo.XferCount % 2) == 0))
+              // update M0AR for next frameChunk
+              DMA2_Stream1->M0AR += 8 * dcmiInfo.XferSize;
+            else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0)
+              // update M1AR for next frameChunk
+              DMA2_Stream1->M1AR += 8 * dcmiInfo.XferSize;
+            dcmiInfo.XferCount++;
+            //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
+            }
+
+          else if (DMA2_Stream1->CR & DMA_SxCR_CT) {
+            // last chunk but one, reset M0AR for next frame
+            DMA2_Stream1->M0AR = dcmiInfo.pBuffPtr;
+            dcmiInfo.XferCount++;
+            //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
+            }
+
+          else {
+            // last chunk, reset M1AR,XferCount for next frame
+            DMA2_Stream1->M1AR = dcmiInfo.pBuffPtr + (4 * dcmiInfo.XferSize);
+            //__HAL_DCMI_ENABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
+            dcmiInfo.XferCount = 0;
+            //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dmaFrameDone");
+            }
           }
         }
       }
@@ -233,6 +196,11 @@ extern "C" {
       __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_OVRRI);
       __HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
       cLcd::mLcd->debug (LCD_COLOR_RED, "overflowIrq");
+      }
+
+    if ((misr & DCMI_FLAG_VSYNCRI) == DCMI_FLAG_VSYNCRI) {
+      __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_VSYNCRI);
+      cLcd::mLcd->debug (LCD_COLOR_GREEN, "vsyncIrq %d", dcmiInfo.XferCount);
       }
 
     //if ((misr & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
@@ -260,6 +228,8 @@ void cCamera::init() {
 
   // startup dcmi
   dcmiInit (&dcmiInfo);
+
+  preview();
   }
 //}}}
 
@@ -291,15 +261,17 @@ void cCamera::setFocus (int value) {
 void cCamera::start (bool captureMode, uint32_t buffer) {
 
   mCaptureMode = captureMode;
-  mCaptureMode ? capture() : preview();
+  mCaptureMode ? jpeg() : preview();
   dcmiStart (&dcmiInfo, DCMI_MODE_CONTINUOUS, buffer, getWidth()*getHeight()/2);
   }
 //}}}
 //{{{
 void cCamera::preview() {
+
   mWidth = 800;
   mHeight = 600;
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview");
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview %dx%d", mWidth, mHeight);
+
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Sequencer.params.mode - none
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // Sequencer goto preview A
   }
@@ -315,9 +287,117 @@ void cCamera::capture() {
   mHeight = 1200;
 #endif
 
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "capture");
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "capture %dx%d", mWidth, mHeight);
+
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B
+  }
+//}}}
+//{{{
+void cCamera::jpeg() {
+
+  mWidth = 800;
+  mHeight = 600;
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
+
+  //{{{  last data byte status ifp page2 0x02
+  // b:0 = 1  transfer done
+  // b:1 = 1  output fifo overflow
+  // b:2 = 1  spoof oversize error
+  // b:3 = 1  reorder buffer error
+  // b:5:4    fifo watermark
+  // b:7:6    quant table 0 to 2
+  //}}}
+  CAMERA_IO_Write16 (i2cAddress, 0xf0, 0x0001);
+
+  // mode_config JPG bypass - shadow ifp page2 0x0a
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x270b); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0010); // 0x0030 to disable B
+
+  //{{{  jpeg.config id=9  0x07
+  // b:0 =1  video
+  // b:1 =1  handshake on error
+  // b:2 =1  enable retry on error
+  // b:3 =1  host indicates ready
+  // ------
+  // b:4 =1  scaled quant
+  // b:5 =1  auto select quant
+  // b:6:7   quant table id
+  //}}}
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa907); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0031);
+
+  //{{{  mode fifo_config0_B - shadow ifp page2 0x0d
+  //   output config  ifp page2  0x0d
+  //   b:0 = 1  enable spoof frame
+  //   b:1 = 1  enable pixclk between frames
+  //   b:2 = 1  enable pixclk during invalid data
+  //   b:3 = 1  enable soi/eoi
+  //   -------
+  //   b:4 = 1  enable soi/eoi during FV
+  //   b:5 = 1  enable ignore spoof height
+  //   b:6 = 1  enable variable pixclk
+  //   b:7 = 1  enable byteswap
+  //   -------
+  //   b:8 = 1  enable FV on LV
+  //   b:9 = 1  enable status inserted after data
+  //   b:10 = 1  enable spoof codes
+  //}}}
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2772); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0067);
+
+  //{{{  mode fifo_config1_B - shadow ifp page2 0x0e
+  //   b:3:0   pclk1 divisor
+  //   b:7:5   pclk1 slew
+  //   -----
+  //   b:11:8  pclk2 divisor
+  //   b:15:13 pclk2 slew
+  //}}}
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2774); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0101);
+
+  //{{{  mode fifo_config2_B - shadow ifp page2 0x0f
+  //   b:3:0   pclk3 divisor
+  //   b:7:5   pclk3 slew
+  //}}}
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2776); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0001);
+
+  // mode OUTPUT WIDTH HEIGHT B
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2707); CAMERA_IO_Write16 (i2cAddress, 0xc8, mWidth);
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2709); CAMERA_IO_Write16 (i2cAddress, 0xc8, mHeight);
+
+  // mode SPOOF WIDTH HEIGHT B
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2779); CAMERA_IO_Write16 (i2cAddress, 0xc8, mWidth);
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x277b); CAMERA_IO_Write16 (i2cAddress, 0xc8, mHeight);
+
+  CAMERA_IO_Write16 (i2cAddress, 0x09, 0x000A); // factory bypass 10 bit sensor
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B
+
+  //{{{  readback jpeg params
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa907);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_CONFIG %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2772);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_FIFO_CONF0_B %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2774);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_FIFO_CONF1_B %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2776);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_FIFO_CONF2_B %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2707);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_OUTPUT_WIDTH_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2709);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_OUTPUT_HEIGHT_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2779);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_SPOOF_WIDTH_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x277b);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_SPOOF_HEIGHT_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa906);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_FORMAT %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2908);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_RESTART_INT %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa90a);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_QSCALE_1 %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa90b);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_QSCALE_2 %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa90c);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_QSCALE_3 %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+  //}}}
   }
 //}}}
 
@@ -401,7 +481,7 @@ void cCamera::mt9d111Init() {
   CAMERA_IO_Write16 (i2cAddress, 0x97, 0x22); // outputFormat - RGB565, swap odd even
 
 #ifdef capture800x600
-  //{{{  page 1 register wizard 
+  //{{{  page 1 register wizard
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2703); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0320); // Output Width A
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2705); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0258); // Output Height A
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x2707); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0320); // Output Width B
@@ -633,12 +713,13 @@ void cCamera::dcmiInit (DCMI_HandleTypeDef* dcmi) {
 
   // config DCMI
   dcmi->Instance = DCMI;
-  dcmi->Init.CaptureRate = DCMI_CR_ALL_FRAME;
-  dcmi->Init.HSPolarity = DCMI_HSPOLARITY_LOW;
-  dcmi->Init.VSPolarity = DCMI_HSPOLARITY_LOW;
-  dcmi->Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
+  dcmi->Init.CaptureRate      = DCMI_CR_ALL_FRAME;
+  dcmi->Init.HSPolarity       = DCMI_HSPOLARITY_LOW;
+  dcmi->Init.VSPolarity       = DCMI_HSPOLARITY_LOW;
+  dcmi->Init.SynchroMode      = DCMI_SYNCHRO_HARDWARE;
   dcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-  dcmi->Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
+  dcmi->Init.PCKPolarity      = DCMI_PCKPOLARITY_RISING;
+  dcmi->Init.JPEGMode         = DCMI_JPEG_ENABLE;
 
   // Associate the initialized DMA handle to the DCMI handle
   dmaHandler.Instance = DMA2_Stream1;
@@ -680,12 +761,15 @@ void cCamera::dcmiInit (DCMI_HandleTypeDef* dcmi) {
                           dcmi->Init.ByteSelectStart | dcmi->Init.LineSelectMode |
                           dcmi->Init.LineSelectStart);
 
-  // Enable Error and Overrun interrupts
-  __HAL_DCMI_ENABLE_IT (dcmi, DCMI_IT_ERR | DCMI_IT_OVR);
+  // enable Error, overrun, vsync interrupts
+  __HAL_DCMI_ENABLE_IT (dcmi, DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC);
   }
 //}}}
 //{{{
 void cCamera::dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length) {
+
+  __HAL_DCMI_DISABLE (dcmi);
+  __HAL_DMA_DISABLE (dcmi->DMA_Handle);
 
   // enable DCMI by setting DCMIEN bit
   __HAL_DCMI_ENABLE (dcmi);
@@ -695,19 +779,51 @@ void cCamera::dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t 
 
   // calc the number of xfers with xferSize <= 64k
   dcmi->pBuffPtr = data;
+  dcmi->XferCount = 0;
   dcmi->XferTransferNumber = 1;
   dcmi->XferSize = length;
   while (dcmi->XferSize > 0xFFFF) {
     dcmi->XferSize = dcmi->XferSize / 2;
     dcmi->XferTransferNumber = dcmi->XferTransferNumber * 2;
     }
-  dcmi->XferCount = dcmi->XferTransferNumber;
 
-  dmaMultiBufferStart (dcmi->DMA_Handle, (uint32_t)&dcmi->Instance->DR,
-                       data, data + (4*dcmi->XferSize), dcmi->XferSize);
+  // enable dma doubleBufferMode
+  dcmi->DMA_Handle->Instance->CR |= (uint32_t)DMA_SxCR_DBM;
+
+  // config dma src, dst address, length
+  dcmi->DMA_Handle->Instance->NDTR = dcmi->XferSize;
+  dcmi->DMA_Handle->Instance->PAR = (uint32_t)&dcmi->Instance->DR;
+  dcmi->DMA_Handle->Instance->M0AR = data;
+  dcmi->DMA_Handle->Instance->M1AR = data + (4*dcmi->XferSize);
+
+  // clear all dma flags
+  __HAL_DMA_CLEAR_FLAG (dcmi->DMA_Handle, __HAL_DMA_GET_TC_FLAG_INDEX (dcmi->DMA_Handle));
+  __HAL_DMA_CLEAR_FLAG (dcmi->DMA_Handle, __HAL_DMA_GET_HT_FLAG_INDEX (dcmi->DMA_Handle));
+  __HAL_DMA_CLEAR_FLAG (dcmi->DMA_Handle, __HAL_DMA_GET_TE_FLAG_INDEX (dcmi->DMA_Handle));
+  __HAL_DMA_CLEAR_FLAG (dcmi->DMA_Handle, __HAL_DMA_GET_DME_FLAG_INDEX (dcmi->DMA_Handle));
+  __HAL_DMA_CLEAR_FLAG (dcmi->DMA_Handle, __HAL_DMA_GET_FE_FLAG_INDEX (dcmi->DMA_Handle));
+
+  // enable dma interrupts
+  dcmi->DMA_Handle->Instance->CR  |= DMA_IT_TC | DMA_IT_TE | DMA_IT_DME;
+  dcmi->DMA_Handle->Instance->FCR |= DMA_IT_FE;
+
+  // enable dma peripheral
+  __HAL_DMA_ENABLE (dcmi->DMA_Handle);
+
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", dcmi->XferCount, dcmi->XferSize, length);
 
-  // enable capture
+  // enable dcmi capture
   DCMI->CR |= DCMI_CR_CAPTURE;
   }
+//}}}
+
+//{{{  jpeg
+//int jpegLen = framePtr[frameLen-4] | (framePtr[frameLen-3] << 8) | (framePtr[frameLen-2] << 16);
+//auto jpegStatus = framePtr[frameLen-1];
+// make jpeg header
+//uint8_t jpegHeader[1000];
+//int jpegHeaderLen = setJpegHeader (jpegHeader, mWidth, mHeight, 0, mJpegQscale1);
+// append EOI marker
+//framePtr[jpegLen] = 0xff;
+//framePtr[jpegLen+1] = 0xd9;
 //}}}
