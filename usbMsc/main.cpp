@@ -84,8 +84,8 @@ void cApp::run() {
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
   //}}}
-  camera.init (false);
-  camera.start (mLcd->getCameraBuffer());
+  camera.init();
+  camera.start (BSP_PB_GetState (BUTTON_KEY), mLcd->getCameraBuffer());
 
   bool previewMode = true;
   bool lastButton = false;
@@ -120,10 +120,8 @@ void cApp::run() {
     //}}}
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
-    if (!button && (button != lastButton)) {
-      previewMode = !previewMode;
-      previewMode ? camera.preview() : camera.capture();
-      }
+    if (!button && (button != lastButton)) 
+      camera.start (!camera.getCaptureMode(), mLcd->getCameraBuffer());
     lastButton = button;
     }
   }
