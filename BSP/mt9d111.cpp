@@ -290,7 +290,7 @@ void cCamera::setFocus (int value) {
 //{{{
 void cCamera::start (uint32_t buffer) {
 
-  dcmiStart (&dcmiInfo, DCMI_MODE_CONTINUOUS, buffer, getXsize()*getYsize()/2);
+  dcmiStart (&dcmiInfo, DCMI_MODE_CONTINUOUS, buffer, getWidth()*getHeight()/2);
   }
 //}}}
 //{{{

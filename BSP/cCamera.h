@@ -7,8 +7,8 @@ class cCamera {
 public:
   void init (bool useCapture);
 
-  uint32_t getXsize() { return mXsize; }
-  uint32_t getYsize() { return mYsize; }
+  uint32_t getWidth() { return mXsize; }
+  uint32_t getHeight() { return mYsize; }
 
   void setFocus (int value);
 

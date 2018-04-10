@@ -16,13 +16,6 @@
 //}}}
 
 #define RGB565
-//{{{  Text_AlignModeTypdef
-typedef enum {
-  CENTER_MODE             = 0x01,    /* Center mode */
-  RIGHT_MODE              = 0x02,    /* Right mode  */
-  LEFT_MODE               = 0x03     /* Left mode   */
-  }Text_AlignModeTypdef;
-//}}}
 //{{{  colour defines
 #ifdef RGB565
 
@@ -66,21 +59,6 @@ typedef enum {
 
 #endif
 //}}}
-//{{{  other defines
-#define MAX_LAYER_NUMBER        ((uint32_t)2)
-#define LCD_LayerCfgTypeDef     LTDC_LayerCfgTypeDef
-#define LTDC_ACTIVE_LAYER       ((uint32_t)1) /* Layer 1 */
-
-#define LCD_OK                  ((uint8_t)0x00)
-#define LCD_ERROR               ((uint8_t)0x01)
-#define LCD_TIMEOUT             ((uint8_t)0x02)
-
-#define LCD_RELOAD_IMMEDIATE           ((uint32_t)LTDC_SRCR_IMR)
-#define LCD_RELOAD_VERTICAL_BLANKING   ((uint32_t)LTDC_SRCR_VBR)
-
-#define  RK043FN48H_WIDTH   480
-#define  RK043FN48H_HEIGHT  272
-//}}}
 
 class cLcd {
 public:
@@ -88,13 +66,15 @@ public:
   typedef struct {
     int16_t X;
     int16_t Y;
-    } Point, * pPoint;
+    } Point, *pPoint;
   //}}}
+  typedef enum { CENTER_MODE = 0x01, RIGHT_MODE = 0x02, LEFT_MODE = 0x03 } Text_AlignModeTypdef;
+
   cLcd (int lines);
   void init();
 
-  static uint32_t GetXSize() { return RK043FN48H_WIDTH; }
-  static uint32_t GetYSize() { return RK043FN48H_HEIGHT; }
+  static uint32_t getWidth() { return 480; }
+  static uint32_t getHeight() { return 272; }
 
   uint32_t getCameraBuffer();
 
@@ -194,7 +174,7 @@ private:
     uint32_t BackColor;
     } LCD_DrawPropTypeDef;
   //}}}
-  LCD_DrawPropTypeDef DrawProp[MAX_LAYER_NUMBER];
+  LCD_DrawPropTypeDef DrawProp[2];
   uint32_t ActiveLayer = 0;
   uint32_t TextColor = LCD_COLOR_WHITE;
   uint32_t BackColor = LCD_COLOR_BLACK;

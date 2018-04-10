@@ -100,7 +100,7 @@ void cApp::run() {
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
-    mLcd->startBgnd ((uint16_t*)mLcd->getCameraBuffer(), camera.getXsize(), camera.getYsize(), BSP_PB_GetState (BUTTON_KEY));
+    mLcd->startBgnd ((uint16_t*)mLcd->getCameraBuffer(), camera.getWidth(), camera.getHeight(), BSP_PB_GetState (BUTTON_KEY));
     mLcd->drawTitle (kVersion);
     mLcd->drawDebug();
     mLcd->present();
@@ -339,7 +339,7 @@ int main() {
   //}}}
   BSP_PB_Init (BUTTON_KEY, BUTTON_MODE_GPIO);
 
-  gApp = new cApp (cLcd::GetXSize(), cLcd::GetYSize());
+  gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
   gApp->run();
   }
 //}}}

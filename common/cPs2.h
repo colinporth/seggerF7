@@ -223,7 +223,7 @@ public:
     int bitHeight = 12;
     int clockHeight = 12;
     int lineHeight = 16;
-    auto waveY = mLcd->GetYSize() - 2*lineHeight;
+    auto waveY = mLcd->getHeight() - 2*lineHeight;
 
     bool lastBit = false;
     auto sample = mSample - kMaxSamples + 1;

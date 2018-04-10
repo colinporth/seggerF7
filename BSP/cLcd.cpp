@@ -178,16 +178,16 @@ void cLcd::init() {
   __HAL_RCC_LTDC_CLK_ENABLE();
 
   hLtdcHandler.Instance = LTDC;
-  hLtdcHandler.LayerCfg->ImageWidth = RK043FN48H_WIDTH;
-  hLtdcHandler.LayerCfg->ImageHeight = RK043FN48H_HEIGHT;
+  hLtdcHandler.LayerCfg->ImageWidth = getWidth();
+  hLtdcHandler.LayerCfg->ImageHeight = getHeight();
   hLtdcHandler.Init.HorizontalSync = (RK043FN48H_HSYNC - 1);
   hLtdcHandler.Init.VerticalSync = (RK043FN48H_VSYNC - 1);
   hLtdcHandler.Init.AccumulatedHBP = (RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
   hLtdcHandler.Init.AccumulatedVBP = (RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
-  hLtdcHandler.Init.AccumulatedActiveH = (RK043FN48H_HEIGHT + RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
-  hLtdcHandler.Init.AccumulatedActiveW = (RK043FN48H_WIDTH + RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
-  hLtdcHandler.Init.TotalHeigh = (RK043FN48H_HEIGHT + RK043FN48H_VSYNC + RK043FN48H_VBP + RK043FN48H_VFP - 1);
-  hLtdcHandler.Init.TotalWidth = (RK043FN48H_WIDTH + RK043FN48H_HSYNC + RK043FN48H_HBP + RK043FN48H_HFP - 1);
+  hLtdcHandler.Init.AccumulatedActiveH = (getHeight() + RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
+  hLtdcHandler.Init.AccumulatedActiveW = (getWidth() + RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
+  hLtdcHandler.Init.TotalHeigh = (getHeight() + RK043FN48H_VSYNC + RK043FN48H_VBP + RK043FN48H_VFP - 1);
+  hLtdcHandler.Init.TotalWidth = (getWidth() + RK043FN48H_HSYNC + RK043FN48H_HBP + RK043FN48H_HFP - 1);
   hLtdcHandler.Init.Backcolor.Blue = 0;
   hLtdcHandler.Init.Backcolor.Green = 0;
   hLtdcHandler.Init.Backcolor.Red = 0;
@@ -268,9 +268,9 @@ void cLcd::startBgnd (uint16_t* bgnd) {
 void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
 
   if (zoom)
-    ConvertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), GetXSize(), GetYSize());
+    ConvertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
   else
-    ConvertFrameCpu (src, srcXsize, srcYsize, getBuffer(), GetXSize(), GetYSize());
+    ConvertFrameCpu (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
   }
 //}}}
 //{{{
@@ -390,21 +390,21 @@ uint32_t cLcd::ReadPixel (uint16_t Xpos, uint16_t Ypos) {
 
   if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB8888)
     // Read data value from SDRAM memory
-    return *(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*GetXSize() + Xpos)));
+    return *(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos)));
 
   else if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB888)
     // Read data value from SDRAM memory
-    return (*(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*GetXSize() + Xpos))) & 0x00FFFFFF);
+    return (*(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos))) & 0x00FFFFFF);
 
   else if ((hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565) || \
            (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB4444) || \
            (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_AL88))
     // Read data value from SDRAM memory
-    return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*GetXSize() + Xpos)));
+    return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos)));
 
   else
     // Read data value from SDRAM memory
-    return *(__IO uint8_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*GetXSize() + Xpos)));
+    return *(__IO uint8_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos)));
   }
 //}}}
 //{{{
@@ -412,9 +412,9 @@ void cLcd::DrawPixel (uint16_t Xpos, uint16_t Ypos, uint32_t RGB_Code) {
 // Write data value to all SDRAM memory
 
   if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565)
-    *(__IO uint16_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*GetXSize() + Xpos))) = (uint16_t)RGB_Code;
+    *(__IO uint16_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos))) = (uint16_t)RGB_Code;
   else
-    *(__IO uint32_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*GetXSize() + Xpos))) = RGB_Code;
+    *(__IO uint32_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos))) = RGB_Code;
   }
 //}}}
 //{{{
@@ -437,7 +437,7 @@ void cLcd::DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
   bit_pixel = pbmp[28] + (pbmp[29] << 8);
 
   // Set the address
-  address = hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (((GetXSize()*Ypos) + Xpos)*(4));
+  address = hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (((getWidth()*Ypos) + Xpos)*(4));
 
   // Get the layer pixel format
   if ((bit_pixel/8) == 4)
@@ -456,7 +456,7 @@ void cLcd::DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
     ConvertLineToARGB8888((uint32_t*)pbmp, (uint32_t*)address, width, input_color_mode);
 
     // Increment the source and destination buffers
-    address+=  (GetXSize()*4);
+    address+=  (getWidth()*4);
     pbmp -= width*(bit_pixel/8);
     }
   }
@@ -468,7 +468,7 @@ void cLcd::ClearStringLine (uint32_t Line) {
   // Draw rectangle with background color
   uint32_t color_backup = TextColor;
   TextColor = BackColor;
-  FillRect (0, Line * Font16.mHeight, GetXSize(), Font16.mHeight);
+  FillRect (0, Line * Font16.mHeight, getWidth(), Font16.mHeight);
   TextColor = color_backup;
   }
 //}}}
@@ -481,9 +481,9 @@ void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
   const uint8_t* fontChar = &Font16.mTable [(ascii-' ') * Font16.mHeight * byteAlignedWidth];
 
   #ifdef RGB565
-    auto fbPtr = ((uint16_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite) + (y * GetXSize()) + x;
+    auto fbPtr = ((uint16_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite) + (y * getWidth()) + x;
   #else
-    auto fbPtr = ((uint32_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite) + (y * GetXSize()) + x;
+    auto fbPtr = ((uint32_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite) + (y * getWidth()) + x;
   #endif
 
   for (auto fontLine = 0u; fontLine < Font16.mHeight; fontLine++) {
@@ -500,10 +500,10 @@ void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
         fbPtr++;
         bit >>= 1;
         }
-      fbPtr += GetXSize() - width;
+      fbPtr += getWidth() - width;
       }
     else
-      fbPtr += GetXSize();
+      fbPtr += getWidth();
     }
   }
 //}}}
@@ -513,7 +513,7 @@ void cLcd::DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTy
   uint16_t column = 1;
   switch (mode) {
     case CENTER_MODE:  {
-      uint32_t xSize = GetXSize() / Font16.mWidth;
+      uint32_t xSize = getWidth() / Font16.mWidth;
       char* ptr = text;
       uint32_t size = 0;
       while (*ptr++)
@@ -523,7 +523,7 @@ void cLcd::DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTy
       }
 
     case RIGHT_MODE: {
-      uint32_t xSize = GetXSize() / Font16.mWidth;
+      uint32_t xSize = getWidth() / Font16.mWidth;
       char* ptr = text;
       uint32_t size = 0;
       while (*ptr++)
@@ -538,10 +538,10 @@ void cLcd::DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTy
     }
 
   // Check that the start x is on screen
-  if ((column < 1) || (column >= GetXSize()))
+  if ((column < 1) || (column >= getWidth()))
     column = 1;
 
-  while (*text && (column + Font16.mWidth < GetXSize())) {
+  while (*text && (column + Font16.mWidth < getWidth())) {
     DisplayChar (column, y, *text++);
     column += Font16.mWidth;
     }
@@ -560,7 +560,7 @@ void cLcd::DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr)
 
 //{{{
 void cLcd::Clear (uint32_t Color) {
-  FillBuffer (ActiveLayer, hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite, GetXSize(), GetYSize(), 0, Color);
+  FillBuffer (ActiveLayer, hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite, getWidth(), getHeight(), 0, Color);
   }
 //}}}
 //{{{
@@ -579,8 +579,8 @@ void cLcd::DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Heig
 void cLcd::FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
 
   FillBuffer (ActiveLayer,
-              hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + 4*(GetXSize()*Ypos + Xpos),
-              Width, Height, (GetXSize() - Width), TextColor);
+              hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + 4*(getWidth()*Ypos + Xpos),
+              Width, Height, (getWidth() - Width), TextColor);
   }
 //}}}
 //{{{
@@ -1816,13 +1816,13 @@ void cLcd::layerInit (uint16_t LayerIndex, uint32_t FB_Address) {
   hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = FB_Address;
   hLtdcHandler.LayerCfg[LayerIndex].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;  // LTDC_PIXEL_FORMAT_ARGB8888;
 
-  hLtdcHandler.LayerCfg[LayerIndex].ImageWidth = GetXSize();
-  hLtdcHandler.LayerCfg[LayerIndex].ImageHeight = GetYSize();
+  hLtdcHandler.LayerCfg[LayerIndex].ImageWidth = getWidth();
+  hLtdcHandler.LayerCfg[LayerIndex].ImageHeight = getHeight();
 
   hLtdcHandler.LayerCfg[LayerIndex].WindowX0 = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].WindowX1 = GetXSize();
+  hLtdcHandler.LayerCfg[LayerIndex].WindowX1 = getWidth();
   hLtdcHandler.LayerCfg[LayerIndex].WindowY0 = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].WindowY1 = GetYSize();
+  hLtdcHandler.LayerCfg[LayerIndex].WindowY1 = getHeight();
 
   hLtdcHandler.LayerCfg[LayerIndex].Alpha = 255;
   hLtdcHandler.LayerCfg[LayerIndex].Alpha0 = 0;
