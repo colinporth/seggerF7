@@ -24,10 +24,10 @@ extern const sFONT Font16;
 #define LCD_BL_CTRL_GPIO_CLK_ENABLE()    __HAL_RCC_GPIOK_CLK_ENABLE()
 #define LCD_BL_CTRL_GPIO_CLK_DISABLE()   __HAL_RCC_GPIOK_CLK_DISABLE()
 //}}}
-//{{{  vars
+
 LTDC_HandleTypeDef hLtdcHandler;
 DMA2D_HandleTypeDef hDma2dHandler;
-//}}}
+cLcd* cLcd::mLcd = nullptr;
 
 extern "C" {
   //{{{
@@ -72,7 +72,6 @@ extern "C" {
   //}}}
   }
 
-cLcd* cLcd::mLcd = nullptr;
 
 cLcd::cLcd (int lines) : mDisplayLines(lines) {}
 //{{{

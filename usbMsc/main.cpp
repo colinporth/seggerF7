@@ -102,6 +102,10 @@ void cApp::run() {
     //}}}
     mLcd->startBgnd ((uint16_t*)mLcd->getCameraBuffer(), camera.getWidth(), camera.getHeight(), BSP_PB_GetState (BUTTON_KEY));
     mLcd->drawTitle (kVersion);
+    char str1[40];
+    sprintf (str1, "%d", camera.getFrames());
+    mLcd->DisplayStringAtLineColumn (0, 34, str1);
+
     mLcd->drawDebug();
     mLcd->present();
     //{{{  removed

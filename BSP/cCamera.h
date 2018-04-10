@@ -12,11 +12,17 @@ public:
   uint32_t getHeight() { return mHeight; }
   bool getCaptureMode() { return mCaptureMode; }
 
+  int getFrames() { return mFrames; }
+
   void setFocus (int value);
+
+  void dmaIrqHandler();
+  void dcmiIrqHandler();
 
 private:
   void gpioInit();
   void mt9d111Init();
+  void dmaInit (DMA_HandleTypeDef* hdma);
   void dcmiInit (DCMI_HandleTypeDef* dcmi);
   void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length);
 
@@ -25,8 +31,9 @@ private:
   void jpeg();
 
   DMA_HandleTypeDef dmaHandler;
-  uint32_t cameraCurrentResolution = 0;
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;
   bool mCaptureMode = false;
+
+  int mFrames;
   };
