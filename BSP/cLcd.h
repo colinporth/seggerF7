@@ -90,11 +90,15 @@ public:
     int16_t Y;
     } Point, * pPoint;
   //}}}
-
   cLcd (int lines);
   void init();
 
   uint32_t* getBuffer();
+  uint16_t GetTextHeight();
+  uint32_t GetTextColor() { return TextColor; }
+  uint32_t GetBackColor() { return BackColor; }
+  void SetTextColor (uint32_t Color) { TextColor = Color; }
+  void SetBackColor (uint32_t Color) { BackColor = Color; }
 
   void start();
   void startBgnd (uint16_t* bgnd);
@@ -110,24 +114,14 @@ public:
 
   void debug (uint32_t colour, const char* format, ... );
 
-  uint8_t Init();
-  uint8_t DeInit();
-
   static uint32_t GetXSize() { return RK043FN48H_WIDTH; }
   static uint32_t GetYSize() { return RK043FN48H_HEIGHT; }
 
-  void LayerDefaultInit (uint16_t LayerIndex, uint32_t FrameBuffer);
+  void layerInit (uint16_t LayerIndex, uint32_t FrameBuffer);
 
   void SelectLayer (uint32_t LayerIndex);
   void SetTransparency (uint32_t LayerIndex, uint8_t Transparency);
   void SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddress);
-
-  uint16_t GetTextHeight();
-  uint32_t GetTextColor();
-  uint32_t GetBackColor();
-
-  void SetTextColor (uint32_t Color);
-  void SetBackColor (uint32_t Color);
 
   uint32_t ReadPixel (uint16_t x, uint16_t y);
   void DrawPixel (uint16_t x, uint16_t y, uint32_t pixel);

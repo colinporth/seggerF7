@@ -75,122 +75,6 @@ cLcd::cLcd (int lines) : mDisplayLines(lines) {}
 //{{{
 void cLcd::init() {
 
-  Init();
-
-  LayerDefaultInit (0, SDRAM_SCREEN0);
-  Clear (LCD_COLOR_BLACK);
-  DisplayOn();
-  }
-//}}}
-
-uint32_t* cLcd::getBuffer() { return (uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0); }
-
-//{{{
-void cLcd::start() {
-  Clear (LCD_COLOR_BLACK);
-  }
-//}}}
-//{{{
-void cLcd::startBgnd (uint16_t* bgnd) {
-  memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0), bgnd, 480*272*2);
-  }
-//}}}
-//{{{
-void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
-
-  if (zoom)
-    ConvertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), GetXSize(), GetYSize());
-  else
-    ConvertFrameCpu (src, srcXsize, srcYsize, getBuffer(), GetXSize(), GetYSize());
-  }
-//}}}
-//{{{
-void cLcd::drawTitle (const char* title) {
-
-  char str1[40];
-  sprintf (str1, "%s %d", title, (int)mTick);
-
-  SetTextColor (LCD_COLOR_WHITE);
-  DisplayStringAtLine (0, str1);
-  }
-//}}}
-//{{{
-void cLcd::drawDebug() {
-
-  if (!BSP_PB_GetState (BUTTON_KEY))
-    for (auto displayLine = 0u; (displayLine < mDebugLine) && ((int)displayLine < mDisplayLines); displayLine++) {
-      int debugLine = ((int)mDebugLine < mDisplayLines) ?
-        displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
-
-      SetTextColor (LCD_COLOR_WHITE);
-      char tickStr[20];
-      auto ticks = mLines[debugLine].mTicks;
-      sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
-      DisplayStringAtLineColumn (1+displayLine, 0, tickStr);
-
-      SetTextColor (mLines[debugLine].mColour);
-      DisplayStringAtLineColumn (1+displayLine, 7, mLines[debugLine].mStr);
-      }
-  }
-//}}}
-//{{{
-void cLcd::present() {
-
-  uint32_t wait = 20 - (HAL_GetTick() % 20);
-  HAL_Delay (wait);
-  mTick = HAL_GetTick();
-
-  mFlip = !mFlip;
-  SetAddress (0, mFlip ? SDRAM_SCREEN0 : SDRAM_SCREEN1_565, mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0);
-  }
-//}}}
-
-//{{{
-int cLcd::getScrollScale() {
-  return 4;
-  }
-//}}}
-//{{{
-unsigned cLcd::getScrollLines() {
-  return mScroll / getScrollScale();
-  }
-//}}}
-//{{{
-void cLcd::incScrollValue (int inc) {
-
-  mScroll += inc;
-
-  if (mScroll < 0)
-    mScroll = 0;
-  else if (getScrollLines() >  mDebugLine - mDisplayLines)
-    mScroll = (mDebugLine - mDisplayLines) * getScrollScale();
-  }
-//}}}
-//{{{
-void cLcd::incScrollIndex (int inc) {
-  incScrollValue (inc * GetTextHeight() / getScrollScale());
-  }
-//}}}
-
-//{{{
-void cLcd::debug (uint32_t colour, const char* format, ... ) {
-
-  auto line = mDebugLine % kDebugMaxLines;
-
-  va_list args;
-  va_start (args, format);
-  vsnprintf (mLines[line].mStr, kMaxStrSize-1, format, args);
-  va_end (args);
-
-  mLines[line].mTicks = HAL_GetTick();
-  mLines[line].mColour = colour;
-  mDebugLine++;
-  }
-//}}}
-
-//{{{
-uint8_t cLcd::Init() {
-
   //{{{  gpio config
   // Enable GPIOs clock
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -355,11 +239,119 @@ uint8_t cLcd::Init() {
   HAL_DMA2D_ConfigDeadTime (&hDma2dHandler, 10);
   HAL_DMA2D_EnableDeadTime (&hDma2dHandler);
 
-  return LCD_OK;
+  layerInit (0, SDRAM_SCREEN0);
+  Clear (LCD_COLOR_BLACK);
+  DisplayOn();
+  }
+//}}}
+
+uint16_t cLcd::GetTextHeight() { return Font16.mHeight; }
+uint32_t* cLcd::getBuffer() { return (uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0); }
+
+//{{{
+void cLcd::start() {
+  Clear (LCD_COLOR_BLACK);
   }
 //}}}
 //{{{
-void cLcd::LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
+void cLcd::startBgnd (uint16_t* bgnd) {
+  memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0), bgnd, 480*272*2);
+  }
+//}}}
+//{{{
+void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
+
+  if (zoom)
+    ConvertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), GetXSize(), GetYSize());
+  else
+    ConvertFrameCpu (src, srcXsize, srcYsize, getBuffer(), GetXSize(), GetYSize());
+  }
+//}}}
+//{{{
+void cLcd::drawTitle (const char* title) {
+
+  char str1[40];
+  sprintf (str1, "%s %d", title, (int)mTick);
+
+  SetTextColor (LCD_COLOR_WHITE);
+  DisplayStringAtLine (0, str1);
+  }
+//}}}
+//{{{
+void cLcd::drawDebug() {
+
+  if (!BSP_PB_GetState (BUTTON_KEY))
+    for (auto displayLine = 0u; (displayLine < mDebugLine) && ((int)displayLine < mDisplayLines); displayLine++) {
+      int debugLine = ((int)mDebugLine < mDisplayLines) ?
+        displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
+
+      SetTextColor (LCD_COLOR_WHITE);
+      char tickStr[20];
+      auto ticks = mLines[debugLine].mTicks;
+      sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
+      DisplayStringAtLineColumn (1+displayLine, 0, tickStr);
+
+      SetTextColor (mLines[debugLine].mColour);
+      DisplayStringAtLineColumn (1+displayLine, 7, mLines[debugLine].mStr);
+      }
+  }
+//}}}
+//{{{
+void cLcd::present() {
+
+  uint32_t wait = 20 - (HAL_GetTick() % 20);
+  HAL_Delay (wait);
+  mTick = HAL_GetTick();
+
+  mFlip = !mFlip;
+  SetAddress (0, mFlip ? SDRAM_SCREEN0 : SDRAM_SCREEN1_565, mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0);
+  }
+//}}}
+
+//{{{
+int cLcd::getScrollScale() {
+  return 4;
+  }
+//}}}
+//{{{
+unsigned cLcd::getScrollLines() {
+  return mScroll / getScrollScale();
+  }
+//}}}
+//{{{
+void cLcd::incScrollValue (int inc) {
+
+  mScroll += inc;
+
+  if (mScroll < 0)
+    mScroll = 0;
+  else if (getScrollLines() >  mDebugLine - mDisplayLines)
+    mScroll = (mDebugLine - mDisplayLines) * getScrollScale();
+  }
+//}}}
+//{{{
+void cLcd::incScrollIndex (int inc) {
+  incScrollValue (inc * GetTextHeight() / getScrollScale());
+  }
+//}}}
+//{{{
+void cLcd::debug (uint32_t colour, const char* format, ... ) {
+
+  auto line = mDebugLine % kDebugMaxLines;
+
+  va_list args;
+  va_start (args, format);
+  vsnprintf (mLines[line].mStr, kMaxStrSize-1, format, args);
+  va_end (args);
+
+  mLines[line].mTicks = HAL_GetTick();
+  mLines[line].mColour = colour;
+  mDebugLine++;
+  }
+//}}}
+
+//{{{
+void cLcd::layerInit (uint16_t LayerIndex, uint32_t FB_Address) {
 
   hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = FB_Address;
   hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = FB_Address;
@@ -424,12 +416,6 @@ void cLcd::SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddr
   LTDC->SRCR = LTDC_SRCR_IMR;
   }
 //}}}
-
-uint16_t cLcd::GetTextHeight() { return Font16.mHeight; }
-uint32_t cLcd::GetTextColor() { return TextColor; }
-uint32_t cLcd::GetBackColor() { return BackColor; }
-void cLcd::SetTextColor (uint32_t Color) { TextColor = Color; }
-void cLcd::SetBackColor (uint32_t Color) { BackColor = Color; }
 
 //{{{
 uint32_t cLcd::ReadPixel (uint16_t Xpos, uint16_t Ypos) {
