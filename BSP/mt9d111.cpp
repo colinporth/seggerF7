@@ -5,7 +5,7 @@
 //}}}
 
 #define i2cAddress 0x90
-#define capture800x600
+//#define capture800x600
 
 static const uint8_t flagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
 //{{{
@@ -264,8 +264,14 @@ void cCamera::capture() {
 //{{{
 void cCamera::jpeg() {
 
+#ifdef capture800x600
   mWidth = 800;
   mHeight = 600;
+#else
+  mWidth = 1600;
+  mHeight = 1200;
+#endif
+
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
 
   //{{{  last data byte status ifp page2 0x02
