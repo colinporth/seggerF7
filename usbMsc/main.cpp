@@ -340,7 +340,7 @@ int main() {
   //}}}
   BSP_PB_Init (BUTTON_KEY, BUTTON_MODE_GPIO);
 
-  gApp = new cApp (cLcd::BSP_LCD_GetXSize(), cLcd::BSP_LCD_GetYSize());
+  gApp = new cApp (cLcd::GetXSize(), cLcd::GetYSize());
   gApp->run();
   }
 //}}}

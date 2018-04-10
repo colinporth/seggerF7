@@ -110,57 +110,57 @@ public:
 
   void debug (uint32_t colour, const char* format, ... );
 
-  uint8_t BSP_LCD_Init();
-  uint8_t BSP_LCD_DeInit();
+  uint8_t Init();
+  uint8_t DeInit();
 
-  static uint32_t BSP_LCD_GetXSize() { return RK043FN48H_WIDTH; }
-  static uint32_t BSP_LCD_GetYSize() { return RK043FN48H_HEIGHT; }
+  static uint32_t GetXSize() { return RK043FN48H_WIDTH; }
+  static uint32_t GetYSize() { return RK043FN48H_HEIGHT; }
 
-  void BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FrameBuffer);
+  void LayerDefaultInit (uint16_t LayerIndex, uint32_t FrameBuffer);
 
-  void BSP_LCD_SelectLayer (uint32_t LayerIndex);
-  void BSP_LCD_SetTransparency (uint32_t LayerIndex, uint8_t Transparency);
-  void BSP_LCD_SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddress);
+  void SelectLayer (uint32_t LayerIndex);
+  void SetTransparency (uint32_t LayerIndex, uint8_t Transparency);
+  void SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddress);
 
-  uint16_t BSP_LCD_GetTextHeight();
-  uint32_t BSP_LCD_GetTextColor();
-  uint32_t BSP_LCD_GetBackColor();
+  uint16_t GetTextHeight();
+  uint32_t GetTextColor();
+  uint32_t GetBackColor();
 
-  void BSP_LCD_SetTextColor (uint32_t Color);
-  void BSP_LCD_SetBackColor (uint32_t Color);
+  void SetTextColor (uint32_t Color);
+  void SetBackColor (uint32_t Color);
 
-  uint32_t BSP_LCD_ReadPixel (uint16_t x, uint16_t y);
-  void BSP_LCD_DrawPixel (uint16_t x, uint16_t y, uint32_t pixel);
+  uint32_t ReadPixel (uint16_t x, uint16_t y);
+  void DrawPixel (uint16_t x, uint16_t y, uint32_t pixel);
 
-  void BSP_LCD_Clear (uint32_t Color);
-  void BSP_LCD_ClearStringLine (uint32_t Line);
-  void BSP_LCD_DisplayChar (uint16_t x, uint16_t y, uint8_t ascii);
-  void BSP_LCD_DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTypdef mode);
-  void BSP_LCD_DisplayStringAtLine (uint16_t line, char* ptr);
-  void BSP_LCD_DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr);
+  void Clear (uint32_t Color);
+  void ClearStringLine (uint32_t Line);
+  void DisplayChar (uint16_t x, uint16_t y, uint8_t ascii);
+  void DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTypdef mode);
+  void DisplayStringAtLine (uint16_t line, char* ptr);
+  void DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr);
 
-  void BSP_LCD_DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
-  void BSP_LCD_DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
-  void BSP_LCD_DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
-  void BSP_LCD_DrawPolygon (pPoint Points, uint16_t PointCount);
-  void BSP_LCD_DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius);
-  void BSP_LCD_DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp);
+  void DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+  void DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
+  void DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
+  void DrawPolygon (pPoint Points, uint16_t PointCount);
+  void DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius);
+  void DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp);
 
-  void BSP_LCD_FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
-  void BSP_LCD_FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
-  void BSP_LCD_FillPolygon (pPoint Points, uint16_t PointCount);
-  void BSP_LCD_FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius);
+  void FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
+  void FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
+  void FillPolygon (pPoint Points, uint16_t PointCount);
+  void FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius);
 
-  void BSP_LCD_ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize);
-  void BSP_LCD_ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+  void ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize);
+  void ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
                                  uint32_t* dst, uint16_t xsize, uint16_t ysize);
-  void BSP_LCD_ConvertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+  void ConvertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
                                  uint32_t* dst, uint16_t xsize, uint16_t ysize);
-  void BSP_LCD_ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
+  void ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                                 uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
 
-  void BSP_LCD_DisplayOff();
-  void BSP_LCD_DisplayOn();
+  void DisplayOff();
+  void DisplayOn();
 
 private:
   void setLayer (uint32_t layerIndex);

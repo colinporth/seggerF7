@@ -75,11 +75,11 @@ cLcd::cLcd (int lines) : mDisplayLines(lines) {}
 //{{{
 void cLcd::init() {
 
-  BSP_LCD_Init();
+  Init();
 
-  BSP_LCD_LayerDefaultInit (0, SDRAM_SCREEN0);
-  BSP_LCD_Clear (LCD_COLOR_BLACK);
-  BSP_LCD_DisplayOn();
+  LayerDefaultInit (0, SDRAM_SCREEN0);
+  Clear (LCD_COLOR_BLACK);
+  DisplayOn();
   }
 //}}}
 
@@ -87,7 +87,7 @@ uint32_t* cLcd::getBuffer() { return (uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDR
 
 //{{{
 void cLcd::start() {
-  BSP_LCD_Clear (LCD_COLOR_BLACK);
+  Clear (LCD_COLOR_BLACK);
   }
 //}}}
 //{{{
@@ -99,9 +99,9 @@ void cLcd::startBgnd (uint16_t* bgnd) {
 void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
 
   if (zoom)
-    BSP_LCD_ConvertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+    ConvertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), GetXSize(), GetYSize());
   else
-    BSP_LCD_ConvertFrameCpu (src, srcXsize, srcYsize, getBuffer(), BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+    ConvertFrameCpu (src, srcXsize, srcYsize, getBuffer(), GetXSize(), GetYSize());
   }
 //}}}
 //{{{
@@ -110,8 +110,8 @@ void cLcd::drawTitle (const char* title) {
   char str1[40];
   sprintf (str1, "%s %d", title, (int)mTick);
 
-  BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
-  BSP_LCD_DisplayStringAtLine (0, str1);
+  SetTextColor (LCD_COLOR_WHITE);
+  DisplayStringAtLine (0, str1);
   }
 //}}}
 //{{{
@@ -122,14 +122,14 @@ void cLcd::drawDebug() {
       int debugLine = ((int)mDebugLine < mDisplayLines) ?
         displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
 
-      BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
+      SetTextColor (LCD_COLOR_WHITE);
       char tickStr[20];
       auto ticks = mLines[debugLine].mTicks;
       sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
-      BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 0, tickStr);
+      DisplayStringAtLineColumn (1+displayLine, 0, tickStr);
 
-      BSP_LCD_SetTextColor (mLines[debugLine].mColour);
-      BSP_LCD_DisplayStringAtLineColumn (1+displayLine, 7, mLines[debugLine].mStr);
+      SetTextColor (mLines[debugLine].mColour);
+      DisplayStringAtLineColumn (1+displayLine, 7, mLines[debugLine].mStr);
       }
   }
 //}}}
@@ -141,7 +141,7 @@ void cLcd::present() {
   mTick = HAL_GetTick();
 
   mFlip = !mFlip;
-  BSP_LCD_SetAddress (0, mFlip ? SDRAM_SCREEN0 : SDRAM_SCREEN1_565, mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0);
+  SetAddress (0, mFlip ? SDRAM_SCREEN0 : SDRAM_SCREEN1_565, mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0);
   }
 //}}}
 
@@ -168,7 +168,7 @@ void cLcd::incScrollValue (int inc) {
 //}}}
 //{{{
 void cLcd::incScrollIndex (int inc) {
-  incScrollValue (inc * BSP_LCD_GetTextHeight() / getScrollScale());
+  incScrollValue (inc * GetTextHeight() / getScrollScale());
   }
 //}}}
 
@@ -189,7 +189,7 @@ void cLcd::debug (uint32_t colour, const char* format, ... ) {
 //}}}
 
 //{{{
-uint8_t cLcd::BSP_LCD_Init() {
+uint8_t cLcd::Init() {
 
   //{{{  gpio config
   // Enable GPIOs clock
@@ -359,19 +359,19 @@ uint8_t cLcd::BSP_LCD_Init() {
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
+void cLcd::LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
 
   hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = FB_Address;
   hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = FB_Address;
   hLtdcHandler.LayerCfg[LayerIndex].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;  // LTDC_PIXEL_FORMAT_ARGB8888;
 
-  hLtdcHandler.LayerCfg[LayerIndex].ImageWidth = BSP_LCD_GetXSize();
-  hLtdcHandler.LayerCfg[LayerIndex].ImageHeight = BSP_LCD_GetYSize();
+  hLtdcHandler.LayerCfg[LayerIndex].ImageWidth = GetXSize();
+  hLtdcHandler.LayerCfg[LayerIndex].ImageHeight = GetYSize();
 
   hLtdcHandler.LayerCfg[LayerIndex].WindowX0 = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].WindowX1 = BSP_LCD_GetXSize();
+  hLtdcHandler.LayerCfg[LayerIndex].WindowX1 = GetXSize();
   hLtdcHandler.LayerCfg[LayerIndex].WindowY0 = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].WindowY1 = BSP_LCD_GetYSize();
+  hLtdcHandler.LayerCfg[LayerIndex].WindowY1 = GetYSize();
 
   hLtdcHandler.LayerCfg[LayerIndex].Alpha = 255;
   hLtdcHandler.LayerCfg[LayerIndex].Alpha0 = 0;
@@ -397,12 +397,12 @@ void cLcd::BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
 //}}}
 
 //{{{
-void cLcd::BSP_LCD_SelectLayer (uint32_t LayerIndex) {
+void cLcd::SelectLayer (uint32_t LayerIndex) {
   ActiveLayer = LayerIndex;
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_SetTransparency (uint32_t LayerIndex, uint8_t Transparency) {
+void cLcd::SetTransparency (uint32_t LayerIndex, uint8_t Transparency) {
 
   // change layer Alpha
   hLtdcHandler.LayerCfg[LayerIndex].Alpha = Transparency;
@@ -413,7 +413,7 @@ void cLcd::BSP_LCD_SetTransparency (uint32_t LayerIndex, uint8_t Transparency) {
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddress) {
+void cLcd::SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddress) {
 
   // change layer addresses
   hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = address;
@@ -425,46 +425,46 @@ void cLcd::BSP_LCD_SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t w
   }
 //}}}
 
-uint16_t cLcd::BSP_LCD_GetTextHeight() { return Font16.mHeight; }
-uint32_t cLcd::BSP_LCD_GetTextColor() { return TextColor; }
-uint32_t cLcd::BSP_LCD_GetBackColor() { return BackColor; }
-void cLcd::BSP_LCD_SetTextColor (uint32_t Color) { TextColor = Color; }
-void cLcd::BSP_LCD_SetBackColor (uint32_t Color) { BackColor = Color; }
+uint16_t cLcd::GetTextHeight() { return Font16.mHeight; }
+uint32_t cLcd::GetTextColor() { return TextColor; }
+uint32_t cLcd::GetBackColor() { return BackColor; }
+void cLcd::SetTextColor (uint32_t Color) { TextColor = Color; }
+void cLcd::SetBackColor (uint32_t Color) { BackColor = Color; }
 
 //{{{
-uint32_t cLcd::BSP_LCD_ReadPixel (uint16_t Xpos, uint16_t Ypos) {
+uint32_t cLcd::ReadPixel (uint16_t Xpos, uint16_t Ypos) {
 
   if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB8888)
     // Read data value from SDRAM memory
-    return *(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*BSP_LCD_GetXSize() + Xpos)));
+    return *(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*GetXSize() + Xpos)));
 
   else if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB888)
     // Read data value from SDRAM memory
-    return (*(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*BSP_LCD_GetXSize() + Xpos))) & 0x00FFFFFF);
+    return (*(__IO uint32_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*GetXSize() + Xpos))) & 0x00FFFFFF);
 
   else if ((hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565) || \
            (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB4444) || \
            (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_AL88))
     // Read data value from SDRAM memory
-    return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*BSP_LCD_GetXSize() + Xpos)));
+    return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*GetXSize() + Xpos)));
 
   else
     // Read data value from SDRAM memory
-    return *(__IO uint8_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*BSP_LCD_GetXSize() + Xpos)));
+    return *(__IO uint8_t*)(hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*GetXSize() + Xpos)));
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DrawPixel (uint16_t Xpos, uint16_t Ypos, uint32_t RGB_Code) {
+void cLcd::DrawPixel (uint16_t Xpos, uint16_t Ypos, uint32_t RGB_Code) {
 // Write data value to all SDRAM memory
 
   if (hLtdcHandler.LayerCfg[ActiveLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565)
-    *(__IO uint16_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*BSP_LCD_GetXSize() + Xpos))) = (uint16_t)RGB_Code;
+    *(__IO uint16_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (2*(Ypos*GetXSize() + Xpos))) = (uint16_t)RGB_Code;
   else
-    *(__IO uint32_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*BSP_LCD_GetXSize() + Xpos))) = RGB_Code;
+    *(__IO uint32_t*) (hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (4*(Ypos*GetXSize() + Xpos))) = RGB_Code;
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
+void cLcd::DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
 
   uint32_t index = 0, width = 0, height = 0, bit_pixel = 0;
   uint32_t address;
@@ -483,7 +483,7 @@ void cLcd::BSP_LCD_DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
   bit_pixel = pbmp[28] + (pbmp[29] << 8);
 
   // Set the address
-  address = hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (((BSP_LCD_GetXSize()*Ypos) + Xpos)*(4));
+  address = hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + (((GetXSize()*Ypos) + Xpos)*(4));
 
   // Get the layer pixel format
   if ((bit_pixel/8) == 4)
@@ -502,24 +502,24 @@ void cLcd::BSP_LCD_DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
     ConvertLineToARGB8888((uint32_t*)pbmp, (uint32_t*)address, width, input_color_mode);
 
     // Increment the source and destination buffers
-    address+=  (BSP_LCD_GetXSize()*4);
+    address+=  (GetXSize()*4);
     pbmp -= width*(bit_pixel/8);
     }
   }
 //}}}
 
 //{{{
-void cLcd::BSP_LCD_ClearStringLine (uint32_t Line) {
+void cLcd::ClearStringLine (uint32_t Line) {
 
   // Draw rectangle with background color
   uint32_t color_backup = TextColor;
   TextColor = BackColor;
-  BSP_LCD_FillRect (0, Line * Font16.mHeight, BSP_LCD_GetXSize(), Font16.mHeight);
+  FillRect (0, Line * Font16.mHeight, GetXSize(), Font16.mHeight);
   TextColor = color_backup;
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
+void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
 
   const uint16_t width = Font16.mWidth;
   const uint16_t byteAlignedWidth = (width+7)/8;
@@ -527,9 +527,9 @@ void cLcd::BSP_LCD_DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
   const uint8_t* fontChar = &Font16.mTable [(ascii-' ') * Font16.mHeight * byteAlignedWidth];
 
   #ifdef RGB565
-    auto fbPtr = ((uint16_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite) + (y * BSP_LCD_GetXSize()) + x;
+    auto fbPtr = ((uint16_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite) + (y * GetXSize()) + x;
   #else
-    auto fbPtr = ((uint32_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite) + (y * BSP_LCD_GetXSize()) + x;
+    auto fbPtr = ((uint32_t*)hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite) + (y * GetXSize()) + x;
   #endif
 
   for (auto fontLine = 0u; fontLine < Font16.mHeight; fontLine++) {
@@ -546,20 +546,20 @@ void cLcd::BSP_LCD_DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
         fbPtr++;
         bit >>= 1;
         }
-      fbPtr += BSP_LCD_GetXSize() - width;
+      fbPtr += GetXSize() - width;
       }
     else
-      fbPtr += BSP_LCD_GetXSize();
+      fbPtr += GetXSize();
     }
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTypdef mode) {
+void cLcd::DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTypdef mode) {
 
   uint16_t column = 1;
   switch (mode) {
     case CENTER_MODE:  {
-      uint32_t xSize = BSP_LCD_GetXSize() / Font16.mWidth;
+      uint32_t xSize = GetXSize() / Font16.mWidth;
       char* ptr = text;
       uint32_t size = 0;
       while (*ptr++)
@@ -569,7 +569,7 @@ void cLcd::BSP_LCD_DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_Ali
       }
 
     case RIGHT_MODE: {
-      uint32_t xSize = BSP_LCD_GetXSize() / Font16.mWidth;
+      uint32_t xSize = GetXSize() / Font16.mWidth;
       char* ptr = text;
       uint32_t size = 0;
       while (*ptr++)
@@ -584,53 +584,53 @@ void cLcd::BSP_LCD_DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_Ali
     }
 
   // Check that the start x is on screen
-  if ((column < 1) || (column >= BSP_LCD_GetXSize()))
+  if ((column < 1) || (column >= GetXSize()))
     column = 1;
 
-  while (*text && (column + Font16.mWidth < BSP_LCD_GetXSize())) {
-    BSP_LCD_DisplayChar (column, y, *text++);
+  while (*text && (column + Font16.mWidth < GetXSize())) {
+    DisplayChar (column, y, *text++);
     column += Font16.mWidth;
     }
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DisplayStringAtLine (uint16_t line, char* ptr) {
-  BSP_LCD_DisplayStringAt (0, line * Font16.mHeight, ptr, LEFT_MODE);
+void cLcd::DisplayStringAtLine (uint16_t line, char* ptr) {
+  DisplayStringAt (0, line * Font16.mHeight, ptr, LEFT_MODE);
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr) {
-  BSP_LCD_DisplayStringAt (column * Font16.mWidth, line * Font16.mHeight, ptr, LEFT_MODE);
+void cLcd::DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr) {
+  DisplayStringAt (column * Font16.mWidth, line * Font16.mHeight, ptr, LEFT_MODE);
   }
 //}}}
 
 //{{{
-void cLcd::BSP_LCD_Clear (uint32_t Color) {
-  FillBuffer (ActiveLayer, hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite, BSP_LCD_GetXSize(), BSP_LCD_GetYSize(), 0, Color);
+void cLcd::Clear (uint32_t Color) {
+  FillBuffer (ActiveLayer, hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite, GetXSize(), GetYSize(), 0, Color);
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
+void cLcd::DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
 
   // Draw horizontal lines
-  BSP_LCD_FillRect (Xpos, Ypos, Width, 1);
-  BSP_LCD_FillRect (Xpos, (Ypos+ Height), Width, 1);
+  FillRect (Xpos, Ypos, Width, 1);
+  FillRect (Xpos, (Ypos+ Height), Width, 1);
 
   // Draw vertical lines
-  BSP_LCD_FillRect (Xpos, Ypos, 1, Height);
-  BSP_LCD_FillRect ((Xpos + Width), Ypos, 1, Height);
+  FillRect (Xpos, Ypos, 1, Height);
+  FillRect ((Xpos + Width), Ypos, 1, Height);
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
+void cLcd::FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
 
   FillBuffer (ActiveLayer,
-              hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + 4*(BSP_LCD_GetXSize()*Ypos + Xpos),
-              Width, Height, (BSP_LCD_GetXSize() - Width), TextColor);
+              hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite + 4*(GetXSize()*Ypos + Xpos),
+              Width, Height, (GetXSize() - Width), TextColor);
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
+void cLcd::DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
 
   int32_t decision;    // Decision Variable
   uint32_t current_x;   // Current X Value
@@ -641,14 +641,14 @@ void cLcd::BSP_LCD_DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
   current_y = Radius;
 
   while (current_x <= current_y) {
-    BSP_LCD_DrawPixel ((Xpos + current_x), (Ypos - current_y), TextColor);
-    BSP_LCD_DrawPixel ((Xpos - current_x), (Ypos - current_y), TextColor);
-    BSP_LCD_DrawPixel ((Xpos + current_y), (Ypos - current_x), TextColor);
-    BSP_LCD_DrawPixel ((Xpos - current_y), (Ypos - current_x), TextColor);
-    BSP_LCD_DrawPixel ((Xpos + current_x), (Ypos + current_y), TextColor);
-    BSP_LCD_DrawPixel ((Xpos - current_x), (Ypos + current_y), TextColor);
-    BSP_LCD_DrawPixel ((Xpos + current_y), (Ypos + current_x), TextColor);
-    BSP_LCD_DrawPixel ((Xpos - current_y), (Ypos + current_x), TextColor);
+    DrawPixel ((Xpos + current_x), (Ypos - current_y), TextColor);
+    DrawPixel ((Xpos - current_x), (Ypos - current_y), TextColor);
+    DrawPixel ((Xpos + current_y), (Ypos - current_x), TextColor);
+    DrawPixel ((Xpos - current_y), (Ypos - current_x), TextColor);
+    DrawPixel ((Xpos + current_x), (Ypos + current_y), TextColor);
+    DrawPixel ((Xpos - current_x), (Ypos + current_y), TextColor);
+    DrawPixel ((Xpos + current_y), (Ypos + current_x), TextColor);
+    DrawPixel ((Xpos - current_y), (Ypos + current_x), TextColor);
 
     if (decision < 0)
       decision += (current_x << 2) + 6;
@@ -661,7 +661,7 @@ void cLcd::BSP_LCD_DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
+void cLcd::FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
 
   int32_t decision = 3 - (Radius << 1);
   uint32_t current_x = 0;
@@ -669,12 +669,12 @@ void cLcd::BSP_LCD_FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
 
   while (current_x <= current_y) {
     if (current_y > 0) {
-      BSP_LCD_FillRect (Xpos - current_y, Ypos + current_x, 1, 2*current_y);
-      BSP_LCD_FillRect (Xpos - current_y, Ypos - current_x, 1, 2*current_y);
+      FillRect (Xpos - current_y, Ypos + current_x, 1, 2*current_y);
+      FillRect (Xpos - current_y, Ypos - current_x, 1, 2*current_y);
       }
     if (current_x > 0) {
-      BSP_LCD_FillRect (Xpos - current_x, Ypos - current_y, 1, 2*current_x);
-      BSP_LCD_FillRect (Xpos - current_x, Ypos + current_y, 1, 2*current_x);
+      FillRect (Xpos - current_x, Ypos - current_y, 1, 2*current_x);
+      FillRect (Xpos - current_x, Ypos + current_y, 1, 2*current_x);
       }
     if (decision < 0)
       decision += (current_x << 2) + 6;
@@ -685,29 +685,29 @@ void cLcd::BSP_LCD_FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
     current_x++;
     }
 
-  BSP_LCD_DrawCircle (Xpos, Ypos, Radius);
+  DrawCircle (Xpos, Ypos, Radius);
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DrawPolygon (pPoint Points, uint16_t PointCount) {
+void cLcd::DrawPolygon (pPoint Points, uint16_t PointCount) {
 
   int16_t x = 0, y = 0;
 
   if (PointCount < 2)
     return;
 
-  BSP_LCD_DrawLine (Points->X, Points->Y, (Points+PointCount-1)->X, (Points+PointCount-1)->Y);
+  DrawLine (Points->X, Points->Y, (Points+PointCount-1)->X, (Points+PointCount-1)->Y);
 
   while(--PointCount) {
     x = Points->X;
     y = Points->Y;
     Points++;
-    BSP_LCD_DrawLine (x, y, Points->X, Points->Y);
+    DrawLine (x, y, Points->X, Points->Y);
     }
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_FillPolygon (pPoint Points, uint16_t PointCount) {
+void cLcd::FillPolygon (pPoint Points, uint16_t PointCount) {
 
   int16_t X = 0, Y = 0, X2 = 0, Y2 = 0, X_center = 0, Y_center = 0, X_first = 0, Y_first = 0, pixelX = 0, pixelY = 0, counter = 0;
   uint16_t  image_left = 0, image_right = 0, image_top = 0, image_bottom = 0;
@@ -756,7 +756,7 @@ void cLcd::BSP_LCD_FillPolygon (pPoint Points, uint16_t PointCount) {
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
+void cLcd::DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
 
   int x = 0, y = -YRadius, err = 2-2*XRadius, e2;
   float k = 0, rad1 = 0, rad2 = 0;
@@ -767,10 +767,10 @@ void cLcd::BSP_LCD_DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
   k = (float)(rad2/rad1);
 
   do {
-    BSP_LCD_DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos+y), TextColor);
-    BSP_LCD_DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos+y), TextColor);
-    BSP_LCD_DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos-y), TextColor);
-    BSP_LCD_DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos-y), TextColor);
+    DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos+y), TextColor);
+    DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos+y), TextColor);
+    DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos-y), TextColor);
+    DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos-y), TextColor);
 
     e2 = err;
     if (e2 <= x) {
@@ -786,7 +786,7 @@ void cLcd::BSP_LCD_DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
+void cLcd::FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
 
   int x = 0, y = -YRadius, err = 2-2*XRadius, e2;
   float k = 0, rad1 = 0, rad2 = 0;
@@ -796,8 +796,8 @@ void cLcd::BSP_LCD_FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
 
   k = (float)(rad2/rad1);
   do {
-    BSP_LCD_FillRect((Xpos-(uint16_t)(x/k)), (Ypos+y), 1, (2*(uint16_t)(x/k) + 1));
-    BSP_LCD_FillRect((Xpos-(uint16_t)(x/k)), (Ypos-y), 1, (2*(uint16_t)(x/k) + 1));
+    FillRect((Xpos-(uint16_t)(x/k)), (Ypos+y), 1, (2*(uint16_t)(x/k) + 1));
+    FillRect((Xpos-(uint16_t)(x/k)), (Ypos-y), 1, (2*(uint16_t)(x/k) + 1));
 
     e2 = err;
     if (e2 <= x) {
@@ -811,7 +811,7 @@ void cLcd::BSP_LCD_FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
+void cLcd::DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
 
   int16_t xinc1 = 0, xinc2 = 0, yinc1 = 0, yinc2 = 0, den = 0, num = 0, num_add = 0, num_pixels = 0;
 
@@ -856,7 +856,7 @@ void cLcd::BSP_LCD_DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
     }
 
   for (int16_t curpixel = 0; curpixel <= num_pixels; curpixel++) {
-    BSP_LCD_DrawPixel (x, y, TextColor);
+    DrawPixel (x, y, TextColor);
     num += num_add;     // Increase the numerator by the top of the fraction
     if (num >= den) {   // Check if numerator >= denominator
       num -= den;       // Calculate the new numerator value
@@ -870,7 +870,7 @@ void cLcd::BSP_LCD_DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 //}}}
 
 //{{{
-void cLcd::BSP_LCD_ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize) {
+void cLcd::ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize) {
 
   hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
   hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
@@ -888,7 +888,7 @@ void cLcd::BSP_LCD_ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, ui
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+void cLcd::ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
                               uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
   int srcScale = (srcXsize == 1600) ? 4 : 2;
@@ -927,7 +927,7 @@ void cLcd::BSP_LCD_ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t s
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_ConvertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+void cLcd::ConvertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
                                uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
   src += ((srcXsize-xsize)/2) + (((srcYsize - ysize) / 2) * srcXsize);
@@ -951,7 +951,7 @@ void cLcd::BSP_LCD_ConvertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t 
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
+void cLcd::ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                               uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize) {
 
   //{{{
@@ -1779,7 +1779,7 @@ void cLcd::BSP_LCD_ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t sr
 //}}}
 
 //{{{
-void cLcd::BSP_LCD_DisplayOn() {
+void cLcd::DisplayOn() {
 
   // Display On
   __HAL_LTDC_ENABLE (&hLtdcHandler);
@@ -1788,7 +1788,7 @@ void cLcd::BSP_LCD_DisplayOn() {
   }
 //}}}
 //{{{
-void cLcd::BSP_LCD_DisplayOff() {
+void cLcd::DisplayOff() {
 
   // Display Off
   __HAL_LTDC_DISABLE(&hLtdcHandler);
@@ -1915,7 +1915,7 @@ void cLcd::FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uin
     }
 
   for (curpixel = 0; curpixel <= num_pixels; curpixel++) {
-    BSP_LCD_DrawLine(x, y, x3, y3);
+    DrawLine(x, y, x3, y3);
 
     num += num_add;              // Increase the numerator by the top of the fraction
     if (num >= den)  {           // Check if numerator >= denominator
