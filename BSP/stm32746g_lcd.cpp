@@ -24,36 +24,18 @@ uint32_t BackColor = LCD_COLOR_BLACK;
 //}}}
 
 extern "C" {
-  // LTDC_ER_IRQHandler
   //{{{
   void LTDC_IRQHandler() {
 
-    // transfer Error Interrupt
-    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_TE) != RESET) {
-      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_TE) != RESET) {
-        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_TE);
-        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_TE);
-        }
-      }
-
-    // FIFO underrun Interrupt
-    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_FU) != RESET) {
-      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_FU) != RESET) {
-        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_FU);
-        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_FU);
-        }
-      }
-
     // line Interrupt
-    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_LI) != RESET) {
+    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_LI) != RESET)
       if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_LI) != RESET) {
         __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_LI);
         __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_LI);
         }
-      }
 
     // register reload Interrupt
-    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_RR) != RESET) {
+    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_RR) != RESET)
       if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_RR) != RESET) {
         __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_RR);
         __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_RR);
@@ -61,7 +43,24 @@ extern "C" {
         // Register reload interrupt Callback
         //HAL_LTDC_ReloadEventCallback (&hLtdcHandler);
         }
-      }
+    }
+  //}}}
+  //{{{
+  void LTDC_ER_IRQHandler() {
+
+    // transfer Error Interrupt
+    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_TE) != RESET)
+      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_TE) != RESET) {
+        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_TE);
+        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_TE);
+        }
+
+    // FIFO underrun Interrupt
+    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_FU) != RESET)
+      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_FU) != RESET) {
+        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_FU);
+        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_FU);
+        }
     }
   //}}}
   }
@@ -271,22 +270,47 @@ uint8_t BSP_LCD_Init() {
   //}}}
   BSP_SDRAM_Init();
   //{{{  init hLtdcHandler, ltdc
-  #define  RK043FN48H_HSYNC   41   // Horizontal synchronization
-  #define  RK043FN48H_HBP     13   // Horizontal back porch
-  #define  RK043FN48H_HFP     32   // Horizontal front porch
-  #define  RK043FN48H_VSYNC   10   // Vertical synchronization
-  #define  RK043FN48H_VBP     2    // Vertical back porch
-  #define  RK043FN48H_VFP     2    // Vertical front porch
-
+  //{{{  original
   // RK043FN48H LCD clock configuration
   // PLLSAI_VCO Input  = HSE_VALUE/PLLM              - 1 Mhz
   // PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN  - 192 Mhz
   // PLLLCDCLK         = PLLSAI_VCO_Output / PLLSAIR - 192 / 5 = 38.4 Mhz
   // LTDCclock         = PLLLCDCLK / PLLSAI_DIVR_4   - 38.4 / 4 = 9.6Mhz
+  //#define  RK043FN48H_PLLSAIR 5
+  //#define  RK043FN48H_WIDTH  480
+  //#define  RK043FN48H_HEIGHT  272
+  //
+  // H - 480 + 41 + 13 + 32 = 566
+  //#define  RK043FN48H_HSYNC   41  // Horizontal synchronization
+  //#define  RK043FN48H_HBP     13  // Horizontal back porch
+  //#define  RK043FN48H_HFP     32  // Horizontal front porch
+  // V - 272 + 10 + 2 + 2 = 286
+  //#define  RK043FN48H_VSYNC   10  // Vertical synchronization
+  //#define  RK043FN48H_VBP     2   // Vertical back porch
+  //#define  RK043FN48H_VFP     2   // Vertical front porch
+  // 9.6Mhz / 566*286  = 59.30Hz
+  //}}}
+  // PLLSAI_VCO Input  = HSE_VALUE/PLLM              - 1Mhz
+  // PLLSAI_VCO Output = PLLSAI_VCO Input * PLLSAIN  - 192Mhz
+  // PLLLCDCLK         = PLLSAI_VCO_Output / PLLSAIR - 192 / 7 = 27.428Mhz
+  // LTDCclock         = PLLLCDCLK / PLLSAI_DIVR_4   - 27.428 / 4 = 6Mhz
+  #define  RK043FN48H_PLLSAIR 7
+
+  // minH - 480 + 8 + 2 = 490
+  #define  RK043FN48H_HSYNC   1  // Horizontal synchronization
+  #define  RK043FN48H_HBP     7  // Horizontal back porch
+  #define  RK043FN48H_HFP     2  // Horizontal front porch
+  // minV - 272 + 2 + 1 = 275
+  #define  RK043FN48H_VSYNC   1  // Vertical synchronization
+  #define  RK043FN48H_VBP     1  // Vertical back porch
+  #define  RK043FN48H_VFP     2  // Vertical front porch
+  #define  RK043FN48H_VFP     2  // Vertical front porch
+  // 27.428Mhz / 490*275 = 50.8Hz
+
   RCC_PeriphCLKInitTypeDef clockConfig;
   clockConfig.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
   clockConfig.PLLSAI.PLLSAIN = 192;
-  clockConfig.PLLSAI.PLLSAIR = 5;
+  clockConfig.PLLSAI.PLLSAIR = RK043FN48H_PLLSAIR;
   clockConfig.PLLSAIDivR = RCC_PLLSAIDIVR_4;
   HAL_RCCEx_PeriphCLKConfig (&clockConfig);
   __HAL_RCC_LTDC_CLK_ENABLE();
@@ -367,17 +391,22 @@ void BSP_LCD_LayerDefaultInit (uint16_t LayerIndex, uint32_t FB_Address) {
   hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = FB_Address;
   hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = FB_Address;
   hLtdcHandler.LayerCfg[LayerIndex].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;  // LTDC_PIXEL_FORMAT_ARGB8888;
+
   hLtdcHandler.LayerCfg[LayerIndex].ImageWidth = BSP_LCD_GetXSize();
   hLtdcHandler.LayerCfg[LayerIndex].ImageHeight = BSP_LCD_GetYSize();
+
   hLtdcHandler.LayerCfg[LayerIndex].WindowX0 = 0;
   hLtdcHandler.LayerCfg[LayerIndex].WindowX1 = BSP_LCD_GetXSize();
   hLtdcHandler.LayerCfg[LayerIndex].WindowY0 = 0;
   hLtdcHandler.LayerCfg[LayerIndex].WindowY1 = BSP_LCD_GetYSize();
+
   hLtdcHandler.LayerCfg[LayerIndex].Alpha = 255;
   hLtdcHandler.LayerCfg[LayerIndex].Alpha0 = 0;
+
   hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Blue = 0;
   hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Green = 0;
   hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Red = 0;
+
   hLtdcHandler.LayerCfg[LayerIndex].BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
   hLtdcHandler.LayerCfg[LayerIndex].BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
 
