@@ -134,17 +134,17 @@ extern "C" {
         if (dcmiInfo.XferCount <= dcmiInfo.XferTransferNumber - 2) {
           // next dma chunk
           (dcmiInfo.XferCount & 1) ? DMA2_Stream1->M0AR += 8 * dcmiInfo.XferSize : DMA2_Stream1->M1AR += 8 * dcmiInfo.XferSize;
-          cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "dma %d", dcmiInfo.XferCount);
+          //cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "dma %d", dcmiInfo.XferCount);
           }
         else if (dcmiInfo.XferCount == (dcmiInfo.XferTransferNumber - 1)) {
           // penultimate chunk, reset M0AR for next frame
           DMA2_Stream1->M0AR = dcmiInfo.pBuffPtr;
-          cLcd::mLcd->debug (LCD_COLOR_CYAN, "dma %d", dcmiInfo.XferCount);
+          //cLcd::mLcd->debug (LCD_COLOR_CYAN, "dma %d", dcmiInfo.XferCount);
           }
         else {
           // last chunk, reset M1AR, XferCount for next frame
           DMA2_Stream1->M1AR = dcmiInfo.pBuffPtr + (4 * dcmiInfo.XferSize);
-          cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d done", dcmiInfo.XferCount);
+          //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d done", dcmiInfo.XferCount);
           dcmiInfo.XferCount = 0;
           }
         }
