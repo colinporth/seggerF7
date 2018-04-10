@@ -11,6 +11,7 @@
 "Output/usbMsc Release/Obj/stm32746g_lcd.o"
 "Output/usbMsc Release/Obj/mt9d111.o"
 "Output/usbMsc Release/Obj/font16.o"
+"Output/usbMsc Release/Obj/cLcd.o"
 "Output/usbMsc Release/Obj/stm32f7xx_ll_fmc.o"
 "Output/usbMsc Release/Obj/stm32f7xx_ll_usb.o"
 "Output/usbMsc Release/Obj/stm32f7xx_hal.o"

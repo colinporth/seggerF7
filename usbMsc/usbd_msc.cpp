@@ -3,7 +3,7 @@
 #include "usbd_msc.h"
 #include "../FatFs/diskio.h"
 
-#include "../common/cLcd.h"
+#include "cLcd.h"
 #include "stm32746g_discovery_sd.h"
 //}}}
 const bool kUsbFullSpeed = false;

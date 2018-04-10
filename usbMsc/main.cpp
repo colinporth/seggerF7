@@ -1,19 +1,19 @@
 // main.cpp - msc class usb
 //{{{  includes
 #include "../common/system.h"
-#include "../common/cLcd.h"
+#include "cLcd.h"
 #include "../common/cTouch.h"
 #include "../common/cPs2.h"
 
 #include "usbd_msc.h"
 #include "../FatFs/ff.h"
 
-#include "../common/cLcd.h"
+#include "cLcd.h"
 #include "stm32746g_discovery_sd.h"
 #include "cCamera.h"
 //}}}
 const char kSdPath[40] = "0:/";
-const char* kVersion = "Camera 9/4/18 800x600";
+const char* kVersion = "Camera 10/4/18 800x600";
 
 int focus = 0;
 cCamera camera;

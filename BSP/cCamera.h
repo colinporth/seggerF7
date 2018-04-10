@@ -1,7 +1,7 @@
 // camera.h
 #pragma once
 #include "stm32746g_discovery.h"
-#include "../common/cLcd.h"
+#include "cLcd.h"
 
 class cCamera {
 public:

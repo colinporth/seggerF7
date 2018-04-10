@@ -167,7 +167,6 @@
         <file file_name="../common/system.h" />
         <file file_name="../common/cTouch.h" />
         <file file_name="../common/cPs2.h" />
-        <file file_name="../common/cLcd.h" />
         <file file_name="../BSP/font.h" />
         <file file_name="../BSP/ft5336.h" />
         <file file_name="../BSP/stm32746g_discovery.h" />
@@ -177,6 +176,7 @@
         <file file_name="../BSP/stm32746g_lcd.h" />
         <file file_name="../BSP/ts.h" />
         <file file_name="../BSP/cCamera.h" />
+        <file file_name="../BSP/cLcd.h" />
       </folder>
       <file file_name="../BSP/stm32746g_discovery.c" />
       <file file_name="../BSP/stm32746g_discovery_sd.c" />
@@ -186,6 +186,7 @@
       <file file_name="../BSP/stm32746g_lcd.cpp" />
       <file file_name="../BSP/mt9d111.cpp" />
       <file file_name="../BSP/font16.c" />
+      <file file_name="../BSP/cLcd.cpp" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />
