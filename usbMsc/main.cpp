@@ -10,6 +10,7 @@
 
 #include "cLcd.h"
 #include "stm32746g_discovery_sd.h"
+#include "stm32746g_discovery_sdram.h"
 #include "cCamera.h"
 //}}}
 const char kSdPath[40] = "0:/";
@@ -339,7 +340,7 @@ int main() {
   //}}}
   BSP_PB_Init (BUTTON_KEY, BUTTON_MODE_GPIO);
 
-  gApp = new cApp (BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
+  gApp = new cApp (cLcd::BSP_LCD_GetXSize(), cLcd::BSP_LCD_GetYSize());
   gApp->run();
   }
 //}}}

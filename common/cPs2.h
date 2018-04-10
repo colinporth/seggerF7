@@ -151,38 +151,38 @@ public:
   //{{{
   void showTouch() {
 
-    BSP_LCD_SetTextColor (LCD_COLOR_YELLOW);
+    mLcd->BSP_LCD_SetTextColor (LCD_COLOR_YELLOW);
 
     char str[8];
     sprintf (str, "%d", mTouchX);
-    BSP_LCD_DisplayStringAtLineColumn (13, 0, str);
+    mLcd->BSP_LCD_DisplayStringAtLineColumn (13, 0, str);
 
     sprintf (str, "%d", mTouchY);
-    BSP_LCD_DisplayStringAtLineColumn (13, 6, str);
+    mLcd->BSP_LCD_DisplayStringAtLineColumn (13, 6, str);
 
     sprintf (str, "%d", mTouchZ);
-    BSP_LCD_DisplayStringAtLineColumn (13, 12, str);
+    mLcd->BSP_LCD_DisplayStringAtLineColumn (13, 12, str);
 
     sprintf (str, "%d", mStreamCode);
-    BSP_LCD_DisplayStringAtLineColumn (13, 18, str);
+    mLcd->BSP_LCD_DisplayStringAtLineColumn (13, 18, str);
 
     sprintf (str, "%x", mStreamCodes[0]);
-    BSP_LCD_DisplayStringAtLineColumn (13, 22, str);
+    mLcd->BSP_LCD_DisplayStringAtLineColumn (13, 22, str);
 
     sprintf (str, "%x", mStreamCodes[1]);
-    BSP_LCD_DisplayStringAtLineColumn (13, 25, str);
+    mLcd->BSP_LCD_DisplayStringAtLineColumn (13, 25, str);
 
     sprintf (str, "%x", mStreamCodes[2]);
-    BSP_LCD_DisplayStringAtLineColumn (13, 28, str);
+    mLcd->BSP_LCD_DisplayStringAtLineColumn (13, 28, str);
 
     sprintf (str, "%x", mStreamCodes[3]);
-    BSP_LCD_DisplayStringAtLineColumn (13, 31, str);
+    mLcd->BSP_LCD_DisplayStringAtLineColumn (13, 31, str);
 
     sprintf (str, "%x", mStreamCodes[4]);
-    BSP_LCD_DisplayStringAtLineColumn (13, 34, str);
+    mLcd->BSP_LCD_DisplayStringAtLineColumn (13, 34, str);
 
     sprintf (str, "%x", mStreamCodes[5]);
-    BSP_LCD_DisplayStringAtLineColumn (13, 37, str);
+    mLcd->BSP_LCD_DisplayStringAtLineColumn (13, 37, str);
     }
   //}}}
   //{{{
@@ -192,10 +192,10 @@ public:
     for (auto i = 0u; i < kMaxChars; i++) {
       if (ch > 0) {
         char str[2];
-        BSP_LCD_SetTextColor (mChars[ch % kMaxChars] & 0x100 ? LCD_COLOR_GREEN : LCD_COLOR_YELLOW);
+        mLcd->BSP_LCD_SetTextColor (mChars[ch % kMaxChars] & 0x100 ? LCD_COLOR_GREEN : LCD_COLOR_YELLOW);
         str[0] = mChars[ch % kMaxChars] & 0xFF;
         str[1] = 0;
-        BSP_LCD_DisplayStringAtLineColumn (13, i, str);
+        mLcd->BSP_LCD_DisplayStringAtLineColumn (13, i, str);
         }
       ch++;
       }
@@ -204,14 +204,14 @@ public:
   //{{{
   void showCodes() {
 
-    BSP_LCD_SetTextColor (LCD_COLOR_YELLOW);
+    mLcd->BSP_LCD_SetTextColor (LCD_COLOR_YELLOW);
 
     auto code = mCurCode - kMaxCodes + 1;
     for (auto i = 0u; i < kMaxCodes; i++) {
       if (code > 0) {
         char str[4];
         sprintf (str, "%02x", mCodes[code % kMaxCodes]);
-        BSP_LCD_DisplayStringAtLineColumn (14, i*3, str);
+        mLcd->BSP_LCD_DisplayStringAtLineColumn (14, i*3, str);
         }
       code++;
       }
@@ -223,7 +223,7 @@ public:
     int bitHeight = 12;
     int clockHeight = 12;
     int lineHeight = 16;
-    auto waveY = BSP_LCD_GetYSize() - 2*lineHeight;
+    auto waveY = mLcd->BSP_LCD_GetYSize() - 2*lineHeight;
 
     bool lastBit = false;
     auto sample = mSample - kMaxSamples + 1;
@@ -235,21 +235,21 @@ public:
 
         if (bit != lastBit) {
           // draw edge
-          BSP_LCD_SetTextColor (bitPos == -1 ? LCD_COLOR_RED : LCD_COLOR_WHITE);
-          BSP_LCD_FillRect (i*kBitWidth, waveY, 1, bitHeight);
+          mLcd->BSP_LCD_SetTextColor (bitPos == -1 ? LCD_COLOR_RED : LCD_COLOR_WHITE);
+          mLcd->BSP_LCD_FillRect (i*kBitWidth, waveY, 1, bitHeight);
           lastBit = bit;
           }
 
         // draw bit
-        BSP_LCD_SetTextColor ((bitPos == -1) || (bitPos == 9) ? LCD_COLOR_RED : LCD_COLOR_WHITE);
-        BSP_LCD_FillRect (i*kBitWidth, waveY + (bit ? 0 : bitHeight-2), kBitWidth, 2);
+        mLcd->BSP_LCD_SetTextColor ((bitPos == -1) || (bitPos == 9) ? LCD_COLOR_RED : LCD_COLOR_WHITE);
+        mLcd->BSP_LCD_FillRect (i*kBitWidth, waveY + (bit ? 0 : bitHeight-2), kBitWidth, 2);
         }
 
-      BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
-      BSP_LCD_FillRect (i*kBitWidth + (kBitWidth/4), waveY + lineHeight, 1, clockHeight);
-      BSP_LCD_FillRect (i*kBitWidth + (kBitWidth/4), waveY + lineHeight , kBitWidth/2, 1);
-      BSP_LCD_FillRect (i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight, 1, clockHeight);
-      BSP_LCD_FillRect (i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight + clockHeight, kBitWidth/2, 1);
+      mLcd->BSP_LCD_SetTextColor (LCD_COLOR_WHITE);
+      mLcd->BSP_LCD_FillRect (i*kBitWidth + (kBitWidth/4), waveY + lineHeight, 1, clockHeight);
+      mLcd->BSP_LCD_FillRect (i*kBitWidth + (kBitWidth/4), waveY + lineHeight , kBitWidth/2, 1);
+      mLcd->BSP_LCD_FillRect (i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight, 1, clockHeight);
+      mLcd->BSP_LCD_FillRect (i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight + clockHeight, kBitWidth/2, 1);
       }
     }
   //}}}

@@ -173,7 +173,6 @@
         <file file_name="../BSP/stm32746g_discovery_sd.h" />
         <file file_name="../BSP/stm32746g_discovery_sdram.h" />
         <file file_name="../BSP/stm32746g_discovery_ts.h" />
-        <file file_name="../BSP/stm32746g_lcd.h" />
         <file file_name="../BSP/ts.h" />
         <file file_name="../BSP/cCamera.h" />
         <file file_name="../BSP/cLcd.h" />
@@ -183,7 +182,6 @@
       <file file_name="../BSP/stm32746g_discovery_sdram.c" />
       <file file_name="../BSP/stm32746g_discovery_ts.c" />
       <file file_name="../BSP/ft5336.cpp" />
-      <file file_name="../BSP/stm32746g_lcd.cpp" />
       <file file_name="../BSP/mt9d111.cpp" />
       <file file_name="../BSP/font16.c" />
       <file file_name="../BSP/cLcd.cpp" />

@@ -5,6 +5,8 @@
 
 #include "cLcd.h"
 #include "stm32746g_discovery_sd.h"
+#include "stm32746g_discovery_sdram.h"
+
 //}}}
 const bool kUsbFullSpeed = false;
 const int kMscMediaPacket = 32*1024;

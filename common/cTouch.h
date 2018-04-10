@@ -67,9 +67,9 @@ public:
   //{{{
   void show() {
     for (unsigned int i = 0u; i < mTsState.touchDetected; i++) {
-      BSP_LCD_SetTextColor (LCD_COLOR_YELLOW);
-      BSP_LCD_FillCircle (mTsState.touchX[i], mTsState.touchY[i],
-                          mTsState.touchWeight[i] ? mTsState.touchWeight[i] : 1);
+      //BSP_LCD_SetTextColor (LCD_COLOR_YELLOW);
+      //BSP_LCD_FillCircle (mTsState.touchX[i], mTsState.touchY[i],
+      //                    mTsState.touchWeight[i] ? mTsState.touchWeight[i] : 1);
       }
     }
   //}}}
