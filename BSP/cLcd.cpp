@@ -247,6 +247,7 @@ void cLcd::init() {
 
 uint16_t cLcd::GetTextHeight() { return Font16.mHeight; }
 uint32_t* cLcd::getBuffer() { return (uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0); }
+uint32_t cLcd::getCameraBuffer() { return SDRAM_USER_565; }
 
 //{{{
 void cLcd::start() {
@@ -347,44 +348,6 @@ void cLcd::debug (uint32_t colour, const char* format, ... ) {
   mLines[line].mTicks = HAL_GetTick();
   mLines[line].mColour = colour;
   mDebugLine++;
-  }
-//}}}
-
-//{{{
-void cLcd::layerInit (uint16_t LayerIndex, uint32_t FB_Address) {
-
-  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = FB_Address;
-  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = FB_Address;
-  hLtdcHandler.LayerCfg[LayerIndex].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;  // LTDC_PIXEL_FORMAT_ARGB8888;
-
-  hLtdcHandler.LayerCfg[LayerIndex].ImageWidth = GetXSize();
-  hLtdcHandler.LayerCfg[LayerIndex].ImageHeight = GetYSize();
-
-  hLtdcHandler.LayerCfg[LayerIndex].WindowX0 = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].WindowX1 = GetXSize();
-  hLtdcHandler.LayerCfg[LayerIndex].WindowY0 = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].WindowY1 = GetYSize();
-
-  hLtdcHandler.LayerCfg[LayerIndex].Alpha = 255;
-  hLtdcHandler.LayerCfg[LayerIndex].Alpha0 = 0;
-
-  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Blue = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Green = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Red = 0;
-
-  hLtdcHandler.LayerCfg[LayerIndex].BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
-  hLtdcHandler.LayerCfg[LayerIndex].BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
-
-  // Configure the LTDC Layer
-  setLayer (LayerIndex);
-
-  // Sets the Reload type
-  LTDC->SRCR = LTDC_SRCR_IMR;
-
-  __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, LayerIndex);
-  __HAL_LTDC_RELOAD_CONFIG (&hLtdcHandler);
-
-  ActiveLayer = LayerIndex;
   }
 //}}}
 
@@ -1836,6 +1799,44 @@ void cLcd::setLayer (uint32_t layerIndex) {
   LTDC_LAYER (&hLtdcHandler, layerIndex)->CR |= (uint32_t)LTDC_LxCR_LEN;
   }
 //}}}
+//{{{
+void cLcd::layerInit (uint16_t LayerIndex, uint32_t FB_Address) {
+
+  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = FB_Address;
+  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = FB_Address;
+  hLtdcHandler.LayerCfg[LayerIndex].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;  // LTDC_PIXEL_FORMAT_ARGB8888;
+
+  hLtdcHandler.LayerCfg[LayerIndex].ImageWidth = GetXSize();
+  hLtdcHandler.LayerCfg[LayerIndex].ImageHeight = GetYSize();
+
+  hLtdcHandler.LayerCfg[LayerIndex].WindowX0 = 0;
+  hLtdcHandler.LayerCfg[LayerIndex].WindowX1 = GetXSize();
+  hLtdcHandler.LayerCfg[LayerIndex].WindowY0 = 0;
+  hLtdcHandler.LayerCfg[LayerIndex].WindowY1 = GetYSize();
+
+  hLtdcHandler.LayerCfg[LayerIndex].Alpha = 255;
+  hLtdcHandler.LayerCfg[LayerIndex].Alpha0 = 0;
+
+  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Blue = 0;
+  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Green = 0;
+  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Red = 0;
+
+  hLtdcHandler.LayerCfg[LayerIndex].BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
+  hLtdcHandler.LayerCfg[LayerIndex].BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
+
+  // Configure the LTDC Layer
+  setLayer (LayerIndex);
+
+  // Sets the Reload type
+  LTDC->SRCR = LTDC_SRCR_IMR;
+
+  __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, LayerIndex);
+  __HAL_LTDC_RELOAD_CONFIG (&hLtdcHandler);
+
+  ActiveLayer = LayerIndex;
+  }
+//}}}
+
 //{{{
 void cLcd::FillBuffer (uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine, uint32_t color) {
 

@@ -10,7 +10,6 @@
 
 #include "cLcd.h"
 #include "stm32746g_discovery_sd.h"
-#include "stm32746g_discovery_sdram.h"
 #include "cCamera.h"
 //}}}
 const char kSdPath[40] = "0:/";
@@ -86,7 +85,7 @@ void cApp::run() {
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
   //}}}
   camera.init (mLcd, false);
-  camera.start (SDRAM_USER_565);
+  camera.start (mLcd->getCameraBuffer());
 
   bool previewMode = true;
   bool lastButton = false;
@@ -101,7 +100,7 @@ void cApp::run() {
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
-    mLcd->startBgnd ((uint16_t*)SDRAM_USER_565, camera.getXsize(), camera.getYsize(), BSP_PB_GetState (BUTTON_KEY));
+    mLcd->startBgnd ((uint16_t*)mLcd->getCameraBuffer(), camera.getXsize(), camera.getYsize(), BSP_PB_GetState (BUTTON_KEY));
     mLcd->drawTitle (kVersion);
     mLcd->drawDebug();
     mLcd->present();

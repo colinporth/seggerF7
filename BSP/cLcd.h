@@ -93,13 +93,19 @@ public:
   cLcd (int lines);
   void init();
 
+  static uint32_t GetXSize() { return RK043FN48H_WIDTH; }
+  static uint32_t GetYSize() { return RK043FN48H_HEIGHT; }
+
   uint32_t* getBuffer();
+  uint32_t getCameraBuffer();
+
   uint16_t GetTextHeight();
   uint32_t GetTextColor() { return TextColor; }
   uint32_t GetBackColor() { return BackColor; }
   void SetTextColor (uint32_t Color) { TextColor = Color; }
   void SetBackColor (uint32_t Color) { BackColor = Color; }
 
+  // flipped display
   void start();
   void startBgnd (uint16_t* bgnd);
   void startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom);
@@ -114,11 +120,7 @@ public:
 
   void debug (uint32_t colour, const char* format, ... );
 
-  static uint32_t GetXSize() { return RK043FN48H_WIDTH; }
-  static uint32_t GetYSize() { return RK043FN48H_HEIGHT; }
-
-  void layerInit (uint16_t LayerIndex, uint32_t FrameBuffer);
-
+  // drawing
   void SelectLayer (uint32_t LayerIndex);
   void SetTransparency (uint32_t LayerIndex, uint8_t Transparency);
   void SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddress);
@@ -147,17 +149,19 @@ public:
 
   void ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize);
   void ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                                 uint32_t* dst, uint16_t xsize, uint16_t ysize);
+                        uint32_t* dst, uint16_t xsize, uint16_t ysize);
   void ConvertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                                 uint32_t* dst, uint16_t xsize, uint16_t ysize);
+                         uint32_t* dst, uint16_t xsize, uint16_t ysize);
   void ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                                uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
+                        uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
 
   void DisplayOff();
   void DisplayOn();
 
 private:
   void setLayer (uint32_t layerIndex);
+  void layerInit (uint16_t LayerIndex, uint32_t FrameBuffer);
+
   void FillBuffer (uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine, uint32_t color);
   void FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
   void ConvertLineToARGB8888 (void* src, void* dst, uint32_t xSize, uint32_t ColorMode);
