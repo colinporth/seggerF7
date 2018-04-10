@@ -10,9 +10,9 @@
 extern const sFONT Font16;
 //}}}
 //{{{  defines
-#define POLY_X(Z)           ((int32_t)((Points + Z)->X))
-#define POLY_Y(Z)           ((int32_t)((Points + Z)->Y))
-#define ABS(X)              ((X) > 0 ? (X) : -(X))
+#define POLY_X(Z)  ((int32_t)((Points + Z)->X))
+#define POLY_Y(Z)  ((int32_t)((Points + Z)->Y))
+#define ABS(X)     ((X) > 0 ? (X) : -(X))
 
 #define LCD_DISP_PIN                    GPIO_PIN_12
 #define LCD_DISP_GPIO_PORT              GPIOI
@@ -43,7 +43,7 @@ extern "C" {
     // register reload Interrupt
     if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_RR) != RESET)
       if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_RR) != RESET) {
-        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_RR);
+        //__HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_RR);
         __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_RR);
 
         cLcd::mLcd->debug (LCD_COLOR_YELLOW, "frame");
@@ -206,33 +206,32 @@ void cLcd::init() {
   uint32_t tmp = (hLtdcHandler.Init.HorizontalSync << 16);
   LTDC->SSCR |= (tmp | hLtdcHandler.Init.VerticalSync);
 
-  // Set Accumulated Back porch
+  // set Accumulated Back porch
   LTDC->BPCR &= ~(LTDC_BPCR_AVBP | LTDC_BPCR_AHBP);
   tmp = (hLtdcHandler.Init.AccumulatedHBP << 16);
   LTDC->BPCR |= (tmp | hLtdcHandler.Init.AccumulatedVBP);
 
-  // Set Accumulated Active Width
+  // set Accumulated Active Width
   LTDC->AWCR &= ~(LTDC_AWCR_AAH | LTDC_AWCR_AAW);
   tmp = (hLtdcHandler.Init.AccumulatedActiveW << 16);
   LTDC->AWCR |= (tmp | hLtdcHandler.Init.AccumulatedActiveH);
 
-  // Set Total Width
+  // set Total Width
   LTDC->TWCR &= ~(LTDC_TWCR_TOTALH | LTDC_TWCR_TOTALW);
   tmp = (hLtdcHandler.Init.TotalWidth << 16);
   LTDC->TWCR |= (tmp | hLtdcHandler.Init.TotalHeigh);
 
-  // Set background color value
+  // set background color value
   tmp = ((uint32_t)(hLtdcHandler.Init.Backcolor.Green) << 8);
   uint32_t tmp1 = ((uint32_t)(hLtdcHandler.Init.Backcolor.Red) << 16);
   LTDC->BCCR &= ~(LTDC_BCCR_BCBLUE | LTDC_BCCR_BCGREEN | LTDC_BCCR_BCRED);
   LTDC->BCCR |= (tmp1 | tmp | hLtdcHandler.Init.Backcolor.Blue);
 
-  // Enable transferError,fifoUnderrun interrupt
+  // enable transferError,fifoUnderrun interrupt
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_TE);
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_FU);
   //__HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_FLAG_RR);
 
-  // Enable LTDC by setting LTDCEN bit
   __HAL_LTDC_ENABLE (&hLtdcHandler);
   //}}}
 
@@ -245,14 +244,14 @@ void cLcd::init() {
   HAL_DMA2D_ConfigDeadTime (&hDma2dHandler, 10);
   HAL_DMA2D_EnableDeadTime (&hDma2dHandler);
 
-  layerInit (0, SDRAM_SCREEN0);
+  layerInit (0, SDRAM_DEVICE_ADDR);
   clear (LCD_COLOR_BLACK);
-  DisplayOn();
+  displayOn();
   }
 //}}}
 
 uint16_t cLcd::GetTextHeight() { return Font16.mHeight; }
-uint32_t cLcd::getCameraBuffer() { return SDRAM_USER_565; }
+uint32_t cLcd::getCameraBuffer() { return SDRAM_DEVICE_ADDR + 0x100000; }
 
 //{{{
 void cLcd::start() {
@@ -261,16 +260,16 @@ void cLcd::start() {
 //}}}
 //{{{
 void cLcd::startBgnd (uint16_t* bgnd) {
-  memcpy ((uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0), bgnd, 480*272*2);
+  memcpy (getBuffer(), bgnd, 480*272*2);
   }
 //}}}
 //{{{
 void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
 
   if (zoom)
-    ConvertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
+    convertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
   else
-    ConvertFrameCpu (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
+    convertFrameCpu (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
   }
 //}}}
 //{{{
@@ -305,12 +304,13 @@ void cLcd::drawDebug() {
 //{{{
 void cLcd::present() {
 
-  uint32_t wait = 20 - (HAL_GetTick() % 20);
+  uint32_t wait = 40 - (HAL_GetTick() % 40);
   HAL_Delay (wait);
   mTick = HAL_GetTick();
 
+  auto buffer = getBuffer();
   mFlip = !mFlip;
-  SetAddress (0, mFlip ? SDRAM_SCREEN0 : SDRAM_SCREEN1_565, mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0);
+  SetAddress (0, buffer, getBuffer());
   }
 //}}}
 
@@ -367,79 +367,61 @@ void cLcd::SetTransparency (uint32_t LayerIndex, uint8_t Transparency) {
   // change layer Alpha
   hLtdcHandler.LayerCfg[LayerIndex].Alpha = Transparency;
   setLayer (LayerIndex);
-
-  // Sets the Reload type
-  LTDC->SRCR = LTDC_SRCR_IMR;
+  LTDC->SRCR = LTDC_SRCR_VBR;
   }
 //}}}
 //{{{
-void cLcd::SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddress) {
+void cLcd::SetAddress (uint32_t LayerIndex, uint32_t* address, uint32_t* writeAddress) {
 
   // change layer addresses
-  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = address;
-  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = writeAddress;
+  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = (uint32_t)address;
+  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = (uint32_t)writeAddress;
   setLayer (LayerIndex);
-
-  // set reload type
-  LTDC->SRCR = LTDC_SRCR_IMR;
+  LTDC->SRCR = LTDC_SRCR_VBR;
   }
 //}}}
 
 //{{{
-uint32_t cLcd::ReadPixel (uint16_t Xpos, uint16_t Ypos) {
+uint32_t cLcd::ReadPixel (uint16_t x, uint16_t y) {
 
-  if (hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB8888)
-    // Read data value from SDRAM memory
-    return *(__IO uint32_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos)));
-
-  else if (hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB888)
-    // Read data value from SDRAM memory
-    return (*(__IO uint32_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos))) & 0x00FFFFFF);
-
-  else if ((hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565) || \
-           (hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_ARGB4444) || \
-           (hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_AL88))
-    // Read data value from SDRAM memory
-    return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos)));
-
-  else
-    // Read data value from SDRAM memory
-    return *(__IO uint8_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos)));
+  #ifdef RGB565
+    return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(y*getWidth() + x)));
+  #else
+    return *(__IO uint32_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (4*(y*getWidth() + x)));
+  #endif
   }
 //}}}
 //{{{
-void cLcd::DrawPixel (uint16_t Xpos, uint16_t Ypos, uint32_t RGB_Code) {
+void cLcd::DrawPixel (uint16_t x, uint16_t y, uint32_t color) {
 // Write data value to all SDRAM memory
 
-  if (hLtdcHandler.LayerCfg[mCurLayer].PixelFormat == LTDC_PIXEL_FORMAT_RGB565)
-    *(__IO uint16_t*) (hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(Ypos*getWidth() + Xpos))) = (uint16_t)RGB_Code;
-  else
-    *(__IO uint32_t*) (hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (4*(Ypos*getWidth() + Xpos))) = RGB_Code;
+  #ifdef RGB565
+    *(__IO uint16_t*) (hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(y*getWidth() + x))) = (uint16_t)color;
+  #else
+    *(__IO uint32_t*) (hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (4*(y*getWidth() + x))) = color;
+  #endif
   }
 //}}}
 //{{{
-void cLcd::DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
-
-  uint32_t index = 0, width = 0, height = 0, bit_pixel = 0;
-  uint32_t address;
-  uint32_t input_color_mode = 0;
+void cLcd::DrawBitmap (uint32_t x, uint32_t y, uint8_t *pbmp) {
 
   // Get bitmap data address offset
-  index = pbmp[10] + (pbmp[11] << 8) + (pbmp[12] << 16)  + (pbmp[13] << 24);
+  uint32_t index = pbmp[10] + (pbmp[11] << 8) + (pbmp[12] << 16)  + (pbmp[13] << 24);
 
   // Read bitmap width
-  width = pbmp[18] + (pbmp[19] << 8) + (pbmp[20] << 16)  + (pbmp[21] << 24);
+  uint32_t width = pbmp[18] + (pbmp[19] << 8) + (pbmp[20] << 16)  + (pbmp[21] << 24);
 
   // Read bitmap height
-  height = pbmp[22] + (pbmp[23] << 8) + (pbmp[24] << 16)  + (pbmp[25] << 24);
+  uint32_t height = pbmp[22] + (pbmp[23] << 8) + (pbmp[24] << 16)  + (pbmp[25] << 24);
 
   // Read bit/pixel
-  bit_pixel = pbmp[28] + (pbmp[29] << 8);
+  uint32_t bit_pixel = pbmp[28] + (pbmp[29] << 8);
 
   // Set the address
-  address = hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (((getWidth()*Ypos) + Xpos)*(4));
+  uint32_t address = hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (((getWidth()*y) + x)*(4));
 
   // Get the layer pixel format
+  uint32_t input_color_mode;
   if ((bit_pixel/8) == 4)
     input_color_mode = CM_ARGB8888;
   else if ((bit_pixel/8) == 2)
@@ -451,13 +433,13 @@ void cLcd::DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
   pbmp += (index + (width * (height - 1) * (bit_pixel/8)));
 
   // Convert picture to ARGB8888 pixel format
-  for (index=0; index < height; index++) {
+  for (index = 0; index < height; index++) {
     // Pixel format conversion
-    ConvertLineToARGB8888((uint32_t*)pbmp, (uint32_t*)address, width, input_color_mode);
+    ConvertLineToARGB8888 ((uint32_t*)pbmp, (uint32_t*)address, width, input_color_mode);
 
     // Increment the source and destination buffers
-    address+=  (getWidth()*4);
-    pbmp -= width*(bit_pixel/8);
+    address += getWidth() * 4;
+    pbmp -= width* (bit_pixel / 8);
     }
   }
 //}}}
@@ -564,27 +546,27 @@ void cLcd::clear (uint32_t Color) {
   }
 //}}}
 //{{{
-void cLcd::DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
+void cLcd::DrawRect (uint16_t x, uint16_t y, uint16_t Width, uint16_t Height) {
 
   // Draw horizontal lines
-  FillRect (Xpos, Ypos, Width, 1);
-  FillRect (Xpos, (Ypos+ Height), Width, 1);
+  FillRect (x, y, Width, 1);
+  FillRect (x, (y+ Height), Width, 1);
 
   // Draw vertical lines
-  FillRect (Xpos, Ypos, 1, Height);
-  FillRect ((Xpos + Width), Ypos, 1, Height);
+  FillRect (x, y, 1, Height);
+  FillRect ((x + Width), y, 1, Height);
   }
 //}}}
 //{{{
-void cLcd::FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height) {
+void cLcd::FillRect (uint16_t x, uint16_t y, uint16_t Width, uint16_t Height) {
 
   FillBuffer (mCurLayer,
-              hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + 4*(getWidth()*Ypos + Xpos),
+              hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + 4*(getWidth()*y + x),
               Width, Height, (getWidth() - Width), mTextColor);
   }
 //}}}
 //{{{
-void cLcd::DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
+void cLcd::DrawCircle (uint16_t x, uint16_t y, uint16_t Radius) {
 
   int32_t decision;    // Decision Variable
   uint32_t current_x;   // Current X Value
@@ -595,14 +577,14 @@ void cLcd::DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
   current_y = Radius;
 
   while (current_x <= current_y) {
-    DrawPixel ((Xpos + current_x), (Ypos - current_y), mTextColor);
-    DrawPixel ((Xpos - current_x), (Ypos - current_y), mTextColor);
-    DrawPixel ((Xpos + current_y), (Ypos - current_x), mTextColor);
-    DrawPixel ((Xpos - current_y), (Ypos - current_x), mTextColor);
-    DrawPixel ((Xpos + current_x), (Ypos + current_y), mTextColor);
-    DrawPixel ((Xpos - current_x), (Ypos + current_y), mTextColor);
-    DrawPixel ((Xpos + current_y), (Ypos + current_x), mTextColor);
-    DrawPixel ((Xpos - current_y), (Ypos + current_x), mTextColor);
+    DrawPixel ((x + current_x), (y - current_y), mTextColor);
+    DrawPixel ((x - current_x), (y - current_y), mTextColor);
+    DrawPixel ((x + current_y), (y - current_x), mTextColor);
+    DrawPixel ((x - current_y), (y - current_x), mTextColor);
+    DrawPixel ((x + current_x), (y + current_y), mTextColor);
+    DrawPixel ((x - current_x), (y + current_y), mTextColor);
+    DrawPixel ((x + current_y), (y + current_x), mTextColor);
+    DrawPixel ((x - current_y), (y + current_x), mTextColor);
 
     if (decision < 0)
       decision += (current_x << 2) + 6;
@@ -615,7 +597,7 @@ void cLcd::DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
   }
 //}}}
 //{{{
-void cLcd::FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
+void cLcd::FillCircle (uint16_t x, uint16_t y, uint16_t Radius) {
 
   int32_t decision = 3 - (Radius << 1);
   uint32_t current_x = 0;
@@ -623,12 +605,12 @@ void cLcd::FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
 
   while (current_x <= current_y) {
     if (current_y > 0) {
-      FillRect (Xpos - current_y, Ypos + current_x, 1, 2*current_y);
-      FillRect (Xpos - current_y, Ypos - current_x, 1, 2*current_y);
+      FillRect (x - current_y, y + current_x, 1, 2*current_y);
+      FillRect (x - current_y, y - current_x, 1, 2*current_y);
       }
     if (current_x > 0) {
-      FillRect (Xpos - current_x, Ypos - current_y, 1, 2*current_x);
-      FillRect (Xpos - current_x, Ypos + current_y, 1, 2*current_x);
+      FillRect (x - current_x, y - current_y, 1, 2*current_x);
+      FillRect (x - current_x, y + current_y, 1, 2*current_x);
       }
     if (decision < 0)
       decision += (current_x << 2) + 6;
@@ -639,7 +621,7 @@ void cLcd::FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius) {
     current_x++;
     }
 
-  DrawCircle (Xpos, Ypos, Radius);
+  DrawCircle (x, y, Radius);
   }
 //}}}
 //{{{
@@ -710,9 +692,11 @@ void cLcd::FillPolygon (pPoint Points, uint16_t PointCount) {
   }
 //}}}
 //{{{
-void cLcd::DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
+void cLcd::DrawEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius) {
 
-  int x = 0, y = -YRadius, err = 2-2*XRadius, e2;
+  int x = 0;
+  int y = -YRadius;
+  int err = 2-2*XRadius, e2;
   float k = 0, rad1 = 0, rad2 = 0;
 
   rad1 = XRadius;
@@ -721,10 +705,10 @@ void cLcd::DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
   k = (float)(rad2/rad1);
 
   do {
-    DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos+y), mTextColor);
-    DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos+y), mTextColor);
-    DrawPixel((Xpos+(uint16_t)(x/k)), (Ypos-y), mTextColor);
-    DrawPixel((Xpos-(uint16_t)(x/k)), (Ypos-y), mTextColor);
+    DrawPixel ((xCentre - (uint16_t)(x/k)), yCentre+y, mTextColor);
+    DrawPixel ((xCentre + (uint16_t)(x/k)), yCentre+y, mTextColor);
+    DrawPixel ((xCentre + (uint16_t)(x/k)), yCentre-y, mTextColor);
+    DrawPixel ((xCentre - (uint16_t)(x/k)), yCentre-y, mTextColor);
 
     e2 = err;
     if (e2 <= x) {
@@ -740,7 +724,7 @@ void cLcd::DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
   }
 //}}}
 //{{{
-void cLcd::FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
+void cLcd::FillEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius) {
 
   int x = 0, y = -YRadius, err = 2-2*XRadius, e2;
   float k = 0, rad1 = 0, rad2 = 0;
@@ -750,8 +734,8 @@ void cLcd::FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius) {
 
   k = (float)(rad2/rad1);
   do {
-    FillRect((Xpos-(uint16_t)(x/k)), (Ypos+y), 1, (2*(uint16_t)(x/k) + 1));
-    FillRect((Xpos-(uint16_t)(x/k)), (Ypos-y), 1, (2*(uint16_t)(x/k) + 1));
+    FillRect((xCentre-(uint16_t)(x/k)), (yCentre+y), 1, (2*(uint16_t)(x/k) + 1));
+    FillRect((xCentre-(uint16_t)(x/k)), (yCentre-y), 1, (2*(uint16_t)(x/k) + 1));
 
     e2 = err;
     if (e2 <= x) {
@@ -824,7 +808,7 @@ void cLcd::DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
 //}}}
 
 //{{{
-void cLcd::ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize) {
+void cLcd::convertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize) {
 
   hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
   hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
@@ -842,7 +826,7 @@ void cLcd::ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t y
   }
 //}}}
 //{{{
-void cLcd::ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+void cLcd::convertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
                               uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
   int srcScale = (srcXsize == 1600) ? 4 : 2;
@@ -881,7 +865,7 @@ void cLcd::ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
   }
 //}}}
 //{{{
-void cLcd::ConvertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+void cLcd::convertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
                                uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
   src += ((srcXsize-xsize)/2) + (((srcYsize - ysize) / 2) * srcXsize);
@@ -905,7 +889,7 @@ void cLcd::ConvertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize
   }
 //}}}
 //{{{
-void cLcd::ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
+void cLcd::convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                               uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize) {
 
   //{{{
@@ -1733,19 +1717,17 @@ void cLcd::ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
 //}}}
 
 //{{{
-void cLcd::DisplayOn() {
+void cLcd::displayOn() {
 
-  // Display On
   __HAL_LTDC_ENABLE (&hLtdcHandler);
   HAL_GPIO_WritePin (LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_SET);        // Assert LCD_DISP pin
   HAL_GPIO_WritePin (LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, GPIO_PIN_SET);  // Assert LCD_BL_CTRL pin
   }
 //}}}
 //{{{
-void cLcd::DisplayOff() {
+void cLcd::displayOff() {
 
-  // Display Off
-  __HAL_LTDC_DISABLE(&hLtdcHandler);
+  __HAL_LTDC_DISABLE (&hLtdcHandler);
   HAL_GPIO_WritePin (LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_RESET);      // De-assert LCD_DISP pin
   HAL_GPIO_WritePin (LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, GPIO_PIN_RESET);// De-assert LCD_BL_CTRL pin
   }
@@ -1754,7 +1736,7 @@ void cLcd::DisplayOff() {
 // private
 //{{{
 uint32_t* cLcd::getBuffer() {
-  return (uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0);
+  return (uint32_t*)(mFlip ? SDRAM_DEVICE_ADDR + 0x40000 : SDRAM_DEVICE_ADDR);
   }
 //}}}
 //{{{
@@ -1865,63 +1847,67 @@ void cLcd::FillBuffer (uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ys
   }
 //}}}
 //{{{
-void cLcd::FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3)
-{
-  int16_t deltax = 0, deltay = 0, x = 0, y = 0, xinc1 = 0, xinc2 = 0,
-  yinc1 = 0, yinc2 = 0, den = 0, num = 0, num_add = 0, num_pixels = 0,
-  curpixel = 0;
+void cLcd::FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3) {
 
-  deltax = ABS(x2 - x1);        // The difference between the x's
-  deltay = ABS(y2 - y1);        // The difference between the y's
-  x = x1;                       // Start x off at the first pixel
-  y = y1;                       // Start y off at the first pixel
+  int16_t deltax = ABS(x2 - x1);        // The difference between the x's
+  int16_t deltay = ABS(y2 - y1);        // The difference between the y's
+  int16_t x = x1;                       // Start x off at the first pixel
+  int16_t y = y1;                       // Start y off at the first pixel
 
-  if (x2 >= x1) {                // The x-values are increasing
+  int16_t xinc1 = 0, xinc2 = 0;
+  int16_t yinc1 = 0, yinc2 = 0;
+  if (x2 >= x1) {
+    // The x-values are increasing
     xinc1 = 1;
     xinc2 = 1;
     }
-  else {                         // The x-values are decreasing
+  else {
+    // The x-values are decreasing
     xinc1 = -1;
     xinc2 = -1;
     }
 
-  if (y2 >= y1) {               // The y-values are increasing
+  if (y2 >= y1) {
+    // The y-values are increasing
     yinc1 = 1;
     yinc2 = 1;
     }
-  else {                         // The y-values are decreasing
+  else {
+    // The y-values are decreasing
     yinc1 = -1;
     yinc2 = -1;
     }
 
-  if (deltax >= deltay) {        // There is at least one x-value for every y-value
-    xinc1 = 0;                  // Don't change the x when numerator >= denominator
-    yinc2 = 0;                  // Don't change the y for every iteration
+  int16_t den = 0, num = 0, num_add = 0, num_pixels = 0;
+  if (deltax >= deltay) {
+    // There is at least one x-value for every y-value
+    xinc1 = 0;           // Don't change the x when numerator >= denominator
+    yinc2 = 0;           // Don't change the y for every iteration
     den = deltax;
     num = deltax / 2;
     num_add = deltay;
-    num_pixels = deltax;         // There are more x-values than y-values
+    num_pixels = deltax;  // There are more x-values than y-values
     }
-  else {                         // There is at least one y-value for every x-value
-    xinc2 = 0;                  // Don't change the x for every iteration
-    yinc1 = 0;                  // Don't change the y when numerator >= denominator
+  else {
+    // There is at least one y-value for every x-value
+    xinc2 = 0;           // Don't change the x for every iteration
+    yinc1 = 0;           // Don't change the y when numerator >= denominator
     den = deltay;
     num = deltay / 2;
     num_add = deltax;
     num_pixels = deltay;         // There are more y-values than x-values
     }
 
-  for (curpixel = 0; curpixel <= num_pixels; curpixel++) {
-    DrawLine(x, y, x3, y3);
-
-    num += num_add;              // Increase the numerator by the top of the fraction
-    if (num >= den)  {           // Check if numerator >= denominator
-      num -= den;               // Calculate the new numerator value
-      x += xinc1;               // Change the x as appropriate
-      y += yinc1;               // Change the y as appropriate
+  for (int16_t curpixel = 0; curpixel <= num_pixels; curpixel++) {
+    DrawLine (x, y, x3, y3);
+    num += num_add;     // Increase the numerator by the top of the fraction
+    if (num >= den)  {  // Check if numerator >= denominator
+      num -= den;       // Calculate the new numerator value
+      x += xinc1;       // Change the x as appropriate
+      y += yinc1;       // Change the y as appropriate
       }
-    x += xinc2;                 // Change the x as appropriate
-    y += yinc2;                 // Change the y as appropriate
+    x += xinc2;         // Change the x as appropriate
+    y += yinc2;         // Change the y as appropriate
     }
   }
 //}}}
@@ -1944,4 +1930,3 @@ void cLcd::ConvertLineToARGB8888 (void* src, void* dst, uint32_t xSize, uint32_t
         HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
   }
 //}}}
-

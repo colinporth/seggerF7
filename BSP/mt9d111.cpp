@@ -259,7 +259,7 @@ void cCamera::init (bool useCapture) {
   // startup dcmi
   dcmiInit (&dcmiInfo);
 
-  preview();
+  useCapture ? capture() : preview();
   }
 //}}}
 
@@ -371,13 +371,13 @@ void cCamera::mt9d111Init() {
   // PLL - M=16,N=1,P=3 - (24mhz/(N+1))*M / 2*(P+1) = 24mhz
   CAMERA_IO_Write16 (i2cAddress, 0x66, 0x1001); // PLLControl1 -    M:N
   CAMERA_IO_Write16 (i2cAddress, 0x67, 0x0503); // PLLControl2 - 0x05:P
-  CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Clock CNTRL - PLL ON
-  CAMERA_IO_Write16 (i2cAddress, 0x65, 0x2000); // Clock CNTRL - USE PLL
+  CAMERA_IO_Write16 (i2cAddress, 0x65, 0xA000); // Clock CNTRL - pllOn
+  CAMERA_IO_Write16 (i2cAddress, 0x65, 0x2000); // Clock CNTRL - usePll
   HAL_Delay (100);
 
   // page 1
   CAMERA_IO_Write16 (i2cAddress, 0xF0, 1);
-  CAMERA_IO_Write16 (i2cAddress, 0x97, 0x22);   // outputFormat - RGB565, swap odd even
+  CAMERA_IO_Write16 (i2cAddress, 0x97, 0x22); // outputFormat - RGB565, swap odd even
   //{{{  sequencer
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA122); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // EnterPreview: Auto Exposure = 1
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA123); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // EnterPreview: Flicker Detection = 0
@@ -557,6 +557,7 @@ void cCamera::dcmiInit (DCMI_HandleTypeDef* dcmi) {
   dcmi->Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
 
   // Associate the initialized DMA handle to the DCMI handle
+  dmaHandler.Instance = DMA2_Stream1;
   dmaHandler.Init.Channel             = DMA_CHANNEL_1;
   dmaHandler.Init.Direction           = DMA_PERIPH_TO_MEMORY;
   dmaHandler.Init.PeriphInc           = DMA_PINC_DISABLE;
@@ -569,7 +570,6 @@ void cCamera::dcmiInit (DCMI_HandleTypeDef* dcmi) {
   dmaHandler.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
   dmaHandler.Init.MemBurst            = DMA_MBURST_SINGLE;
   dmaHandler.Init.PeriphBurst         = DMA_PBURST_SINGLE;
-  dmaHandler.Instance = DMA2_Stream1;
   __HAL_LINKDMA (dcmi, DMA_Handle, dmaHandler);
 
   // NVIC configuration for DCMI transfer complete interrupt

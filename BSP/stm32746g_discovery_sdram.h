@@ -12,11 +12,6 @@
 
 #define SDRAM_DEVICE_ADDR  ((uint32_t)0xC0000000)
 #define SDRAM_DEVICE_SIZE  ((uint32_t)0x00800000)  // SDRAM device size in MBytes - 8m
-#define SDRAM_SCREEN0      ((uint32_t)0xC0000000)  //
-#define SDRAM_SCREEN1      ((uint32_t)0xC0080000)  // 0.5m
-#define SDRAM_USER         ((uint32_t)0xC0100000)  // 7m left
-#define SDRAM_SCREEN1_565  ((uint32_t)0xC0040000)  // 0.25m
-#define SDRAM_USER_565     ((uint32_t)0xC0080000)  // 7m left
 
 #define SDRAM_MEMORY_WIDTH  FMC_SDRAM_MEM_BUS_WIDTH_16
 #define SDCLOCK_PERIOD      FMC_SDRAM_CLOCK_PERIOD_2

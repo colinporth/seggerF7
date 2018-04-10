@@ -25,7 +25,7 @@ extern "C" {
 
 
 bool gSdChanged = false;
-uint32_t* gSectors = (uint32_t*)SDRAM_USER;
+uint32_t* gSectors = (uint32_t*)SDRAM_DEVICE_ADDR;
 
 //{{{  sd card handlers
 // BSP

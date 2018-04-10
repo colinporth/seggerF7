@@ -100,11 +100,11 @@ public:
   // drawing
   void SelectLayer (uint32_t LayerIndex);
   void SetTransparency (uint32_t LayerIndex, uint8_t Transparency);
-  void SetAddress (uint32_t LayerIndex, uint32_t address, uint32_t writeAddress);
+  void SetAddress (uint32_t LayerIndex, uint32_t* address, uint32_t* writeAddress);
 
   uint32_t ReadPixel (uint16_t x, uint16_t y);
-  void DrawPixel (uint16_t x, uint16_t y, uint32_t pixel);
-  void DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp);
+  void DrawPixel (uint16_t x, uint16_t y, uint32_t color);
+  void DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t* pbmp);
 
   void clearStringLine (uint32_t Line);
   void DisplayChar (uint16_t x, uint16_t y, uint8_t ascii);
@@ -113,26 +113,24 @@ public:
   void DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr);
 
   void clear (uint32_t Color);
-  void DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
-  void FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
-  void DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
-  void FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
+  void DrawRect (uint16_t x, uint16_t y, uint16_t Width, uint16_t Height);
+  void FillRect (uint16_t x, uint16_t y, uint16_t Width, uint16_t Height);
+  void DrawCircle (uint16_t x, uint16_t y, uint16_t Radius);
+  void FillCircle (uint16_t x, uint16_t y, uint16_t Radius);
   void DrawPolygon (pPoint Points, uint16_t PointCount);
   void FillPolygon (pPoint Points, uint16_t PointCount);
-  void DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius);
-  void FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius);
+  void DrawEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius);
+  void FillEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius);
   void DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 
-  void ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize);
-  void ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                        uint32_t* dst, uint16_t xsize, uint16_t ysize);
-  void ConvertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                         uint32_t* dst, uint16_t xsize, uint16_t ysize);
-  void ConvertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
+  void convertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize);
+  void convertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, uint32_t* dst, uint16_t xsize, uint16_t ysize);
+  void convertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, uint32_t* dst, uint16_t xsize, uint16_t ysize);
+  void convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                         uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
 
-  void DisplayOff();
-  void DisplayOn();
+  void displayOff();
+  void displayOn();
 
   static cLcd* mLcd;
 
