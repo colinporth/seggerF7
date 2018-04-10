@@ -295,8 +295,8 @@ void cCamera::start (uint32_t buffer) {
 //}}}
 //{{{
 void cCamera::preview() {
-  mXsize = 800;
-  mYsize = 600;
+  mWidth = 800;
+  mHeight = 600;
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview");
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Sequencer.params.mode - none
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // Sequencer goto preview A - 800x600
@@ -304,8 +304,8 @@ void cCamera::preview() {
 //}}}
 //{{{
 void cCamera::capture() {
-  mXsize = 800;
-  mYsize = 600;
+  mWidth = 800;
+  mHeight = 600;
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "capture");
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B  - 1600x1200

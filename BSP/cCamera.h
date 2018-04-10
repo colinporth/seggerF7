@@ -7,8 +7,8 @@ class cCamera {
 public:
   void init (bool useCapture);
 
-  uint32_t getWidth() { return mXsize; }
-  uint32_t getHeight() { return mYsize; }
+  uint32_t getWidth() { return mWidth; }
+  uint32_t getHeight() { return mHeight; }
 
   void setFocus (int value);
 
@@ -24,6 +24,6 @@ private:
 
   DMA_HandleTypeDef dmaHandler;
   uint32_t cameraCurrentResolution = 0;
-  uint32_t mXsize = 0;
-  uint32_t mYsize = 0;
+  uint32_t mWidth = 0;
+  uint32_t mHeight = 0;
   };

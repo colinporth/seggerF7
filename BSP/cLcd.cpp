@@ -246,7 +246,7 @@ void cLcd::init() {
   HAL_DMA2D_EnableDeadTime (&hDma2dHandler);
 
   layerInit (0, SDRAM_SCREEN0);
-  Clear (LCD_COLOR_BLACK);
+  clear (LCD_COLOR_BLACK);
   DisplayOn();
   }
 //}}}
@@ -256,7 +256,7 @@ uint32_t cLcd::getCameraBuffer() { return SDRAM_USER_565; }
 
 //{{{
 void cLcd::start() {
-  Clear (LCD_COLOR_BLACK);
+  clear (LCD_COLOR_BLACK);
   }
 //}}}
 //{{{
@@ -463,7 +463,7 @@ void cLcd::DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp) {
 //}}}
 
 //{{{
-void cLcd::ClearStringLine (uint32_t Line) {
+void cLcd::clearStringLine (uint32_t Line) {
 
   // Draw rectangle with background color
   uint32_t color_backup = TextColor;
@@ -559,7 +559,7 @@ void cLcd::DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr)
 //}}}
 
 //{{{
-void cLcd::Clear (uint32_t Color) {
+void cLcd::clear (uint32_t Color) {
   FillBuffer (ActiveLayer, hLtdcHandler.LayerCfg[ActiveLayer].FBStartAdressWrite, getWidth(), getHeight(), 0, Color);
   }
 //}}}

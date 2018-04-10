@@ -106,25 +106,24 @@ public:
 
   uint32_t ReadPixel (uint16_t x, uint16_t y);
   void DrawPixel (uint16_t x, uint16_t y, uint32_t pixel);
+  void DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp);
 
-  void Clear (uint32_t Color);
-  void ClearStringLine (uint32_t Line);
+  void clearStringLine (uint32_t Line);
   void DisplayChar (uint16_t x, uint16_t y, uint8_t ascii);
   void DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTypdef mode);
   void DisplayStringAtLine (uint16_t line, char* ptr);
   void DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr);
 
-  void DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+  void clear (uint32_t Color);
   void DrawRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
-  void DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
-  void DrawPolygon (pPoint Points, uint16_t PointCount);
-  void DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius);
-  void DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t *pbmp);
-
   void FillRect (uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
+  void DrawCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
   void FillCircle (uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
+  void DrawPolygon (pPoint Points, uint16_t PointCount);
   void FillPolygon (pPoint Points, uint16_t PointCount);
+  void DrawEllipse (int Xpos, int Ypos, int XRadius, int YRadius);
   void FillEllipse (int Xpos, int Ypos, int XRadius, int YRadius);
+  void DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 
   void ConvertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize);
   void ConvertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
