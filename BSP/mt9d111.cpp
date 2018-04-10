@@ -28,20 +28,6 @@ typedef struct {
 //}}}
 
 DCMI_HandleTypeDef dcmiInfo;
-
-//{{{
-void dmaError (DMA_HandleTypeDef* dma) {
-
-  if (dcmiInfo.DMA_Handle->ErrorCode != HAL_DMA_ERROR_FE)
-    cLcd::mLcd->debug (LCD_COLOR_RED, "DCMI DMAerror %x", dcmiInfo.DMA_Handle->ErrorCode);
-  }
-//}}}
-//{{{
-void dcmiError (DMA_HandleTypeDef* dma) {
-  cLcd::mLcd->debug (LCD_COLOR_RED, "DCMIerror");
-  }
-//}}}
-
 //{{{
 void dmaInit (DMA_HandleTypeDef *hdma) {
 
@@ -116,10 +102,9 @@ extern "C" {
     //{{{  transferError Interrupt
     if ((tmpisr & (DMA_FLAG_TEIF0_4 << hdma->StreamIndex)) != RESET) {
       if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_TE) != RESET) {
-        // Disable the transfer error interrupt
         hdma->Instance->CR  &= ~(DMA_IT_TE);
-        // Clear the transferError flag
         regs->IFCR = DMA_FLAG_TEIF0_4 << hdma->StreamIndex;
+
         cLcd::mLcd->debug (LCD_COLOR_RED, "dmaTransferError");
         }
       }
@@ -127,7 +112,6 @@ extern "C" {
     //{{{  fifoError Interrupt
     if ((tmpisr & (DMA_FLAG_FEIF0_4 << hdma->StreamIndex)) != RESET)
       if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_FE) != RESET) {
-        // Clear the fifoError flag
         regs->IFCR = DMA_FLAG_FEIF0_4 << hdma->StreamIndex;
         //cLcd::mLcd->debug (LCD_COLOR_RED, "dmaFifoError");
         }
@@ -135,45 +119,40 @@ extern "C" {
     //{{{  directMode Error Interrupt
     if ((tmpisr & (DMA_FLAG_DMEIF0_4 << hdma->StreamIndex)) != RESET)
       if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_DME) != RESET) {
-        // Clear the directMode error flag
         regs->IFCR = DMA_FLAG_DMEIF0_4 << hdma->StreamIndex;
         cLcd::mLcd->debug (LCD_COLOR_RED, "dmaDirectModeError");
         }
     //}}}
 
-    // transferComplete Interrupt
+    // transferComplete Interrupt, doubleBufferMode handling
     if ((tmpisr & (DMA_FLAG_TCIF0_4 << hdma->StreamIndex)) != RESET) {
-      if(__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_TC) != RESET) {
-        // clear the transferComplete flag
+      if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_TC) != RESET) {
+        // clear transferComplete interrupt flag
         regs->IFCR = DMA_FLAG_TCIF0_4 << hdma->StreamIndex;
+        dcmiInfo.XferCount++;
 
-        if (((hdma->Instance->CR) & (uint32_t)(DMA_SxCR_DBM)) != RESET) {
-          if (dcmiInfo.XferCount < dcmiInfo.XferTransferNumber-2) {
-            // next frameChunk
-            if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmiInfo.XferCount % 2) == 0))
-              // update M0AR for next frameChunk
-              DMA2_Stream1->M0AR += 8 * dcmiInfo.XferSize;
-            else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0)
-              // update M1AR for next frameChunk
-              DMA2_Stream1->M1AR += 8 * dcmiInfo.XferSize;
-            dcmiInfo.XferCount++;
-            //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
-            }
+        if (dcmiInfo.XferCount <= dcmiInfo.XferTransferNumber - 2) {
+          // next dma chunk
+          if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmiInfo.XferCount % 2) != 0))
+            // update M0AR for next dma chunk
+            DMA2_Stream1->M0AR += 8 * dcmiInfo.XferSize;
+          else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0)
+            // update M1AR for next dma chunk
+            DMA2_Stream1->M1AR += 8 * dcmiInfo.XferSize;
+          cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d", dcmiInfo.XferCount);
+          }
 
-          else if (DMA2_Stream1->CR & DMA_SxCR_CT) {
-            // last chunk but one, reset M0AR for next frame
-            DMA2_Stream1->M0AR = dcmiInfo.pBuffPtr;
-            dcmiInfo.XferCount++;
-            //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dmaXfer %d", dcmiInfo.XferCount);
-            }
+        else if (DMA2_Stream1->CR & DMA_SxCR_CT) {
+          // penultimate chunk, reset M0AR for next frame
+          DMA2_Stream1->M0AR = dcmiInfo.pBuffPtr;
+          cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d", dcmiInfo.XferCount);
+          }
 
-          else {
-            // last chunk, reset M1AR,XferCount for next frame
-            DMA2_Stream1->M1AR = dcmiInfo.pBuffPtr + (4 * dcmiInfo.XferSize);
-            //__HAL_DCMI_ENABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
-            dcmiInfo.XferCount = 0;
-            //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dmaFrameDone");
-            }
+        else {
+          // last chunk, reset M1AR, XferCount for next frame
+          DMA2_Stream1->M1AR = dcmiInfo.pBuffPtr + (4 * dcmiInfo.XferSize);
+          cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d finished", dcmiInfo.XferCount);
+          dcmiInfo.XferCount = 0;
           }
         }
       }
@@ -202,12 +181,6 @@ extern "C" {
       __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_VSYNCRI);
       cLcd::mLcd->debug (LCD_COLOR_GREEN, "vsyncIrq %d", dcmiInfo.XferCount);
       }
-
-    //if ((misr & DCMI_FLAG_FRAMERI) == DCMI_FLAG_FRAMERI) {
-    //  __HAL_DCMI_DISABLE_IT (&dcmiInfo, DCMI_IT_FRAME);
-    //  __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_FRAMERI);
-    //  cLcd::mLcd->debug (LCD_COLOR_GREEN, "frameIrq");
-    //  }
     }
   //}}}
   }
@@ -261,7 +234,8 @@ void cCamera::setFocus (int value) {
 void cCamera::start (bool captureMode, uint32_t buffer) {
 
   mCaptureMode = captureMode;
-  mCaptureMode ? jpeg() : preview();
+
+  mCaptureMode ? capture() : preview();
   dcmiStart (&dcmiInfo, DCMI_MODE_CONTINUOUS, buffer, getWidth()*getHeight()/2);
   }
 //}}}
