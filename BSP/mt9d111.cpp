@@ -133,7 +133,7 @@ extern "C" {
 
         if (dcmiInfo.XferCount <= dcmiInfo.XferTransferNumber - 2) {
           // next dma chunk
-          if (((DMA2_Stream1->CR) & DMA_SxCR_CT != 0) && ((dcmiInfo.XferCount % 2) != 0))
+          if ((DMA2_Stream1->CR & DMA_SxCR_CT) != 0)
             // update M0AR for next dma chunk
             DMA2_Stream1->M0AR += 8 * dcmiInfo.XferSize;
           else if ((DMA2_Stream1->CR & DMA_SxCR_CT) == 0)
