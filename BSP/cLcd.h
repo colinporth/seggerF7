@@ -96,7 +96,6 @@ public:
   static uint32_t GetXSize() { return RK043FN48H_WIDTH; }
   static uint32_t GetYSize() { return RK043FN48H_HEIGHT; }
 
-  uint32_t* getBuffer();
   uint32_t getCameraBuffer();
 
   uint16_t GetTextHeight();
@@ -158,7 +157,11 @@ public:
   void DisplayOff();
   void DisplayOn();
 
+  static cLcd* mLcd;
+
 private:
+  uint32_t* getBuffer();
+
   void setLayer (uint32_t layerIndex);
   void layerInit (uint16_t LayerIndex, uint32_t FrameBuffer);
 

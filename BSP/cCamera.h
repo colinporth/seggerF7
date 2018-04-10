@@ -5,7 +5,7 @@
 
 class cCamera {
 public:
-  void init (cLcd* lcd, bool useCapture);
+  void init (bool useCapture);
 
   uint32_t getXsize() { return mXsize; }
   uint32_t getYsize() { return mYsize; }

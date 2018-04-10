@@ -84,7 +84,7 @@ void cApp::run() {
   //else
   //  mLcd->debug (LCD_COLOR_RED, "not mounted");
   //}}}
-  camera.init (mLcd, false);
+  camera.init (false);
   camera.start (mLcd->getCameraBuffer());
 
   bool previewMode = true;

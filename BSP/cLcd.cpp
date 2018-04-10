@@ -46,6 +46,7 @@ extern "C" {
         __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_RR);
         __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_RR);
 
+        cLcd::mLcd->debug (LCD_COLOR_YELLOW, "frame");
         // Register reload interrupt Callback
         //HAL_LTDC_ReloadEventCallback (&hLtdcHandler);
         }
@@ -71,9 +72,13 @@ extern "C" {
   //}}}
   }
 
+cLcd* cLcd::mLcd = nullptr;
+
 cLcd::cLcd (int lines) : mDisplayLines(lines) {}
 //{{{
 void cLcd::init() {
+
+  mLcd = this;
 
   //{{{  gpio config
   // Enable GPIOs clock
@@ -225,6 +230,7 @@ void cLcd::init() {
   // Enable transferError,fifoUnderrun interrupt
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_TE);
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_FU);
+  //__HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_FLAG_RR);
 
   // Enable LTDC by setting LTDCEN bit
   __HAL_LTDC_ENABLE (&hLtdcHandler);
@@ -246,7 +252,6 @@ void cLcd::init() {
 //}}}
 
 uint16_t cLcd::GetTextHeight() { return Font16.mHeight; }
-uint32_t* cLcd::getBuffer() { return (uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0); }
 uint32_t cLcd::getCameraBuffer() { return SDRAM_USER_565; }
 
 //{{{
@@ -1747,6 +1752,11 @@ void cLcd::DisplayOff() {
 //}}}
 
 // private
+//{{{
+uint32_t* cLcd::getBuffer() {
+  return (uint32_t*)(mFlip ? SDRAM_SCREEN1_565 : SDRAM_SCREEN0);
+  }
+//}}}
 //{{{
 void cLcd::setLayer (uint32_t layerIndex) {
 
