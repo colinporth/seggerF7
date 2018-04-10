@@ -129,29 +129,29 @@ extern "C" {
       if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_TC) != RESET) {
         // clear transferComplete interrupt flag
         regs->IFCR = DMA_FLAG_TCIF0_4 << hdma->StreamIndex;
-        dcmiInfo.XferCount++;
 
+        dcmiInfo.XferCount++;
         if (dcmiInfo.XferCount <= dcmiInfo.XferTransferNumber - 2) {
           // next dma chunk
           if ((DMA2_Stream1->CR & DMA_SxCR_CT) != 0)
             // update M0AR for next dma chunk
             DMA2_Stream1->M0AR += 8 * dcmiInfo.XferSize;
-          else 
+          else
             // update M1AR for next dma chunk
             DMA2_Stream1->M1AR += 8 * dcmiInfo.XferSize;
-          cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d", dcmiInfo.XferCount);
+          cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "dma %d", dcmiInfo.XferCount);
           }
 
-        else if (DMA2_Stream1->CR & DMA_SxCR_CT) {
+        else if (dcmiInfo.XferCount == (dcmiInfo.XferTransferNumber - 1)) {
           // penultimate chunk, reset M0AR for next frame
           DMA2_Stream1->M0AR = dcmiInfo.pBuffPtr;
-          cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d", dcmiInfo.XferCount);
+          cLcd::mLcd->debug (LCD_COLOR_CYAN, "dma %d", dcmiInfo.XferCount);
           }
 
         else {
           // last chunk, reset M1AR, XferCount for next frame
           DMA2_Stream1->M1AR = dcmiInfo.pBuffPtr + (4 * dcmiInfo.XferSize);
-          cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d finished", dcmiInfo.XferCount);
+          cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d done", dcmiInfo.XferCount);
           dcmiInfo.XferCount = 0;
           }
         }
@@ -166,14 +166,14 @@ extern "C" {
     if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
       // synchronizationError interrupt
       __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_ERRRI);
-      __HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
+      //__HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
       cLcd::mLcd->debug (LCD_COLOR_RED, "syncIrq");
       }
 
     if ((misr & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
       // overflowError interrupt
       __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_OVRRI);
-      __HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
+      //__HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
       cLcd::mLcd->debug (LCD_COLOR_RED, "overflowIrq");
       }
 

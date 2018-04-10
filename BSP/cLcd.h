@@ -23,7 +23,7 @@
 #define LCD_COLOR_YELLOW        0xFFD0
 #define LCD_COLOR_WHITE         0xFFFF
 #define LCD_COLOR_BLACK         0x0000
-#define LCD_COLOR_MAGENTA       0x7D1F
+#define LCD_COLOR_MAGENTA       0xF81F
 #define LCD_COLOR_CYAN          0x07FF
 
 #else
