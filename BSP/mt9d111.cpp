@@ -172,7 +172,8 @@ extern "C" {
 
     if ((misr & DCMI_FLAG_VSYNCRI) == DCMI_FLAG_VSYNCRI) {
       __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_VSYNCRI);
-      cLcd::mLcd->debug (LCD_COLOR_GREEN, "vsyncIrq %d", dcmiInfo.XferCount);
+      uint32_t rx = DMA2_Stream1->NDTR;
+      cLcd::mLcd->debug (LCD_COLOR_GREEN, "vsyncIrq %d %d", dcmiInfo.XferCount, rx);
       }
     }
   //}}}
@@ -228,7 +229,7 @@ void cCamera::start (bool captureMode, uint32_t buffer) {
 
   mCaptureMode = captureMode;
 
-  mCaptureMode ? capture() : preview();
+  mCaptureMode ? jpeg() : preview();
   dcmiStart (&dcmiInfo, DCMI_MODE_CONTINUOUS, buffer, getWidth()*getHeight()/2);
   }
 //}}}
