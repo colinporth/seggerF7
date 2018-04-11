@@ -62,31 +62,6 @@
 #define DCMI_OEBS_ODD        ((uint32_t)0x00000000U) /*!< Interface captures first data from the frame/line start, second one being dropped */
 #define DCMI_OEBS_EVEN       ((uint32_t)DCMI_CR_OEBS) /*!< Interface captures second data from the frame/line start, first one being dropped */
 //}}}
-
-static const uint8_t flagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
-//{{{
-struct tDcmiInfo {
-  DCMI_TypeDef*      Instance;           // DCMI Register base address
-   __IO uint32_t      XferCount;          // DMA transfer counter
-  __IO uint32_t      XferSize;           // DMA transfer size
-  uint32_t           XferTransferNumber; // DMA transfer number
-  uint32_t           pBuffPtr;           // Pointer to DMA output buffer
-  DMA_HandleTypeDef* DMA_Handle;         // Pointer to the DMA handler
-
-  // init
-  uint32_t SynchroMode;
-  uint32_t PCKPolarity;
-  uint32_t VSPolarity;
-  uint32_t HSPolarity;
-  uint32_t CaptureRate;
-  uint32_t ExtendedDataMode;
-  uint32_t JPEGMode;
-  uint32_t ByteSelectMode;
-  uint32_t ByteSelectStart;
-  uint32_t LineSelectMode;
-  uint32_t LineSelectStart;
-  };
-//}}}
 //{{{  struct dmaBaseRegisters
 typedef struct {
   __IO uint32_t ISR;   /*!< DMA interrupt status register */
@@ -95,7 +70,8 @@ typedef struct {
   } tDmaBaseRegisters;
 //}}}
 
-tDcmiInfo dcmiInfo;
+static const uint8_t flagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
+
 cCamera* gCamera = nullptr;
 
 extern "C" {
@@ -120,7 +96,7 @@ void cCamera::init() {
   mt9d111Init();
 
   // startup dcmi
-  dcmiInit (&dcmiInfo);
+  dcmiInit();
 
   preview();
   }
@@ -167,7 +143,7 @@ void cCamera::start (bool captureMode, uint32_t buffer) {
   mCaptureMode ? capture() : preview();
 #endif
 
-  dcmiStart (&dcmiInfo, DCMI_MODE_CONTINUOUS, buffer, getWidth()*getHeight()/2);
+  dcmiStart (DCMI_MODE_CONTINUOUS, buffer, getWidth()*getHeight()/2);
   }
 //}}}
 //{{{
@@ -317,39 +293,39 @@ void cCamera::dmaIrqHandler() {
 
   // calculate DMA base and stream number
   DMA_HandleTypeDef* hdma = dcmiInfo.DMA_Handle;
-  tDmaBaseRegisters* regs = (tDmaBaseRegisters*)hdma->StreamBaseAddress;
+  tDmaBaseRegisters* regs = (tDmaBaseRegisters*)dcmiInfo.DMA_Handle->StreamBaseAddress;
   uint32_t isr = regs->ISR;
 
   //{{{  transferError Interrupt
-  if ((isr & (DMA_FLAG_TEIF0_4 << hdma->StreamIndex)) != RESET) {
-    if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_TE) != RESET) {
-      hdma->Instance->CR  &= ~(DMA_IT_TE);
-      regs->IFCR = DMA_FLAG_TEIF0_4 << hdma->StreamIndex;
+  if ((isr & (DMA_FLAG_TEIF0_4 << dcmiInfo.DMA_Handle->StreamIndex)) != RESET) {
+    if (__HAL_DMA_GET_IT_SOURCE (dcmiInfo.DMA_Handle, DMA_IT_TE) != RESET) {
+      dcmiInfo.DMA_Handle->Instance->CR  &= ~(DMA_IT_TE);
+      regs->IFCR = DMA_FLAG_TEIF0_4 << dcmiInfo.DMA_Handle->StreamIndex;
 
       cLcd::mLcd->debug (LCD_COLOR_RED, "dmaTransferError");
       }
     }
   //}}}
   //{{{  fifoError Interrupt
-  if ((isr & (DMA_FLAG_FEIF0_4 << hdma->StreamIndex)) != RESET)
-    if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_FE) != RESET) {
-      regs->IFCR = DMA_FLAG_FEIF0_4 << hdma->StreamIndex;
+  if ((isr & (DMA_FLAG_FEIF0_4 << dcmiInfo.DMA_Handle->StreamIndex)) != RESET)
+    if (__HAL_DMA_GET_IT_SOURCE (dcmiInfo.DMA_Handle, DMA_IT_FE) != RESET) {
+      regs->IFCR = DMA_FLAG_FEIF0_4 << dcmiInfo.DMA_Handle->StreamIndex;
       //cLcd::mLcd->debug (LCD_COLOR_RED, "dmaFifoError");
       }
   //}}}
   //{{{  directMode Error Interrupt
-  if ((isr & (DMA_FLAG_DMEIF0_4 << hdma->StreamIndex)) != RESET)
-    if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_DME) != RESET) {
-      regs->IFCR = DMA_FLAG_DMEIF0_4 << hdma->StreamIndex;
+  if ((isr & (DMA_FLAG_DMEIF0_4 << dcmiInfo.DMA_Handle->StreamIndex)) != RESET)
+    if (__HAL_DMA_GET_IT_SOURCE (dcmiInfo.DMA_Handle, DMA_IT_DME) != RESET) {
+      regs->IFCR = DMA_FLAG_DMEIF0_4 << dcmiInfo.DMA_Handle->StreamIndex;
       cLcd::mLcd->debug (LCD_COLOR_RED, "dmaDirectModeError");
       }
   //}}}
 
   // transferComplete Interrupt, doubleBufferMode handling
-  if ((isr & (DMA_FLAG_TCIF0_4 << hdma->StreamIndex)) != RESET) {
-    if (__HAL_DMA_GET_IT_SOURCE (hdma, DMA_IT_TC) != RESET) {
+  if ((isr & (DMA_FLAG_TCIF0_4 << dcmiInfo.DMA_Handle->StreamIndex)) != RESET) {
+    if (__HAL_DMA_GET_IT_SOURCE (dcmiInfo.DMA_Handle, DMA_IT_TC) != RESET) {
       // clear transferComplete interrupt flag
-      regs->IFCR = DMA_FLAG_TCIF0_4 << hdma->StreamIndex;
+      regs->IFCR = DMA_FLAG_TCIF0_4 << dcmiInfo.DMA_Handle->StreamIndex;
 
       dcmiInfo.XferCount++;
       if (dcmiInfo.XferCount <= dcmiInfo.XferTransferNumber - 2) {
@@ -380,7 +356,7 @@ void cCamera::dcmiIrqHandler() {
 
   if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
     // synchronizationError interrupt
-    dcmiInfo.Instance->ICR = DCMI_FLAG_ERRRI;
+    DCMI->ICR = DCMI_FLAG_ERRRI;
 
     //__HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
     cLcd::mLcd->debug (LCD_COLOR_RED, "syncIrq");
@@ -388,13 +364,13 @@ void cCamera::dcmiIrqHandler() {
 
   if ((misr & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
     // overflowError interrupt
-    dcmiInfo.Instance->ICR = DCMI_FLAG_OVRRI;
+    DCMI->ICR = DCMI_FLAG_OVRRI;
     //__HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
     cLcd::mLcd->debug (LCD_COLOR_RED, "overflowIrq");
     }
 
   if ((misr & DCMI_FLAG_VSYNCRI) == DCMI_FLAG_VSYNCRI) {
-    dcmiInfo.Instance->ICR = DCMI_FLAG_VSYNCRI;
+    DCMI->ICR = DCMI_FLAG_VSYNCRI;
     uint32_t rx = DMA2_Stream1->NDTR;
 
     auto ticks = HAL_GetTick();
@@ -714,16 +690,16 @@ void cCamera::mt9d111Init() {
   }
 //}}}
 //{{{
-void cCamera::dmaInit (DMA_HandleTypeDef *hdma) {
+void cCamera::dmaInit() {
 
   // Disable the peripheral
-  __HAL_DMA_DISABLE (hdma);
+  __HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
 
   // Check if the DMA Stream is effectively disabled
-  while ((hdma->Instance->CR & DMA_SxCR_EN) != RESET);
+  while ((dcmiInfo.DMA_Handle->Instance->CR & DMA_SxCR_EN) != RESET);
 
   // Get the CR register value
-  uint32_t tmp = hdma->Instance->CR;
+  uint32_t tmp = dcmiInfo.DMA_Handle->Instance->CR;
 
   // Clear CHSEL, MBURST, PBURST, PL, MSIZE, PSIZE, MINC, PINC, CIRC, DIR, CT and DBM bits
   tmp &= ((uint32_t)~(DMA_SxCR_CHSEL | DMA_SxCR_MBURST | DMA_SxCR_PBURST | \
@@ -732,59 +708,50 @@ void cCamera::dmaInit (DMA_HandleTypeDef *hdma) {
                       DMA_SxCR_DIR   | DMA_SxCR_CT     | DMA_SxCR_DBM));
 
   // Prepare the DMA Stream configuration
-  tmp |=  hdma->Init.Channel             | hdma->Init.Direction        |
-          hdma->Init.PeriphInc           | hdma->Init.MemInc           |
-          hdma->Init.PeriphDataAlignment | hdma->Init.MemDataAlignment |
-          hdma->Init.Mode                | hdma->Init.Priority;
+  tmp |=  dcmiInfo.DMA_Handle->Init.Channel             | dcmiInfo.DMA_Handle->Init.Direction        |
+          dcmiInfo.DMA_Handle->Init.PeriphInc           | dcmiInfo.DMA_Handle->Init.MemInc           |
+          dcmiInfo.DMA_Handle->Init.PeriphDataAlignment | dcmiInfo.DMA_Handle->Init.MemDataAlignment |
+          dcmiInfo.DMA_Handle->Init.Mode                | dcmiInfo.DMA_Handle->Init.Priority;
 
   // the Memory burst and peripheral burst are not used when the FIFO is disabled
-  if(hdma->Init.FIFOMode == DMA_FIFOMODE_ENABLE) // Get memory burst and peripheral burst
-    tmp |=  hdma->Init.MemBurst | hdma->Init.PeriphBurst;
+  if(dcmiInfo.DMA_Handle->Init.FIFOMode == DMA_FIFOMODE_ENABLE) // Get memory burst and peripheral burst
+    tmp |=  dcmiInfo.DMA_Handle->Init.MemBurst | dcmiInfo.DMA_Handle->Init.PeriphBurst;
 
   // Write to DMA Stream CR register
-  hdma->Instance->CR = tmp;
+  dcmiInfo.DMA_Handle->Instance->CR = tmp;
 
   // Get the FCR register value
-  tmp = hdma->Instance->FCR;
+  tmp = dcmiInfo.DMA_Handle->Instance->FCR;
 
   // Clear Direct mode and FIFO threshold bits
   tmp &= (uint32_t)~(DMA_SxFCR_DMDIS | DMA_SxFCR_FTH);
 
   // Prepare the DMA Stream FIFO configuration
-  tmp |= hdma->Init.FIFOMode;
+  tmp |= dcmiInfo.DMA_Handle->Init.FIFOMode;
 
   // The FIFO threshold is not used when the FIFO mode is disabled
-  if (hdma->Init.FIFOMode == DMA_FIFOMODE_ENABLE) //* Get the FIFO threshold
-    tmp |= hdma->Init.FIFOThreshold;
+  if (dcmiInfo.DMA_Handle->Init.FIFOMode == DMA_FIFOMODE_ENABLE) //* Get the FIFO threshold
+    tmp |= dcmiInfo.DMA_Handle->Init.FIFOThreshold;
 
   // Write to DMA Stream FCR
-  hdma->Instance->FCR = tmp;
+  dcmiInfo.DMA_Handle->Instance->FCR = tmp;
 
   // Initialize StreamBaseAddress and StreamIndex for  DMA streamBaseAddress used by HAL_DMA_IRQHandler()
   // lookup table for necessary bitshift of flags within status registers
-  uint32_t stream_number = (((uint32_t)hdma->Instance & 0xFFU) - 16U) / 24U;
-  hdma->StreamIndex = flagBitshiftOffset[stream_number];
+  uint32_t stream_number = (((uint32_t)dcmiInfo.DMA_Handle->Instance & 0xFFU) - 16U) / 24U;
+  dcmiInfo.DMA_Handle->StreamIndex = flagBitshiftOffset[stream_number];
   if (stream_number > 3U) // return pointer to HISR and HIFCR */
-    hdma->StreamBaseAddress = (((uint32_t)hdma->Instance & (uint32_t)(~0x3FFU)) + 4U);
+    dcmiInfo.DMA_Handle->StreamBaseAddress = (((uint32_t)dcmiInfo.DMA_Handle->Instance & (uint32_t)(~0x3FFU)) + 4U);
   else // return pointer to LISR and LIFCR */
-    hdma->StreamBaseAddress = ((uint32_t)hdma->Instance & (uint32_t)(~0x3FFU));
-  tDmaBaseRegisters* regs = (tDmaBaseRegisters*)hdma->StreamBaseAddress;
+    dcmiInfo.DMA_Handle->StreamBaseAddress = ((uint32_t)dcmiInfo.DMA_Handle->Instance & (uint32_t)(~0x3FFU));
+  tDmaBaseRegisters* regs = (tDmaBaseRegisters*)dcmiInfo.DMA_Handle->StreamBaseAddress;
 
   // Clear all interrupt flags
-  regs->IFCR = 0x3FU << hdma->StreamIndex;
+  regs->IFCR = 0x3FU << dcmiInfo.DMA_Handle->StreamIndex;
   }
 //}}}
 //{{{
-void cCamera::dcmiInit (tDcmiInfo* dcmi) {
-
-  // config DCMI
-  dcmi->Instance = DCMI;
-  dcmi->CaptureRate      = DCMI_CR_ALL_FRAME;
-  dcmi->HSPolarity       = DCMI_HSPOLARITY_LOW;
-  dcmi->VSPolarity       = DCMI_HSPOLARITY_LOW;
-  dcmi->ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-  dcmi->PCKPolarity      = DCMI_PCKPOLARITY_RISING;
-  dcmi->JPEGMode         = DCMI_JPEG_ENABLE;
+void cCamera::dcmiInit() {
 
   // Associate the initialized DMA handle to the DCMI handle
   dmaHandler.Instance = DMA2_Stream1;
@@ -800,7 +767,15 @@ void cCamera::dcmiInit (tDcmiInfo* dcmi) {
   dmaHandler.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
   dmaHandler.Init.MemBurst            = DMA_MBURST_SINGLE;
   dmaHandler.Init.PeriphBurst         = DMA_PBURST_SINGLE;
-  __HAL_LINKDMA (dcmi, DMA_Handle, dmaHandler);
+
+  // config DCMI
+  dcmiInfo.DMA_Handle       = &dmaHandler;
+  dcmiInfo.CaptureRate      = DCMI_CR_ALL_FRAME;
+  dcmiInfo.HSPolarity       = DCMI_HSPOLARITY_LOW;
+  dcmiInfo.VSPolarity       = DCMI_HSPOLARITY_LOW;
+  dcmiInfo.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
+  dcmiInfo.PCKPolarity      = DCMI_PCKPOLARITY_RISING;
+  dcmiInfo.JPEGMode         = DCMI_JPEG_ENABLE;
 
   // NVIC configuration for DCMI transfer complete interrupt
   HAL_NVIC_SetPriority (DCMI_IRQn, 0x0F, 0);
@@ -811,69 +786,69 @@ void cCamera::dcmiInit (tDcmiInfo* dcmi) {
   HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
 
   // Configure the DMA stream
-  dmaInit (dcmi->DMA_Handle);
+  dmaInit();
 
   // Configures the HS, VS, DE and PC polarity
   DCMI->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  | DCMI_CR_EDM_0  | DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 |
                 DCMI_CR_FCRC_1 | DCMI_CR_JPEG   | DCMI_CR_ESS | DCMI_CR_BSM_0  | DCMI_CR_BSM_1  | DCMI_CR_OEBS |
                 DCMI_CR_LSM | DCMI_CR_OELS);
-  DCMI->CR |=  (uint32_t)(dcmi->SynchroMode     | dcmi->CaptureRate | dcmi->VSPolarity      | dcmi->HSPolarity  |
-                          dcmi->PCKPolarity     | dcmi->ExtendedDataMode | dcmi->JPEGMode | dcmi->ByteSelectMode |
-                          dcmi->ByteSelectStart | dcmi->LineSelectMode | dcmi->LineSelectStart);
+  DCMI->CR |=  (uint32_t)(dcmiInfo.SynchroMode     | dcmiInfo.CaptureRate | dcmiInfo.VSPolarity      | dcmiInfo.HSPolarity  |
+                          dcmiInfo.PCKPolarity     | dcmiInfo.ExtendedDataMode | dcmiInfo.JPEGMode | dcmiInfo.ByteSelectMode |
+                          dcmiInfo.ByteSelectStart | dcmiInfo.LineSelectMode | dcmiInfo.LineSelectStart);
 
   // enable Error, overrun, vsync interrupts
-  dcmi->Instance->IER |= DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC;
+  DCMI->IER |= DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC;
   }
 //}}}
 
 //{{{
-void cCamera::dcmiStart (tDcmiInfo* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length) {
+void cCamera::dcmiStart (uint32_t DCMI_Mode, uint32_t data, uint32_t length) {
 
   // disable DCMI by resetting DCMIEN bit
-  dcmi->Instance->CR &= ~DCMI_CR_ENABLE;
+  DCMI->CR &= ~DCMI_CR_ENABLE;
 
-  __HAL_DMA_DISABLE (dcmi->DMA_Handle);
+  __HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
 
   // enable DCMI by setting DCMIEN bit
-  dcmi->Instance->CR |= DCMI_CR_ENABLE;
+  DCMI->CR |= DCMI_CR_ENABLE;
 
   // config the DCMI Mode
   DCMI->CR = (DCMI->CR & ~(DCMI_CR_CM)) | DCMI_Mode;
 
   // calc the number of xfers with xferSize <= 64k
-  dcmi->pBuffPtr = data;
-  dcmi->XferCount = 0;
-  dcmi->XferTransferNumber = 1;
-  dcmi->XferSize = length;
-  while (dcmi->XferSize > 0xFFFF) {
-    dcmi->XferSize = dcmi->XferSize / 2;
-    dcmi->XferTransferNumber = dcmi->XferTransferNumber * 2;
+  dcmiInfo.pBuffPtr = data;
+  dcmiInfo.XferCount = 0;
+  dcmiInfo.XferTransferNumber = 1;
+  dcmiInfo.XferSize = length;
+  while (dcmiInfo.XferSize > 0xFFFF) {
+    dcmiInfo.XferSize = dcmiInfo.XferSize / 2;
+    dcmiInfo.XferTransferNumber = dcmiInfo.XferTransferNumber * 2;
     }
 
   // enable dma doubleBufferMode
-  dcmi->DMA_Handle->Instance->CR |= (uint32_t)DMA_SxCR_DBM;
+  dcmiInfo.DMA_Handle->Instance->CR |= (uint32_t)DMA_SxCR_DBM;
 
   // config dma src, dst address, length
-  dcmi->DMA_Handle->Instance->NDTR = dcmi->XferSize;
-  dcmi->DMA_Handle->Instance->PAR = (uint32_t)&dcmi->Instance->DR;
-  dcmi->DMA_Handle->Instance->M0AR = data;
-  dcmi->DMA_Handle->Instance->M1AR = data + (4*dcmi->XferSize);
+  dcmiInfo.DMA_Handle->Instance->NDTR = dcmiInfo.XferSize;
+  dcmiInfo.DMA_Handle->Instance->PAR = (uint32_t)&DCMI->DR;
+  dcmiInfo.DMA_Handle->Instance->M0AR = data;
+  dcmiInfo.DMA_Handle->Instance->M1AR = data + (4*dcmiInfo.XferSize);
 
   // clear all dma flags
-  __HAL_DMA_CLEAR_FLAG (dcmi->DMA_Handle, __HAL_DMA_GET_TC_FLAG_INDEX (dcmi->DMA_Handle));
-  __HAL_DMA_CLEAR_FLAG (dcmi->DMA_Handle, __HAL_DMA_GET_HT_FLAG_INDEX (dcmi->DMA_Handle));
-  __HAL_DMA_CLEAR_FLAG (dcmi->DMA_Handle, __HAL_DMA_GET_TE_FLAG_INDEX (dcmi->DMA_Handle));
-  __HAL_DMA_CLEAR_FLAG (dcmi->DMA_Handle, __HAL_DMA_GET_DME_FLAG_INDEX (dcmi->DMA_Handle));
-  __HAL_DMA_CLEAR_FLAG (dcmi->DMA_Handle, __HAL_DMA_GET_FE_FLAG_INDEX (dcmi->DMA_Handle));
+  __HAL_DMA_CLEAR_FLAG (dcmiInfo.DMA_Handle, __HAL_DMA_GET_TC_FLAG_INDEX (dcmiInfo.DMA_Handle));
+  __HAL_DMA_CLEAR_FLAG (dcmiInfo.DMA_Handle, __HAL_DMA_GET_HT_FLAG_INDEX (dcmiInfo.DMA_Handle));
+  __HAL_DMA_CLEAR_FLAG (dcmiInfo.DMA_Handle, __HAL_DMA_GET_TE_FLAG_INDEX (dcmiInfo.DMA_Handle));
+  __HAL_DMA_CLEAR_FLAG (dcmiInfo.DMA_Handle, __HAL_DMA_GET_DME_FLAG_INDEX (dcmiInfo.DMA_Handle));
+  __HAL_DMA_CLEAR_FLAG (dcmiInfo.DMA_Handle, __HAL_DMA_GET_FE_FLAG_INDEX (dcmiInfo.DMA_Handle));
 
   // enable dma interrupts
-  dcmi->DMA_Handle->Instance->CR  |= DMA_IT_TC | DMA_IT_TE | DMA_IT_DME;
-  dcmi->DMA_Handle->Instance->FCR |= DMA_IT_FE;
+  dcmiInfo.DMA_Handle->Instance->CR  |= DMA_IT_TC | DMA_IT_TE | DMA_IT_DME;
+  dcmiInfo.DMA_Handle->Instance->FCR |= DMA_IT_FE;
 
   // enable dma peripheral
-  __HAL_DMA_ENABLE (dcmi->DMA_Handle);
+  __HAL_DMA_ENABLE (dcmiInfo.DMA_Handle);
 
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", dcmi->XferCount, dcmi->XferSize, length);
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", dcmiInfo.XferCount, dcmiInfo.XferSize, length);
 
   // enable dcmi capture
   DCMI->CR |= DCMI_CR_CAPTURE;

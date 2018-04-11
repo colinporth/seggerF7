@@ -3,8 +3,6 @@
 #include "stm32746g_discovery.h"
 #include "cLcd.h"
 
-struct tDcmiInfo;
-
 class cCamera {
 public:
   void init();
@@ -13,7 +11,6 @@ public:
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
   bool getCaptureMode() { return mCaptureMode; }
-
   char* getString();
 
   void setFocus (int value);
@@ -24,15 +21,39 @@ public:
 private:
   void gpioInit();
   void mt9d111Init();
-  void dmaInit (DMA_HandleTypeDef* hdma);
-  void dcmiInit (tDcmiInfo* dcmi);
-  void dcmiStart (tDcmiInfo* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length);
+  void dmaInit();
+  void dcmiInit();
+  void dcmiStart (uint32_t DCMI_Mode, uint32_t data, uint32_t length);
 
   void preview();
   void capture();
   void jpeg();
 
+  //{{{
+  struct tDcmiInfo {
+     __IO uint32_t     XferCount;          // DMA transfer counter
+    __IO uint32_t      XferSize;           // DMA transfer size
+    uint32_t           XferTransferNumber; // DMA transfer number
+    uint32_t           pBuffPtr;           // Pointer to DMA output buffer
+    DMA_HandleTypeDef* DMA_Handle;         // Pointer to the DMA handler
+
+    // init
+    uint32_t SynchroMode;
+    uint32_t PCKPolarity;
+    uint32_t VSPolarity;
+    uint32_t HSPolarity;
+    uint32_t CaptureRate;
+    uint32_t ExtendedDataMode;
+    uint32_t JPEGMode;
+    uint32_t ByteSelectMode;
+    uint32_t ByteSelectStart;
+    uint32_t LineSelectMode;
+    uint32_t LineSelectStart;
+    };
+  //}}}
+  tDcmiInfo dcmiInfo;
   DMA_HandleTypeDef dmaHandler;
+
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;
   bool mCaptureMode = false;
