@@ -28,32 +28,6 @@ private:
   void capture();
   void jpeg();
 
-  //{{{
-  struct tDcmiInfo {
-    // dcmi dma
-    DMA_HandleTypeDef mDmaHandler;
-
-     __IO uint32_t    mXferCount;    // DMA transfer counter
-    __IO uint32_t     mXferSize;     // DMA transfer size
-    uint32_t          mXferMaxCount; // DMA transfer number
-    uint32_t          mBuffPtr;      // Pointer to DMA output buffer
-
-    // dcmi init
-    uint32_t SynchroMode;
-    uint32_t PCKPolarity;
-    uint32_t VSPolarity;
-    uint32_t HSPolarity;
-    uint32_t CaptureRate;
-    uint32_t ExtendedDataMode;
-    uint32_t JPEGMode;
-    uint32_t ByteSelectMode;
-    uint32_t ByteSelectStart;
-    uint32_t LineSelectMode;
-    uint32_t LineSelectStart;
-    };
-  //}}}
-  tDcmiInfo dcmiInfo;
-
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;
   bool mCaptureMode = false;
@@ -62,4 +36,25 @@ private:
   char mStr[40] = { 0 };
   uint32_t mTicks = 0;
   uint32_t mTookTicks = 0;
+
+  // dcmi dma
+  DMA_HandleTypeDef mDmaHandler;
+
+   __IO uint32_t    mXferCount;    // DMA transfer counter
+  __IO uint32_t     mXferSize;     // DMA transfer size
+  uint32_t          mXferMaxCount; // DMA transfer number
+  uint32_t          mBuffPtr;      // Pointer to DMA output buffer
+
+  // dcmi init
+  uint32_t SynchroMode;
+  uint32_t PCKPolarity;
+  uint32_t VSPolarity;
+  uint32_t HSPolarity;
+  uint32_t CaptureRate;
+  uint32_t ExtendedDataMode;
+  uint32_t JPEGMode;
+  uint32_t ByteSelectMode;
+  uint32_t ByteSelectStart;
+  uint32_t LineSelectMode;
+  uint32_t LineSelectStart;
   };
