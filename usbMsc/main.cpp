@@ -51,9 +51,10 @@ private:
   void reportLabel();
 
   cLcd* mLcd = nullptr;
+  cCamera* mCamera = nullptr;
   cPs2* mPs2 = nullptr;
-  int mFiles = 0;
 
+  int mFiles = 0;
   DWORD mVsn = 0;
   char mLabel[40];
   };
@@ -68,7 +69,6 @@ extern "C" {
 //{{{
 void cApp::run() {
 
-  // init lcd
   mLcd = new cLcd (16);
   mLcd->init();
   //{{{  removed
@@ -77,7 +77,7 @@ void cApp::run() {
   //}}}
 
   mscInit (mLcd);
-  //mscStart();
+  mscStart();
 
   if (f_mount ((FATFS*)malloc (sizeof (FATFS)), kSdPath, 0) == FR_OK) {
     char pathName[256] = "/";
@@ -92,9 +92,9 @@ void cApp::run() {
   else
     mLcd->debug (LCD_COLOR_RED, "not mounted");
 
-
-  camera.init();
-  camera.start (false, mLcd->getCameraBuffer());
+  mCamera = new cCamera();
+  mCamera->init();
+  mCamera->start (false, mLcd->getCameraBuffer());
 
   bool previewMode = true;
   bool lastButton = false;
@@ -109,9 +109,9 @@ void cApp::run() {
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
-    mLcd->startBgnd ((uint16_t*)mLcd->getCameraBuffer(), camera.getWidth(), camera.getHeight(), BSP_PB_GetState (BUTTON_KEY));
+    mLcd->startBgnd ((uint16_t*)mLcd->getCameraBuffer(), mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
     mLcd->drawTitle (kVersion);
-    mLcd->drawInfo (24, camera.getString());
+    mLcd->drawInfo (24, mCamera->getString());
 
     mLcd->drawDebug();
     mLcd->present();
@@ -132,7 +132,7 @@ void cApp::run() {
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
     if (!button && (button != lastButton))
-      camera.start (!camera.getCaptureMode(), mLcd->getCameraBuffer());
+      mCamera->start (!mCamera->getCaptureMode(), mLcd->getCameraBuffer());
     lastButton = button;
     }
   }
