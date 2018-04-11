@@ -80,9 +80,9 @@ SD_HandleTypeDef uSdHandle;
 static DMA_HandleTypeDef dma_rx_handle;
 static DMA_HandleTypeDef dma_tx_handle;
 
-  void BSP_SDMMC_IRQHandler() { HAL_SD_IRQHandler (&uSdHandle); }
-  void BSP_SDMMC_DMA_Tx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmatx); }
-  void BSP_SDMMC_DMA_Rx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmarx); }
+void BSP_SDMMC_IRQHandler() { HAL_SD_IRQHandler (&uSdHandle); }
+void BSP_SDMMC_DMA_Tx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmatx); }
+void BSP_SDMMC_DMA_Rx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmarx); }
 
 //{{{
 uint8_t BSP_SD_Init()

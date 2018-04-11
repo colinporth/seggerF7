@@ -81,8 +81,6 @@ void cCamera::init() {
 
   // startup dcmi
   dcmiInit();
-
-  preview();
   }
 //}}}
 
@@ -244,28 +242,40 @@ void cCamera::jpeg() {
   //{{{  readback jpeg params
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa907);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_CONFIG %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2772);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_FIFO_CONF0_B %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2774);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_FIFO_CONF1_B %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2776);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_FIFO_CONF2_B %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2707);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_OUTPUT_WIDTH_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2709);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_OUTPUT_HEIGHT_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2779);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_SPOOF_WIDTH_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x277b);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_SPOOF_HEIGHT_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa906);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_FORMAT %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2908);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_RESTART_INT %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa90a);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_QSCALE_1 %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa90a);
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_QSCALE_1 %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa90b);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_QSCALE_2 %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
+
   //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa90c);
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_QSCALE_3 %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
   //}}}

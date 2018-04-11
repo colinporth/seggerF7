@@ -12,7 +12,6 @@
 #include "stm32746g_discovery_sd.h"
 #include "cCamera.h"
 //}}}
-const char kSdPath[40] = "0:/";
 const char* kVersion = "Camera 11/4/18";
 
 int focus = 0;
@@ -79,16 +78,33 @@ void cApp::run() {
   mscInit (mLcd);
   mscStart();
 
-  if (f_mount ((FATFS*)malloc (sizeof (FATFS)), kSdPath, 0) == FR_OK) {
-    char pathName[256] = "/";
-    readDirectory (pathName);
-    reportLabel();
-    mLcd->debug (LCD_COLOR_YELLOW, "mounted");
+  auto fatFs = (FATFS*)malloc (sizeof (FATFS));
+  if (!f_mount (fatFs, "", 0)) {
+    f_getlabel ("", mLabel, &mVsn);
+    mLcd->debug (LCD_COLOR_WHITE, "Label <%s> ", mLabel);
 
-    FIL* file;
-    auto result = f_open (file, "image.jpg", FA_READ);
-    if (result == FR_OK)
-      mLcd->debug (LCD_COLOR_WHITE, "found image.jpg");
+    //char pathName[256] = "/";
+    //readDirectory (pathName);
+    FILINFO filInfo;
+    if (!f_stat ("image.jpg", &filInfo))
+      mLcd->debug (LCD_COLOR_WHITE, "%d %u/%02u/%02u %02u:%02u %c%c%c%c%c",
+                   (int)(filInfo.fsize),
+                   (filInfo.fdate >> 9) + 1980, filInfo.fdate >> 5 & 15, filInfo.fdate & 31,
+                    filInfo.ftime >> 11, filInfo.ftime >> 5 & 63,
+                   (filInfo.fattrib & AM_DIR) ? 'D' : '-',
+                   (filInfo.fattrib & AM_RDO) ? 'R' : '-',
+                   (filInfo.fattrib & AM_HID) ? 'H' : '-',
+                   (filInfo.fattrib & AM_SYS) ? 'S' : '-',
+                   (filInfo.fattrib & AM_ARC) ? 'A' : '-');
+
+    FIL file;
+    if (!f_open (&file, "image.jpg", FA_READ)) {
+      mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
+      UINT bytesRead;
+      f_read (&file, (void*)mLcd->getCameraBuffer(), (UINT)filInfo.fsize,  &bytesRead);
+      mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
+      f_close (&file);
+      }
     else
       mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
     }
@@ -99,10 +115,8 @@ void cApp::run() {
   mCamera->init();
   mCamera->start (false, mLcd->getCameraBuffer());
 
-  bool previewMode = true;
-  bool lastButton = false;
-
   int lastCount = 0;
+  bool lastButton = false;
   while (true) {
     pollTouch();
     //{{{  removed
@@ -118,21 +132,7 @@ void cApp::run() {
 
     mLcd->drawDebug();
     mLcd->present();
-    //{{{  removed
-    //if (hasSdChanged()) {
-      //{{{  check num files
-      //char pathName[256] = "/";
-      //auto count = getCountFiles (pathName);
-      //if (count != lastCount) {
-        //f_getlabel (kSdPath, mLabel, &mVsn);
-        //mLcd->debug (LCD_COLOR_WHITE, "Label <%s> - %d files", mLabel, count);
-        //lastCount = count;
-        //reportFree();
-        //}
-      //}
-      //}}}
-    //}}}
-
+    
     bool button = BSP_PB_GetState (BUTTON_KEY);
     if (!button && (button != lastButton))
       mCamera->start (!mCamera->getCaptureMode(), mLcd->getCameraBuffer());
@@ -273,13 +273,6 @@ void cApp::countFiles (char* path) {
     path[--i] = '\0';
     f_closedir (&dir);
     }
-  }
-//}}}
-//{{{
-void cApp::reportLabel() {
-
-  f_getlabel (kSdPath, mLabel, &mVsn);
-  mLcd->debug (LCD_COLOR_WHITE, "Label <%s> ", mLabel);
   }
 //}}}
 //{{{
