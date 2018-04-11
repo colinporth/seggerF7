@@ -6,8 +6,8 @@
 //}}}
 
 #define i2cAddress 0x90
-#define capture800x600
-//#define captureJpeg
+//#define capture800x600
+#define captureJpeg
 //{{{  dcmi defines
 #define DCMI_MODE_CONTINUOUS ((uint32_t)0x00000000U)
 #define DCMI_MODE_SNAPSHOT   ((uint32_t)DCMI_CR_CM)
@@ -129,15 +129,15 @@ void cCamera::setFocus (int value) {
 //{{{
 void cCamera::start (bool captureMode, uint32_t buffer) {
 
-  mCaptureMode = captureMode;
+  mCapture = captureMode;
 
 #ifdef captureJpeg
-  mCaptureMode ? jpeg() : preview();
+  mCapture ? jpeg() : preview();
 #else
-  mCaptureMode ? capture() : preview();
+  mCapture ? capture() : preview();
 #endif
 
-  dcmiStart (buffer, getWidth()*getHeight()/2);
+  dcmiStart (buffer);
   }
 //}}}
 //{{{
@@ -285,7 +285,6 @@ void cCamera::jpeg() {
 //{{{
 void cCamera::dmaIrqHandler() {
 
-  // calculate DMA base and stream number
   uint32_t isr = mDmaBaseRegisters->ISR;
 
   // transferComplete Interrupt, doubleBufferMode handling
@@ -295,6 +294,8 @@ void cCamera::dmaIrqHandler() {
       mDmaBaseRegisters->IFCR = DMA_FLAG_TCIF0_4 << mDmaHandler.StreamIndex;
 
       mXferCount++;
+      mCurPtr += 4 * mXferSize;
+
       if (mXferCount <= mXferMaxCount - 2) {
         // next dma chunk
         auto buf = mBuffPtr + ((mXferCount+1) * (4 * mXferSize));
@@ -314,6 +315,7 @@ void cCamera::dmaIrqHandler() {
         DMA2_Stream1->M1AR = mBuffPtr + (4 * mXferSize);
         //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d done", mXferCount);
         mXferCount = 0;
+        mCurPtr = mBuffPtr;
         }
       }
     }
@@ -366,13 +368,24 @@ void cCamera::dcmiIrqHandler() {
 
   if ((misr & DCMI_FLAG_VSYNCRI) == DCMI_FLAG_VSYNCRI) {
     DCMI->ICR = DCMI_FLAG_VSYNCRI;
-    uint32_t rx = DMA2_Stream1->NDTR;
 
     auto ticks = HAL_GetTick();
     mTookTicks = ticks - mTicks;
     mTicks = ticks;
     mFrames++;
-    //cLcd::mLcd->debug (LCD_COLOR_GREEN, "v:%d:%d", mXferCount, rx);
+
+    #ifdef captureJpeg
+    if (mCapture) {
+      uint32_t rx = (mXferSize - DMA2_Stream1->NDTR) * 4;
+      uint8_t b1 = *((uint8_t*)(mCurPtr + rx - 4));
+      uint8_t b2 = *((uint8_t*)(mCurPtr + rx - 3));
+      uint8_t b3 = *((uint8_t*)(mCurPtr + rx - 2));
+      uint8_t b4 = *((uint8_t*)(mCurPtr + rx - 1));
+      cLcd::mLcd->debug (LCD_COLOR_WHITE, "v %2d %6d %7d %2x %d",
+                                          mXferCount, rx, mCurPtr + rx - mLastXferCount, b4, (b3 << 16) + (b2 << 8) + b4);
+      mLastXferCount = mCurPtr + rx;
+      }
+    #endif
     }
   }
 //}}}
@@ -703,19 +716,19 @@ void cCamera::dcmiInit() {
   mDmaHandler.Init.PeriphBurst         = DMA_PBURST_SINGLE;
 
    //{{{  config dma CR - CHSEL, MBURST, PBURST, PL, MSIZE, PSIZE, MINC, PINC, CIRC, DIR, CT and DBM bits
-  uint32_t tmp = DMA2_Stream1->CR;
-  tmp &= ((uint32_t)~(DMA_SxCR_CHSEL | DMA_SxCR_MBURST | DMA_SxCR_PBURST |
+   uint32_t tmp = DMA2_Stream1->CR;
+   tmp &= ((uint32_t)~(DMA_SxCR_CHSEL | DMA_SxCR_MBURST | DMA_SxCR_PBURST |
                       DMA_SxCR_PL    | DMA_SxCR_MSIZE  | DMA_SxCR_PSIZE  |
                       DMA_SxCR_MINC  | DMA_SxCR_PINC   | DMA_SxCR_CIRC   |
                       DMA_SxCR_DIR   | DMA_SxCR_CT     | DMA_SxCR_DBM));
-  tmp |=  mDmaHandler.Init.Channel             | mDmaHandler.Init.Direction        |
+   tmp |=  mDmaHandler.Init.Channel             | mDmaHandler.Init.Direction        |
           mDmaHandler.Init.PeriphInc           | mDmaHandler.Init.MemInc           |
           mDmaHandler.Init.PeriphDataAlignment | mDmaHandler.Init.MemDataAlignment |
           mDmaHandler.Init.Mode               | mDmaHandler.Init.Priority;
-  if (mDmaHandler.Init.FIFOMode == DMA_FIFOMODE_ENABLE) // Get memory burst and peripheral burst
+   if (mDmaHandler.Init.FIFOMode == DMA_FIFOMODE_ENABLE) // Get memory burst and peripheral burst
     tmp |= mDmaHandler.Init.MemBurst | mDmaHandler.Init.PeriphBurst;
-  DMA2_Stream1->CR = tmp;
-  //}}}
+   DMA2_Stream1->CR = tmp;
+   //}}}
   //{{{  config dma FCR - clear directMode and fifoThreshold
   tmp = DMA2_Stream1->FCR;
   tmp &= (uint32_t)~(DMA_SxFCR_DMDIS | DMA_SxFCR_FTH);
@@ -757,7 +770,7 @@ void cCamera::dcmiInit() {
 //}}}
 
 //{{{
-void cCamera::dcmiStart (uint32_t data, uint32_t length) {
+void cCamera::dcmiStart (uint32_t data) {
 
   // disable DCMI by resetting DCMIEN bit
   DCMI->CR &= ~DCMI_CR_ENABLE;
@@ -774,7 +787,7 @@ void cCamera::dcmiStart (uint32_t data, uint32_t length) {
   mBuffPtr = data;
   mXferCount = 0;
   mXferMaxCount = 1;
-  mXferSize = length;
+  mXferSize = getWidth()*getHeight()/2;
   while (mXferSize > 0xFFFF) {
     mXferSize = mXferSize / 2;
     mXferMaxCount = mXferMaxCount * 2;
@@ -803,7 +816,7 @@ void cCamera::dcmiStart (uint32_t data, uint32_t length) {
   // enable dma peripheral
   __HAL_DMA_ENABLE (&mDmaHandler);
 
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", mXferCount, mXferSize, length);
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", mXferCount, mXferSize, getWidth()*getHeight()/2);
 
   // enable dcmi capture
   DCMI->CR |= DCMI_CR_CAPTURE;

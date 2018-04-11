@@ -141,7 +141,7 @@
       arm_target_device_name="STM32F746NG"
       arm_target_interface_type="SWD"
       c_preprocessor_definitions="USE_HAL_DRIVER;STM32F746xx;USE_STM32746G_DISCO"
-      c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/BSP;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include."
+      c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/BSP;$(SolutionDir)/LibJPEG/include;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include."
       debug_target_connection="J-Link"
       debug_type_file="$(StudioDir)/bin/STLport.xml"
       gcc_c_language_standard="c11"
@@ -307,6 +307,52 @@
         <file file_name="../FatFs/ff.h" />
       </folder>
       <file file_name="../FatFs/ff.c" />
+    </folder>
+    <folder Name="libJpeg">
+      <file file_name="../LibJPEG/source/jquant1.c" />
+      <file file_name="../LibJPEG/source/jquant2.c" />
+      <file file_name="../LibJPEG/source/jaricom.c" />
+      <file file_name="../LibJPEG/source/jcapimin.c" />
+      <file file_name="../LibJPEG/source/jcapistd.c" />
+      <file file_name="../LibJPEG/source/jcarith.c" />
+      <file file_name="../LibJPEG/source/jccoefct.c" />
+      <file file_name="../LibJPEG/source/jccolor.c" />
+      <file file_name="../LibJPEG/source/jcdctmgr.c" />
+      <file file_name="../LibJPEG/source/jchuff.c" />
+      <file file_name="../LibJPEG/source/jcinit.c" />
+      <file file_name="../LibJPEG/source/jcmainct.c" />
+      <file file_name="../LibJPEG/source/jcmarker.c" />
+      <file file_name="../LibJPEG/source/jcmaster.c" />
+      <file file_name="../LibJPEG/source/jcomapi.c" />
+      <file file_name="../LibJPEG/source/jcparam.c" />
+      <file file_name="../LibJPEG/source/jcprepct.c" />
+      <file file_name="../LibJPEG/source/jcsample.c" />
+      <file file_name="../LibJPEG/source/jctrans.c" />
+      <file file_name="../LibJPEG/source/jdapimin.c" />
+      <file file_name="../LibJPEG/source/jdapistd.c" />
+      <file file_name="../LibJPEG/source/jdarith.c" />
+      <file file_name="../LibJPEG/source/jdatadst.c" />
+      <file file_name="../LibJPEG/source/jdatasrc.c" />
+      <file file_name="../LibJPEG/source/jdcoefct.c" />
+      <file file_name="../LibJPEG/source/jdcolor.c" />
+      <file file_name="../LibJPEG/source/jddctmgr.c" />
+      <file file_name="../LibJPEG/source/jdhuff.c" />
+      <file file_name="../LibJPEG/source/jdinput.c" />
+      <file file_name="../LibJPEG/source/jdmainct.c" />
+      <file file_name="../LibJPEG/source/jdmarker.c" />
+      <file file_name="../LibJPEG/source/jdmaster.c" />
+      <file file_name="../LibJPEG/source/jdmerge.c" />
+      <file file_name="../LibJPEG/source/jdpostct.c" />
+      <file file_name="../LibJPEG/source/jdsample.c" />
+      <file file_name="../LibJPEG/source/jdtrans.c" />
+      <file file_name="../LibJPEG/source/jerror.c" />
+      <file file_name="../LibJPEG/source/jfdctflt.c" />
+      <file file_name="../LibJPEG/source/jfdctfst.c" />
+      <file file_name="../LibJPEG/source/jfdctint.c" />
+      <file file_name="../LibJPEG/source/jidctflt.c" />
+      <file file_name="../LibJPEG/source/jidctfst.c" />
+      <file file_name="../LibJPEG/source/jidctint.c" />
+      <file file_name="../LibJPEG/source/jmemmgr.c" />
     </folder>
   </project>
 </solution>

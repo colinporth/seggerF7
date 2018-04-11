@@ -1,15 +1,15 @@
 <!DOCTYPE CrossStudio_Session_File>
 <session>
  <Bookmarks>
-  <BookmarkItem objectName="" line="91" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="3" extra="bool use1600 = true; //mButton;" color="5"/>
-  <BookmarkItem objectName="" line="55" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="bool mButton = false;" color="5"/>
-  <BookmarkItem objectName="" line="56" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="char path[] = &quot;/&quot;;" color="5"/>
-  <BookmarkItem objectName="" line="60" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="path[i++] = '/';" color="5"/>
-  <BookmarkItem objectName="" line="70" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="3" extra="} while (fno.fname[j++]);" color="5"/>
-  <BookmarkItem objectName="" line="72" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="mButton = BSP_PB_GetState (BUTTON_KEY);" color="5"/>
+  <BookmarkItem objectName="" line="70" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="mButton = BSP_PB_GetState (BUTTON_KEY);" color="5"/>
+  <BookmarkItem objectName="" line="53" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="bool mButton = false;" color="5"/>
+  <BookmarkItem objectName="" line="54" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="char path[] = &quot;/&quot;;" color="5"/>
+  <BookmarkItem objectName="" line="58" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="path[i++] = '/';" color="5"/>
+  <BookmarkItem objectName="" line="68" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="3" extra="} while (fno.fname[j++]);" color="5"/>
+  <BookmarkItem objectName="" line="89" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="3" extra="bool use1600 = true; //mButton;" color="5"/>
  </Bookmarks>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
-  <BreakpointListItem trigger="" line="11" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="BSP/cLcd.h" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="11" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="BSP/cLcd.h" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="3255" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="FatFs/ff.c" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="411" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="517" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
@@ -90,6 +90,17 @@
  <Watch4>
   <Watches active="0" update="Never"/>
  </Watch4>
- <Files/>
+ <Files>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="40" useTextEdit="1" useBinaryEdit="0" left="0" path="main.cpp" debugPath="main.cpp" selected="0" top="26" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="378" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/mt9d111.cpp" debugPath="BSP/mt9d111.cpp" selected="0" top="344" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="53" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/cCamera.h" debugPath="BSP/cCamera.h" selected="0" top="21" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="9" y="382" useTextEdit="1" useBinaryEdit="0" left="0" path="Drivers/CMSIS/Device/ST/STM32F7xx/Include/stm32f746xx.h" debugPath="Drivers/CMSIS/Device/ST/STM32F7xx/Include/stm32f746xx.h" selected="0" top="369" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="14" useTextEdit="1" useBinaryEdit="0" left="0" path="LibJPEG/source/jquant1.c" debugPath="LibJPEG/source/jquant1.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="19" useTextEdit="1" useBinaryEdit="0" left="0" path="LibJPEG/include/jinclude.h" debugPath="LibJPEG/include/jinclude.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="45" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/jdata_conf.h" debugPath="usbMsc/jdata_conf.h" selected="0" top="1" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="16" y="100" useTextEdit="1" useBinaryEdit="0" left="3" path="LibJPEG/source/jmemansi.c" debugPath="LibJPEG/source/jmemansi.c" selected="1" top="59" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="57" useTextEdit="1" useBinaryEdit="0" left="0" path="LibJPEG/source/jmemmac.c" debugPath="LibJPEG/source/jmemmac.c" selected="0" top="13" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="207" useTextEdit="1" useBinaryEdit="0" left="0" path="LibJPEG/source/jmemname.c" debugPath="LibJPEG/source/jmemname.c" selected="0" top="163" codecName="Default"/>
+ </Files>
  <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Release" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

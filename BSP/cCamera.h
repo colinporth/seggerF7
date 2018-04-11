@@ -9,7 +9,7 @@ public:
 
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
-  bool getCaptureMode() { return mCaptureMode; }
+  bool getCaptureMode() { return mCapture; }
   char* getString();
 
   void setFocus (int value);
@@ -21,7 +21,7 @@ private:
   void gpioInit();
   void mt9d111Init();
   void dcmiInit();
-  void dcmiStart (uint32_t data, uint32_t length);
+  void dcmiStart (uint32_t data);
 
   void preview();
   void capture();
@@ -30,12 +30,13 @@ private:
   //{{{  vars
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;
-  bool mCaptureMode = false;
+  bool mCapture = false;
 
   int mFrames = 0;
   char mStr[40] = { 0 };
   uint32_t mTicks = 0;
   uint32_t mTookTicks = 0;
+  uint32_t mLastXferCount = 0;
 
   // dcmi dma
   //{{{  struct dmaBaseRegisters
@@ -46,11 +47,12 @@ private:
     };
   //}}}
   tDmaBaseRegisters* mDmaBaseRegisters = nullptr;
-  DMA_HandleTypeDef mDmaHandler;
+  DMA_HandleTypeDef  mDmaHandler;
 
-   __IO uint32_t    mXferCount;    // DMA transfer counter
-  __IO uint32_t     mXferSize;     // DMA transfer size
-  uint32_t          mXferMaxCount; // DMA transfer number
-  uint32_t          mBuffPtr;      // Pointer to DMA output buffer
+  __IO uint32_t     mXferCount;    // DMA transfer counter
+  __IO uint32_t      mXferSize;     // DMA transfer size
+  uint32_t           mXferMaxCount; // DMA transfer number
+  uint32_t           mBuffPtr;      // Pointer to DMA output buffer
+  uint32_t           mCurPtr;       // Pointer to DMA output buffer
   //}}}
   };
