@@ -47,7 +47,6 @@ private:
     };
   //}}}
   tDmaBaseRegisters* mDmaBaseRegisters = nullptr;
-  DMA_HandleTypeDef  mDmaHandler;
   uint32_t           mStreamIndex;
 
   __IO uint32_t      mXferCount;    // DMA transfer counter

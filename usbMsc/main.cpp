@@ -85,9 +85,12 @@ void cApp::run() {
     reportLabel();
     mLcd->debug (LCD_COLOR_YELLOW, "mounted");
 
-    auto count = getCountFiles (pathName);
-    f_getlabel (kSdPath, mLabel, &mVsn);
-    mLcd->debug (LCD_COLOR_WHITE, "Label <%s> - %d files", mLabel, count);
+    FIL* file;
+    auto result = f_open (file, "image.jpg", FA_READ);
+    if (result == FR_OK)
+      mLcd->debug (LCD_COLOR_WHITE, "found image.jpg");
+    else
+      mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
     }
   else
     mLcd->debug (LCD_COLOR_RED, "not mounted");

@@ -689,45 +689,41 @@ void cCamera::mt9d111Init() {
 //{{{
 void cCamera::dcmiInit() {
 
-  // associate the initialized DMA handle to the DCMI handle
-  //{{{  config dma CR - CHSEL, MBURST, PBURST, PL, MSIZE, PSIZE, MINC, PINC, CIRC, DIR, CT and DBM bits
+  // config dma CR - CHSEL, MBURST, PBURST, PL, MSIZE, PSIZE, MINC, PINC, CIRC, DIR, CT and DBM bits
   uint32_t tmp = DMA2_Stream1->CR;
-
   tmp &= ((uint32_t)~(DMA_SxCR_CHSEL | DMA_SxCR_MBURST | DMA_SxCR_PBURST |
-                     DMA_SxCR_PL     | DMA_SxCR_MSIZE  | DMA_SxCR_PSIZE  |
-                     DMA_SxCR_MINC   | DMA_SxCR_PINC   | DMA_SxCR_CIRC   |
-                     DMA_SxCR_DIR    | DMA_SxCR_CT     | DMA_SxCR_DBM));
-  tmp |=  DMA_CHANNEL_1 | DMA_PERIPH_TO_MEMORY | DMA_PINC_DISABLE | DMA_MINC_ENABLE |
-          DMA_PDATAALIGN_WORD | DMA_MDATAALIGN_WORD | DMA_CIRCULAR | DMA_PRIORITY_VERY_HIGH |
-          DMA_MBURST_INC4 | DMA_PBURST_SINGLE;
-
+                      DMA_SxCR_PL     | DMA_SxCR_MSIZE  | DMA_SxCR_PSIZE  |
+                      DMA_SxCR_MINC   | DMA_SxCR_PINC   | DMA_SxCR_CIRC   |
+                      DMA_SxCR_DIR    | DMA_SxCR_CT     | DMA_SxCR_DBM));
+  tmp |=  DMA_CHANNEL_1       | DMA_PERIPH_TO_MEMORY | DMA_PINC_DISABLE | DMA_MINC_ENABLE |
+          DMA_PDATAALIGN_WORD | DMA_MDATAALIGN_WORD  | DMA_CIRCULAR     | DMA_PRIORITY_VERY_HIGH |
+          DMA_MBURST_INC4     | DMA_PBURST_SINGLE;
   DMA2_Stream1->CR = tmp;
-  //}}}
-  //{{{  config dma FCR - clear directMode and fifoThreshold
+
+  // config dma FCR - clear directMode and fifoThreshold
   tmp = DMA2_Stream1->FCR;
   tmp &= (uint32_t)~(DMA_SxFCR_DMDIS | DMA_SxFCR_FTH);
   tmp |= DMA_FIFOMODE_ENABLE | DMA_FIFO_THRESHOLD_FULL;
   DMA2_Stream1->FCR = tmp;
-  //}}}
-  //{{{  config mDmaBaseRegisters, mStreamIndex
-  const uint8_t flagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
-  uint32_t stream_number = (((uint32_t)DMA2_Stream1 & 0xFFU) - 16U) / 24U;
-  mStreamIndex = flagBitshiftOffset[stream_number];
-  if (stream_number > 3U) // return pointer to HISR and HIFCR
+
+  // config mDmaBaseRegisters, mStreamIndex
+  const uint8_t kFlagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
+  auto streamNum = (((uint32_t)DMA2_Stream1 & 0xFFU) - 16U) / 24U;
+  mStreamIndex = kFlagBitshiftOffset[streamNum];
+  if (streamNum > 3U) // return pointer to HISR and HIFCR
     mDmaBaseRegisters = (tDmaBaseRegisters*)(((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU)) + 4U);
   else // return pointer to LISR and LIFCR
     mDmaBaseRegisters = (tDmaBaseRegisters*)((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU));
 
-  // clear all interrupt flags
+  // clear all dma interrupt flags
   mDmaBaseRegisters->IFCR = 0x3FU << mStreamIndex;
-  //}}}
 
   // config DCMI HS, VS, DE and PC polarity
   DCMI->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  | DCMI_CR_EDM_0  | DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 |
-                DCMI_CR_FCRC_1 | DCMI_CR_JPEG   | DCMI_CR_ESS | DCMI_CR_BSM_0  | DCMI_CR_BSM_1  | DCMI_CR_OEBS |
-                DCMI_CR_LSM | DCMI_CR_OELS);
-  DCMI->CR |=  DCMI_CR_ALL_FRAME | DCMI_HSPOLARITY_LOW | DCMI_HSPOLARITY_LOW  |
-               DCMI_PCKPOLARITY_RISING | DCMI_EXTEND_DATA_8B | DCMI_JPEG_ENABLE;
+                DCMI_CR_FCRC_1 | DCMI_CR_JPEG   | DCMI_CR_ESS    | DCMI_CR_BSM_0  | DCMI_CR_BSM_1  | DCMI_CR_OEBS |
+                DCMI_CR_LSM    | DCMI_CR_OELS);
+  DCMI->CR |= DCMI_CR_ALL_FRAME       | DCMI_HSPOLARITY_LOW | DCMI_HSPOLARITY_LOW  |
+              DCMI_PCKPOLARITY_RISING | DCMI_EXTEND_DATA_8B | DCMI_JPEG_ENABLE;
 
   // NVIC configuration for DCMI transfer complete interrupt
   HAL_NVIC_SetPriority (DCMI_IRQn, 0x0F, 0);
@@ -767,12 +763,12 @@ void cCamera::dcmiStart (uint32_t data) {
     mXferMaxCount = mXferMaxCount * 2;
     }
 
-  // enable dma doubleBufferMode,  config dma src, dst address, length
+  // enable dma doubleBufferMode,  config src, dst addresses, length
   DMA2_Stream1->CR |= (uint32_t)DMA_SxCR_DBM;
-  DMA2_Stream1->NDTR = mXferSize;
   DMA2_Stream1->PAR = (uint32_t)&DCMI->DR;
   DMA2_Stream1->M0AR = data;
   DMA2_Stream1->M1AR = data + (4*mXferSize);
+  DMA2_Stream1->NDTR = mXferSize;
 
   // clear all dma flags
   DMA2->LIFCR = DMA_FLAG_TCIF1_5;
