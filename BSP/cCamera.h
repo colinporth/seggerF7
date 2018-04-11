@@ -1,4 +1,4 @@
-// camera.h
+// cCamera.h
 #pragma once
 #include "stm32746g_discovery.h"
 
