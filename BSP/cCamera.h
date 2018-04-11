@@ -38,6 +38,14 @@ private:
   uint32_t mTookTicks = 0;
 
   // dcmi dma
+  //{{{  struct dmaBaseRegisters
+  struct tDmaBaseRegisters {
+    __IO uint32_t ISR;   /*!< DMA interrupt status register */
+    __IO uint32_t Reserved0;
+    __IO uint32_t IFCR;  /*!< DMA interrupt flag clear register */
+    };
+  //}}}
+  tDmaBaseRegisters* mDmaBaseRegisters = nullptr;
   DMA_HandleTypeDef mDmaHandler;
 
    __IO uint32_t    mXferCount;    // DMA transfer counter

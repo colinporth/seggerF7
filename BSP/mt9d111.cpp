@@ -63,13 +63,6 @@
 #define DCMI_OEBS_ODD        ((uint32_t)0x00000000U) /*!< Interface captures first data from the frame/line start, second one being dropped */
 #define DCMI_OEBS_EVEN       ((uint32_t)DCMI_CR_OEBS) /*!< Interface captures second data from the frame/line start, first one being dropped */
 //}}}
-//{{{  struct dmaBaseRegisters
-typedef struct {
-  __IO uint32_t ISR;   /*!< DMA interrupt status register */
-  __IO uint32_t Reserved0;
-  __IO uint32_t IFCR;  /*!< DMA interrupt flag clear register */
-  } tDmaBaseRegisters;
-//}}}
 
 static const uint8_t flagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
 
@@ -293,14 +286,13 @@ void cCamera::jpeg() {
 void cCamera::dmaIrqHandler() {
 
   // calculate DMA base and stream number
-  tDmaBaseRegisters* regs = (tDmaBaseRegisters*)mDmaHandler.StreamBaseAddress;
-  uint32_t isr = regs->ISR;
+  uint32_t isr = mDmaBaseRegisters->ISR;
 
   // transferComplete Interrupt, doubleBufferMode handling
   if ((isr & (DMA_FLAG_TCIF0_4 << mDmaHandler.StreamIndex)) != RESET) {
     if (__HAL_DMA_GET_IT_SOURCE (&mDmaHandler, DMA_IT_TC) != RESET) {
       // clear transferComplete interrupt flag
-      regs->IFCR = DMA_FLAG_TCIF0_4 << mDmaHandler.StreamIndex;
+      mDmaBaseRegisters->IFCR = DMA_FLAG_TCIF0_4 << mDmaHandler.StreamIndex;
 
       mXferCount++;
       if (mXferCount <= mXferMaxCount - 2) {
@@ -329,7 +321,7 @@ void cCamera::dmaIrqHandler() {
   //{{{  fifoError Interrupt
   if ((isr & (DMA_FLAG_FEIF0_4 << mDmaHandler.StreamIndex)) != RESET)
     if (__HAL_DMA_GET_IT_SOURCE (&mDmaHandler, DMA_IT_FE) != RESET) {
-      regs->IFCR = DMA_FLAG_FEIF0_4 << mDmaHandler.StreamIndex;
+      mDmaBaseRegisters->IFCR = DMA_FLAG_FEIF0_4 << mDmaHandler.StreamIndex;
       //cLcd::mLcd->debug (LCD_COLOR_RED, "dmaFifoError");
       }
   //}}}
@@ -337,7 +329,7 @@ void cCamera::dmaIrqHandler() {
   if ((isr & (DMA_FLAG_TEIF0_4 << mDmaHandler.StreamIndex)) != RESET) {
     if (__HAL_DMA_GET_IT_SOURCE (&mDmaHandler, DMA_IT_TE) != RESET) {
       DMA2_Stream1->CR  &= ~DMA_IT_TE;
-      regs->IFCR = DMA_FLAG_TEIF0_4 << mDmaHandler.StreamIndex;
+      mDmaBaseRegisters->IFCR = DMA_FLAG_TEIF0_4 << mDmaHandler.StreamIndex;
 
       cLcd::mLcd->debug (LCD_COLOR_RED, "dmaTransferError");
       }
@@ -346,7 +338,7 @@ void cCamera::dmaIrqHandler() {
   //{{{  directMode Error Interrupt
   if ((isr & (DMA_FLAG_DMEIF0_4 << mDmaHandler.StreamIndex)) != RESET)
     if (__HAL_DMA_GET_IT_SOURCE (&mDmaHandler, DMA_IT_DME) != RESET) {
-      regs->IFCR = DMA_FLAG_DMEIF0_4 << mDmaHandler.StreamIndex;
+      mDmaBaseRegisters->IFCR = DMA_FLAG_DMEIF0_4 << mDmaHandler.StreamIndex;
       cLcd::mLcd->debug (LCD_COLOR_RED, "dmaDirectModeError");
       }
   //}}}
@@ -729,10 +721,10 @@ void cCamera::dmaInit() {
     mDmaHandler.StreamBaseAddress = (((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU)) + 4U);
   else // return pointer to LISR and LIFCR */
     mDmaHandler.StreamBaseAddress = ((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU));
-  tDmaBaseRegisters* regs = (tDmaBaseRegisters*)mDmaHandler.StreamBaseAddress;
+  mDmaBaseRegisters = (tDmaBaseRegisters*)mDmaHandler.StreamBaseAddress;
 
   // Clear all interrupt flags
-  regs->IFCR = 0x3FU << mDmaHandler.StreamIndex;
+  mDmaBaseRegisters->IFCR = 0x3FU << mDmaHandler.StreamIndex;
   }
 //}}}
 //{{{
