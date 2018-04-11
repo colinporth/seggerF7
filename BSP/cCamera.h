@@ -3,6 +3,8 @@
 #include "stm32746g_discovery.h"
 #include "cLcd.h"
 
+struct tDcmiInfo;
+
 class cCamera {
 public:
   void init();
@@ -23,8 +25,8 @@ private:
   void gpioInit();
   void mt9d111Init();
   void dmaInit (DMA_HandleTypeDef* hdma);
-  void dcmiInit (DCMI_HandleTypeDef* dcmi);
-  void dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length);
+  void dcmiInit (tDcmiInfo* dcmi);
+  void dcmiStart (tDcmiInfo* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length);
 
   void preview();
   void capture();

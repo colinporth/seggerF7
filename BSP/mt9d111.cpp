@@ -5,18 +5,86 @@
 //}}}
 
 #define i2cAddress 0x90
-//#define capture800x600
+#define capture800x600
+//#define captureJpeg
+//{{{  dcmi defines
+#define DCMI_MODE_CONTINUOUS ((uint32_t)0x00000000U)
+#define DCMI_MODE_SNAPSHOT   ((uint32_t)DCMI_CR_CM)
+
+#define DCMI_PCKPOLARITY_FALLING ((uint32_t)0x00000000U)
+#define DCMI_PCKPOLARITY_RISING  ((uint32_t)DCMI_CR_PCKPOL)
+
+#define DCMI_VSPOLARITY_LOW  ((uint32_t)0x00000000U)
+#define DCMI_VSPOLARITY_HIGH ((uint32_t)DCMI_CR_VSPOL)
+
+#define DCMI_HSPOLARITY_LOW  ((uint32_t)0x00000000U)
+#define DCMI_HSPOLARITY_HIGH ((uint32_t)DCMI_CR_HSPOL)
+
+#define DCMI_JPEG_DISABLE    ((uint32_t)0x00000000U)
+#define DCMI_JPEG_ENABLE     ((uint32_t)DCMI_CR_JPEG)
+
+#define DCMI_CR_ALL_FRAME         ((uint32_t)0x00000000U)      /*!< All frames are captured        */
+#define DCMI_CR_ALTERNATE_2_FRAME ((uint32_t)DCMI_CR_FCRC_0)  /*!< Every alternate frame captured */
+#define DCMI_CR_ALTERNATE_4_FRAME ((uint32_t)DCMI_CR_FCRC_1)  /*!< One frame in 4 frames captured */
+
+#define DCMI_EXTEND_DATA_8B  ((uint32_t)0x00000000U)                       /*!< Interface captures 8-bit data on every pixel clock  */
+#define DCMI_EXTEND_DATA_10B ((uint32_t)DCMI_CR_EDM_0)                    /*!< Interface captures 10-bit data on every pixel clock */
+#define DCMI_EXTEND_DATA_12B ((uint32_t)DCMI_CR_EDM_1)                    /*!< Interface captures 12-bit data on every pixel clock */
+#define DCMI_EXTEND_DATA_14B ((uint32_t)(DCMI_CR_EDM_0 | DCMI_CR_EDM_1))  /*!< Interface captures 14-bit data on every pixel clock */
+
+#define DCMI_IT_FRAME        ((uint32_t)DCMI_IER_FRAME_IE)    /*!< Capture complete interrupt      */
+#define DCMI_IT_OVR          ((uint32_t)DCMI_IER_OVR_IE)      /*!< Overrun interrupt               */
+#define DCMI_IT_ERR          ((uint32_t)DCMI_IER_ERR_IE)      /*!< Synchronization error interrupt */
+#define DCMI_IT_VSYNC        ((uint32_t)DCMI_IER_VSYNC_IE)    /*!< VSYNC interrupt                 */
+#define DCMI_IT_LINE         ((uint32_t)DCMI_IER_LINE_IE)     /*!< Line interrupt                  */
+
+#define DCMI_FLAG_HSYNC      ((uint32_t)DCMI_SR_INDEX|DCMI_SR_HSYNC) /*!< HSYNC pin state (active line / synchronization between lines)   */
+#define DCMI_FLAG_VSYNC      ((uint32_t)DCMI_SR_INDEX|DCMI_SR_VSYNC) /*!< VSYNC pin state (active frame / synchronization between frames) */
+#define DCMI_FLAG_FNE        ((uint32_t)DCMI_SR_INDEX|DCMI_SR_FNE)   /*!< FIFO not empty flag                                                 */
+
+#define DCMI_FLAG_FRAMERI    ((uint32_t)DCMI_RIS_FRAME_RIS)  /*!< Frame capture complete interrupt flag */
+#define DCMI_FLAG_OVRRI      ((uint32_t)DCMI_RIS_OVR_RIS)    /*!< Overrun interrupt flag                */
+#define DCMI_FLAG_ERRRI      ((uint32_t)DCMI_RIS_ERR_RIS)    /*!< Synchronization error interrupt flag  */
+#define DCMI_FLAG_VSYNCRI    ((uint32_t)DCMI_RIS_VSYNC_RIS)  /*!< VSYNC interrupt flag                  */
+#define DCMI_FLAG_LINERI     ((uint32_t)DCMI_RIS_LINE_RIS)   /*!< Line interrupt flag                   */
+
+#define DCMI_FLAG_FRAMEMI    ((uint32_t)DCMI_MIS_INDEX|DCMI_MIS_FRAME_MIS)  /*!< DCMI Frame capture complete masked interrupt status */
+#define DCMI_FLAG_OVRMI      ((uint32_t)DCMI_MIS_INDEX|DCMI_MIS_OVR_MIS  )  /*!< DCMI Overrun masked interrupt status                */
+#define DCMI_FLAG_ERRMI      ((uint32_t)DCMI_MIS_INDEX|DCMI_MIS_ERR_MIS  )  /*!< DCMI Synchronization error masked interrupt status  */
+#define DCMI_FLAG_VSYNCMI    ((uint32_t)DCMI_MIS_INDEX|DCMI_MIS_VSYNC_MIS)  /*!< DCMI VSYNC masked interrupt status                  */
+#define DCMI_FLAG_LINEMI     ((uint32_t)DCMI_MIS_INDEX|DCMI_MIS_LINE_MIS )  /*!< DCMI Line masked interrupt status                   */
+
+#define DCMI_BSM_ALL         ((uint32_t)0x00000000U) /*!< Interface captures all received data */
+#define DCMI_BSM_OTHER       ((uint32_t)DCMI_CR_BSM_0) /*!< Interface captures every other byte from the received data */
+#define DCMI_BSM_ALTERNATE_4 ((uint32_t)DCMI_CR_BSM_1) /*!< Interface captures one byte out of four */
+#define DCMI_BSM_ALTERNATE_2 ((uint32_t)(DCMI_CR_BSM_0 | DCMI_CR_BSM_1)) /*!< Interface captures two bytes out of four */
+
+#define DCMI_OEBS_ODD        ((uint32_t)0x00000000U) /*!< Interface captures first data from the frame/line start, second one being dropped */
+#define DCMI_OEBS_EVEN       ((uint32_t)DCMI_CR_OEBS) /*!< Interface captures second data from the frame/line start, first one being dropped */
+//}}}
 
 static const uint8_t flagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
 //{{{
 struct tDcmiInfo {
   DCMI_TypeDef*      Instance;           // DCMI Register base address
-  DCMI_InitTypeDef   Init;               // DCMI parameters
-  __IO uint32_t      XferCount;          // DMA transfer counter
+   __IO uint32_t      XferCount;          // DMA transfer counter
   __IO uint32_t      XferSize;           // DMA transfer size
   uint32_t           XferTransferNumber; // DMA transfer number
   uint32_t           pBuffPtr;           // Pointer to DMA output buffer
   DMA_HandleTypeDef* DMA_Handle;         // Pointer to the DMA handler
+
+  // init
+  uint32_t SynchroMode;
+  uint32_t PCKPolarity;
+  uint32_t VSPolarity;
+  uint32_t HSPolarity;
+  uint32_t CaptureRate;
+  uint32_t ExtendedDataMode;
+  uint32_t JPEGMode;
+  uint32_t ByteSelectMode;
+  uint32_t ByteSelectStart;
+  uint32_t LineSelectMode;
+  uint32_t LineSelectStart;
   };
 //}}}
 //{{{  struct dmaBaseRegisters
@@ -27,7 +95,7 @@ typedef struct {
   } tDmaBaseRegisters;
 //}}}
 
-DCMI_HandleTypeDef dcmiInfo;
+tDcmiInfo dcmiInfo;
 cCamera* gCamera = nullptr;
 
 extern "C" {
@@ -93,7 +161,12 @@ void cCamera::start (bool captureMode, uint32_t buffer) {
 
   mCaptureMode = captureMode;
 
+#ifdef captureJpeg
   mCaptureMode ? jpeg() : preview();
+#else
+  mCaptureMode ? capture() : preview();
+#endif
+
   dcmiStart (&dcmiInfo, DCMI_MODE_CONTINUOUS, buffer, getWidth()*getHeight()/2);
   }
 //}}}
@@ -281,10 +354,11 @@ void cCamera::dmaIrqHandler() {
       dcmiInfo.XferCount++;
       if (dcmiInfo.XferCount <= dcmiInfo.XferTransferNumber - 2) {
         // next dma chunk
-        (dcmiInfo.XferCount & 1) ? DMA2_Stream1->M0AR += 8 * dcmiInfo.XferSize : DMA2_Stream1->M1AR += 8 * dcmiInfo.XferSize;
+        auto buf = dcmiInfo.pBuffPtr + ((dcmiInfo.XferCount+1) * (4 * dcmiInfo.XferSize));
+        (dcmiInfo.XferCount & 1) ? DMA2_Stream1->M0AR = buf : DMA2_Stream1->M1AR = buf;
         //cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "dma %d", dcmiInfo.XferCount);
         }
-      else if (dcmiInfo.XferCount == (dcmiInfo.XferTransferNumber - 1)) {
+      else if (dcmiInfo.XferCount == dcmiInfo.XferTransferNumber - 1) {
         // penultimate chunk, reset M0AR for next frame
         DMA2_Stream1->M0AR = dcmiInfo.pBuffPtr;
         //cLcd::mLcd->debug (LCD_COLOR_CYAN, "dma %d", dcmiInfo.XferCount);
@@ -306,20 +380,21 @@ void cCamera::dcmiIrqHandler() {
 
   if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
     // synchronizationError interrupt
-    __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_ERRRI);
+    dcmiInfo.Instance->ICR = DCMI_FLAG_ERRRI;
+
     //__HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
     cLcd::mLcd->debug (LCD_COLOR_RED, "syncIrq");
     }
 
   if ((misr & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
     // overflowError interrupt
-    __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_OVRRI);
+    dcmiInfo.Instance->ICR = DCMI_FLAG_OVRRI;
     //__HAL_DMA_DISABLE (dcmiInfo.DMA_Handle);
     cLcd::mLcd->debug (LCD_COLOR_RED, "overflowIrq");
     }
 
   if ((misr & DCMI_FLAG_VSYNCRI) == DCMI_FLAG_VSYNCRI) {
-    __HAL_DCMI_CLEAR_FLAG (&dcmiInfo, DCMI_FLAG_VSYNCRI);
+    dcmiInfo.Instance->ICR = DCMI_FLAG_VSYNCRI;
     uint32_t rx = DMA2_Stream1->NDTR;
 
     auto ticks = HAL_GetTick();
@@ -700,17 +775,16 @@ void cCamera::dmaInit (DMA_HandleTypeDef *hdma) {
   }
 //}}}
 //{{{
-void cCamera::dcmiInit (DCMI_HandleTypeDef* dcmi) {
+void cCamera::dcmiInit (tDcmiInfo* dcmi) {
 
   // config DCMI
   dcmi->Instance = DCMI;
-  dcmi->Init.CaptureRate      = DCMI_CR_ALL_FRAME;
-  dcmi->Init.HSPolarity       = DCMI_HSPOLARITY_LOW;
-  dcmi->Init.VSPolarity       = DCMI_HSPOLARITY_LOW;
-  dcmi->Init.SynchroMode      = DCMI_SYNCHRO_HARDWARE;
-  dcmi->Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-  dcmi->Init.PCKPolarity      = DCMI_PCKPOLARITY_RISING;
-  dcmi->Init.JPEGMode         = DCMI_JPEG_ENABLE;
+  dcmi->CaptureRate      = DCMI_CR_ALL_FRAME;
+  dcmi->HSPolarity       = DCMI_HSPOLARITY_LOW;
+  dcmi->VSPolarity       = DCMI_HSPOLARITY_LOW;
+  dcmi->ExtendedDataMode = DCMI_EXTEND_DATA_8B;
+  dcmi->PCKPolarity      = DCMI_PCKPOLARITY_RISING;
+  dcmi->JPEGMode         = DCMI_JPEG_ENABLE;
 
   // Associate the initialized DMA handle to the DCMI handle
   dmaHandler.Instance = DMA2_Stream1;
@@ -740,31 +814,28 @@ void cCamera::dcmiInit (DCMI_HandleTypeDef* dcmi) {
   dmaInit (dcmi->DMA_Handle);
 
   // Configures the HS, VS, DE and PC polarity
-  DCMI->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  |
-                DCMI_CR_EDM_0  | DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 |
-                DCMI_CR_FCRC_1 | DCMI_CR_JPEG   | DCMI_CR_ESS |
-                DCMI_CR_BSM_0  | DCMI_CR_BSM_1  | DCMI_CR_OEBS |
+  DCMI->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  | DCMI_CR_EDM_0  | DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 |
+                DCMI_CR_FCRC_1 | DCMI_CR_JPEG   | DCMI_CR_ESS | DCMI_CR_BSM_0  | DCMI_CR_BSM_1  | DCMI_CR_OEBS |
                 DCMI_CR_LSM | DCMI_CR_OELS);
-  DCMI->CR |=  (uint32_t)(dcmi->Init.SynchroMode     | dcmi->Init.CaptureRate |
-                          dcmi->Init.VSPolarity      | dcmi->Init.HSPolarity  |
-                          dcmi->Init.PCKPolarity     | dcmi->Init.ExtendedDataMode |
-                          dcmi->Init.JPEGMode        | dcmi->Init.ByteSelectMode |
-                          dcmi->Init.ByteSelectStart | dcmi->Init.LineSelectMode |
-                          dcmi->Init.LineSelectStart);
+  DCMI->CR |=  (uint32_t)(dcmi->SynchroMode     | dcmi->CaptureRate | dcmi->VSPolarity      | dcmi->HSPolarity  |
+                          dcmi->PCKPolarity     | dcmi->ExtendedDataMode | dcmi->JPEGMode | dcmi->ByteSelectMode |
+                          dcmi->ByteSelectStart | dcmi->LineSelectMode | dcmi->LineSelectStart);
 
   // enable Error, overrun, vsync interrupts
-  __HAL_DCMI_ENABLE_IT (dcmi, DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC);
+  dcmi->Instance->IER |= DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC;
   }
 //}}}
 
 //{{{
-void cCamera::dcmiStart (DCMI_HandleTypeDef* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length) {
+void cCamera::dcmiStart (tDcmiInfo* dcmi, uint32_t DCMI_Mode, uint32_t data, uint32_t length) {
 
-  __HAL_DCMI_DISABLE (dcmi);
+  // disable DCMI by resetting DCMIEN bit
+  dcmi->Instance->CR &= ~DCMI_CR_ENABLE;
+
   __HAL_DMA_DISABLE (dcmi->DMA_Handle);
 
   // enable DCMI by setting DCMIEN bit
-  __HAL_DCMI_ENABLE (dcmi);
+  dcmi->Instance->CR |= DCMI_CR_ENABLE;
 
   // config the DCMI Mode
   DCMI->CR = (DCMI->CR & ~(DCMI_CR_CM)) | DCMI_Mode;

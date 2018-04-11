@@ -24,8 +24,6 @@
 #define HAL_DMA2D_MODULE_ENABLED
 #define HAL_SDRAM_MODULE_ENABLED
 #define HAL_LTDC_MODULE_ENABLED
-
-#define HAL_DCMI_MODULE_ENABLED
 //}}}
 //{{{  clock defines
 #define HSE_VALUE   25000000U      // Value of the External oscillator in Hz */
@@ -149,10 +147,6 @@
 #ifdef HAL_DAC_MODULE_ENABLED
   #include "stm32f7xx_hal_dac.h"
 #endif /* HAL_DAC_MODULE_ENABLED */
-
-#ifdef HAL_DCMI_MODULE_ENABLED
-  #include "stm32f7xx_hal_dcmi.h"
-#endif /* HAL_DCMI_MODULE_ENABLED */
 
 #ifdef HAL_ETH_MODULE_ENABLED
   #include "stm32f7xx_hal_eth.h"

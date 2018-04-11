@@ -23,7 +23,6 @@
 #define HAL_UART_MODULE_ENABLED
 #define HAL_CORTEX_MODULE_ENABLED
 #define HAL_PCD_MODULE_ENABLED
-#define HAL_DCMI_MODULE_ENABLED
 //}}}
 
 #define HSE_VALUE            25000000U  // Value of the External oscillator in Hz */
@@ -146,10 +145,6 @@
 #ifdef HAL_DAC_MODULE_ENABLED
   #include "stm32f7xx_hal_dac.h"
 #endif /* HAL_DAC_MODULE_ENABLED */
-
-#ifdef HAL_DCMI_MODULE_ENABLED
-  #include "stm32f7xx_hal_dcmi.h"
-#endif /* HAL_DCMI_MODULE_ENABLED */
 
 #ifdef HAL_ETH_MODULE_ENABLED
   #include "stm32f7xx_hal_eth.h"
