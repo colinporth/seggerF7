@@ -41,13 +41,14 @@ private:
   // dcmi dma
   //{{{  struct dmaBaseRegisters
   struct tDmaBaseRegisters {
-    __IO uint32_t ISR;   /*!< DMA interrupt status register */
+    __IO uint32_t ISR;   // DMA interrupt status register
     __IO uint32_t Reserved0;
-    __IO uint32_t IFCR;  /*!< DMA interrupt flag clear register */
+    __IO uint32_t IFCR;  // DMA interrupt flag clear register
     };
   //}}}
   tDmaBaseRegisters* mDmaBaseRegisters = nullptr;
   DMA_HandleTypeDef  mDmaHandler;
+  uint32_t mStreamIndex;
 
   __IO uint32_t     mXferCount;    // DMA transfer counter
   __IO uint32_t      mXferSize;     // DMA transfer size
