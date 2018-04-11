@@ -30,13 +30,15 @@ private:
 
   //{{{
   struct tDcmiInfo {
-     __IO uint32_t     mXferCount;    // DMA transfer counter
-    __IO uint32_t      mXferSize;     // DMA transfer size
-    uint32_t           mXferMaxCount; // DMA transfer number
-    uint32_t           mBuffPtr;      // Pointer to DMA output buffer
-    DMA_HandleTypeDef* DMA_Handle;    // Pointer to the DMA handler
+    // dcmi dma
+    DMA_HandleTypeDef mDmaHandler;
 
-    // init
+     __IO uint32_t    mXferCount;    // DMA transfer counter
+    __IO uint32_t     mXferSize;     // DMA transfer size
+    uint32_t          mXferMaxCount; // DMA transfer number
+    uint32_t          mBuffPtr;      // Pointer to DMA output buffer
+
+    // dcmi init
     uint32_t SynchroMode;
     uint32_t PCKPolarity;
     uint32_t VSPolarity;
@@ -51,7 +53,6 @@ private:
     };
   //}}}
   tDcmiInfo dcmiInfo;
-  DMA_HandleTypeDef dmaHandler;
 
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;
