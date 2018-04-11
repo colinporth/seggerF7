@@ -74,19 +74,24 @@ void cApp::run() {
   //{{{  removed
   //mPs2 = new cPs2 (mLcd);
   //mPs2->initKeyboard();
-  //mscInit (mLcd);
-  //mscStart();
-  //if (f_mount ((FATFS*)malloc (sizeof (FATFS)), kSdPath, 0) == FR_OK) {
-  //  char pathName[256] = "/";
-  //  readDirectory (pathName);
-  //  reportLabel();
-  //  }
-  //else
-  //  mLcd->debug (LCD_COLOR_RED, "not mounted");
   //}}}
 
   mscInit (mLcd);
-  mscStart();
+  //mscStart();
+
+  if (f_mount ((FATFS*)malloc (sizeof (FATFS)), kSdPath, 0) == FR_OK) {
+    char pathName[256] = "/";
+    readDirectory (pathName);
+    reportLabel();
+    mLcd->debug (LCD_COLOR_YELLOW, "mounted");
+
+    auto count = getCountFiles (pathName);
+    f_getlabel (kSdPath, mLabel, &mVsn);
+    mLcd->debug (LCD_COLOR_WHITE, "Label <%s> - %d files", mLabel, count);
+    }
+  else
+    mLcd->debug (LCD_COLOR_RED, "not mounted");
+
 
   camera.init();
   camera.start (false, mLcd->getCameraBuffer());
