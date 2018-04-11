@@ -1,7 +1,6 @@
 // camera.h
 #pragma once
 #include "stm32746g_discovery.h"
-#include "cLcd.h"
 
 class cCamera {
 public:
@@ -23,7 +22,7 @@ private:
   void mt9d111Init();
   void dmaInit();
   void dcmiInit();
-  void dcmiStart (uint32_t DCMI_Mode, uint32_t data, uint32_t length);
+  void dcmiStart (uint32_t data, uint32_t length);
 
   void preview();
   void capture();

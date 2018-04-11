@@ -1,7 +1,8 @@
 // mt9d111.cpp
 //{{{  includes
-#include "stm32746g_discovery.h"
 #include "cCamera.h"
+
+#include "cLcd.h"
 //}}}
 
 #define i2cAddress 0x90
@@ -143,7 +144,7 @@ void cCamera::start (bool captureMode, uint32_t buffer) {
   mCaptureMode ? capture() : preview();
 #endif
 
-  dcmiStart (DCMI_MODE_CONTINUOUS, buffer, getWidth()*getHeight()/2);
+  dcmiStart (buffer, getWidth()*getHeight()/2);
   }
 //}}}
 //{{{
@@ -795,7 +796,7 @@ void cCamera::dcmiInit() {
 //}}}
 
 //{{{
-void cCamera::dcmiStart (uint32_t DCMI_Mode, uint32_t data, uint32_t length) {
+void cCamera::dcmiStart (uint32_t data, uint32_t length) {
 
   // disable DCMI by resetting DCMIEN bit
   DCMI->CR &= ~DCMI_CR_ENABLE;
@@ -806,7 +807,7 @@ void cCamera::dcmiStart (uint32_t DCMI_Mode, uint32_t data, uint32_t length) {
   DCMI->CR |= DCMI_CR_ENABLE;
 
   // config the DCMI Mode
-  DCMI->CR = (DCMI->CR & ~(DCMI_CR_CM)) | DCMI_Mode;
+  DCMI->CR = (DCMI->CR & ~(DCMI_CR_CM)) | DCMI_MODE_CONTINUOUS;
 
   // calc the number of xfers with xferSize <= 64k
   dcmiInfo.pBuffPtr = data;
