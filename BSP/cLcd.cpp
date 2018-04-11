@@ -282,6 +282,13 @@ void cLcd::drawTitle (const char* title) {
   }
 //}}}
 //{{{
+void cLcd::drawInfo (uint16_t column, char* str) {
+
+  SetTextColor (LCD_COLOR_YELLOW);
+  DisplayStringAtLineColumn (0, column, str);
+  }
+//}}}
+//{{{
 void cLcd::drawDebug() {
 
   if (!BSP_PB_GetState (BUTTON_KEY))

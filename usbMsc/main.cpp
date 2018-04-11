@@ -13,7 +13,7 @@
 #include "cCamera.h"
 //}}}
 const char kSdPath[40] = "0:/";
-const char* kVersion = "Camera 10/4/18";
+const char* kVersion = "Camera 11/4/18";
 
 int focus = 0;
 cCamera camera;
@@ -102,7 +102,7 @@ void cApp::run() {
     //}}}
     mLcd->startBgnd ((uint16_t*)mLcd->getCameraBuffer(), camera.getWidth(), camera.getHeight(), BSP_PB_GetState (BUTTON_KEY));
     mLcd->drawTitle (kVersion);
-    mLcd->DisplayStringAtLineColumn (0, 30, camera.getString());
+    mLcd->drawInfo (24, camera.getString());
 
     mLcd->drawDebug();
     mLcd->present();

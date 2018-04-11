@@ -30,11 +30,11 @@ private:
 
   //{{{
   struct tDcmiInfo {
-     __IO uint32_t     XferCount;          // DMA transfer counter
-    __IO uint32_t      XferSize;           // DMA transfer size
-    uint32_t           XferTransferNumber; // DMA transfer number
-    uint32_t           pBuffPtr;           // Pointer to DMA output buffer
-    DMA_HandleTypeDef* DMA_Handle;         // Pointer to the DMA handler
+     __IO uint32_t     mXferCount;    // DMA transfer counter
+    __IO uint32_t      mXferSize;     // DMA transfer size
+    uint32_t           mXferMaxCount; // DMA transfer number
+    uint32_t           mBuffPtr;      // Pointer to DMA output buffer
+    DMA_HandleTypeDef* DMA_Handle;    // Pointer to the DMA handler
 
     // init
     uint32_t SynchroMode;

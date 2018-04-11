@@ -87,6 +87,7 @@ public:
   void startBgnd (uint16_t* bgnd);
   void startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom);
   void drawTitle (const char* title);
+  void drawInfo (uint16_t column, char* str);
   void drawDebug();
   void present();
 
