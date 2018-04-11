@@ -48,9 +48,9 @@ private:
   //}}}
   tDmaBaseRegisters* mDmaBaseRegisters = nullptr;
   DMA_HandleTypeDef  mDmaHandler;
-  uint32_t mStreamIndex;
+  uint32_t           mStreamIndex;
 
-  __IO uint32_t     mXferCount;    // DMA transfer counter
+  __IO uint32_t      mXferCount;    // DMA transfer counter
   __IO uint32_t      mXferSize;     // DMA transfer size
   uint32_t           mXferMaxCount; // DMA transfer number
   uint32_t           mBuffPtr;      // Pointer to DMA output buffer

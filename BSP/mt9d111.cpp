@@ -24,44 +24,36 @@
 #define DCMI_JPEG_DISABLE    ((uint32_t)0x00000000U)
 #define DCMI_JPEG_ENABLE     ((uint32_t)DCMI_CR_JPEG)
 
-#define DCMI_CR_ALL_FRAME         ((uint32_t)0x00000000U)      /*!< All frames are captured        */
-#define DCMI_CR_ALTERNATE_2_FRAME ((uint32_t)DCMI_CR_FCRC_0)  /*!< Every alternate frame captured */
-#define DCMI_CR_ALTERNATE_4_FRAME ((uint32_t)DCMI_CR_FCRC_1)  /*!< One frame in 4 frames captured */
+#define DCMI_CR_ALL_FRAME         ((uint32_t)0x00000000U)     // All frames are captured
+#define DCMI_CR_ALTERNATE_2_FRAME ((uint32_t)DCMI_CR_FCRC_0)  // Every alternate frame captured
+#define DCMI_CR_ALTERNATE_4_FRAME ((uint32_t)DCMI_CR_FCRC_1)  // One frame in 4 frames captured
 
-#define DCMI_EXTEND_DATA_8B  ((uint32_t)0x00000000U)                       /*!< Interface captures 8-bit data on every pixel clock  */
-#define DCMI_EXTEND_DATA_10B ((uint32_t)DCMI_CR_EDM_0)                    /*!< Interface captures 10-bit data on every pixel clock */
-#define DCMI_EXTEND_DATA_12B ((uint32_t)DCMI_CR_EDM_1)                    /*!< Interface captures 12-bit data on every pixel clock */
-#define DCMI_EXTEND_DATA_14B ((uint32_t)(DCMI_CR_EDM_0 | DCMI_CR_EDM_1))  /*!< Interface captures 14-bit data on every pixel clock */
+#define DCMI_EXTEND_DATA_8B  ((uint32_t)0x00000000U)                      // Interface captures 8-bit data on every pixel clock
+#define DCMI_EXTEND_DATA_10B ((uint32_t)DCMI_CR_EDM_0)                    // Interface captures 10-bit data on every pixel clock
+#define DCMI_EXTEND_DATA_12B ((uint32_t)DCMI_CR_EDM_1)                    // Interface captures 12-bit data on every pixel clock
+#define DCMI_EXTEND_DATA_14B ((uint32_t)(DCMI_CR_EDM_0 | DCMI_CR_EDM_1))  // Interface captures 14-bit data on every pixel clock
 
-#define DCMI_IT_FRAME        ((uint32_t)DCMI_IER_FRAME_IE)    /*!< Capture complete interrupt      */
-#define DCMI_IT_OVR          ((uint32_t)DCMI_IER_OVR_IE)      /*!< Overrun interrupt               */
-#define DCMI_IT_ERR          ((uint32_t)DCMI_IER_ERR_IE)      /*!< Synchronization error interrupt */
-#define DCMI_IT_VSYNC        ((uint32_t)DCMI_IER_VSYNC_IE)    /*!< VSYNC interrupt                 */
-#define DCMI_IT_LINE         ((uint32_t)DCMI_IER_LINE_IE)     /*!< Line interrupt                  */
+#define DCMI_IT_FRAME        ((uint32_t)DCMI_IER_FRAME_IE)    // Capture complete interrupt
+#define DCMI_IT_OVR          ((uint32_t)DCMI_IER_OVR_IE)      // Overrun interrupt
+#define DCMI_IT_ERR          ((uint32_t)DCMI_IER_ERR_IE)      // Synchronization error interrupt
+#define DCMI_IT_VSYNC        ((uint32_t)DCMI_IER_VSYNC_IE)    // VSYNC interrupt
+#define DCMI_IT_LINE         ((uint32_t)DCMI_IER_LINE_IE)     // Line interrupt
 
-#define DCMI_FLAG_HSYNC      ((uint32_t)DCMI_SR_INDEX|DCMI_SR_HSYNC) /*!< HSYNC pin state (active line / synchronization between lines)   */
-#define DCMI_FLAG_VSYNC      ((uint32_t)DCMI_SR_INDEX|DCMI_SR_VSYNC) /*!< VSYNC pin state (active frame / synchronization between frames) */
-#define DCMI_FLAG_FNE        ((uint32_t)DCMI_SR_INDEX|DCMI_SR_FNE)   /*!< FIFO not empty flag                                                 */
+#define DCMI_FLAG_HSYNC      ((uint32_t)DCMI_SR_INDEX | DCMI_SR_HSYNC) // HSYNC pin state (active line / synchronization between lines)
+#define DCMI_FLAG_VSYNC      ((uint32_t)DCMI_SR_INDEX | DCMI_SR_VSYNC) // VSYNC pin state (active frame / synchronization between frames)
+#define DCMI_FLAG_FNE        ((uint32_t)DCMI_SR_INDEX | DCMI_SR_FNE)   // FIFO not empty flag
 
-#define DCMI_FLAG_FRAMERI    ((uint32_t)DCMI_RIS_FRAME_RIS)  /*!< Frame capture complete interrupt flag */
-#define DCMI_FLAG_OVRRI      ((uint32_t)DCMI_RIS_OVR_RIS)    /*!< Overrun interrupt flag                */
-#define DCMI_FLAG_ERRRI      ((uint32_t)DCMI_RIS_ERR_RIS)    /*!< Synchronization error interrupt flag  */
-#define DCMI_FLAG_VSYNCRI    ((uint32_t)DCMI_RIS_VSYNC_RIS)  /*!< VSYNC interrupt flag                  */
-#define DCMI_FLAG_LINERI     ((uint32_t)DCMI_RIS_LINE_RIS)   /*!< Line interrupt flag                   */
+#define DCMI_FLAG_FRAMERI    ((uint32_t)DCMI_RIS_FRAME_RIS)  // Frame capture complete interrupt flag
+#define DCMI_FLAG_OVRRI      ((uint32_t)DCMI_RIS_OVR_RIS)    // Overrun interrupt flag
+#define DCMI_FLAG_ERRRI      ((uint32_t)DCMI_RIS_ERR_RIS)    // Synchronization error interrupt flag
+#define DCMI_FLAG_VSYNCRI    ((uint32_t)DCMI_RIS_VSYNC_RIS)  // VSYNC interrupt flag
+#define DCMI_FLAG_LINERI     ((uint32_t)DCMI_RIS_LINE_RIS)   // Line interrupt flag
 
-#define DCMI_FLAG_FRAMEMI    ((uint32_t)DCMI_MIS_INDEX|DCMI_MIS_FRAME_MIS)  /*!< DCMI Frame capture complete masked interrupt status */
-#define DCMI_FLAG_OVRMI      ((uint32_t)DCMI_MIS_INDEX|DCMI_MIS_OVR_MIS  )  /*!< DCMI Overrun masked interrupt status                */
-#define DCMI_FLAG_ERRMI      ((uint32_t)DCMI_MIS_INDEX|DCMI_MIS_ERR_MIS  )  /*!< DCMI Synchronization error masked interrupt status  */
-#define DCMI_FLAG_VSYNCMI    ((uint32_t)DCMI_MIS_INDEX|DCMI_MIS_VSYNC_MIS)  /*!< DCMI VSYNC masked interrupt status                  */
-#define DCMI_FLAG_LINEMI     ((uint32_t)DCMI_MIS_INDEX|DCMI_MIS_LINE_MIS )  /*!< DCMI Line masked interrupt status                   */
-
-#define DCMI_BSM_ALL         ((uint32_t)0x00000000U) /*!< Interface captures all received data */
-#define DCMI_BSM_OTHER       ((uint32_t)DCMI_CR_BSM_0) /*!< Interface captures every other byte from the received data */
-#define DCMI_BSM_ALTERNATE_4 ((uint32_t)DCMI_CR_BSM_1) /*!< Interface captures one byte out of four */
-#define DCMI_BSM_ALTERNATE_2 ((uint32_t)(DCMI_CR_BSM_0 | DCMI_CR_BSM_1)) /*!< Interface captures two bytes out of four */
-
-#define DCMI_OEBS_ODD        ((uint32_t)0x00000000U) /*!< Interface captures first data from the frame/line start, second one being dropped */
-#define DCMI_OEBS_EVEN       ((uint32_t)DCMI_CR_OEBS) /*!< Interface captures second data from the frame/line start, first one being dropped */
+#define DCMI_FLAG_FRAMEMI    ((uint32_t)DCMI_MIS_INDEX | DCMI_MIS_FRAME_MIS)  // DCMI Frame capture complete masked interrupt status
+#define DCMI_FLAG_OVRMI      ((uint32_t)DCMI_MIS_INDEX | DCMI_MIS_OVR_MIS  )  // DCMI Overrun masked interrupt status
+#define DCMI_FLAG_ERRMI      ((uint32_t)DCMI_MIS_INDEX | DCMI_MIS_ERR_MIS  )  // DCMI Synchronization error masked interrupt status
+#define DCMI_FLAG_VSYNCMI    ((uint32_t)DCMI_MIS_INDEX | DCMI_MIS_VSYNC_MIS)  // DCMI VSYNC masked interrupt status
+#define DCMI_FLAG_LINEMI     ((uint32_t)DCMI_MIS_INDEX | DCMI_MIS_LINE_MIS )  // DCMI Line masked interrupt status
 //}}}
 
 cCamera* gCamera = nullptr;
@@ -284,9 +276,8 @@ void cCamera::jpeg() {
 void cCamera::dmaIrqHandler() {
 
   uint32_t isr = mDmaBaseRegisters->ISR;
-
-  // transferComplete Interrupt, doubleBufferMode handling
   if (isr & (DMA_FLAG_TCIF0_4 << mStreamIndex)) {
+    // transferComplete Interrupt, doubleBufferMode handling
     if (DMA2_Stream1->CR & DMA_IT_TC) {
       // clear transferComplete interrupt flag
       mDmaBaseRegisters->IFCR = DMA_FLAG_TCIF0_4 << mStreamIndex;
@@ -698,30 +689,18 @@ void cCamera::mt9d111Init() {
 //{{{
 void cCamera::dcmiInit() {
 
-  // Associate the initialized DMA handle to the DCMI handle
-  mDmaHandler.Instance = DMA2_Stream1;
-  mDmaHandler.Init.Channel             = DMA_CHANNEL_1;
-  mDmaHandler.Init.Direction           = DMA_PERIPH_TO_MEMORY;
-  mDmaHandler.Init.PeriphInc           = DMA_PINC_DISABLE;
-  mDmaHandler.Init.MemInc              = DMA_MINC_ENABLE;
-  mDmaHandler.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-  mDmaHandler.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
-  mDmaHandler.Init.Mode                = DMA_CIRCULAR;
-  mDmaHandler.Init.Priority            = DMA_PRIORITY_VERY_HIGH;
-  mDmaHandler.Init.FIFOMode            = DMA_FIFOMODE_ENABLE;
-  mDmaHandler.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
-  mDmaHandler.Init.MemBurst            = DMA_MBURST_INC4;
-  mDmaHandler.Init.PeriphBurst         = DMA_PBURST_SINGLE;
-
+  // associate the initialized DMA handle to the DCMI handle
   //{{{  config dma CR - CHSEL, MBURST, PBURST, PL, MSIZE, PSIZE, MINC, PINC, CIRC, DIR, CT and DBM bits
   uint32_t tmp = DMA2_Stream1->CR;
+
   tmp &= ((uint32_t)~(DMA_SxCR_CHSEL | DMA_SxCR_MBURST | DMA_SxCR_PBURST |
-                     DMA_SxCR_PL    | DMA_SxCR_MSIZE  | DMA_SxCR_PSIZE  |
-                     DMA_SxCR_MINC  | DMA_SxCR_PINC   | DMA_SxCR_CIRC   |
-                     DMA_SxCR_DIR   | DMA_SxCR_CT     | DMA_SxCR_DBM));
+                     DMA_SxCR_PL     | DMA_SxCR_MSIZE  | DMA_SxCR_PSIZE  |
+                     DMA_SxCR_MINC   | DMA_SxCR_PINC   | DMA_SxCR_CIRC   |
+                     DMA_SxCR_DIR    | DMA_SxCR_CT     | DMA_SxCR_DBM));
   tmp |=  DMA_CHANNEL_1 | DMA_PERIPH_TO_MEMORY | DMA_PINC_DISABLE | DMA_MINC_ENABLE |
-          DMA_PDATAALIGN_WORD | DMA_MDATAALIGN_WORD | DMA_CIRCULAR | DMA_PRIORITY_VERY_HIGH;
-  tmp |= DMA_MBURST_INC4 | DMA_PBURST_SINGLE;
+          DMA_PDATAALIGN_WORD | DMA_MDATAALIGN_WORD | DMA_CIRCULAR | DMA_PRIORITY_VERY_HIGH |
+          DMA_MBURST_INC4 | DMA_PBURST_SINGLE;
+
   DMA2_Stream1->CR = tmp;
   //}}}
   //{{{  config dma FCR - clear directMode and fifoThreshold
@@ -730,17 +709,16 @@ void cCamera::dcmiInit() {
   tmp |= DMA_FIFOMODE_ENABLE | DMA_FIFO_THRESHOLD_FULL;
   DMA2_Stream1->FCR = tmp;
   //}}}
-  //{{{  config mDmaBaseRegisters, mStreamIndex 
-  // lookup table for necessary bitshift of flags within status registers
+  //{{{  config mDmaBaseRegisters, mStreamIndex
   const uint8_t flagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
   uint32_t stream_number = (((uint32_t)DMA2_Stream1 & 0xFFU) - 16U) / 24U;
   mStreamIndex = flagBitshiftOffset[stream_number];
-  if (stream_number > 3U) // return pointer to HISR and HIFCR */
+  if (stream_number > 3U) // return pointer to HISR and HIFCR
     mDmaBaseRegisters = (tDmaBaseRegisters*)(((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU)) + 4U);
-  else // return pointer to LISR and LIFCR */
+  else // return pointer to LISR and LIFCR
     mDmaBaseRegisters = (tDmaBaseRegisters*)((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU));
 
-  // Clear all interrupt flags
+  // clear all interrupt flags
   mDmaBaseRegisters->IFCR = 0x3FU << mStreamIndex;
   //}}}
 
@@ -789,10 +767,8 @@ void cCamera::dcmiStart (uint32_t data) {
     mXferMaxCount = mXferMaxCount * 2;
     }
 
-  // enable dma doubleBufferMode
+  // enable dma doubleBufferMode,  config dma src, dst address, length
   DMA2_Stream1->CR |= (uint32_t)DMA_SxCR_DBM;
-
-  // config dma src, dst address, length
   DMA2_Stream1->NDTR = mXferSize;
   DMA2_Stream1->PAR = (uint32_t)&DCMI->DR;
   DMA2_Stream1->M0AR = data;
