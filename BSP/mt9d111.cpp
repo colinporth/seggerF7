@@ -685,49 +685,6 @@ void cCamera::mt9d111Init() {
   }
 //}}}
 //{{{
-void cCamera::dmaInit() {
-
-  // Disable the peripheral
-  __HAL_DMA_DISABLE (&mDmaHandler);
-
-  // Check if the DMA Stream is effectively disabled
-  while ((DMA2_Stream1->CR & DMA_SxCR_EN) != RESET);
-
-  // DMAstream CR - CHSEL, MBURST, PBURST, PL, MSIZE, PSIZE, MINC, PINC, CIRC, DIR, CT and DBM bits
-  uint32_t tmp = DMA2_Stream1->CR;
-  tmp &= ((uint32_t)~(DMA_SxCR_CHSEL | DMA_SxCR_MBURST | DMA_SxCR_PBURST |
-                      DMA_SxCR_PL    | DMA_SxCR_MSIZE  | DMA_SxCR_PSIZE  |
-                      DMA_SxCR_MINC  | DMA_SxCR_PINC   | DMA_SxCR_CIRC   |
-                      DMA_SxCR_DIR   | DMA_SxCR_CT     | DMA_SxCR_DBM));
-  tmp |=  mDmaHandler.Init.Channel             | mDmaHandler.Init.Direction        |
-          mDmaHandler.Init.PeriphInc           | mDmaHandler.Init.MemInc           |
-          mDmaHandler.Init.PeriphDataAlignment | mDmaHandler.Init.MemDataAlignment |
-          mDmaHandler.Init.Mode               | mDmaHandler.Init.Priority;
-  if (mDmaHandler.Init.FIFOMode == DMA_FIFOMODE_ENABLE) // Get memory burst and peripheral burst
-    tmp |= mDmaHandler.Init.MemBurst | mDmaHandler.Init.PeriphBurst;
-  DMA2_Stream1->CR = tmp;
-
-  // DMAStream FCR - clear directMode and fifoThreshold
-  tmp = DMA2_Stream1->FCR;
-  tmp &= (uint32_t)~(DMA_SxFCR_DMDIS | DMA_SxFCR_FTH);
-  tmp |= mDmaHandler.Init.FIFOMode | mDmaHandler.Init.FIFOThreshold;
-  DMA2_Stream1->FCR = tmp;
-
-  // Initialize StreamBaseAddress and StreamIndex for  DMA streamBaseAddress used by HAL_DMA_IRQHandler()
-  // lookup table for necessary bitshift of flags within status registers
-  uint32_t stream_number = (((uint32_t)DMA2_Stream1 & 0xFFU) - 16U) / 24U;
-  mDmaHandler.StreamIndex = flagBitshiftOffset[stream_number];
-  if (stream_number > 3U) // return pointer to HISR and HIFCR */
-    mDmaHandler.StreamBaseAddress = (((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU)) + 4U);
-  else // return pointer to LISR and LIFCR */
-    mDmaHandler.StreamBaseAddress = ((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU));
-  mDmaBaseRegisters = (tDmaBaseRegisters*)mDmaHandler.StreamBaseAddress;
-
-  // Clear all interrupt flags
-  mDmaBaseRegisters->IFCR = 0x3FU << mDmaHandler.StreamIndex;
-  }
-//}}}
-//{{{
 void cCamera::dcmiInit() {
 
   // Associate the initialized DMA handle to the DCMI handle
@@ -745,13 +702,46 @@ void cCamera::dcmiInit() {
   mDmaHandler.Init.MemBurst            = DMA_MBURST_INC4;
   mDmaHandler.Init.PeriphBurst         = DMA_PBURST_SINGLE;
 
-  // config DCMI
-  CaptureRate      = DCMI_CR_ALL_FRAME;
-  HSPolarity       = DCMI_HSPOLARITY_LOW;
-  VSPolarity       = DCMI_HSPOLARITY_LOW;
-  ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-  PCKPolarity      = DCMI_PCKPOLARITY_RISING;
-  JPEGMode         = DCMI_JPEG_ENABLE;
+   //{{{  config dma CR - CHSEL, MBURST, PBURST, PL, MSIZE, PSIZE, MINC, PINC, CIRC, DIR, CT and DBM bits
+  uint32_t tmp = DMA2_Stream1->CR;
+  tmp &= ((uint32_t)~(DMA_SxCR_CHSEL | DMA_SxCR_MBURST | DMA_SxCR_PBURST |
+                      DMA_SxCR_PL    | DMA_SxCR_MSIZE  | DMA_SxCR_PSIZE  |
+                      DMA_SxCR_MINC  | DMA_SxCR_PINC   | DMA_SxCR_CIRC   |
+                      DMA_SxCR_DIR   | DMA_SxCR_CT     | DMA_SxCR_DBM));
+  tmp |=  mDmaHandler.Init.Channel             | mDmaHandler.Init.Direction        |
+          mDmaHandler.Init.PeriphInc           | mDmaHandler.Init.MemInc           |
+          mDmaHandler.Init.PeriphDataAlignment | mDmaHandler.Init.MemDataAlignment |
+          mDmaHandler.Init.Mode               | mDmaHandler.Init.Priority;
+  if (mDmaHandler.Init.FIFOMode == DMA_FIFOMODE_ENABLE) // Get memory burst and peripheral burst
+    tmp |= mDmaHandler.Init.MemBurst | mDmaHandler.Init.PeriphBurst;
+  DMA2_Stream1->CR = tmp;
+  //}}}
+  //{{{  config dma FCR - clear directMode and fifoThreshold
+  tmp = DMA2_Stream1->FCR;
+  tmp &= (uint32_t)~(DMA_SxFCR_DMDIS | DMA_SxFCR_FTH);
+  tmp |= mDmaHandler.Init.FIFOMode | mDmaHandler.Init.FIFOThreshold;
+  DMA2_Stream1->FCR = tmp;
+  //}}}
+  //{{{  config StreamBaseAddress and StreamIndex for  DMA streamBaseAddress used by HAL_DMA_IRQHandler()
+  // lookup table for necessary bitshift of flags within status registers
+  uint32_t stream_number = (((uint32_t)DMA2_Stream1 & 0xFFU) - 16U) / 24U;
+  mDmaHandler.StreamIndex = flagBitshiftOffset[stream_number];
+  if (stream_number > 3U) // return pointer to HISR and HIFCR */
+    mDmaHandler.StreamBaseAddress = (((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU)) + 4U);
+  else // return pointer to LISR and LIFCR */
+    mDmaHandler.StreamBaseAddress = ((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU));
+  mDmaBaseRegisters = (tDmaBaseRegisters*)mDmaHandler.StreamBaseAddress;
+
+  // Clear all interrupt flags
+  mDmaBaseRegisters->IFCR = 0x3FU << mDmaHandler.StreamIndex;
+  //}}}
+
+  // config DCMI HS, VS, DE and PC polarity
+  DCMI->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  | DCMI_CR_EDM_0  | DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 |
+                DCMI_CR_FCRC_1 | DCMI_CR_JPEG   | DCMI_CR_ESS | DCMI_CR_BSM_0  | DCMI_CR_BSM_1  | DCMI_CR_OEBS |
+                DCMI_CR_LSM | DCMI_CR_OELS);
+  DCMI->CR |=  DCMI_CR_ALL_FRAME | DCMI_HSPOLARITY_LOW | DCMI_HSPOLARITY_LOW  |
+               DCMI_PCKPOLARITY_RISING | DCMI_EXTEND_DATA_8B | DCMI_JPEG_ENABLE;
 
   // NVIC configuration for DCMI transfer complete interrupt
   HAL_NVIC_SetPriority (DCMI_IRQn, 0x0F, 0);
@@ -760,17 +750,6 @@ void cCamera::dcmiInit() {
   // NVIC configuration for DMA2D transfer complete interrupt
   HAL_NVIC_SetPriority (DMA2_Stream1_IRQn, 0x0F, 0);
   HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
-
-  // Configure the DMA stream
-  dmaInit();
-
-  // Configures the HS, VS, DE and PC polarity
-  DCMI->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  | DCMI_CR_EDM_0  | DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 |
-                DCMI_CR_FCRC_1 | DCMI_CR_JPEG   | DCMI_CR_ESS | DCMI_CR_BSM_0  | DCMI_CR_BSM_1  | DCMI_CR_OEBS |
-                DCMI_CR_LSM | DCMI_CR_OELS);
-  DCMI->CR |=  (uint32_t)(SynchroMode     | CaptureRate | VSPolarity      | HSPolarity  |
-                          PCKPolarity     | ExtendedDataMode | JPEGMode | ByteSelectMode |
-                          ByteSelectStart | LineSelectMode | LineSelectStart);
 
   // enable Error, overrun, vsync interrupts
   DCMI->IER |= DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC;
