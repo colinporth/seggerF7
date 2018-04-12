@@ -833,7 +833,7 @@ void cLcd::convertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t y
 void cLcd::convertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
                             uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
-  int srcScale = (srcXsize / xsize) + 1;
+  int srcScale = ((srcXsize-1) / xsize) + 1;
   int xpad = (xsize - (srcXsize/srcScale)) / 2;
 
   if (srcYsize >= ysize)

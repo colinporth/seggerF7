@@ -54,7 +54,7 @@ private:
   void reportFree();
   void reportLabel();
   void loadFile();
-  void jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf);
+  void jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale);
   void jpegDecodeBody (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale, int width, int height);
 
   cLcd* mLcd = nullptr;
@@ -65,6 +65,9 @@ private:
   DWORD mVsn = 0;
   char mLabel[40];
   uint8_t* mBufferArray[1];
+
+  uint32_t mWidth = 0;
+  uint32_t mHeight = 0;
   };
 //}}}
 cApp* gApp;
@@ -81,15 +84,15 @@ void cApp::run() {
   //mPs2->initKeyboard();
   //}}}
 
-  //mscInit (mLcd);
-  //mscStart();
-  //loadFile();
+  mscInit (mLcd);
+  mscStart();
+  loadFile();
 
   mCamera = new cCamera();
   mCamera->init();
   mCamera->start (true, (uint8_t*)0xc0200000);
 
-  int scale = (mCamera->getWidth() / mLcd->getWidth()) + 1;
+  int scale = 1;
   int lastCount = 0;
   bool lastButton = false;
   while (true) {
@@ -104,16 +107,16 @@ void cApp::run() {
     //mLcd->startBgnd ((uint16_t*)0xc0100000);
     if (mCamera->getCaptureMode()) {
       int jpegLen;
+      scale = (mCamera->getWidth() / mLcd->getWidth()) + 1;
       auto jpegBuf = mCamera->getJpegFrame (jpegLen);
       if (jpegBuf) {
         if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
           memcpy ((void*)0xc0600000, (void*)0xc0200000, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
         jpegDecodeBody (jpegBuf, jpegLen, (uint16_t*)0xc0100000, scale, mCamera->getWidth(), mCamera->getHeight());
         }
-      mLcd->startBgnd ((uint16_t*)0xc0100000, mCamera->getWidth()/scale, mCamera->getHeight()/scale, BSP_PB_GetState (BUTTON_KEY));
       }
-    else
-      mLcd->startBgnd ((uint16_t*)0xc0200000, mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+
+    mLcd->startBgnd ((uint16_t*)0xc0100000, mWidth, mHeight, BSP_PB_GetState (BUTTON_KEY));
 
     mLcd->drawTitle (kVersion);
     mLcd->drawInfo (24, mCamera->getString());
@@ -121,10 +124,10 @@ void cApp::run() {
     mLcd->drawDebug();
     mLcd->present();
 
-    //bool button = BSP_PB_GetState (BUTTON_KEY);
-    //if (!button && (button != lastButton))
-    // mCamera->start (!mCamera->getCaptureMode(), (uint8_t*)0xc0200000);
-    //lastButton = button;
+    bool button = BSP_PB_GetState (BUTTON_KEY);
+    if (!button && (button != lastButton))
+     mCamera->start (!mCamera->getCaptureMode(), (uint8_t*)0xc0200000);
+    lastButton = button;
     }
   }
 //}}}
@@ -307,7 +310,7 @@ void cApp::loadFile() {
       f_read (&file, (void*)0xc0200000, (UINT)filInfo.fsize, &bytesRead);
       mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
       f_close (&file);
-      jpegDecode ((uint8_t*)0xc0200000, bytesRead, (uint16_t*)0xc0100000);
+      jpegDecode ((uint8_t*)0xc0200000, bytesRead, (uint16_t*)0xc0100000, 4);
       }
     else
       mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
@@ -317,13 +320,11 @@ void cApp::loadFile() {
   }
 //}}}
 //{{{
-void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf) {
+void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale) {
 
   struct jpeg_error_mgr jerr;
   struct jpeg_decompress_struct cinfo;
 
-  //uint8_t jpegHeader[1000];
-  //int jpegHeaderLen = setJpegHeader (jpegHeader, width, height, 0, 6);
   cinfo.err = jpeg_std_error (&jerr);
   jpeg_create_decompress (&cinfo);
   jpeg_mem_src (&cinfo, jpegBuf, jpegLen);
@@ -334,7 +335,7 @@ void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf) {
   cinfo.dct_method = JDCT_FLOAT;
   cinfo.out_color_space = JCS_RGB;
   cinfo.scale_num = 1;
-  cinfo.scale_denom = 4;
+  cinfo.scale_denom = scale;
 
   //jpeg_mem_src (&mCinfo, buff, buffLen);
   jpeg_start_decompress (&cinfo);
@@ -343,7 +344,7 @@ void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf) {
     jpeg_read_scanlines (&cinfo, mBufferArray, 1);
 
     auto src = mBufferArray[0];
-    auto dst = rgb565buf + cinfo.output_scanline * 480;
+    auto dst = rgb565buf + cinfo.output_scanline * cinfo.output_width;
     for (int x = 0; x < cinfo.output_width; x++) {
       uint8_t r = (*src++) & 0xF8;
       uint8_t g = (*src++) & 0xFC;
@@ -351,10 +352,12 @@ void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf) {
       *dst++ = (r << 8) | (g << 3) | (b >> 3);
       }
     }
-  mLcd->debug (LCD_COLOR_WHITE, "jpeg out:%dx%d", cinfo.output_width, cinfo.output_height);
-
   jpeg_finish_decompress (&cinfo);
   jpeg_destroy_decompress (&cinfo);
+
+  mWidth = cinfo.output_width;
+  mHeight = cinfo.output_height;
+  mLcd->debug (LCD_COLOR_WHITE, "jpeg out:%dx%d", mWidth, mHeight);
   }
 //}}}
 //{{{
@@ -391,9 +394,11 @@ void cApp::jpegDecodeBody (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, i
       *dst++ = (r << 8) | (g << 3) | (b >> 3);
       }
     }
-
   jpeg_finish_decompress (&cinfo);
   jpeg_destroy_decompress (&cinfo);
+
+  mWidth = cinfo.output_width;
+  mHeight = cinfo.output_height;
   }
 //}}}
 
