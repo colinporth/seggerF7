@@ -384,24 +384,25 @@ void cCamera::dcmiIrqHandler() {
 
   #ifdef captureJpeg
     if (mCapture) {
-      uint32_t rx = (mXferSize - DMA2_Stream1->NDTR) * 4;
-      uint8_t jpegStatus = mCurPtr[rx - 1];
+      uint32_t dmaBytes = (mXferSize - DMA2_Stream1->NDTR) * 4;
+      uint8_t jpegStatus = mCurPtr[dmaBytes-1];
       if ((jpegStatus & 0x0f) == 0x01) {
+        mJpegBuf = nullptr;
+        mJpegLen = (mCurPtr[dmaBytes-2] << 16) + (mCurPtr[dmaBytes-3] << 8) + mCurPtr[dmaBytes-4];
+        mStartFramePtr[mJpegLen++] = 0xFF;
+        mStartFramePtr[mJpegLen++] = 0xD9;
         mJpegBuf = mStartFramePtr;
-        mJpegLen = (mCurPtr[rx - 2] << 16) + (mCurPtr[rx - 3] << 8) + mCurPtr[rx - 4];
-        mJpegBuf[mJpegLen++] = 0xFF;
-        mJpegBuf[mJpegLen++] = 0xD9;
         cLcd::mLcd->debug (LCD_COLOR_GREEN,
-                           "v%2d:%6d %x:%d %8x %x", mXferCount,rx, jpegStatus,mJpegLen, mJpegBuf, mJpegBuf[0]);
+                           "v%2d:%6d:%8x %x:%d", mXferCount,dmaBytes,mJpegBuf, jpegStatus,mJpegLen, mJpegBuf);
         }
       else {
         mJpegBuf = nullptr;
         mJpegLen = 0;
         cLcd::mLcd->debug (LCD_COLOR_WHITE,
-                           "v%d:%d %x %d", mXferCount,rx, jpegStatus, mCurPtr + rx - mStartFramePtr);
+                           "v%d:%d %x %d", mXferCount,dmaBytes, jpegStatus, mCurPtr + dmaBytes - mStartFramePtr);
 
         }
-      mStartFramePtr = mCurPtr + rx;
+      mStartFramePtr = mCurPtr + dmaBytes;
       }
   #endif
     }
