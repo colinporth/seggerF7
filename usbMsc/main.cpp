@@ -82,40 +82,41 @@ void cApp::run() {
   mscInit (mLcd);
   mscStart();
 
-  auto fatFs = (FATFS*)malloc (sizeof (FATFS));
-  if (!f_mount (fatFs, "", 0)) {
-    f_getlabel ("", mLabel, &mVsn);
-    mLcd->debug (LCD_COLOR_WHITE, "Label <%s> ", mLabel);
+  if (true) {
+    auto fatFs = (FATFS*)malloc (sizeof (FATFS));
+    if (!f_mount (fatFs, "", 0)) {
+      f_getlabel ("", mLabel, &mVsn);
+      mLcd->debug (LCD_COLOR_WHITE, "Label <%s> ", mLabel);
 
-    //char pathName[256] = "/";
-    //readDirectory (pathName);
-    FILINFO filInfo;
-    if (!f_stat ("image.jpg", &filInfo))
-      mLcd->debug (LCD_COLOR_WHITE, "%d %u/%02u/%02u %02u:%02u %c%c%c%c%c",
-                   (int)(filInfo.fsize),
-                   (filInfo.fdate >> 9) + 1980, filInfo.fdate >> 5 & 15, filInfo.fdate & 31,
-                    filInfo.ftime >> 11, filInfo.ftime >> 5 & 63,
-                   (filInfo.fattrib & AM_DIR) ? 'D' : '-',
-                   (filInfo.fattrib & AM_RDO) ? 'R' : '-',
-                   (filInfo.fattrib & AM_HID) ? 'H' : '-',
-                   (filInfo.fattrib & AM_SYS) ? 'S' : '-',
-                   (filInfo.fattrib & AM_ARC) ? 'A' : '-');
+      //char pathName[256] = "/";
+      //readDirectory (pathName);
+      FILINFO filInfo;
+      if (!f_stat ("image.jpg", &filInfo))
+        mLcd->debug (LCD_COLOR_WHITE, "%d %u/%02u/%02u %02u:%02u %c%c%c%c%c",
+                     (int)(filInfo.fsize),
+                     (filInfo.fdate >> 9) + 1980, filInfo.fdate >> 5 & 15, filInfo.fdate & 31,
+                      filInfo.ftime >> 11, filInfo.ftime >> 5 & 63,
+                     (filInfo.fattrib & AM_DIR) ? 'D' : '-',
+                     (filInfo.fattrib & AM_RDO) ? 'R' : '-',
+                     (filInfo.fattrib & AM_HID) ? 'H' : '-',
+                     (filInfo.fattrib & AM_SYS) ? 'S' : '-',
+                     (filInfo.fattrib & AM_ARC) ? 'A' : '-');
 
-    FIL file;
-    if (!f_open (&file, "image.jpg", FA_READ)) {
-      mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
-      UINT bytesRead;
-      f_read (&file, (void*)0xc0200000, (UINT)filInfo.fsize, &bytesRead);
-      mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
-      f_close (&file);
-      jpegDecode (320, 240, (uint8_t*)0xc0200000, bytesRead, (uint8_t*)mLcd->getCameraBuffer(), (uint8_t*)0xc0300000);
+      FIL file;
+      if (!f_open (&file, "image.jpg", FA_READ)) {
+        mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
+        UINT bytesRead;
+        f_read (&file, (void*)0xc0200000, (UINT)filInfo.fsize, &bytesRead);
+        mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
+        f_close (&file);
+        jpegDecode (320, 240, (uint8_t*)0xc0200000, bytesRead, (uint8_t*)mLcd->getCameraBuffer(), (uint8_t*)0xc0300000);
+        }
+      else
+        mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
       }
     else
-      mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
+      mLcd->debug (LCD_COLOR_RED, "not mounted");
     }
-  else
-    mLcd->debug (LCD_COLOR_RED, "not mounted");
-
   //mCamera = new cCamera();
   //mCamera->init();
   //mCamera->start (false, mLcd->getCameraBuffer());
@@ -174,7 +175,7 @@ void cApp::jpegDecode (int width, int height, uint8_t* buff, int buffLen, uint8_
   mCinfo.dct_method = JDCT_FLOAT;
   mCinfo.out_color_space = JCS_RGB;
   mCinfo.scale_num = 1;
-  mCinfo.scale_denom = 2;
+  mCinfo.scale_denom = 8;
 
   //jpeg_mem_src (&mCinfo, buff, buffLen);
   jpeg_start_decompress (&mCinfo);

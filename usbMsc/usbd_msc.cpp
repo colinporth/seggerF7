@@ -221,7 +221,7 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
     gLcd->debug (LCD_COLOR_MAGENTA, "w %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
 
-  #ifdef sdDma
+  //#ifdef sdDma
     uint32_t alignedAddr = (uint32_t)buf &  ~0x1F;
     SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, blk_len*512 + ((uint32_t)buf - alignedAddr));
     BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
@@ -239,10 +239,10 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
         return true;
         }
       }
-  #else
-    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
-    return true;
-  #endif
+  //#else
+  //  BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+  //  return true;
+  //#endif
     }
 
   return false;
