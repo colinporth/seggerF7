@@ -55,7 +55,7 @@ private:
   void reportLabel();
   void loadFile();
   void jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf);
-  void jpegDecodeBody (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale);
+  void jpegDecodeBody (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale, int width, int height);
 
   cLcd* mLcd = nullptr;
   cCamera* mCamera = nullptr;
@@ -89,7 +89,7 @@ void cApp::run() {
   mCamera->init();
   mCamera->start (true, (uint8_t*)0xc0200000);
 
-  int scale = 2;
+  int scale = (mCamera->getWidth() / mLcd->getWidth()) + 1;
   int lastCount = 0;
   bool lastButton = false;
   while (true) {
@@ -108,7 +108,7 @@ void cApp::run() {
       if (jpegBuf) {
         if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
           memcpy ((void*)0xc0600000, (void*)0xc0200000, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
-        jpegDecodeBody (jpegBuf, jpegLen, (uint16_t*)0xc0100000, scale);
+        jpegDecodeBody (jpegBuf, jpegLen, (uint16_t*)0xc0100000, scale, mCamera->getWidth(), mCamera->getHeight());
         }
       mLcd->startBgnd ((uint16_t*)0xc0100000, mCamera->getWidth()/scale, mCamera->getHeight()/scale, BSP_PB_GetState (BUTTON_KEY));
       }
@@ -358,13 +358,13 @@ void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf) {
   }
 //}}}
 //{{{
-void cApp::jpegDecodeBody (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale) {
+void cApp::jpegDecodeBody (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale, int width, int height) {
 
   struct jpeg_error_mgr jerr;
   struct jpeg_decompress_struct cinfo;
 
   uint8_t jpegHeader[1000];
-  int jpegHeaderLen = setJpegHeader (jpegHeader, 800, 600, 0, 6);
+  int jpegHeaderLen = setJpegHeader (jpegHeader, width, height, 0, 6);
 
   cinfo.err = jpeg_std_error (&jerr);
   jpeg_create_decompress (&cinfo);
