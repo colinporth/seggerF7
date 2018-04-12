@@ -74,8 +74,6 @@ public:
   static uint32_t getWidth() { return 480; }
   static uint32_t getHeight() { return 272; }
 
-  uint32_t getCameraBuffer();
-
   uint16_t GetTextHeight();
   uint32_t GetTextColor() { return mTextColor; }
   uint32_t GetBackColor() { return mBackColor; }

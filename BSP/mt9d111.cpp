@@ -6,7 +6,7 @@
 //}}}
 
 #define i2cAddress 0x90
-//#define capture800x600
+#define capture800x600
 #define captureJpeg
 //{{{  dcmi defines
 #define DCMI_MODE_CONTINUOUS ((uint32_t)0x00000000U)
@@ -115,6 +115,14 @@ void cCamera::setFocus (int value) {
 //}}}
 
 //{{{
+bool cCamera::getJpegFrame (uint8_t*& jpegBuf, int& jpegLen) {
+  jpegBuf = mJpegBuf;
+  jpegLen = mJpegLen;
+  return mJpegBuf != nullptr;
+  }
+//}}}
+
+//{{{
 void cCamera::start (bool captureMode, uint32_t buffer) {
 
   mCapture = captureMode;
@@ -135,8 +143,9 @@ void cCamera::preview() {
   mHeight = 600;
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview %dx%d", mWidth, mHeight);
 
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // Sequencer.params.mode - none
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01); // Sequencer goto preview A
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x270B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0030); // mode_config = disable jpeg A,B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00);   // Sequencer.params.mode - none
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01);   // Sequencer goto preview A
   }
 //}}}
 //{{{
@@ -152,8 +161,9 @@ void cCamera::capture() {
 
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "capture %dx%d", mWidth, mHeight);
 
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x270B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0030); // mode_config = disable jpeg A,B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02);   // Sequencer.params.mode - capture video
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02);   // Sequencer goto capture B
   }
 //}}}
 //{{{
@@ -180,7 +190,7 @@ void cCamera::jpeg() {
   CAMERA_IO_Write16 (i2cAddress, 0xf0, 0x0001);
 
   // mode_config JPG bypass - shadow ifp page2 0x0a
-  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x270b); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0010); // 0x0030 to disable B
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x270b); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0010);
 
   //{{{  jpeg.config id=9  0x07
   // b:0 =1  video
@@ -373,18 +383,30 @@ void cCamera::dcmiIrqHandler() {
     mTicks = ticks;
     mFrames++;
 
-    #ifdef captureJpeg
+  #ifdef captureJpeg
     if (mCapture) {
       uint32_t rx = (mXferSize - DMA2_Stream1->NDTR) * 4;
-      uint8_t b1 = *((uint8_t*)(mCurPtr + rx - 4));
-      uint8_t b2 = *((uint8_t*)(mCurPtr + rx - 3));
-      uint8_t b3 = *((uint8_t*)(mCurPtr + rx - 2));
-      uint8_t b4 = *((uint8_t*)(mCurPtr + rx - 1));
-      cLcd::mLcd->debug (LCD_COLOR_WHITE, "v %2d %6d %7d %2x %d",
-                                          mXferCount, rx, mCurPtr + rx - mLastXferCount, b4, (b3 << 16) + (b2 << 8) + b4);
-      mLastXferCount = mCurPtr + rx;
+      mJpegLen = mCurPtr + rx - mLastFramePtr;
+
+      uint8_t jpegLen1 = *((uint8_t*)(mCurPtr + rx - 4));
+      uint8_t jpegLen2 = *((uint8_t*)(mCurPtr + rx - 3));
+      uint8_t jpegLen3 = *((uint8_t*)(mCurPtr + rx - 2));
+      uint32_t jpegLenBytes = (jpegLen3 << 16) + (jpegLen2 << 8) + jpegLen1;
+      uint8_t jpegStatus = *((uint8_t*)(mCurPtr + rx - 1));
+      if ((jpegStatus & 0x0f) == 0x01) {
+        mJpegBuf = (uint8_t*)mLastFramePtr;
+        cLcd::mLcd->debug (LCD_COLOR_GREEN,
+                           "v%2d:%6d %2x:%6d %2x %2x", mXferCount,rx, jpegStatus,jpegLenBytes, mJpegBuf[0], mJpegBuf[1]);
+        }
+      else {
+        mJpegBuf = nullptr;
+        cLcd::mLcd->debug (LCD_COLOR_WHITE,
+                           "v%2d:%6d %2x %6d", mXferCount,rx, jpegStatus,mJpegLen);
+
+        }
+      mLastFramePtr = mCurPtr + rx;
       }
-    #endif
+  #endif
     }
   }
 //}}}
@@ -751,6 +773,8 @@ void cCamera::dcmiInit() {
 //{{{
 void cCamera::dcmiStart (uint32_t data) {
 
+  uint32_t dmaLength = mCapture ? getWidth()*getHeight() * 2 : getWidth()*getHeight()/2;
+
   // disable DCMI by resetting DCMIEN bit
   DCMI->CR &= ~DCMI_CR_ENABLE;
 
@@ -765,9 +789,10 @@ void cCamera::dcmiStart (uint32_t data) {
 
   // calc the number of xfers with xferSize <= 64k
   mBuffPtr = data;
+  mCurPtr = mBuffPtr;
   mXferCount = 0;
   mXferMaxCount = 1;
-  mXferSize = getWidth()*getHeight()/2;
+  mXferSize = dmaLength;
   while (mXferSize > 0xFFFF) {
     mXferSize = mXferSize / 2;
     mXferMaxCount = mXferMaxCount * 2;
@@ -794,7 +819,7 @@ void cCamera::dcmiStart (uint32_t data) {
   // enable dma
   DMA2_Stream1->CR |= DMA_SxCR_EN;
 
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", mXferCount, mXferSize, getWidth()*getHeight()/2);
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", mXferCount, mXferSize, dmaLength);
 
   // enable dcmi capture
   DCMI->CR |= DCMI_CR_CAPTURE;

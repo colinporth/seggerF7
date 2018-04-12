@@ -249,7 +249,6 @@ void cLcd::init() {
 //}}}
 
 uint16_t cLcd::GetTextHeight() { return Font16.mHeight; }
-uint32_t cLcd::getCameraBuffer() { return SDRAM_DEVICE_ADDR + 0x100000; }
 
 //{{{
 void cLcd::start() {

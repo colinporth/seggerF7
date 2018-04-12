@@ -12,6 +12,8 @@ public:
   bool getCaptureMode() { return mCapture; }
   char* getString();
 
+  bool getJpegFrame (uint8_t*& jpegBuf, int& jpegLen);
+
   void setFocus (int value);
 
   void dmaIrqHandler();
@@ -36,7 +38,7 @@ private:
   char mStr[40] = { 0 };
   uint32_t mTicks = 0;
   uint32_t mTookTicks = 0;
-  uint32_t mLastXferCount = 0;
+  uint32_t mLastFramePtr = 0;
 
   // dcmi dma
   //{{{  struct dmaBaseRegisters
@@ -54,5 +56,8 @@ private:
   uint32_t           mXferMaxCount; // DMA transfer number
   uint32_t           mBuffPtr;      // Pointer to DMA output buffer
   uint32_t           mCurPtr;       // Pointer to DMA output buffer
+
+  uint8_t*           mJpegBuf = nullptr;
+  int                mJpegLen = 0;
   //}}}
   };
