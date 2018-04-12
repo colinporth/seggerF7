@@ -37,7 +37,7 @@ public:
     return mFiles;
     }
   //}}}
-  void jpegDecode (int width, int height, uint8_t* buff, int buffLen, uint8_t* outBuff, uint8_t* tmpBuff);
+  void jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf);
 
 protected:
   virtual void onProx (int x, int y, int z);
@@ -109,7 +109,7 @@ void cApp::run() {
         f_read (&file, (void*)0xc0200000, (UINT)filInfo.fsize, &bytesRead);
         mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
         f_close (&file);
-        jpegDecode (320, 240, (uint8_t*)0xc0200000, bytesRead, (uint8_t*)mLcd->getCameraBuffer(), (uint8_t*)0xc0300000);
+        jpegDecode ((uint8_t*)0xc0200000, bytesRead, (uint16_t*)mLcd->getCameraBuffer());
         }
       else
         mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
@@ -148,57 +148,47 @@ void cApp::run() {
   }
 //}}}
 //{{{
-void cApp::jpegDecode (int width, int height, uint8_t* buff, int buffLen, uint8_t* outBuff, uint8_t* tmpBuff) {
+void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf) {
 
-  //cinfo.dct_method = JDCT_FLOAT;
-  //jpeg_start_decompress (&cinfo);
-  //row_stride = width * 3;
-  //while (cinfo.output_scanline < cinfo.output_height) {
-  //  (void) jpeg_read_scanlines (&cinfo, buffer, 1);
-  //  /* TBC */
-  //  if (callback (buffer[0], row_stride) != 0) {
-  //    break;
-  //    }
-
-  struct jpeg_error_mgr mJerr;
-  struct jpeg_decompress_struct mCinfo;
+  struct jpeg_error_mgr jerr;
+  struct jpeg_decompress_struct cinfo;
 
   //uint8_t jpegHeader[1000];
   //int jpegHeaderLen = setJpegHeader (jpegHeader, width, height, 0, 6);
-  mCinfo.err = jpeg_std_error (&mJerr);
-  jpeg_create_decompress (&mCinfo);
-  jpeg_mem_src (&mCinfo, buff, buffLen);
-  jpeg_read_header (&mCinfo, TRUE);
+  cinfo.err = jpeg_std_error (&jerr);
+  jpeg_create_decompress (&cinfo);
+  jpeg_mem_src (&cinfo, jpegBuf, jpegLen);
+  jpeg_read_header (&cinfo, TRUE);
 
-  mLcd->debug (LCD_COLOR_WHITE, "jpeg image:%dx%d", mCinfo.image_width, mCinfo.image_height);
+  mLcd->debug (LCD_COLOR_WHITE, "jpeg image:%dx%d", cinfo.image_width, cinfo.image_height);
 
-  mCinfo.dct_method = JDCT_FLOAT;
-  mCinfo.out_color_space = JCS_RGB;
-  mCinfo.scale_num = 1;
-  mCinfo.scale_denom = 8;
+  cinfo.dct_method = JDCT_FLOAT;
+  cinfo.out_color_space = JCS_RGB;
+  cinfo.scale_num = 1;
+  cinfo.scale_denom = 4;
 
   //jpeg_mem_src (&mCinfo, buff, buffLen);
-  jpeg_start_decompress (&mCinfo);
-  mLcd->debug (LCD_COLOR_WHITE, "jpeg out:%dx%d", mCinfo.output_width, mCinfo.output_height);
+  jpeg_start_decompress (&cinfo);
 
-  while (mCinfo.output_scanline < mCinfo.output_height) {
-    unsigned char* bufferArray[1];
-    bufferArray[0] = tmpBuff;
-    jpeg_read_scanlines (&mCinfo, bufferArray, 1);
+  uint8_t* bufferArray[1];
+  bufferArray[0] = (uint8_t*)malloc (cinfo.output_width * 3);
+  while (cinfo.output_scanline < cinfo.output_height) {
+    jpeg_read_scanlines (&cinfo, bufferArray, 1);
 
-    uint8_t* src = tmpBuff;
-    uint16_t* dst = (uint16_t*)(outBuff + mCinfo.output_scanline * (480 * 2));
-
-    for (int x = 0; x < mCinfo.output_width; x++) {
-      uint8_t r = *src++;
-      uint8_t g = *src++;
-      uint8_t b = *src++;
-      *dst++ = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | ((b & 0xF8) >> 3);
+    auto src = bufferArray[0];
+    auto dst = rgb565buf + cinfo.output_scanline * 480;
+    for (int x = 0; x < cinfo.output_width; x++) {
+      uint8_t r = (*src++) & 0xF8;
+      uint8_t g = (*src++) & 0xFC;
+      uint8_t b = (*src++) & 0xF8;
+      *dst++ = (r << 8) | (g << 3) | (b >> 3);
       }
     }
+  mLcd->debug (LCD_COLOR_WHITE, "jpeg out:%dx%d", cinfo.output_width, cinfo.output_height);
+  free (bufferArray[0]);
 
-  jpeg_finish_decompress (&mCinfo);
-  jpeg_destroy_decompress (&mCinfo);
+  jpeg_finish_decompress (&cinfo);
+  jpeg_destroy_decompress (&cinfo);
   }
 //}}}
 
