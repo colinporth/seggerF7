@@ -87,7 +87,7 @@ void cApp::run() {
 
   mCamera = new cCamera();
   mCamera->init();
-  mCamera->start (true, 0xc0200000);
+  mCamera->start (true, (uint8_t*)0xc0200000);
 
   int scale = 2;
   int lastCount = 0;
@@ -105,23 +105,26 @@ void cApp::run() {
     if (mCamera->getCaptureMode()) {
       int jpegLen;
       auto jpegBuf = mCamera->getJpegFrame (jpegLen);
-      if (jpegBuf) 
+      if (jpegBuf) {
+        if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
+          memcpy ((void*)0xc0600000, (void*)0xc0200000, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
         jpegDecodeBody (jpegBuf, jpegLen, (uint16_t*)0xc0100000, scale);
+        }
+      mLcd->startBgnd ((uint16_t*)0xc0100000, mCamera->getWidth()/scale, mCamera->getHeight()/scale, BSP_PB_GetState (BUTTON_KEY));
       }
     else
-      memcpy ((void*)0xc0100000, (void*)0xc0200000, 800*600*2);
+      mLcd->startBgnd ((uint16_t*)0xc0200000, mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
 
-    mLcd->startBgnd ((uint16_t*)0xc0100000, mCamera->getWidth()/scale, mCamera->getHeight()/scale, BSP_PB_GetState (BUTTON_KEY));
     mLcd->drawTitle (kVersion);
     mLcd->drawInfo (24, mCamera->getString());
 
     mLcd->drawDebug();
     mLcd->present();
 
-    bool button = BSP_PB_GetState (BUTTON_KEY);
-    if (!button && (button != lastButton))
-     mCamera->start (!mCamera->getCaptureMode(), 0xc0100000);
-    lastButton = button;
+    //bool button = BSP_PB_GetState (BUTTON_KEY);
+    //if (!button && (button != lastButton))
+    // mCamera->start (!mCamera->getCaptureMode(), (uint8_t*)0xc0200000);
+    //lastButton = button;
     }
   }
 //}}}

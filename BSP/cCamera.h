@@ -5,7 +5,7 @@
 class cCamera {
 public:
   void init();
-  void start (bool captureMode, uint32_t buffer);
+  void start (bool captureMode, uint8_t* buffer);
 
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
@@ -23,7 +23,7 @@ private:
   void gpioInit();
   void mt9d111Init();
   void dcmiInit();
-  void dcmiStart (uint32_t data);
+  void dcmiStart (uint8_t* buffer);
 
   void preview();
   void capture();
@@ -56,7 +56,7 @@ private:
   uint8_t* mBufPtr = nullptr;  // Pointer to DMA output buffer
   uint8_t* mCurPtr = nullptr;  // Pointer to DMA output buffer
 
-  uint8_t* mLastFramePtr = nullptr;
+  uint8_t* mStartFramePtr = nullptr;
   uint8_t* mJpegBuf = nullptr;
   int      mJpegLen = 0;
   //}}}
