@@ -115,10 +115,9 @@ void cCamera::setFocus (int value) {
 //}}}
 
 //{{{
-bool cCamera::getJpegFrame (uint8_t*& jpegBuf, int& jpegLen) {
-  jpegBuf = mJpegBuf;
+uint8_t* cCamera::getJpegFrame (int& jpegLen) {
   jpegLen = mJpegLen;
-  return mJpegBuf != nullptr;
+  return mJpegBuf;
   }
 //}}}
 
@@ -307,24 +306,24 @@ void cCamera::dmaIrqHandler() {
 
       if (mXferCount <= mXferMaxCount - 2) {
         // next dma chunk
-        auto buf = mBuffPtr + ((mXferCount+1) * (4 * mXferSize));
+        auto buf = mBufPtr + ((mXferCount+1) * (4 * mXferSize));
         if (mXferCount & 1)
-          DMA2_Stream1->M0AR = buf;
+          DMA2_Stream1->M0AR = (uint32_t)buf;
         else
-          DMA2_Stream1->M1AR = buf;
+          DMA2_Stream1->M1AR = (uint32_t)buf;
         //cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "dma %d", mXferCount);
         }
       else if (mXferCount == mXferMaxCount - 1) {
         // penultimate chunk, reset M0AR for next frame
-        DMA2_Stream1->M0AR = mBuffPtr;
+        DMA2_Stream1->M0AR = (uint32_t)mBufPtr;
         //cLcd::mLcd->debug (LCD_COLOR_CYAN, "dma %d", mXferCount);
         }
       else {
         // last chunk, reset M1AR, mXferCount for next frame
-        DMA2_Stream1->M1AR = mBuffPtr + (4 * mXferSize);
+        DMA2_Stream1->M1AR = (uint32_t)mBufPtr + (4 * mXferSize);
         //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d done", mXferCount);
         mXferCount = 0;
-        mCurPtr = mBuffPtr;
+        mCurPtr = mBufPtr;
         }
       }
     }
@@ -388,15 +387,18 @@ void cCamera::dcmiIrqHandler() {
       uint32_t rx = (mXferSize - DMA2_Stream1->NDTR) * 4;
       mJpegLen = mCurPtr + rx - mLastFramePtr;
 
-      uint8_t jpegLen1 = *((uint8_t*)(mCurPtr + rx - 4));
-      uint8_t jpegLen2 = *((uint8_t*)(mCurPtr + rx - 3));
-      uint8_t jpegLen3 = *((uint8_t*)(mCurPtr + rx - 2));
+      uint8_t jpegLen1 = *(mCurPtr + rx - 4);
+      uint8_t jpegLen2 = *(mCurPtr + rx - 3);
+      uint8_t jpegLen3 = *(mCurPtr + rx - 2);
       uint32_t jpegLenBytes = (jpegLen3 << 16) + (jpegLen2 << 8) + jpegLen1;
-      uint8_t jpegStatus = *((uint8_t*)(mCurPtr + rx - 1));
+      uint8_t jpegStatus = *(mCurPtr + rx - 1);
+
       if ((jpegStatus & 0x0f) == 0x01) {
-        mJpegBuf = (uint8_t*)mLastFramePtr;
+        mJpegBuf = mLastFramePtr;
+        mJpegBuf[jpegLenBytes] = 0xFF;
+        mJpegBuf[jpegLenBytes] = 0xD9;
         cLcd::mLcd->debug (LCD_COLOR_GREEN,
-                           "v%2d:%6d %2x:%6d %2x %2x", mXferCount,rx, jpegStatus,jpegLenBytes, mJpegBuf[0], mJpegBuf[1]);
+                           "v%2d:%6d %2x:%6d %8x %2x", mXferCount,rx, jpegStatus,jpegLenBytes+2, mJpegBuf, mJpegBuf[0]);
         }
       else {
         mJpegBuf = nullptr;
@@ -527,7 +529,7 @@ void cCamera::mt9d111Init() {
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x273B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0258); // Crop_Y1 B
 
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA744); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02);   // Gamma and Contrast Settings B
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA77E); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x22);   // outputFormat B - RGB565, swap odd even
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA77E); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02);   // outputFormat B - YUV, swap odd even
 
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA217); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x08);   // IndexTH23 = 8
 
@@ -773,7 +775,7 @@ void cCamera::dcmiInit() {
 //{{{
 void cCamera::dcmiStart (uint32_t data) {
 
-  uint32_t dmaLength = mCapture ? getWidth()*getHeight() * 2 : getWidth()*getHeight()/2;
+  uint32_t dmaLength = mCapture ? 0x00100000 : getWidth()*getHeight()/2;
 
   // disable DCMI by resetting DCMIEN bit
   DCMI->CR &= ~DCMI_CR_ENABLE;
@@ -788,8 +790,8 @@ void cCamera::dcmiStart (uint32_t data) {
   DCMI->CR = (DCMI->CR & ~(DCMI_CR_CM)) | DCMI_MODE_CONTINUOUS;
 
   // calc the number of xfers with xferSize <= 64k
-  mBuffPtr = data;
-  mCurPtr = mBuffPtr;
+  mBufPtr = (uint8_t*)data;
+  mCurPtr = mBufPtr;
   mXferCount = 0;
   mXferMaxCount = 1;
   mXferSize = dmaLength;

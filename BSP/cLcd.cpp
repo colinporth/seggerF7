@@ -831,23 +831,28 @@ void cLcd::convertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t y
 //}}}
 //{{{
 void cLcd::convertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                              uint32_t* dst, uint16_t xsize, uint16_t ysize) {
+                            uint32_t* dst, uint16_t xsize, uint16_t ysize) {
 
-  int srcScale = (srcXsize == 1600) ? 4 : 2;
-  src += (((srcYsize/srcScale) - ysize) / 2) * srcXsize;
+  int srcScale = (srcXsize / xsize) + 1;
+  int xpad = (xsize - (srcXsize/srcScale)) / 2;
+
+  if (srcYsize >= ysize)
+    src += (((srcYsize/srcScale) - ysize) / 2) * srcXsize;
+  else
+    src += ((ysize - srcYsize) / 2) * srcXsize;
 
 #ifdef RGB565
 
   auto dst565 = (uint16_t*)dst;
   for (uint16_t y = 0; y < ysize; y++) {
-    for (auto x = 0; x < (xsize - (srcXsize/srcScale)) / 2; x++)
+    for (auto x = 0; x < xpad; x++)
       *dst565++ = 0;
-    for (auto x = 0; x < srcXsize/srcScale; x++) {
+    for (auto x = 0; x < xsize - xpad - xpad; x++) {
       *dst565++ = *src;
       src += srcScale;
       }
-    src += srcXsize;
-    for (auto x = 0; x < (xsize - (srcXsize/srcScale)) / 2; x++)
+    src += (srcScale - 1) * srcXsize;
+    for (auto x = 0; x < xpad; x++)
       *dst565++ = 0;
     }
 
