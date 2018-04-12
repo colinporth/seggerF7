@@ -156,6 +156,12 @@
     <folder Name="main">
       <file file_name="main.cpp" />
       <file file_name="../common/system.c" />
+      <folder Name="includes">
+        <file file_name="jconfig.h" />
+        <file file_name="jmorecfg.h" />
+        <file file_name="jpegHeader.h" />
+        <file file_name="stm32f7xx_hal_conf.h" />
+      </folder>
     </folder>
     <folder Name="bsp_drivers">
       <file file_name="usbd_msc.cpp" />
@@ -353,6 +359,20 @@
       <file file_name="../LibJPEG/source/jidctfst.c" />
       <file file_name="../LibJPEG/source/jidctint.c" />
       <file file_name="../LibJPEG/source/jmemmgr.c" />
+      <file file_name="../LibJPEG/source/jutils.c" />
+      <file file_name="../LibJPEG/source/jmemnobs.c" />
+      <folder Name="includes">
+        <file file_name="../LibJPEG/include/cderror.h" />
+        <file file_name="../LibJPEG/include/cdjpeg.h" />
+        <file file_name="../LibJPEG/include/jdct.h" />
+        <file file_name="../LibJPEG/include/jerror.h" />
+        <file file_name="../LibJPEG/include/jinclude.h" />
+        <file file_name="../LibJPEG/include/jmemsys.h" />
+        <file file_name="../LibJPEG/include/jpegint.h" />
+        <file file_name="../LibJPEG/include/jpeglib.h" />
+        <file file_name="../LibJPEG/include/jversion.h" />
+        <file file_name="../LibJPEG/include/transupp.h" />
+      </folder>
     </folder>
   </project>
 </solution>

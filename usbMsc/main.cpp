@@ -11,8 +11,11 @@
 #include "cLcd.h"
 #include "stm32746g_discovery_sd.h"
 #include "cCamera.h"
+
+#include "jpeglib.h"
+#include "jpegHeader.h"
 //}}}
-const char* kVersion = "Camera 11/4/18";
+const char* kVersion = "Camera 12/4/18";
 
 int focus = 0;
 cCamera camera;
@@ -34,6 +37,7 @@ public:
     return mFiles;
     }
   //}}}
+  void jpegDecode (int width, int height, uint8_t* buff, int buffLen, uint8_t* outBuff, uint8_t* tmpBuff);
 
 protected:
   virtual void onProx (int x, int y, int z);
@@ -101,9 +105,10 @@ void cApp::run() {
     if (!f_open (&file, "image.jpg", FA_READ)) {
       mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
       UINT bytesRead;
-      f_read (&file, (void*)mLcd->getCameraBuffer(), (UINT)filInfo.fsize,  &bytesRead);
+      f_read (&file, (void*)0xc0200000, (UINT)filInfo.fsize, &bytesRead);
       mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
       f_close (&file);
+      jpegDecode (320, 240, (uint8_t*)0xc0200000, bytesRead, (uint8_t*)mLcd->getCameraBuffer(), (uint8_t*)0xc0300000);
       }
     else
       mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
@@ -111,9 +116,9 @@ void cApp::run() {
   else
     mLcd->debug (LCD_COLOR_RED, "not mounted");
 
-  mCamera = new cCamera();
-  mCamera->init();
-  mCamera->start (false, mLcd->getCameraBuffer());
+  //mCamera = new cCamera();
+  //mCamera->init();
+  //mCamera->start (false, mLcd->getCameraBuffer());
 
   int lastCount = 0;
   bool lastButton = false;
@@ -126,18 +131,73 @@ void cApp::run() {
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
-    mLcd->startBgnd ((uint16_t*)mLcd->getCameraBuffer(), mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+    mLcd->startBgnd ((uint16_t*)mLcd->getCameraBuffer());
+    //mLcd->startBgnd ((uint16_t*)mLcd->getCameraBuffer(), mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
     mLcd->drawTitle (kVersion);
     mLcd->drawInfo (24, mCamera->getString());
 
     mLcd->drawDebug();
     mLcd->present();
-    
-    bool button = BSP_PB_GetState (BUTTON_KEY);
-    if (!button && (button != lastButton))
-      mCamera->start (!mCamera->getCaptureMode(), mLcd->getCameraBuffer());
-    lastButton = button;
+
+    //bool button = BSP_PB_GetState (BUTTON_KEY);
+    //if (!button && (button != lastButton))
+    //  mCamera->start (!mCamera->getCaptureMode(), mLcd->getCameraBuffer());
+    //lastButton = button;
     }
+  }
+//}}}
+//{{{
+void cApp::jpegDecode (int width, int height, uint8_t* buff, int buffLen, uint8_t* outBuff, uint8_t* tmpBuff) {
+
+  //cinfo.dct_method = JDCT_FLOAT;
+  //jpeg_start_decompress (&cinfo);
+  //row_stride = width * 3;
+  //while (cinfo.output_scanline < cinfo.output_height) {
+  //  (void) jpeg_read_scanlines (&cinfo, buffer, 1);
+  //  /* TBC */
+  //  if (callback (buffer[0], row_stride) != 0) {
+  //    break;
+  //    }
+
+  struct jpeg_error_mgr mJerr;
+  struct jpeg_decompress_struct mCinfo;
+
+  //uint8_t jpegHeader[1000];
+  //int jpegHeaderLen = setJpegHeader (jpegHeader, width, height, 0, 6);
+  mCinfo.err = jpeg_std_error (&mJerr);
+  jpeg_create_decompress (&mCinfo);
+  jpeg_mem_src (&mCinfo, buff, buffLen);
+  jpeg_read_header (&mCinfo, TRUE);
+
+  mLcd->debug (LCD_COLOR_WHITE, "jpeg image:%dx%d", mCinfo.image_width, mCinfo.image_height);
+
+  mCinfo.dct_method = JDCT_FLOAT;
+  mCinfo.out_color_space = JCS_RGB;
+  mCinfo.scale_num = 1;
+  mCinfo.scale_denom = 2;
+
+  //jpeg_mem_src (&mCinfo, buff, buffLen);
+  jpeg_start_decompress (&mCinfo);
+  mLcd->debug (LCD_COLOR_WHITE, "jpeg out:%dx%d", mCinfo.output_width, mCinfo.output_height);
+
+  while (mCinfo.output_scanline < mCinfo.output_height) {
+    unsigned char* bufferArray[1];
+    bufferArray[0] = tmpBuff;
+    jpeg_read_scanlines (&mCinfo, bufferArray, 1);
+
+    uint8_t* src = tmpBuff;
+    uint16_t* dst = (uint16_t*)(outBuff + mCinfo.output_scanline * (480 * 2));
+
+    for (int x = 0; x < mCinfo.output_width; x++) {
+      uint8_t r = *src++;
+      uint8_t g = *src++;
+      uint8_t b = *src++;
+      *dst++ = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | ((b & 0xF8) >> 3);
+      }
+    }
+
+  jpeg_finish_decompress (&mCinfo);
+  jpeg_destroy_decompress (&mCinfo);
   }
 //}}}
 
