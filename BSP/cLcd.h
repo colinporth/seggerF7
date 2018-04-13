@@ -13,10 +13,7 @@
 #endif
 //}}}
 
-#define RGB565
 //{{{  colour defines
-#ifdef RGB565
-
 #define LCD_COLOR_BLUE          0x001F
 #define LCD_COLOR_GREEN         0x07D0
 #define LCD_COLOR_RED           0xF800
@@ -25,37 +22,6 @@
 #define LCD_COLOR_BLACK         0x0000
 #define LCD_COLOR_MAGENTA       0xF81F
 #define LCD_COLOR_CYAN          0x07FF
-
-#else
-
-#define LCD_COLOR_BLUE          0xFF0000FF
-#define LCD_COLOR_GREEN         0xFF00FF00
-#define LCD_COLOR_RED           0xFFFF0000
-#define LCD_COLOR_CYAN          0xFF00FFFF
-#define LCD_COLOR_MAGENTA       0xFFFF00FF
-#define LCD_COLOR_YELLOW        0xFFFFFF00
-#define LCD_COLOR_LIGHTBLUE     0xFF8080FF
-#define LCD_COLOR_LIGHTGREEN    0xFF80FF80
-#define LCD_COLOR_LIGHTRED      0xFFFF8080
-#define LCD_COLOR_LIGHTCYAN     0xFF80FFFF
-#define LCD_COLOR_LIGHTMAGENTA  0xFFFF80FF
-#define LCD_COLOR_LIGHTYELLOW   0xFFFFFF80
-#define LCD_COLOR_DARKBLUE      0xFF000080
-#define LCD_COLOR_DARKGREEN     0xFF008000
-#define LCD_COLOR_DARKRED       0xFF800000
-#define LCD_COLOR_DARKCYAN      0xFF008080
-#define LCD_COLOR_DARKMAGENTA   0xFF800080
-#define LCD_COLOR_DARKYELLOW    0xFF808000
-#define LCD_COLOR_WHITE         0xFFFFFFFF
-#define LCD_COLOR_LIGHTGRAY     0xFFD3D3D3
-#define LCD_COLOR_GRAY          0xFF808080
-#define LCD_COLOR_DARKGRAY      0xFF404040
-#define LCD_COLOR_BLACK         0xFF000000
-#define LCD_COLOR_BROWN         0xFFA52A2A
-#define LCD_COLOR_ORANGE        0xFFFFA500
-#define LCD_COLOR_TRANSPARENT   0xFF000000
-
-#endif
 //}}}
 
 class cLcd {
@@ -99,7 +65,7 @@ public:
   // drawing
   void SelectLayer (uint32_t LayerIndex);
   void SetTransparency (uint32_t LayerIndex, uint8_t Transparency);
-  void SetAddress (uint32_t LayerIndex, uint32_t* address, uint32_t* writeAddress);
+  void SetAddress (uint32_t LayerIndex, uint16_t* address, uint16_t* writeAddress);
 
   uint32_t ReadPixel (uint16_t x, uint16_t y);
   void DrawPixel (uint16_t x, uint16_t y, uint32_t color);
@@ -122,11 +88,12 @@ public:
   void FillEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius);
   void DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 
-  void convertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize);
-  void convertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, uint32_t* dst, uint16_t xsize, uint16_t ysize);
-  void convertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, uint32_t* dst, uint16_t xsize, uint16_t ysize);
+  void copyFrame (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, uint16_t* dst, uint16_t xsize, uint16_t ysize);
+  void copyFrameScaled (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, uint16_t* dst, uint16_t xsize, uint16_t ysize);
   void convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                         uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
+  void convertRgb888toRgbB565 (uint8_t* src, uint16_t* dst, uint16_t xSize);
+  void convertRgb888toRgbB565cpu (uint8_t* src, uint16_t* dst, uint16_t xSize);
 
   void displayOff();
   void displayOn();
@@ -134,7 +101,7 @@ public:
   static cLcd* mLcd;
 
 private:
-  uint32_t* getBuffer();
+  uint16_t* getBuffer();
 
   void setLayer (uint32_t layerIndex);
   void layerInit (uint16_t LayerIndex, uint32_t FrameBuffer);

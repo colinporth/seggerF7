@@ -16,6 +16,9 @@
 //}}}
 const char* kVersion = "Camera 12/4/18";
 
+uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
+uint8_t* kJpegBuffer    =  (uint8_t*)0xc0200000;
+
 int focus = 0;
 cCamera camera;
 
@@ -23,12 +26,12 @@ cCamera camera;
 class cApp : public cTouch {
 public:
   cApp (int x, int y) : cTouch (x,y) {
-    mBufferArray[0] = (uint8_t*)malloc (800 * 3);
-    cinfo.err = jpeg_std_error (&jerr);
-    jpeg_create_decompress (&cinfo);
+    mBufferArray[0] = (uint8_t*)malloc (1600 * 3);
+    mCinfo.err = jpeg_std_error (&jerr);
+    jpeg_create_decompress (&mCinfo);
     }
   ~cApp() {
-    jpeg_destroy_decompress (&cinfo);
+    jpeg_destroy_decompress (&mCinfo);
     }
 
   cLcd* getLcd() { return mLcd; }
@@ -80,7 +83,7 @@ private:
   uint8_t* mBufferArray[1];
 
   struct jpeg_error_mgr jerr;
-  struct jpeg_decompress_struct cinfo;
+  struct jpeg_decompress_struct mCinfo;
   uint8_t mJpegHeader[1000];
   int mJpegHeaderLen = 0;
   };
@@ -179,13 +182,13 @@ void cApp::run() {
 
   mCamera = new cCamera();
   mCamera->init();
-  mCamera->start (true, (uint8_t*)0xc0200000);
+  mCamera->start (true, kJpegBuffer);
 
   setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
-  cinfo.scale_num = 1;
-  cinfo.scale_denom = (mCamera->getWidth() / mLcd->getWidth()) + 1;;
-  cinfo.dct_method = JDCT_FLOAT;
-  cinfo.out_color_space = JCS_RGB;
+  mCinfo.scale_num = 1;
+  mCinfo.scale_denom = (mCamera->getWidth() / mLcd->getWidth()) + 1;
+  mCinfo.dct_method = JDCT_FLOAT;
+  mCinfo.out_color_space = JCS_RGB;
 
   int lastCount = 0;
   bool lastButton = false;
@@ -205,33 +208,26 @@ void cApp::run() {
       if (jpegBuf) {
         //{{{  crude wraparound jpegBuf
         if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
-          memcpy ((void*)0xc0600000, (void*)0xc0200000, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
+          memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
         //}}}
 
         // decode jpeg header
-        jpeg_mem_src (&cinfo, mJpegHeader, mJpegHeaderLen);
-        jpeg_read_header (&cinfo, TRUE);
+        jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
+        jpeg_read_header (&mCinfo, TRUE);
 
         // decode jpeg body
-        jpeg_mem_src (&cinfo, jpegBuf, jpegLen);
-        jpeg_start_decompress (&cinfo);
+        jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
+        jpeg_start_decompress (&mCinfo);
 
-        while (cinfo.output_scanline < cinfo.output_height) {
-          jpeg_read_scanlines (&cinfo, mBufferArray, 1);
-          auto src = mBufferArray[0];
-          auto dst = (uint16_t*)0xc0100000 + cinfo.output_scanline * cinfo.output_width;
-          for (int x = 0; x < cinfo.output_width; x++) {
-            uint8_t r = (*src++) & 0xF8;
-            uint8_t g = (*src++) & 0xFC;
-            uint8_t b = (*src++) & 0xF8;
-            *dst++ = (r << 8) | (g << 3) | (b >> 3);
-            }
+        while (mCinfo.output_scanline < mCinfo.output_height) {
+          jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
+          mLcd->convertRgb888toRgbB565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
           }
-        jpeg_finish_decompress (&cinfo);
+        jpeg_finish_decompress (&mCinfo);
         }
       }
 
-    mLcd->startBgnd ((uint16_t*)0xc0100000, cinfo.output_width, cinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
+    mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
 
     mLcd->drawTitle (kVersion);
     mLcd->drawInfo (24, mCamera->getString());
@@ -241,7 +237,7 @@ void cApp::run() {
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
     if (!button && (button != lastButton))
-     mCamera->start (!mCamera->getCaptureMode(), (uint8_t*)0xc0200000);
+      mCamera->start (!mCamera->getCaptureMode(), kJpegBuffer);
     lastButton = button;
     }
   }
@@ -422,10 +418,11 @@ void cApp::loadFile() {
     if (!f_open (&file, "image.jpg", FA_READ)) {
       mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
       UINT bytesRead;
-      f_read (&file, (void*)0xc0200000, (UINT)filInfo.fsize, &bytesRead);
+      f_read (&file, (void*)kJpegBuffer, (UINT)filInfo.fsize, &bytesRead);
       mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
       f_close (&file);
-      jpegDecode ((uint8_t*)0xc0200000, bytesRead, (uint16_t*)0xc0100000, 4);
+
+      jpegDecode (kJpegBuffer, bytesRead, kRgb565Buffer, 4);
       }
     else
       mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
@@ -437,34 +434,24 @@ void cApp::loadFile() {
 //{{{
 void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale) {
 
-  jpeg_mem_src (&cinfo, jpegBuf, jpegLen);
-  jpeg_read_header (&cinfo, TRUE);
+  jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
+  jpeg_read_header (&mCinfo, TRUE);
 
-  mLcd->debug (LCD_COLOR_WHITE, "jpeg image:%dx%d", cinfo.image_width, cinfo.image_height);
+  mLcd->debug (LCD_COLOR_WHITE, "jpegDecode in:%dx%d", mCinfo.image_width, mCinfo.image_height);
 
-  cinfo.dct_method = JDCT_FLOAT;
-  cinfo.out_color_space = JCS_RGB;
-  cinfo.scale_num = 1;
-  cinfo.scale_denom = scale;
+  mCinfo.dct_method = JDCT_FLOAT;
+  mCinfo.out_color_space = JCS_RGB;
+  mCinfo.scale_num = 1;
+  mCinfo.scale_denom = scale;
 
-  //jpeg_mem_src (&mCinfo, buff, buffLen);
-  jpeg_start_decompress (&cinfo);
-
-  while (cinfo.output_scanline < cinfo.output_height) {
-    jpeg_read_scanlines (&cinfo, mBufferArray, 1);
-
-    auto src = mBufferArray[0];
-    auto dst = rgb565buf + cinfo.output_scanline * cinfo.output_width;
-    for (int x = 0; x < cinfo.output_width; x++) {
-      uint8_t r = (*src++) & 0xF8;
-      uint8_t g = (*src++) & 0xFC;
-      uint8_t b = (*src++) & 0xF8;
-      *dst++ = (r << 8) | (g << 3) | (b >> 3);
-      }
+  jpeg_start_decompress (&mCinfo);
+  while (mCinfo.output_scanline < mCinfo.output_height) {
+    jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
+    mLcd->convertRgb888toRgbB565cpu (mBufferArray[0], rgb565buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
     }
-  jpeg_finish_decompress (&cinfo);
+  jpeg_finish_decompress (&mCinfo);
 
-  mLcd->debug (LCD_COLOR_WHITE, "jpeg out:%dx%d", cinfo.output_width, cinfo.output_height);
+  mLcd->debug (LCD_COLOR_WHITE, "jpegDecode out:%dx%d %d", mCinfo.output_width, mCinfo.output_height, scale);
   }
 //}}}
 

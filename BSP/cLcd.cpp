@@ -264,9 +264,9 @@ void cLcd::startBgnd (uint16_t* bgnd) {
 void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
 
   if (zoom)
-    convertFrameCpu1 (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
+    copyFrame (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
   else
-    convertFrameCpu (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
+    copyFrameScaled (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
   }
 //}}}
 //{{{
@@ -375,7 +375,7 @@ void cLcd::SetTransparency (uint32_t LayerIndex, uint8_t Transparency) {
   }
 //}}}
 //{{{
-void cLcd::SetAddress (uint32_t LayerIndex, uint32_t* address, uint32_t* writeAddress) {
+void cLcd::SetAddress (uint32_t LayerIndex, uint16_t* address, uint16_t* writeAddress) {
 
   // change layer addresses
   hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = (uint32_t)address;
@@ -388,22 +388,14 @@ void cLcd::SetAddress (uint32_t LayerIndex, uint32_t* address, uint32_t* writeAd
 //{{{
 uint32_t cLcd::ReadPixel (uint16_t x, uint16_t y) {
 
-  #ifdef RGB565
-    return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(y*getWidth() + x)));
-  #else
-    return *(__IO uint32_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (4*(y*getWidth() + x)));
-  #endif
+  return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(y*getWidth() + x)));
   }
 //}}}
 //{{{
 void cLcd::DrawPixel (uint16_t x, uint16_t y, uint32_t color) {
 // Write data value to all SDRAM memory
 
-  #ifdef RGB565
-    *(__IO uint16_t*) (hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(y*getWidth() + x))) = (uint16_t)color;
-  #else
-    *(__IO uint32_t*) (hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (4*(y*getWidth() + x))) = color;
-  #endif
+  *(__IO uint16_t*) (hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(y*getWidth() + x))) = (uint16_t)color;
   }
 //}}}
 //{{{
@@ -466,12 +458,7 @@ void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
   const uint16_t offset = 8*(byteAlignedWidth) - width-1;
   const uint8_t* fontChar = &Font16.mTable [(ascii-' ') * Font16.mHeight * byteAlignedWidth];
 
-  #ifdef RGB565
-    auto fbPtr = ((uint16_t*)hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite) + (y * getWidth()) + x;
-  #else
-    auto fbPtr = ((uint32_t*)hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite) + (y * getWidth()) + x;
-  #endif
-
+  auto fbPtr = ((uint16_t*)hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite) + (y * getWidth()) + x;
   for (auto fontLine = 0u; fontLine < Font16.mHeight; fontLine++) {
     auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
     uint16_t fontLineBits = *fontPtr++;
@@ -812,26 +799,21 @@ void cLcd::DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
 //}}}
 
 //{{{
-void cLcd::convertFrame (uint16_t* src, uint32_t dst, uint16_t xsize, uint16_t ysize) {
+void cLcd::copyFrame (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+                       uint16_t* dst, uint16_t xsize, uint16_t ysize) {
 
-  hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
-  hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
-  hDma2dHandler.Init.OutputOffset = 0;
+  src += ((srcXsize-xsize)/2) + (((srcYsize - ysize) / 2) * srcXsize);
 
-  hDma2dHandler.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
-  hDma2dHandler.LayerCfg[1].InputAlpha = 0xFF;
-  hDma2dHandler.LayerCfg[1].InputColorMode = CM_RGB565;
-  hDma2dHandler.LayerCfg[1].InputOffset = 0;
-
-  HAL_DMA2D_Init (&hDma2dHandler);
-  HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1);
-  HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, dst, xsize, ysize);
-  HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
+  for (uint16_t y = 0; y < ysize; y++) {
+    memcpy (dst, src, xsize*2);
+    src += srcXsize;
+    dst += xsize;
+    }
   }
 //}}}
 //{{{
-void cLcd::convertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                            uint32_t* dst, uint16_t xsize, uint16_t ysize) {
+void cLcd::copyFrameScaled (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
+                             uint16_t* dst, uint16_t xsize, uint16_t ysize) {
 
   int srcScale = ((srcXsize-1) / xsize) + 1;
   int xpad = (xsize - (srcXsize/srcScale)) / 2;
@@ -841,60 +823,17 @@ void cLcd::convertFrameCpu (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
   else
     src += ((ysize - srcYsize) / 2) * srcXsize;
 
-#ifdef RGB565
-
-  auto dst565 = (uint16_t*)dst;
   for (uint16_t y = 0; y < ysize; y++) {
     for (auto x = 0; x < xpad; x++)
-      *dst565++ = 0;
+      *dst++ = 0;
     for (auto x = 0; x < xsize - xpad - xpad; x++) {
-      *dst565++ = *src;
+      *dst++ = *src;
       src += srcScale;
       }
     src += (srcScale - 1) * srcXsize;
     for (auto x = 0; x < xpad; x++)
-      *dst565++ = 0;
+      *dst++ = 0;
     }
-
-#else
-
-  for (uint16_t y = 0; y < ysize; y++) {
-    for (auto x = 0; x < (xsize - (srcXsize/srcScale)) / 2; x++)
-      *dst++ = 0xFF000000;
-    for (auto x = 0; x < srcXsize/2); x++) {
-      *dst++ = 0xFF000000 | ((*src & 0xF800) << 8) | ((*src & 0x07E0) << 5) | ((*src & 0x001F) << 3);
-      src += 2;
-      }
-    src += srcXsize;
-    for (auto x = 0; x < (xsize - (srcXsize/srcScale)) / 2; x++)
-      *dst++ = 0xFF000000;
-    }
-
-#endif
-  }
-//}}}
-//{{{
-void cLcd::convertFrameCpu1 (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                               uint32_t* dst, uint16_t xsize, uint16_t ysize) {
-
-  src += ((srcXsize-xsize)/2) + (((srcYsize - ysize) / 2) * srcXsize);
-
-#ifdef RGB565
-  auto dst565 = (uint16_t*)dst;
-  for (uint16_t y = 0; y < ysize; y++) {
-    memcpy (dst565, src, xsize*2);
-    src += srcXsize;
-    dst565 += xsize;
-    }
-#else
-  for (uint16_t y = 0; y < ysize; y++) {
-    for (auto x = 0; x < xsize; x++) {
-      *dst++ = 0xFF000000 | ((*src & 0xF800) << 8) | ((*src & 0x07E0) << 5) | ((*src & 0x001F) << 3);
-      src++;
-      }
-    src += srcXsize - xsize;
-    }
-#endif
   }
 //}}}
 //{{{
@@ -1724,6 +1663,36 @@ void cLcd::convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
     }
   }
 //}}}
+//{{{
+void cLcd::convertRgb888toRgbB565 (uint8_t* src, uint16_t* dst, uint16_t xSize) {
+
+  hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
+  hDma2dHandler.Init.ColorMode = DMA2D_OUTPUT_RGB565;
+  hDma2dHandler.Init.OutputOffset = 0;
+
+  // Foreground Configuration
+  hDma2dHandler.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
+  hDma2dHandler.LayerCfg[1].InputAlpha = 0xFF;
+  hDma2dHandler.LayerCfg[1].InputColorMode = DMA2D_INPUT_RGB888;
+  hDma2dHandler.LayerCfg[1].InputOffset = 0;
+
+  HAL_DMA2D_Init (&hDma2dHandler);
+  HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1);
+  HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, xSize, 1);
+  HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
+  }
+//}}}
+//{{{
+void cLcd::convertRgb888toRgbB565cpu (uint8_t* src, uint16_t* dst, uint16_t xSize) {
+
+  for (int x = 0; x < xSize; x++) {
+    uint8_t r = (*src++) & 0xF8;
+    uint8_t g = (*src++) & 0xFC;
+    uint8_t b = (*src++) & 0xF8;
+    *dst++ = (r << 8) | (g << 3) | (b >> 3);
+    }
+  }
+//}}}
 
 //{{{
 void cLcd::displayOn() {
@@ -1744,8 +1713,8 @@ void cLcd::displayOff() {
 
 // private
 //{{{
-uint32_t* cLcd::getBuffer() {
-  return (uint32_t*)(mFlip ? SDRAM_DEVICE_ADDR + 0x40000 : SDRAM_DEVICE_ADDR);
+uint16_t* cLcd::getBuffer() {
+  return (uint16_t*)(mFlip ? SDRAM_DEVICE_ADDR + 0x40000 : SDRAM_DEVICE_ADDR);
   }
 //}}}
 //{{{
@@ -1805,7 +1774,7 @@ void cLcd::layerInit (uint16_t LayerIndex, uint32_t FB_Address) {
 
   hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = FB_Address;
   hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = FB_Address;
-  hLtdcHandler.LayerCfg[LayerIndex].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;  // LTDC_PIXEL_FORMAT_ARGB8888;
+  hLtdcHandler.LayerCfg[LayerIndex].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
 
   hLtdcHandler.LayerCfg[LayerIndex].ImageWidth = getWidth();
   hLtdcHandler.LayerCfg[LayerIndex].ImageHeight = getHeight();
@@ -1842,11 +1811,7 @@ void cLcd::layerInit (uint16_t LayerIndex, uint32_t FB_Address) {
 void cLcd::FillBuffer (uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine, uint32_t color) {
 
   hDma2dHandler.Init.Mode = DMA2D_R2M;
-  #ifdef RGB565
-    hDma2dHandler.Init.ColorMode = DMA2D_RGB565;
-  #else
-    hDma2dHandler.Init.ColorMode = DMA2D_ARGB8888;
-  #endif
+  hDma2dHandler.Init.ColorMode = DMA2D_RGB565;
   hDma2dHandler.Init.OutputOffset = OffLine;
 
   HAL_DMA2D_Init (&hDma2dHandler);
