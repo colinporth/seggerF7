@@ -15,7 +15,8 @@
 #include "jpeglib.h"
 //}}}
 const char* kVersion = "Camera 13/4/18";
-const bool kCamera = true;
+const char* kEmpty = "empty";
+//#define USE_CAMERA
 
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
 uint8_t* kJpegBuffer    =  (uint8_t*)0xc0200000;
@@ -63,8 +64,8 @@ private:
   void reportFree();
   void reportLabel();
 
-  void loadFile();
-  void saveFile (uint8_t* jpegBuf, int jpegLen, int num);
+  int loadFile (uint8_t* jpegBuffer);
+  void saveFile (uint8_t* jpegHeadBuf, int jpegHeadLen, uint8_t* jpegBuf, int jpegLen, int num);
   void jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale);
 
   int jfifApp0Marker (uint8_t* ptr);
@@ -180,19 +181,22 @@ void cApp::run() {
 
   mscInit (mLcd);
   mscStart();
-  loadFile();
+  uint8_t* jpegBuf = kJpegBuffer;
+  int jpegLen = loadFile (kJpegBuffer);
 
-  if (kCamera) {
-    mCamera = new cCamera();
-    mCamera->init();
-    mCamera->start (true, kJpegBuffer);
+//{{{
+#ifdef USE_CAMERA
+  mCamera = new cCamera();
+  mCamera->init();
+  mCamera->start (true, kJpegBuffer);
 
-    setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
-    mCinfo.scale_num = 1;
-    mCinfo.scale_denom = (mCamera->getWidth() / mLcd->getWidth()) + 1;
-    mCinfo.dct_method = JDCT_FLOAT;
-    mCinfo.out_color_space = JCS_RGB;
-    }
+  setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
+  mCinfo.scale_num = 1;
+  mCinfo.scale_denom = (mCamera->getWidth() / mLcd->getWidth()) + 1;
+  mCinfo.dct_method = JDCT_FLOAT;
+  mCinfo.out_color_space = JCS_RGB;
+#endif
+//}}}
 
   int count = 0;
   int lastCount = 0;
@@ -206,43 +210,47 @@ void cApp::run() {
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
-    if (kCamera) {
-      //mLcd->startBgnd ((uint16_t*)0xc0100000);
-      if (mCamera->getCaptureMode()) {
-        int jpegLen;
-        auto jpegBuf = mCamera->getJpegFrame (jpegLen);
-        if (jpegBuf) {
-          //{{{  crude wraparound jpegBuf
-          if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
-            memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
-          //}}}
-          count++;
-          //saveFile (jpegBuf, jpegLen, count);
+  //{{{
+  #ifdef USE_CAMERA
+    //mLcd->startBgnd ((uint16_t*)0xc0100000);
+    if (mCamera->getCaptureMode()) {
+      int jpegLen;
+      jpegBuf = mCamera->getJpegFrame (jpegLen);
+      if (jpegBuf) {
+        //{{{  crude wraparound jpegBuf
+        if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
+          memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
+        //}}}
+        count++;
+        saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count);
 
-          if (true) {
-            // decode jpeg header
-            jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
-            jpeg_read_header (&mCinfo, TRUE);
+        if (true) {
+          // decode jpeg header
+          jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
+          jpeg_read_header (&mCinfo, TRUE);
 
-            // decode jpeg body
-            jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
-            jpeg_start_decompress (&mCinfo);
+          // decode jpeg body
+          jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
+          jpeg_start_decompress (&mCinfo);
 
-            while (mCinfo.output_scanline < mCinfo.output_height) {
-              jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-              mLcd->convertRgb888toRgbB565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-              }
-            jpeg_finish_decompress (&mCinfo);
+          while (mCinfo.output_scanline < mCinfo.output_height) {
+            jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
+            mLcd->convertRgb888toRgbB565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
             }
+          jpeg_finish_decompress (&mCinfo);
           }
         }
-      mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
       }
-    else
-      mLcd->startBgnd (kRgb565Buffer);
+    mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
+  //}}}
+  #else
+    if (count < 3)
+      saveFile (nullptr, 0, jpegBuf, jpegLen, count++);
+    mLcd->startBgnd (kRgb565Buffer);
+  #endif
 
     mLcd->drawTitle (kVersion);
-    mLcd->drawInfo (24, mCamera->getString());
+    mLcd->drawInfo (24, mCamera ? mCamera->getString() : kEmpty);
 
     mLcd->drawDebug();
     mLcd->present();
@@ -405,7 +413,7 @@ void cApp::reportFree() {
 //}}}
 
 //{{{
-void cApp::loadFile() {
+int cApp::loadFile (uint8_t* jpegBuffer) {
 
   auto fatFs = (FATFS*)malloc (sizeof (FATFS));
   if (!f_mount (fatFs, "", 0)) {
@@ -430,29 +438,34 @@ void cApp::loadFile() {
     if (!f_open (&file, "image.jpg", FA_READ)) {
       mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
       UINT bytesRead;
-      f_read (&file, (void*)kJpegBuffer, (UINT)filInfo.fsize, &bytesRead);
+      f_read (&file, (void*)jpegBuffer, (UINT)filInfo.fsize, &bytesRead);
       mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
       f_close (&file);
       if (bytesRead > 0)
         jpegDecode (kJpegBuffer, bytesRead, kRgb565Buffer, 4);
+      return bytesRead;
       }
     else
       mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
     }
   else
     mLcd->debug (LCD_COLOR_RED, "not mounted");
+
+  return 0;
   }
 //}}}
 //{{{
-void cApp::saveFile (uint8_t* jpegBuf, int jpegLen, int num) {
+void cApp::saveFile (uint8_t* jpegHeadBuf, int jpegHeadLen, uint8_t* jpegBuf, int jpegLen, int num) {
+
+  char saveName[40];
+  sprintf (saveName, "saveImage%03d.jpg", num);
+  mLcd->debug (LCD_COLOR_GREEN, saveName);
 
   FIL file;
-  char saveName[40];
-  sprintf (saveName, "saveImage%2d.jpg", num);
   if (!f_open (&file, saveName, FA_WRITE | FA_CREATE_ALWAYS)) {
-    mLcd->debug (LCD_COLOR_WHITE, saveName);
     UINT bytesWritten;
-    f_write (&file, mJpegHeader, mJpegHeaderLen, &bytesWritten);
+    if (jpegHeadBuf && jpegHeadLen)
+      f_write (&file, jpegHeadBuf, jpegHeadLen, &bytesWritten);
     f_write (&file, jpegBuf, jpegLen, &bytesWritten);
     f_close (&file);
     }

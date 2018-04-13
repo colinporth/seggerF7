@@ -280,7 +280,7 @@ void cLcd::drawTitle (const char* title) {
   }
 //}}}
 //{{{
-void cLcd::drawInfo (uint16_t column, char* str) {
+void cLcd::drawInfo (uint16_t column, const char* str) {
 
   SetTextColor (LCD_COLOR_YELLOW);
   DisplayStringAtLineColumn (0, column, str);
@@ -481,13 +481,13 @@ void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
   }
 //}}}
 //{{{
-void cLcd::DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTypdef mode) {
+void cLcd::DisplayStringAt (uint16_t x, uint16_t y, const char* text, Text_AlignModeTypdef mode) {
 
   uint16_t column = 1;
   switch (mode) {
     case CENTER_MODE:  {
       uint32_t xSize = getWidth() / Font16.mWidth;
-      char* ptr = text;
+      auto  ptr = text;
       uint32_t size = 0;
       while (*ptr++)
         size++;
@@ -497,7 +497,7 @@ void cLcd::DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTy
 
     case RIGHT_MODE: {
       uint32_t xSize = getWidth() / Font16.mWidth;
-      char* ptr = text;
+      auto ptr = text;
       uint32_t size = 0;
       while (*ptr++)
         size++;
@@ -521,12 +521,12 @@ void cLcd::DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTy
   }
 //}}}
 //{{{
-void cLcd::DisplayStringAtLine (uint16_t line, char* ptr) {
+void cLcd::DisplayStringAtLine (uint16_t line, const char* ptr) {
   DisplayStringAt (0, line * Font16.mHeight, ptr, LEFT_MODE);
   }
 //}}}
 //{{{
-void cLcd::DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr) {
+void cLcd::DisplayStringAtLineColumn (uint16_t line, uint16_t column, const char* ptr) {
   DisplayStringAt (column * Font16.mWidth, line * Font16.mHeight, ptr, LEFT_MODE);
   }
 //}}}

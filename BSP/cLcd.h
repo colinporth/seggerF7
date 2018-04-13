@@ -51,7 +51,7 @@ public:
   void startBgnd (uint16_t* bgnd);
   void startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom);
   void drawTitle (const char* title);
-  void drawInfo (uint16_t column, char* str);
+  void drawInfo (uint16_t column, const char* str);
   void drawDebug();
   void present();
 
@@ -73,9 +73,9 @@ public:
 
   void clearStringLine (uint32_t Line);
   void DisplayChar (uint16_t x, uint16_t y, uint8_t ascii);
-  void DisplayStringAt (uint16_t x, uint16_t y, char* text, Text_AlignModeTypdef mode);
-  void DisplayStringAtLine (uint16_t line, char* ptr);
-  void DisplayStringAtLineColumn (uint16_t line, uint16_t column, char* ptr);
+  void DisplayStringAt (uint16_t x, uint16_t y, const char* text, Text_AlignModeTypdef mode);
+  void DisplayStringAtLine (uint16_t line, const char* ptr);
+  void DisplayStringAtLineColumn (uint16_t line, uint16_t column, const char* ptr);
 
   void clear (uint32_t Color);
   void DrawRect (uint16_t x, uint16_t y, uint16_t Width, uint16_t Height);

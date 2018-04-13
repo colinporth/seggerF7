@@ -10,7 +10,8 @@
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
   <BreakpointListItem trigger="" line="11" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="BSP/cLcd.h" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="3255" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="FatFs/ff.c" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="428" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="181" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="428" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="517" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="53" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="682" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
@@ -48,12 +49,6 @@
   <ProjectSessionItem path="usb"/>
   <ProjectSessionItem path="usb;usbMsc"/>
   <ProjectSessionItem path="usb;usbMsc;bsp_drivers"/>
-  <ProjectSessionItem path="usb;usbMsc;hal_drivers"/>
-  <ProjectSessionItem path="usb;usbMsc;hal_drivers;includes"/>
-  <ProjectSessionItem path="usb;usbMsc;hal_drivers;includes;Legacy"/>
-  <ProjectSessionItem path="usb;usbMsc;libJpeg"/>
-  <ProjectSessionItem path="usb;usbMsc;libJpeg;includes"/>
-  <ProjectSessionItem path="usb;usbMsc;libJpeg;src"/>
   <ProjectSessionItem path="usb;usbMsc;main"/>
   <ProjectSessionItem path="usb;usbMsc;system"/>
  </Project>
@@ -97,10 +92,8 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="6" y="299" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/cLcd.cpp" debugPath="BSP/cLcd.cpp" selected="1" top="275" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="41" y="276" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="0" top="238" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="163" useTextEdit="1" useBinaryEdit="0" left="0" path="system/HardFaultHandler.S" debugPath="system/HardFaultHandler.S" selected="0" top="139" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="154" useTextEdit="1" useBinaryEdit="0" left="0" path="system/SEGGER_HardFaultHandler.c" debugPath="system/SEGGER_HardFaultHandler.c" selected="0" top="124" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="51" y="232" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="0" top="214" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="10" y="499" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/cLcd.cpp" debugPath="BSP/cLcd.cpp" selected="1" top="462" codecName="Default"/>
  </Files>
  <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Release" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>
