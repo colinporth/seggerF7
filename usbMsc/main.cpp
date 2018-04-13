@@ -63,6 +63,7 @@ private:
   void reportLabel();
 
   void loadFile();
+  void saveFile (uint8_t* jpegBuf, int jpegLen, int num);
   void jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale);
 
   int jfifApp0Marker (uint8_t* ptr);
@@ -178,7 +179,7 @@ void cApp::run() {
 
   mscInit (mLcd);
   mscStart();
-  loadFile();
+  //loadFile();
 
   mCamera = new cCamera();
   mCamera->init();
@@ -190,6 +191,7 @@ void cApp::run() {
   mCinfo.dct_method = JDCT_FLOAT;
   mCinfo.out_color_space = JCS_RGB;
 
+  int count = 0;
   int lastCount = 0;
   bool lastButton = false;
   while (true) {
@@ -210,6 +212,7 @@ void cApp::run() {
         if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
           memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
         //}}}
+        //saveFile (jpegBuf, jpegLen, count++);
 
         // decode jpeg header
         jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
@@ -421,14 +424,29 @@ void cApp::loadFile() {
       f_read (&file, (void*)kJpegBuffer, (UINT)filInfo.fsize, &bytesRead);
       mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
       f_close (&file);
-
-      jpegDecode (kJpegBuffer, bytesRead, kRgb565Buffer, 4);
+      if (bytesRead > 0)
+        jpegDecode (kJpegBuffer, bytesRead, kRgb565Buffer, 4);
       }
     else
       mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
     }
   else
     mLcd->debug (LCD_COLOR_RED, "not mounted");
+  }
+//}}}
+//{{{
+void cApp::saveFile (uint8_t* jpegBuf, int jpegLen, int num) {
+
+  FIL file;
+  //char saveName[40];
+  //sprintf (saveName, "image%d.jpg", num);
+  if (!f_open (&file, "image.jpg", FA_WRITE | FA_CREATE_ALWAYS)) {
+    mLcd->debug (LCD_COLOR_WHITE, "save");
+    UINT bytesWritten;
+    f_write (&file, mJpegHeader, mJpegHeaderLen, &bytesWritten);
+    f_write (&file, jpegBuf, jpegLen, &bytesWritten);
+    f_close (&file);
+    }
   }
 //}}}
 //{{{
