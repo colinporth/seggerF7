@@ -62,6 +62,14 @@ private:
   void loadFile();
   void jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale);
 
+  int jfifApp0Marker (uint8_t* ptr);
+  int sofMarker (uint8_t* ptr, int width, int height);
+  int quantTableMarker (uint8_t* ptr, int qscale);
+  int huffTableMarkerDC (uint8_t* ptr, const unsigned int* htable, int class_id);
+  int huffTableMarkerAC (uint8_t* ptr, const unsigned int* htable, int class_id);
+  int sosMarker (uint8_t* ptr);
+  void setJpegHeader (int width, int height, int qscale);
+
   cLcd* mLcd = nullptr;
   cCamera* mCamera = nullptr;
   cPs2* mPs2 = nullptr;
@@ -76,25 +84,26 @@ private:
 
   struct jpeg_error_mgr jerr;
   struct jpeg_decompress_struct cinfo;
+  uint8_t mJpegHeader[1000];
+  int mJpegHeaderLen = 0;
   };
 //}}}
 cApp* gApp;
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
 //{{{
-uint8_t JPEG_StdQuantTblY_ZZ[64] = {
-  16, 11, 12, 14, 12, 10, 16, 14,
-  13, 14, 18, 17, 16, 19, 24, 40,
-  26, 24, 22, 22, 24, 49, 35, 37,
-  29, 40, 58, 51, 61, 60, 57, 51,
-  56, 55, 64, 72, 92, 78, 64, 68,
-  87, 69, 55, 56, 80, 109, 81, 87,
-  95, 98, 103, 104, 103, 62, 77, 113,
-  121, 112, 100, 120, 92, 101, 103, 99
-  };
+const uint8_t JPEG_StdQuantTblY_ZZ[64] = {
+   16,  11,  12,  14,  12,  10,  16,  14,
+   13,  14,  18,  17,  16,  19,  24,  40,
+   26,  24,  22,  22,  24,  49,  35,  37,
+   29,  40,  58,  51,  61,  60,  57,  51,
+   56,  55,  64,  72,  92,  78,  64,  68,
+   87,  69,  55,  56,  80, 109,  81,  87,
+   95,  98, 103, 104, 103,  62,  77, 113,
+  121, 112, 100, 120,  92, 101, 103,  99 };
 //}}}
 //{{{
-uint8_t JPEG_StdQuantTblC_ZZ[64] = {
+const uint8_t JPEG_StdQuantTblC_ZZ[64] = {
   17, 18, 18, 24, 21, 24, 47, 26,
   26, 47, 99, 66, 56, 66, 99, 99,
   99, 99, 99, 99, 99, 99, 99, 99,
@@ -102,11 +111,10 @@ uint8_t JPEG_StdQuantTblC_ZZ[64] = {
   99, 99, 99, 99, 99, 99, 99, 99,
   99, 99, 99, 99, 99, 99, 99, 99,
   99, 99, 99, 99, 99, 99, 99, 99,
-  99, 99, 99, 99, 99, 99, 99, 99
-  };
+  99, 99, 99, 99, 99, 99, 99, 99 };
 //}}}
 //{{{
-unsigned int JPEG_StdHuffmanTbl[384] = {
+const unsigned int JPEG_StdHuffmanTbl[384] = {
   0x100, 0x101, 0x204, 0x30b, 0x41a, 0x678, 0x7f8, 0x9f6,
   0xf82, 0xf83, 0x30c, 0x41b, 0x679, 0x8f6, 0xaf6, 0xf84,
   0xf85, 0xf86, 0xf87, 0xf88, 0x41c, 0x7f9, 0x9f7, 0xbf4,
@@ -154,278 +162,7 @@ unsigned int JPEG_StdHuffmanTbl[384] = {
   0x100, 0x202, 0x203, 0x204, 0x205, 0x206, 0x30e, 0x41e,
   0x53e, 0x67e, 0x7fe, 0x8fe, 0xfff, 0xfff, 0xfff, 0xfff,
   0x100, 0x101, 0x102, 0x206, 0x30e, 0x41e, 0x53e, 0x67e,
-  0x7fe, 0x8fe, 0x9fe, 0xafe, 0xfff, 0xfff, 0xfff, 0xfff
-  };
-//}}}
-//{{{
-int jfifApp0Marker (uint8_t* ptr) {
-
-  *ptr++ = 0xFF; // APP0 marker
-  *ptr++ = 0xE0;
-
-  int length = 16;
-  *ptr++ = length >> 8;// length field
-  *ptr++ = length & 0xFF;
-
-  *ptr++ = 0x4A; // JFIF identifier
-  *ptr++ = 0x46;
-  *ptr++ = 0x49;
-  *ptr++ = 0x46;
-  *ptr++ = 0x00;
-
-  *ptr++ = 0x01; // version
-  *ptr++ = 0x02;
-
-  *ptr++ = 0x00; // units
-  *ptr++ = 0x00; // X density
-  *ptr++ = 0x01;
-  *ptr++ = 0x00; // Y density
-  *ptr++ = 0x01;
-
-  *ptr++ = 0x00; // X thumbnail
-  *ptr++ = 0x00; // Y thumbnail
-
-  return length+2;
-  }
-//}}}
-//{{{
-int sofMarker (uint8_t* ptr, int width, int height) {
-
-  *ptr++ = 0xFF; // start of frame: baseline DCT
-  *ptr++ = 0xC0;
-
-  int length = 17;
-  *ptr++ = length >> 8;// length field
-  *ptr++ = length & 0xFF;
-
-  *ptr++ = 0x08; // sample precision
-
-  *ptr++ = height >> 8; // number of lines
-  *ptr++ = height & 0xFF;
-
-  *ptr++ = width >> 8; // number of samples per line
-  *ptr++ = width & 0xFF;
-
-  *ptr++ = 0x03; // number of image components in frame
-
-  *ptr++ = 0x00; // component identifier: Y
-  *ptr++ = 0x21; // horizontal | vertical sampling factor: Y
-  *ptr++ = 0x00; // quantization table selector: Y
-
-  *ptr++ = 0x01; // component identifier: Cb
-  *ptr++ = 0x11; // horizontal | vertical sampling factor: Cb
-  *ptr++ = 0x01; // quantization table selector: Cb
-
-  *ptr++ = 0x02; // component identifier: Cr
-  *ptr++ = 0x11; // horizontal | vertical sampling factor: Cr
-  *ptr++ = 0x01; // quantization table selector: Cr
-
-  return length+2;
-  }
-//}}}
-//{{{
-int quantizationTableMarker (uint8_t* ptr, int qscale) {
-
-  *ptr++ = 0xFF;// define quantization table marker
-  *ptr++ = 0xDB;
-
-  int length = 132;
-  *ptr++ = length >> 8;// length field
-  *ptr++ = length & 0xFF;
-
-  *ptr++ = 0;// quantization table precision | identifier
-  for (int i = 0; i < 64; i++) {
-    int q = (JPEG_StdQuantTblY_ZZ[i] * qscale + 16) >> 5;
-    *ptr++ = q;// quantization table element
-    }
-
-  *ptr++ = 1;// quantization table precision | identifier
-  for (int i = 0; i < 64; i++) {
-    int q = (JPEG_StdQuantTblC_ZZ[i] * qscale + 16) >> 5;
-    *ptr++ = q;// quantization table element
-    }
-
-  return length+2;
-  }
-//}}}
-//{{{
-int huffmanTableMarkerDC (uint8_t* ptr, unsigned int* htable, int class_id) {
-
-  *ptr++ = 0xFF; // define huffman table marker
-  *ptr++ = 0xC4;
-
-  int length = 19;
-  uint8_t* plength = ptr; // place holder for length field
-  *ptr++;
-  *ptr++;
-
-  *ptr++ = class_id; // huffman table class | identifier
-  for (int l = 0; l < 16; l++) {
-    int count = 0;
-    for (int i = 0; i < 12; i++) {
-      if ((htable[i] >> 8) == l)
-        count++;
-      }
-    *ptr++ = count; // number of huffman codes of length l+1
-    }
-
-  for (int l = 0; l < 16; l++) {
-    for (int i = 0; i < 12; i++) {
-      if ((htable[i] >> 8) == l) {
-        *ptr++ = i; // HUFFVAL with huffman codes of length l+1
-        length++;
-        }
-      }
-    }
-
-  *plength++ = length >> 8;// length field
-  *plength = length & 0xFF;
-
-  return length + 2;
-  }
-//}}}
-//{{{
-int huffmanTableMarkerAC (uint8_t* ptr, unsigned int* htable, int class_id) {
-
-  *ptr++ = 0xFF; // define huffman table marker
-  *ptr++ = 0xC4;
-
-  int length = 19;
-  uint8_t* plength = ptr; // place holder for length field
-  *ptr++;
-  *ptr++;
-
-  *ptr++ = class_id;// huffman table class | identifier
-  for (int l = 0; l < 16; l++) {
-    int count = 0;
-    for (int i = 0; i < 162; i++) {
-      if ((htable[i] >> 8) == l)
-        count++;
-      }
-    *ptr++ = count; // number of huffman codes of length l+1
-    }
-
-  for (int l = 0; l < 16; l++) {
-    // check EOB: 0|0
-    if ((htable[160] >> 8) == l) {
-      *ptr++ = 0; // HUFFVAL with huffman codes of length l+1
-      length++;
-      }
-
-    // check HUFFVAL: 0|1 to E|A
-    for (int i = 0; i < 150; i++) {
-      if ((htable[i] >> 8) == l) {
-        int a = i/10;
-        int b = i%10;
-        *ptr++ = (a<<4)|(b+1); // HUFFVAL with huffman codes of length l+1
-        length++;
-        }
-      }
-
-    // check ZRL: F|0
-    if ((htable[161] >> 8) == l) {
-      *ptr++ = 0xF0; // HUFFVAL with huffman codes of length l+1
-      length++;
-      }
-
-    // check HUFFVAL: F|1 to F|A
-    for (int i = 150; i < 160; i++) {
-      if ((htable[i] >> 8) == l) {
-        int a = i/10;
-        int b = i%10;
-        *ptr++ = (a<<4)|(b+1); // HUFFVAL with huffman codes of length l+1
-        length++;
-        }
-      }
-    }
-
-  *plength++ = length >> 8; // length field
-  *plength = length & 0xFF;
-
-  return length + 2;
-  }
-//}}}
-//{{{
-int driMarker (uint8_t* ptr, int restartInterval) {
-
-  *ptr++ = 0xFF;// define restart interval marker
-  *ptr++ = 0xDD;
-
-  int length = 4;
-  *ptr++ = length >> 8;// length field
-  *ptr++ = length & 0xFF;
-
-  *ptr++ = restartInterval >> 8;// restart interval
-  *ptr++ = restartInterval & 0xFF;
-
-  return length + 2;
-  }
-//}}}
-//{{{
-int sosMarker (uint8_t* ptr) {
-
-  *ptr++ = 0xFF;// start of scan
-  *ptr++ = 0xDA;
-
-  int length = 12;
-  *ptr++ = length >> 8;// length field
-  *ptr++ = length & 0xFF;
-
-  *ptr++ = 0x03;// number of image components in scan
-  *ptr++ = 0x00;// scan component selector: Y
-  *ptr++ = 0x00;// DC | AC huffman table selector: Y
-  *ptr++ = 0x01;// scan component selector: Cb
-  *ptr++ = 0x11;// DC | AC huffman table selector: Cb
-  *ptr++ = 0x02;// scan component selector: Cr
-  *ptr++ = 0x11;// DC | AC huffman table selector: Cr
-
-  *ptr++ = 0x00;// Ss: start of predictor selector
-  *ptr++ = 0x3F;// Se: end of spectral selector
-  *ptr++ = 0x00;// Ah | Al: successive approximation bit position
-
-  return length+2;
-  }
-//}}}
-//{{{
-int setJpegHeader (uint8_t* header, int width, int height, int qscale) {
-
-  // SOI marker
-  uint8_t* ptr = header;
-  *ptr++ = 0xFF;
-  *ptr++ = 0xD8;
-  int length = 2;
-
-  // JFIF APP0 marker
-  length += jfifApp0Marker (ptr);
-  ptr = header + length;
-
-  // quantization tables
-  length += quantizationTableMarker (ptr, qscale);
-  ptr = header + length;
-
-  // SOF start of frame marker
-  length += sofMarker (ptr, width, height);
-  ptr = header + length;
-
-  // huffman Table DC0 for luma marker
-  length += huffmanTableMarkerDC (ptr, &JPEG_StdHuffmanTbl[352], 0x00);
-  ptr = header + length;
-
-  // huffman Table AC0 for luma marker
-  length += huffmanTableMarkerAC (ptr, &JPEG_StdHuffmanTbl[0], 0x10);
-  ptr = header + length;
-
-  // huffman Table DC1 for chroma marker
-  length += huffmanTableMarkerDC (ptr, &JPEG_StdHuffmanTbl[368], 0x01);
-  ptr = header + length;
-
-  // huffman Table AC1 for chroma marker
-  length += huffmanTableMarkerAC (ptr, &JPEG_StdHuffmanTbl[176], 0x11);
-   ptr = header + length;
-
-  // SOS start of scan marker
-  return length + sosMarker (ptr);
-  }
+  0x7fe, 0x8fe, 0x9fe, 0xafe, 0xfff, 0xfff, 0xfff, 0xfff };
 //}}}
 
 // public
@@ -447,14 +184,11 @@ void cApp::run() {
   mCamera->init();
   mCamera->start (true, (uint8_t*)0xc0200000);
 
-  int scale = (mCamera->getWidth() / mLcd->getWidth()) + 1;
+  setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
   cinfo.scale_num = 1;
-  cinfo.scale_denom = scale;
+  cinfo.scale_denom = (mCamera->getWidth() / mLcd->getWidth()) + 1;;
   cinfo.dct_method = JDCT_FLOAT;
   cinfo.out_color_space = JCS_RGB;
-
-  uint8_t mJpegHeader[1000];
-  int mJpegHeaderLen = setJpegHeader (mJpegHeader, mCamera->getWidth(), mCamera->getHeight(), 6);
 
   int lastCount = 0;
   bool lastButton = false;
@@ -477,13 +211,16 @@ void cApp::run() {
           memcpy ((void*)0xc0600000, (void*)0xc0200000, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
         //}}}
 
-        // decode header
+        // decode jpeg header
         jpeg_mem_src (&cinfo, mJpegHeader, mJpegHeaderLen);
         jpeg_read_header (&cinfo, TRUE);
 
-        // decode jpeg
+        // decode jpeg body
         jpeg_mem_src (&cinfo, jpegBuf, jpegLen);
         jpeg_start_decompress (&cinfo);
+        mWidth = cinfo.output_width;
+        mHeight = cinfo.output_height;
+
         while (cinfo.output_scanline < cinfo.output_height) {
           jpeg_read_scanlines (&cinfo, mBufferArray, 1);
           auto src = mBufferArray[0];
@@ -496,8 +233,6 @@ void cApp::run() {
             }
           }
         jpeg_finish_decompress (&cinfo);
-        mWidth = cinfo.output_width;
-        mHeight = cinfo.output_height;
         }
       }
 
@@ -737,6 +472,239 @@ void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int s
   mWidth = cinfo.output_width;
   mHeight = cinfo.output_height;
   mLcd->debug (LCD_COLOR_WHITE, "jpeg out:%dx%d", mWidth, mHeight);
+  }
+//}}}
+
+//{{{
+int cApp::jfifApp0Marker (uint8_t* ptr) {
+
+  *ptr++ = 0xFF; // APP0 marker
+  *ptr++ = 0xE0;
+
+  int length = 16;
+  *ptr++ = length >> 8;// length field
+  *ptr++ = length & 0xFF;
+
+  *ptr++ = 0x4A; // JFIF identifier
+  *ptr++ = 0x46;
+  *ptr++ = 0x49;
+  *ptr++ = 0x46;
+  *ptr++ = 0x00;
+
+  *ptr++ = 0x01; // version
+  *ptr++ = 0x02;
+
+  *ptr++ = 0x00; // units
+  *ptr++ = 0x00; // X density
+  *ptr++ = 0x01;
+  *ptr++ = 0x00; // Y density
+  *ptr++ = 0x01;
+
+  *ptr++ = 0x00; // X thumbnail
+  *ptr++ = 0x00; // Y thumbnail
+
+  return length+2;
+  }
+//}}}
+//{{{
+int cApp::sofMarker (uint8_t* ptr, int width, int height) {
+
+  *ptr++ = 0xFF; // startOfFrame: baseline DCT
+  *ptr++ = 0xC0;
+
+  int length = 17;
+  *ptr++ = length >> 8;// length field
+  *ptr++ = length & 0xFF;
+
+  *ptr++ = 0x08; // sample precision
+
+  *ptr++ = height >> 8; // number of lines
+  *ptr++ = height & 0xFF;
+
+  *ptr++ = width >> 8; // number of samples per line
+  *ptr++ = width & 0xFF;
+
+  *ptr++ = 0x03; // number of image components in frame
+
+  *ptr++ = 0x00; // component identifier: Y
+  *ptr++ = 0x21; // horizontal | vertical sampling factor: Y
+  *ptr++ = 0x00; // quantization table selector: Y
+
+  *ptr++ = 0x01; // component identifier: Cb
+  *ptr++ = 0x11; // horizontal | vertical sampling factor: Cb
+  *ptr++ = 0x01; // quantization table selector: Cb
+
+  *ptr++ = 0x02; // component identifier: Cr
+  *ptr++ = 0x11; // horizontal | vertical sampling factor: Cr
+  *ptr++ = 0x01; // quantization table selector: Cr
+
+  return length+2;
+  }
+//}}}
+//{{{
+int cApp::quantTableMarker (uint8_t* ptr, int qscale) {
+
+  *ptr++ = 0xFF;// quantization table marker
+  *ptr++ = 0xDB;
+
+  int length = 132;
+  *ptr++ = length >> 8;// length field
+  *ptr++ = length & 0xFF;
+
+  *ptr++ = 0;// quantization table precision | identifier
+  for (int i = 0; i < 64; i++) {
+    int q = (JPEG_StdQuantTblY_ZZ[i] * qscale + 16) >> 5;
+    *ptr++ = q;// quantization table element
+    }
+
+  *ptr++ = 1;// quantization table precision | identifier
+  for (int i = 0; i < 64; i++) {
+    int q = (JPEG_StdQuantTblC_ZZ[i] * qscale + 16) >> 5;
+    *ptr++ = q;// quantization table element
+    }
+
+  return length+2;
+  }
+//}}}
+//{{{
+int cApp::huffTableMarkerDC (uint8_t* ptr, const unsigned int* htable, int class_id) {
+
+  *ptr++ = 0xFF; // huffman table marker
+  *ptr++ = 0xC4;
+
+  int length = 19;
+  uint8_t* plength = ptr; // place holder for length field
+  *ptr++;
+  *ptr++;
+
+  *ptr++ = class_id; // huffman table class | identifier
+  for (int l = 0; l < 16; l++) {
+    int count = 0;
+    for (int i = 0; i < 12; i++) {
+      if ((htable[i] >> 8) == l)
+        count++;
+      }
+    *ptr++ = count; // number of huffman codes of length l+1
+    }
+
+  for (int l = 0; l < 16; l++) {
+    for (int i = 0; i < 12; i++) {
+      if ((htable[i] >> 8) == l) {
+        *ptr++ = i; // HUFFVAL with huffman codes of length l+1
+        length++;
+        }
+      }
+    }
+
+  *plength++ = length >> 8;// length field
+  *plength = length & 0xFF;
+
+  return length + 2;
+  }
+//}}}
+//{{{
+int cApp::huffTableMarkerAC (uint8_t* ptr, const unsigned int* htable, int class_id) {
+
+  *ptr++ = 0xFF; // huffman table marker
+  *ptr++ = 0xC4;
+
+  int length = 19;
+  uint8_t* plength = ptr; // place holder for length field
+  *ptr++;
+  *ptr++;
+
+  *ptr++ = class_id;// huffman table class | identifier
+  for (int l = 0; l < 16; l++) {
+    int count = 0;
+    for (int i = 0; i < 162; i++) {
+      if ((htable[i] >> 8) == l)
+        count++;
+      }
+    *ptr++ = count; // number of huffman codes of length l+1
+    }
+
+  for (int l = 0; l < 16; l++) {
+    // check EOB: 0|0
+    if ((htable[160] >> 8) == l) {
+      *ptr++ = 0; // HUFFVAL with huffman codes of length l+1
+      length++;
+      }
+
+    // check HUFFVAL: 0|1 to E|A
+    for (int i = 0; i < 150; i++) {
+      if ((htable[i] >> 8) == l) {
+        int a = i/10;
+        int b = i%10;
+        *ptr++ = (a<<4)|(b+1); // HUFFVAL with huffman codes of length l+1
+        length++;
+        }
+      }
+
+    // check ZRL: F|0
+    if ((htable[161] >> 8) == l) {
+      *ptr++ = 0xF0; // HUFFVAL with huffman codes of length l+1
+      length++;
+      }
+
+    // check HUFFVAL: F|1 to F|A
+    for (int i = 150; i < 160; i++) {
+      if ((htable[i] >> 8) == l) {
+        int a = i/10;
+        int b = i%10;
+        *ptr++ = (a<<4)|(b+1); // HUFFVAL with huffman codes of length l+1
+        length++;
+        }
+      }
+    }
+
+  *plength++ = length >> 8; // length field
+  *plength = length & 0xFF;
+
+  return length + 2;
+  }
+//}}}
+//{{{
+int cApp::sosMarker (uint8_t* ptr) {
+
+  *ptr++ = 0xFF;// startOfScan marker
+  *ptr++ = 0xDA;
+
+  int length = 12;
+  *ptr++ = length >> 8;// length field
+  *ptr++ = length & 0xFF;
+
+  *ptr++ = 0x03;// number of image components in scan
+  *ptr++ = 0x00;// scan component selector: Y
+  *ptr++ = 0x00;// DC | AC huffman table selector: Y
+  *ptr++ = 0x01;// scan component selector: Cb
+  *ptr++ = 0x11;// DC | AC huffman table selector: Cb
+  *ptr++ = 0x02;// scan component selector: Cr
+  *ptr++ = 0x11;// DC | AC huffman table selector: Cr
+
+  *ptr++ = 0x00;// Ss: start of predictor selector
+  *ptr++ = 0x3F;// Se: end of spectral selector
+  *ptr++ = 0x00;// Ah | Al: successive approximation bit position
+
+  return length+2;
+  }
+//}}}
+//{{{
+void cApp::setJpegHeader (int width, int height, int qscale) {
+
+  auto ptr = mJpegHeader;
+
+  *ptr++ = 0xFF; // SOI marker
+  *ptr++ = 0xD8;
+  int length = 2;
+
+  length += jfifApp0Marker (ptr);
+  length += quantTableMarker (mJpegHeader + length, qscale);
+  length += sofMarker (mJpegHeader + length, width, height);
+  length += huffTableMarkerDC (mJpegHeader + length, &JPEG_StdHuffmanTbl[352], 0x00);
+  length += huffTableMarkerAC (mJpegHeader + length, &JPEG_StdHuffmanTbl[0], 0x10);
+  length += huffTableMarkerDC (mJpegHeader + length, &JPEG_StdHuffmanTbl[368], 0x01);
+  length += huffTableMarkerAC (mJpegHeader + length, &JPEG_StdHuffmanTbl[176], 0x11);
+  mJpegHeaderLen = length + sosMarker (mJpegHeader + length);
   }
 //}}}
 
