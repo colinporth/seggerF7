@@ -9,7 +9,7 @@
 
 //}}}
 //#define rdSdDma
-#define wrSdDma
+//#define wrSdDma
 
 const bool kUsbFullSpeed = false;
 const int kMscMediaPacket = 32*1024;
@@ -222,6 +222,7 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
 
   #ifdef wrSdDma
+
     if (kSectorDebug && ((uint32_t)buf & 0x3))
       gLcd->debug (LCD_COLOR_RED, "sdWrite buf alignment %p", buf);
 
@@ -240,15 +241,18 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
         return true;
         }
       }
-    gLcd->debug (LCD_COLOR_RED, "wrFail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+    gLcd->debug (LCD_COLOR_RED, "wrDmaFail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
 
   #else
-    gLcd->debug (LCD_COLOR_YELLOW, "wrSd %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+
     BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
     if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
+      gLcd->debug (LCD_COLOR_YELLOW, "wr ok %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
       gSdChanged = true;
       return true;
       }
+    gLcd->debug (LCD_COLOR_RED, "wr fail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+
   #endif
     }
 
