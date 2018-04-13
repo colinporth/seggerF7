@@ -14,6 +14,8 @@ const bool kUsbFullSpeed = false;
 const int kMscMediaPacket = 32*1024;
 const int kSectorScale = 256;
 
+const bool kSectorDebug = false;
+
 cLcd* gLcd = nullptr;
 
 PCD_HandleTypeDef gPcdHandle;
@@ -181,7 +183,7 @@ bool sdGetCapacity (uint8_t lun, uint32_t& block_num, uint16_t& block_size) {
 //{{{
 bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
-  if ((uint32_t)buf & 0x3)
+  if (kSectorDebug && ((uint32_t)buf & 0x3))
     gLcd->debug (LCD_COLOR_RED, "sdRead buf alignment %x", buf);
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
@@ -201,7 +203,8 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
     BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
   #endif
 
-    gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+    if (kSectorDebug)
+      gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
     //gSectors[blk_addr / kSectorScale] = LCD_COLOR_GREEN;
     //gSectors[(blk_addr / kSectorScale)+1] = LCD_COLOR_GREEN;
     //gSectors[(blk_addr / kSectorScale)+480] = LCD_COLOR_GREEN;
@@ -215,34 +218,33 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 //{{{
 bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
-  if ((uint32_t)buf & 0x3)
+  if (kSectorDebug && ((uint32_t)buf & 0x3))
     gLcd->debug (LCD_COLOR_RED, "sdWrite buf alignment %p", buf);
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    //if (kSectorDebug)
     gLcd->debug (LCD_COLOR_MAGENTA, "w %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
 
-  //#ifdef sdDma
-    uint32_t alignedAddr = (uint32_t)buf &  ~0x1F;
-    SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, blk_len*512 + ((uint32_t)buf - alignedAddr));
-    BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
+    //uint32_t alignedAddr = (uint32_t)buf &  ~0x1F;
+    //SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, blk_len*512 + ((uint32_t)buf - alignedAddr));
+    //BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
 
-    uint32_t timeout = HAL_GetTick();
-    while  ((writestatus == 0) && ((HAL_GetTick() - timeout) < 2000)) {}
-    writestatus = 0;
-    while ((HAL_GetTick() - timeout) < 2000) {
-      if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
-        gSdChanged = true;
+    //uint32_t timeout = HAL_GetTick();
+    //while  ((writestatus == 0) && ((HAL_GetTick() - timeout) < 2000)) {}
+    //writestatus = 0;
+    //while ((HAL_GetTick() - timeout) < 2000) {
+    //  if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
+    //    gSdChanged = true;
         //gSectors[blk_addr / kSectorScale] = LCD_COLOR_RED;
         //gSectors[(blk_addr / kSectorScale)+1] = LCD_COLOR_RED;
         //gSectors[(blk_addr / kSectorScale)+480] = LCD_COLOR_RED;
         //gSectors[(blk_addr / kSectorScale)+481] = LCD_COLOR_RED;
-        return true;
-        }
-      }
-  //#else
-  //  BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
-  //  return true;
-  //#endif
+    //    return true;
+    //    }
+    //  }
+    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+    if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
+      return true;
     }
 
   return false;

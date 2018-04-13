@@ -14,7 +14,8 @@
 
 #include "jpeglib.h"
 //}}}
-const char* kVersion = "Camera 12/4/18";
+const char* kVersion = "Camera 13/4/18";
+const bool kCamera = true;
 
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
 uint8_t* kJpegBuffer    =  (uint8_t*)0xc0200000;
@@ -179,17 +180,19 @@ void cApp::run() {
 
   mscInit (mLcd);
   mscStart();
-  //loadFile();
+  loadFile();
 
-  mCamera = new cCamera();
-  mCamera->init();
-  mCamera->start (true, kJpegBuffer);
+  if (kCamera) {
+    mCamera = new cCamera();
+    mCamera->init();
+    mCamera->start (true, kJpegBuffer);
 
-  setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
-  mCinfo.scale_num = 1;
-  mCinfo.scale_denom = (mCamera->getWidth() / mLcd->getWidth()) + 1;
-  mCinfo.dct_method = JDCT_FLOAT;
-  mCinfo.out_color_space = JCS_RGB;
+    setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
+    mCinfo.scale_num = 1;
+    mCinfo.scale_denom = (mCamera->getWidth() / mLcd->getWidth()) + 1;
+    mCinfo.dct_method = JDCT_FLOAT;
+    mCinfo.out_color_space = JCS_RGB;
+    }
 
   int count = 0;
   int lastCount = 0;
@@ -203,34 +206,40 @@ void cApp::run() {
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
-    //mLcd->startBgnd ((uint16_t*)0xc0100000);
-    if (mCamera->getCaptureMode()) {
-      int jpegLen;
-      auto jpegBuf = mCamera->getJpegFrame (jpegLen);
-      if (jpegBuf) {
-        //{{{  crude wraparound jpegBuf
-        if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
-          memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
-        //}}}
-        //saveFile (jpegBuf, jpegLen, count++);
+    if (kCamera) {
+      //mLcd->startBgnd ((uint16_t*)0xc0100000);
+      if (mCamera->getCaptureMode()) {
+        int jpegLen;
+        auto jpegBuf = mCamera->getJpegFrame (jpegLen);
+        if (jpegBuf) {
+          //{{{  crude wraparound jpegBuf
+          if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
+            memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
+          //}}}
+          count++;
+          //saveFile (jpegBuf, jpegLen, count);
 
-        // decode jpeg header
-        jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
-        jpeg_read_header (&mCinfo, TRUE);
+          if (true) {
+            // decode jpeg header
+            jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
+            jpeg_read_header (&mCinfo, TRUE);
 
-        // decode jpeg body
-        jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
-        jpeg_start_decompress (&mCinfo);
+            // decode jpeg body
+            jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
+            jpeg_start_decompress (&mCinfo);
 
-        while (mCinfo.output_scanline < mCinfo.output_height) {
-          jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-          mLcd->convertRgb888toRgbB565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+            while (mCinfo.output_scanline < mCinfo.output_height) {
+              jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
+              mLcd->convertRgb888toRgbB565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+              }
+            jpeg_finish_decompress (&mCinfo);
+            }
           }
-        jpeg_finish_decompress (&mCinfo);
         }
+      mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
       }
-
-    mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
+    else
+      mLcd->startBgnd (kRgb565Buffer);
 
     mLcd->drawTitle (kVersion);
     mLcd->drawInfo (24, mCamera->getString());
@@ -438,15 +447,17 @@ void cApp::loadFile() {
 void cApp::saveFile (uint8_t* jpegBuf, int jpegLen, int num) {
 
   FIL file;
-  //char saveName[40];
-  //sprintf (saveName, "image%d.jpg", num);
-  if (!f_open (&file, "image.jpg", FA_WRITE | FA_CREATE_ALWAYS)) {
-    mLcd->debug (LCD_COLOR_WHITE, "save");
+  char saveName[40];
+  sprintf (saveName, "saveImage%2d.jpg", num);
+  if (!f_open (&file, saveName, FA_WRITE | FA_CREATE_ALWAYS)) {
+    mLcd->debug (LCD_COLOR_WHITE, saveName);
     UINT bytesWritten;
     f_write (&file, mJpegHeader, mJpegHeaderLen, &bytesWritten);
     f_write (&file, jpegBuf, jpegLen, &bytesWritten);
     f_close (&file);
     }
+  else
+    mLcd->debug (LCD_COLOR_RED, saveName);
   }
 //}}}
 //{{{
