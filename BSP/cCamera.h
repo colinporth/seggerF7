@@ -10,7 +10,9 @@ public:
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
   bool getCaptureMode() { return mCapture; }
-  char* getString();
+  int getFrames() { return mFrames; }
+  int getFps() { return 1000/mTookTicks; }
+  int getJpegLen() { return mJpegLen; }
 
   uint8_t* getJpegFrame (int& jpegLen);
 

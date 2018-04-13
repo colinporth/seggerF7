@@ -85,12 +85,6 @@ void cCamera::init() {
 //}}}
 
 //{{{
-char* cCamera::getString() {
-  sprintf (mStr, "%d %dfps", mFrames, 1000/mTookTicks);
-  return mStr;
-  }
-//}}}
-//{{{
 void cCamera::setFocus (int value) {
 
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "setFocus %d", value);
@@ -392,8 +386,8 @@ void cCamera::dcmiIrqHandler() {
         mStartFramePtr[mJpegLen++] = 0xFF;
         mStartFramePtr[mJpegLen++] = 0xD9;
         mJpegBuf = mStartFramePtr;
-        cLcd::mLcd->debug (LCD_COLOR_GREEN,
-                           "v%2d:%6d:%8x %x:%d", mXferCount,dmaBytes,mJpegBuf, jpegStatus,mJpegLen, mJpegBuf);
+        //cLcd::mLcd->debug (LCD_COLOR_GREEN,
+        //                   "v%2d:%6d:%8x %x:%d", mXferCount,dmaBytes,mJpegBuf, jpegStatus,mJpegLen, mJpegBuf);
         }
       else {
         mJpegBuf = nullptr;

@@ -214,7 +214,6 @@ void cApp::run() {
     #ifdef USE_CAMERA
       //mLcd->startBgnd ((uint16_t*)0xc0100000);
       if (mCamera->getCaptureMode()) {
-        int jpegLen;
         jpegBuf = mCamera->getJpegFrame (jpegLen);
         if (jpegBuf) {
           //{{{  crude wraparound jpegBuf
@@ -247,7 +246,10 @@ void cApp::run() {
     #endif
 
     mLcd->drawTitle (kVersion);
-    mLcd->drawInfo (24, mCamera ? mCamera->getString() : kEmpty);
+    char info[40];
+    if (mCamera)
+      sprintf (info, "%4d %2dfps %d", mCamera->getFrames(), mCamera->getFps(), mCamera->getJpegLen());
+    mLcd->drawInfo (24, info);
     mLcd->drawDebug();
     mLcd->present();
 
