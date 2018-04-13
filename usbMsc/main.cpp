@@ -65,8 +65,8 @@ private:
   int jfifApp0Marker (uint8_t* ptr);
   int sofMarker (uint8_t* ptr, int width, int height);
   int quantTableMarker (uint8_t* ptr, int qscale);
-  int huffTableMarkerDC (uint8_t* ptr, const unsigned int* htable, int class_id);
-  int huffTableMarkerAC (uint8_t* ptr, const unsigned int* htable, int class_id);
+  int huffTableMarkerDC (uint8_t* ptr, const uint16_t* htable, int classId);
+  int huffTableMarkerAC (uint8_t* ptr, const uint16_t* htable, int classId);
   int sosMarker (uint8_t* ptr);
   void setJpegHeader (int width, int height, int qscale);
 
@@ -111,7 +111,7 @@ const uint8_t kJpegStdQuantTblC_ZZ[64] = {
   99, 99, 99, 99, 99, 99, 99, 99 };
 //}}}
 //{{{
-const unsigned int kJpegStdHuffmanTbl[384] = {
+const uint16_t kJpegStdHuffmanTbl[384] = {
   0x100, 0x101, 0x204, 0x30b, 0x41a, 0x678, 0x7f8, 0x9f6,
   0xf82, 0xf83, 0x30c, 0x41b, 0x679, 0x8f6, 0xaf6, 0xf84,
   0xf85, 0xf86, 0xf87, 0xf88, 0x41c, 0x7f9, 0x9f7, 0xbf4,
@@ -560,7 +560,7 @@ int cApp::quantTableMarker (uint8_t* ptr, int qscale) {
   }
 //}}}
 //{{{
-int cApp::huffTableMarkerDC (uint8_t* ptr, const unsigned int* htable, int class_id) {
+int cApp::huffTableMarkerAC (uint8_t* ptr, const uint16_t* htable, int classId) {
 
   *ptr++ = 0xFF; // huffman table marker
   *ptr++ = 0xC4;
@@ -570,43 +570,7 @@ int cApp::huffTableMarkerDC (uint8_t* ptr, const unsigned int* htable, int class
   *ptr++;
   *ptr++;
 
-  *ptr++ = class_id; // huffman table class | identifier
-  for (int l = 0; l < 16; l++) {
-    int count = 0;
-    for (int i = 0; i < 12; i++) {
-      if ((htable[i] >> 8) == l)
-        count++;
-      }
-    *ptr++ = count; // number of huffman codes of length l+1
-    }
-
-  for (int l = 0; l < 16; l++) {
-    for (int i = 0; i < 12; i++) {
-      if ((htable[i] >> 8) == l) {
-        *ptr++ = i; // HUFFVAL with huffman codes of length l+1
-        length++;
-        }
-      }
-    }
-
-  *plength++ = length >> 8;// length field
-  *plength = length & 0xFF;
-
-  return length + 2;
-  }
-//}}}
-//{{{
-int cApp::huffTableMarkerAC (uint8_t* ptr, const unsigned int* htable, int class_id) {
-
-  *ptr++ = 0xFF; // huffman table marker
-  *ptr++ = 0xC4;
-
-  int length = 19;
-  uint8_t* plength = ptr; // place holder for length field
-  *ptr++;
-  *ptr++;
-
-  *ptr++ = class_id;// huffman table class | identifier
+  *ptr++ = classId;// huffman table class identifier
   for (int l = 0; l < 16; l++) {
     int count = 0;
     for (int i = 0; i < 162; i++) {
@@ -651,6 +615,42 @@ int cApp::huffTableMarkerAC (uint8_t* ptr, const unsigned int* htable, int class
     }
 
   *plength++ = length >> 8; // length field
+  *plength = length & 0xFF;
+
+  return length + 2;
+  }
+//}}}
+//{{{
+int cApp::huffTableMarkerDC (uint8_t* ptr, const uint16_t* htable, int classId) {
+
+  *ptr++ = 0xFF; // huffman table marker
+  *ptr++ = 0xC4;
+
+  int length = 19;
+  uint8_t* plength = ptr; // place holder for length field
+  *ptr++;
+  *ptr++;
+
+  *ptr++ = classId; // huffman table class identifier
+  for (int l = 0; l < 16; l++) {
+    int count = 0;
+    for (int i = 0; i < 12; i++) {
+      if ((htable[i] >> 8) == l)
+        count++;
+      }
+    *ptr++ = count; // number of huffman codes of length l+1
+    }
+
+  for (int l = 0; l < 16; l++) {
+    for (int i = 0; i < 12; i++) {
+      if ((htable[i] >> 8) == l) {
+        *ptr++ = i; // HUFFVAL with huffman codes of length l+1
+        length++;
+        }
+      }
+    }
+
+  *plength++ = length >> 8;// length field
   *plength = length & 0xFF;
 
   return length + 2;
