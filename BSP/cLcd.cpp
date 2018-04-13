@@ -1686,9 +1686,9 @@ void cLcd::convertRgb888toRgbB565 (uint8_t* src, uint16_t* dst, uint16_t xSize) 
 void cLcd::convertRgb888toRgbB565cpu (uint8_t* src, uint16_t* dst, uint16_t xSize) {
 
   for (int x = 0; x < xSize; x++) {
-    uint8_t r = (*src++) & 0xF8;
-    uint8_t g = (*src++) & 0xFC;
     uint8_t b = (*src++) & 0xF8;
+    uint8_t g = (*src++) & 0xFC;
+    uint8_t r = (*src++) & 0xF8;
     *dst++ = (r << 8) | (g << 3) | (b >> 3);
     }
   }

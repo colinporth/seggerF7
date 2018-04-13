@@ -233,7 +233,7 @@ void cApp::run() {
 
           while (mCinfo.output_scanline < mCinfo.output_height) {
             jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-            mLcd->convertRgb888toRgbB565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+            mLcd->convertRgb888toRgbB565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
             }
           jpeg_finish_decompress (&mCinfo);
           }
@@ -485,7 +485,7 @@ void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int s
   jpeg_start_decompress (&mCinfo);
   while (mCinfo.output_scanline < mCinfo.output_height) {
     jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-    mLcd->convertRgb888toRgbB565cpu (mBufferArray[0], rgb565buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
+    mLcd->convertRgb888toRgbB565 (mBufferArray[0], rgb565buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
     }
   jpeg_finish_decompress (&mCinfo);
 
