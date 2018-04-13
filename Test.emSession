@@ -1,11 +1,11 @@
 <!DOCTYPE CrossStudio_Session_File>
 <session>
  <Bookmarks>
-  <BookmarkItem objectName="" line="70" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="mButton = BSP_PB_GetState (BUTTON_KEY);" color="5"/>
+  <BookmarkItem objectName="" line="68" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="3" extra="} while (fno.fname[j++]);" color="5"/>
   <BookmarkItem objectName="" line="53" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="bool mButton = false;" color="5"/>
   <BookmarkItem objectName="" line="54" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="char path[] = &quot;/&quot;;" color="5"/>
   <BookmarkItem objectName="" line="58" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="path[i++] = '/';" color="5"/>
-  <BookmarkItem objectName="" line="68" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="3" extra="} while (fno.fname[j++]);" color="5"/>
+  <BookmarkItem objectName="" line="70" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="mButton = BSP_PB_GetState (BUTTON_KEY);" color="5"/>
  </Bookmarks>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
   <BreakpointListItem trigger="" line="11" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="BSP/cLcd.h" useHWbreakpoint="false"/>
@@ -49,7 +49,10 @@
   <ProjectSessionItem path="usb;usbMsc"/>
   <ProjectSessionItem path="usb;usbMsc;bsp_drivers"/>
   <ProjectSessionItem path="usb;usbMsc;FatFs"/>
+  <ProjectSessionItem path="usb;usbMsc;libJpeg"/>
+  <ProjectSessionItem path="usb;usbMsc;libJpeg;src"/>
   <ProjectSessionItem path="usb;usbMsc;main"/>
+  <ProjectSessionItem path="usb;usbMsc;main;includes"/>
   <ProjectSessionItem path="usb;usbMsc;system"/>
  </Project>
  <Register1>
@@ -93,8 +96,10 @@
  </Watch4>
  <Files>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="732" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="0" top="706" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="259" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/usbd_msc.cpp" debugPath="usbMsc/usbd_msc.cpp" selected="1" top="223" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="7" y="252" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/usbd_msc.cpp" debugPath="usbMsc/usbd_msc.cpp" selected="0" top="223" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="3140" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/ff.c" debugPath="FatFs/ff.c" selected="0" top="3108" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="84" useTextEdit="1" useBinaryEdit="0" left="0" path="LibJPEG/source/jquant2.c" debugPath="LibJPEG/source/jquant2.c" selected="0" top="44" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="303" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/jmorecfg.h" debugPath="usbMsc/jmorecfg.h" selected="1" top="290" codecName="Default"/>
  </Files>
  <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Release" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

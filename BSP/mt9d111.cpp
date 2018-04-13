@@ -79,6 +79,11 @@ void cCamera::init() {
   // init camera registers
   mt9d111Init();
 
+  mCapture = false;
+  jpeg();
+  mCapture = true;
+
+
   // startup dcmi
   dcmiInit();
   }
@@ -118,13 +123,14 @@ uint8_t* cCamera::getJpegFrame (int& jpegLen) {
 //{{{
 void cCamera::start (bool captureMode, uint8_t* buffer) {
 
-  mCapture = captureMode;
-
-#ifdef captureJpeg
-  mCapture ? jpeg() : preview();
-#else
-  mCapture ? capture() : preview();
-#endif
+  if (mCapture != captureMode) {
+    #ifdef captureJpeg
+      captureMode ? jpeg() : preview();
+    #else
+      captureMode ? capture() : preview();
+    #endif
+    mCapture = captureMode;
+    }
 
   dcmiStart (buffer);
   }
@@ -241,47 +247,6 @@ void cCamera::jpeg() {
   CAMERA_IO_Write16 (i2cAddress, 0x09, 0x000A); // factory bypass 10 bit sensor
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B
-
-  //{{{  readback jpeg params
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa907);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_CONFIG %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2772);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_FIFO_CONF0_B %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2774);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_FIFO_CONF1_B %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2776);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_FIFO_CONF2_B %x", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2707);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_OUTPUT_WIDTH_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2709);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_OUTPUT_HEIGHT_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2779);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_SPOOF_WIDTH_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x277b);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "MODE_SPOOF_HEIGHT_B %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa906);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_FORMAT %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2908);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_RESTART_INT %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa90a);
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_QSCALE_1 %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa90b);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_QSCALE_2 %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-
-  //CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa90c);
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "JPEG_QSCALE_3 %d", CAMERA_IO_Read16 (i2cAddress, 0xc8));
-  //}}}
   }
 //}}}
 
@@ -702,6 +667,9 @@ void cCamera::mt9d111Init() {
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x90B5); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // SFR GPIO reset
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x90B6); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // SFR GPIO suspend
   //}}}
+
+  jpeg();
+  mCapture = true;
 
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x06); // Sequencer Refresh Mode
   HAL_Delay (200);
