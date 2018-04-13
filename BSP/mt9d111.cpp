@@ -400,7 +400,6 @@ void cCamera::dcmiIrqHandler() {
         mJpegLen = 0;
         cLcd::mLcd->debug (LCD_COLOR_WHITE,
                            "v%d:%d %x %d", mXferCount,dmaBytes, jpegStatus, mCurPtr + dmaBytes - mStartFramePtr);
-
         }
       mStartFramePtr = mCurPtr + dmaBytes;
       }

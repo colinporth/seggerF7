@@ -16,7 +16,7 @@
 //}}}
 const char* kVersion = "Camera 13/4/18";
 const char* kEmpty = "empty";
-//#define USE_CAMERA
+#define USE_CAMERA
 
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
 uint8_t* kJpegBuffer    =  (uint8_t*)0xc0200000;
@@ -222,23 +222,20 @@ void cApp::run() {
             memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
           //}}}
           count++;
-          saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count);
+          //saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count);
+          // decode jpeg header
+          jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
+          jpeg_read_header (&mCinfo, TRUE);
 
-          if (true) {
-            // decode jpeg header
-            jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
-            jpeg_read_header (&mCinfo, TRUE);
+          // decode jpeg body
+          jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
+          jpeg_start_decompress (&mCinfo);
 
-            // decode jpeg body
-            jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
-            jpeg_start_decompress (&mCinfo);
-
-            while (mCinfo.output_scanline < mCinfo.output_height) {
-              jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-              mLcd->convertRgb888toRgbB565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-              }
-            jpeg_finish_decompress (&mCinfo);
+          while (mCinfo.output_scanline < mCinfo.output_height) {
+            jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
+            mLcd->convertRgb888toRgbB565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
             }
+          jpeg_finish_decompress (&mCinfo);
           }
         }
       mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));

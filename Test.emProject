@@ -306,7 +306,7 @@
       <file file_name="../system/thumb_crt0.s" />
     </folder>
     <configuration Name="Debug" gcc_optimization_level="Debug" />
-    <configuration Name="Release" gcc_optimization_level="Level 2" />
+    <configuration Name="Release" gcc_optimization_level="Level 3" />
     <folder Name="FatFs">
       <folder Name="includes">
         <file file_name="../FatFs/diskio.h" />

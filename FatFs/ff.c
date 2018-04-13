@@ -4437,12 +4437,14 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     sect = b_data; nsect = (szb_bit + ss - 1) / ss; /* Start of bitmap and number of sectors */
     nb = tbl[0] + tbl[1] + tbl[2];          /* Number of clusters in-use by system */
     do {
-      memset(buf, 0, szb_buf);
+      memset (buf, 0, szb_buf);
       for (i = 0; nb >= 8 && i < szb_buf; buf[i++] = 0xFF, nb -= 8) ;
       for (b = 1; nb && i < szb_buf; buf[i] |= b, b <<= 1, nb--) ;
       n = (nsect > sz_buf) ? sz_buf : nsect;    /* Write the buffered data */
-      if (disk_write(pdrv, buf, sect, n) != RES_OK) return FR_DISK_ERR;
-      sect += n; nsect -= n;
+      if (disk_write(pdrv, buf, sect, n) != RES_OK) 
+        return FR_DISK_ERR;
+      sect += n; 
+      nsect -= n;
       } while (nsect);
 
     /* Initialize the FAT */
@@ -4451,19 +4453,26 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     do {
       memset(buf, 0, szb_buf); i = 0;  /* Clear work area and reset write index */
       if (cl == 0) {  /* Set entry 0 and 1 */
-        st_dword(buf + i, 0xFFFFFFF8); i += 4; cl++;
-        st_dword(buf + i, 0xFFFFFFFF); i += 4; cl++;
+        st_dword(buf + i, 0xFFFFFFF8); 
+        i += 4; 
+        cl++;
+        st_dword(buf + i, 0xFFFFFFFF); 
+        i += 4; 
+        cl++;
         }
       do {      /* Create chains of bitmap, up-case and root dir */
         while (nb && i < szb_buf) {     /* Create a chain */
           st_dword(buf + i, (nb > 1) ? cl + 1 : 0xFFFFFFFF);
-          i += 4; cl++; nb--;
+          i += 4; 
+          cl++; 
+          nb--;
           }
         if (!nb && j < 3)
           nb = tbl[j++];  /* Next chain */
         } while (nb && i < szb_buf);
       n = (nsect > sz_buf) ? sz_buf : nsect;  /* Write the buffered data */
-      if (disk_write(pdrv, buf, sect, n) != RES_OK) return FR_DISK_ERR;
+      if (disk_write(pdrv, buf, sect, n) != RES_OK) 
+        return FR_DISK_ERR;
       sect += n; nsect -= n;
       } while (nsect);
 
@@ -4480,7 +4489,8 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     sect = b_data + au * (tbl[0] + tbl[1]); nsect = au; /* Start of the root directory and number of sectors */
     do {  /* Fill root directory sectors */
       n = (nsect > sz_buf) ? sz_buf : nsect;
-      if (disk_write (pdrv, buf, sect, n) != RES_OK) return FR_DISK_ERR;
+      if (disk_write (pdrv, buf, sect, n) != RES_OK) 
+        return FR_DISK_ERR;
       memset(buf, 0, ss);
       sect += n;
       nsect -= n;
@@ -4515,7 +4525,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
         if (i != BPB_VolFlagEx && i != BPB_VolFlagEx + 1 && i != BPB_PercInUseEx)
           sum = xsum32 (buf[i], sum);
         }
-      if (disk_write(pdrv, buf, sect++, 1) != RES_OK)
+      if (disk_write (pdrv, buf, sect++, 1) != RES_OK)
         return FR_DISK_ERR;
 
       //{{{  Extended bootstrap record (+1..+8) */
