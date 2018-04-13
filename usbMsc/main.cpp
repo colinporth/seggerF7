@@ -79,9 +79,6 @@ private:
   char mLabel[40];
   uint8_t* mBufferArray[1];
 
-  uint32_t mWidth = 0;
-  uint32_t mHeight = 0;
-
   struct jpeg_error_mgr jerr;
   struct jpeg_decompress_struct cinfo;
   uint8_t mJpegHeader[1000];
@@ -92,7 +89,7 @@ cApp* gApp;
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
 //{{{
-const uint8_t JPEG_StdQuantTblY_ZZ[64] = {
+const uint8_t kJpegStdQuantTblY_ZZ[64] = {
    16,  11,  12,  14,  12,  10,  16,  14,
    13,  14,  18,  17,  16,  19,  24,  40,
    26,  24,  22,  22,  24,  49,  35,  37,
@@ -103,7 +100,7 @@ const uint8_t JPEG_StdQuantTblY_ZZ[64] = {
   121, 112, 100, 120,  92, 101, 103,  99 };
 //}}}
 //{{{
-const uint8_t JPEG_StdQuantTblC_ZZ[64] = {
+const uint8_t kJpegStdQuantTblC_ZZ[64] = {
   17, 18, 18, 24, 21, 24, 47, 26,
   26, 47, 99, 66, 56, 66, 99, 99,
   99, 99, 99, 99, 99, 99, 99, 99,
@@ -114,7 +111,7 @@ const uint8_t JPEG_StdQuantTblC_ZZ[64] = {
   99, 99, 99, 99, 99, 99, 99, 99 };
 //}}}
 //{{{
-const unsigned int JPEG_StdHuffmanTbl[384] = {
+const unsigned int kJpegStdHuffmanTbl[384] = {
   0x100, 0x101, 0x204, 0x30b, 0x41a, 0x678, 0x7f8, 0x9f6,
   0xf82, 0xf83, 0x30c, 0x41b, 0x679, 0x8f6, 0xaf6, 0xf84,
   0xf85, 0xf86, 0xf87, 0xf88, 0x41c, 0x7f9, 0x9f7, 0xbf4,
@@ -218,8 +215,6 @@ void cApp::run() {
         // decode jpeg body
         jpeg_mem_src (&cinfo, jpegBuf, jpegLen);
         jpeg_start_decompress (&cinfo);
-        mWidth = cinfo.output_width;
-        mHeight = cinfo.output_height;
 
         while (cinfo.output_scanline < cinfo.output_height) {
           jpeg_read_scanlines (&cinfo, mBufferArray, 1);
@@ -236,7 +231,7 @@ void cApp::run() {
         }
       }
 
-    mLcd->startBgnd ((uint16_t*)0xc0100000, mWidth, mHeight, BSP_PB_GetState (BUTTON_KEY));
+    mLcd->startBgnd ((uint16_t*)0xc0100000, cinfo.output_width, cinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
 
     mLcd->drawTitle (kVersion);
     mLcd->drawInfo (24, mCamera->getString());
@@ -469,9 +464,7 @@ void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int s
     }
   jpeg_finish_decompress (&cinfo);
 
-  mWidth = cinfo.output_width;
-  mHeight = cinfo.output_height;
-  mLcd->debug (LCD_COLOR_WHITE, "jpeg out:%dx%d", mWidth, mHeight);
+  mLcd->debug (LCD_COLOR_WHITE, "jpeg out:%dx%d", cinfo.output_width, cinfo.output_height);
   }
 //}}}
 
@@ -553,13 +546,13 @@ int cApp::quantTableMarker (uint8_t* ptr, int qscale) {
 
   *ptr++ = 0;// quantization table precision | identifier
   for (int i = 0; i < 64; i++) {
-    int q = (JPEG_StdQuantTblY_ZZ[i] * qscale + 16) >> 5;
+    int q = (kJpegStdQuantTblY_ZZ[i] * qscale + 16) >> 5;
     *ptr++ = q;// quantization table element
     }
 
   *ptr++ = 1;// quantization table precision | identifier
   for (int i = 0; i < 64; i++) {
-    int q = (JPEG_StdQuantTblC_ZZ[i] * qscale + 16) >> 5;
+    int q = (kJpegStdQuantTblC_ZZ[i] * qscale + 16) >> 5;
     *ptr++ = q;// quantization table element
     }
 
@@ -700,10 +693,10 @@ void cApp::setJpegHeader (int width, int height, int qscale) {
   mJpegHeaderLen += jfifApp0Marker (ptr);
   mJpegHeaderLen += quantTableMarker (mJpegHeader + mJpegHeaderLen, qscale);
   mJpegHeaderLen += sofMarker (mJpegHeader + mJpegHeaderLen, width, height);
-  mJpegHeaderLen += huffTableMarkerDC (mJpegHeader + mJpegHeaderLen, &JPEG_StdHuffmanTbl[352], 0x00);
-  mJpegHeaderLen += huffTableMarkerAC (mJpegHeader + mJpegHeaderLen, &JPEG_StdHuffmanTbl[0], 0x10);
-  mJpegHeaderLen += huffTableMarkerDC (mJpegHeader + mJpegHeaderLen, &JPEG_StdHuffmanTbl[368], 0x01);
-  mJpegHeaderLen += huffTableMarkerAC (mJpegHeader + mJpegHeaderLen, &JPEG_StdHuffmanTbl[176], 0x11);
+  mJpegHeaderLen += huffTableMarkerAC (mJpegHeader + mJpegHeaderLen, &kJpegStdHuffmanTbl[0], 0x10);
+  mJpegHeaderLen += huffTableMarkerAC (mJpegHeader + mJpegHeaderLen, &kJpegStdHuffmanTbl[176], 0x11);
+  mJpegHeaderLen += huffTableMarkerDC (mJpegHeader + mJpegHeaderLen, &kJpegStdHuffmanTbl[352], 0x00);
+  mJpegHeaderLen += huffTableMarkerDC (mJpegHeader + mJpegHeaderLen, &kJpegStdHuffmanTbl[368], 0x01);
   mJpegHeaderLen += sosMarker (mJpegHeader + mJpegHeaderLen);
   }
 //}}}
