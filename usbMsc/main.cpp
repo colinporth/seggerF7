@@ -106,9 +106,8 @@ private:
 cApp* gApp;
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
-struct netif gnetif;
 //{{{
-void dhcpThread (void* argument) {
+void dhcpThread (void* arg) {
 
   #define DHCP_OFF                   (uint8_t) 0
   #define DHCP_START                 (uint8_t) 1
@@ -118,7 +117,7 @@ void dhcpThread (void* argument) {
   #define DHCP_LINK_DOWN             (uint8_t) 5
   #define MAX_DHCP_TRIES  4
 
-  auto netif = (struct netif*)argument;
+  auto netif = (struct netif*)arg;
 __IO uint8_t DHCP_state = netif_is_up (netif) ? DHCP_START : DHCP_LINK_DOWN;
 
   gApp->getLcd()->debug (LCD_COLOR_YELLOW, "DHCP - launched");
@@ -270,7 +269,7 @@ const unsigned char kDynamicPage[] = {
 0x61,0x67,0x65,0x20,0x68,0x69,0x74,0x73,0x3a,0x0d,0x0a,0x00};
 //}}}
 //{{{
-void httpServerThread (void *arg) {
+void httpServerThread (void* arg) {
 
   // Create a new TCP connection handle
   struct netconn* connection = netconn_new (NETCONN_TCP);
@@ -1043,7 +1042,7 @@ void MPU_Config() {
   }
 //}}}
 //{{{
-void startThread (void* argument) {
+void startThread (void* arg) {
 
   // Initialize app
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
@@ -1054,28 +1053,28 @@ void startThread (void* argument) {
 
   // network config
   ip_addr_t ipaddr;
-  ip_addr_set_zero_ip4 (&ipaddr);
   ip_addr_t netmask;
-  ip_addr_set_zero_ip4 (&netmask);
   ip_addr_t gw;
+  ip_addr_set_zero_ip4 (&ipaddr);
+  ip_addr_set_zero_ip4 (&netmask);
   ip_addr_set_zero_ip4 (&gw);
-
-  // static
   //  IP_ADDR4 (&ipaddr,192,168,0,10);
   //  IP_ADDR4 (&netmask,255,255,255,0);
   //  IP_ADDR4 (&gw,192,168,GW_ADDR2,1);
-  netif_add (&gnetif, &ipaddr, &netmask, &gw, NULL, &ethernetif_init, &tcpip_input);
-  netif_set_default (&gnetif);
-  if (netif_is_link_up (&gnetif))
-    netif_set_up (&gnetif);
+
+  struct netif netIf;
+  netif_add (&netIf, &ipaddr, &netmask, &gw, NULL, &ethernetif_init, &tcpip_input);
+  netif_set_default (&netIf);
+  if (netif_is_link_up (&netIf))
+    netif_set_up (&netIf);
   else
-    netif_set_down (&gnetif);
+    netif_set_down (&netIf);
 
   // init httpServer
   sys_thread_new ("Http", httpServerThread, NULL, DEFAULT_THREAD_STACKSIZE, osPriorityAboveNormal);
 
   // init dhcp
-  sys_thread_new ("Dhcp", dhcpThread, &gnetif, configMINIMAL_STACK_SIZE * 2, osPriorityBelowNormal);
+  sys_thread_new ("Dhcp", dhcpThread, &netIf, configMINIMAL_STACK_SIZE * 2, osPriorityBelowNormal);
 
   gApp->run();
   //while (true)
