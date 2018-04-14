@@ -162,7 +162,6 @@
         <file file_name="jpegHeader.h" />
         <file file_name="stm32f7xx_hal_conf.h" />
       </folder>
-      <file file_name="httpServer.cpp" />
     </folder>
     <folder Name="bsp_drivers">
       <file file_name="usbd_msc.cpp" />

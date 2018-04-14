@@ -12,8 +12,8 @@ public:
   bool getCaptureMode() { return mCapture; }
   int getFrames() { return mFrames; }
   int getFps() { return 1000/mTookTicks; }
+  int getFocus() { return mFocus; }
   int getJpegLen() { return mJpegLen; }
-
   uint8_t* getJpegFrame (int& jpegLen);
 
   void setFocus (int value);
@@ -35,6 +35,8 @@ private:
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;
   bool mCapture = false;
+
+  int mFocus = 0;
 
   int mFrames = 0;
   char mStr[40] = { 0 };
