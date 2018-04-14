@@ -334,7 +334,7 @@ void cApp::run() {
     #ifdef USE_CAMERA
       if (mCamera->getCaptureMode()) {
         jpegBuf = mCamera->getJpegFrame (jpegLen);
-        if (false && jpegBuf) {
+        if (jpegBuf) {
           //{{{  jpeg decode buffer
           if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
             memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
