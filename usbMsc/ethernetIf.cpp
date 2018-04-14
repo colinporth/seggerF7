@@ -14,33 +14,29 @@
 ETH_HandleTypeDef EthHandle;
 osSemaphoreId s_xSemaphore = NULL;
 
-void ETH_IRQHandler() { HAL_ETH_IRQHandler (&EthHandle); }
+extern "C" { void ETH_IRQHandler() { HAL_ETH_IRQHandler (&EthHandle); }}
 
 //{{{
-static struct pbuf* low_level_input (struct netif* netif) {
-
-  struct pbuf* p = NULL;
-  struct pbuf* q = NULL;
-  __IO ETH_DMADescTypeDef *dmarxdesc;
-  uint32_t i=0;
+struct pbuf* low_level_input (struct netif* netif) {
 
   // get received frame */
-  if (HAL_ETH_GetReceivedFrame_IT(&EthHandle) != HAL_OK)
+  if (HAL_ETH_GetReceivedFrame_IT (&EthHandle) != HAL_OK)
     return NULL;
 
   // Obtain the size of the packet and put it into the "len" variable
   uint16_t len = EthHandle.RxFrameInfos.length;
-  uint8_t* buffer = (uint8_t *)EthHandle.RxFrameInfos.buffer;
+  uint8_t* buffer = (uint8_t*)EthHandle.RxFrameInfos.buffer;
 
+  struct pbuf* p = NULL;
   if (len > 0)
     // We allocate a pbuf chain of pbufs from the Lwip buffer pool
-    p = pbuf_alloc(PBUF_RAW, len, PBUF_POOL);
+    p = pbuf_alloc (PBUF_RAW, len, PBUF_POOL);
 
   if (p != NULL) {
-    dmarxdesc = EthHandle.RxFrameInfos.FSRxDesc;
+    __IO ETH_DMADescTypeDef* dmarxdesc = EthHandle.RxFrameInfos.FSRxDesc;
     uint32_t bufferoffset = 0;
 
-    for (q = p; q != NULL; q = q->next) {
+    for (struct pbuf* q = p; q != NULL; q = q->next) {
       uint32_t byteslefttocopy = q->len;
       uint32_t payloadoffset = 0;
 
@@ -65,15 +61,16 @@ static struct pbuf* low_level_input (struct netif* netif) {
     }
 
   // Release descriptors to DMA, Point to first descriptor
-  dmarxdesc = EthHandle.RxFrameInfos.FSRxDesc;
+  __IO ETH_DMADescTypeDef* dmarxdesc = EthHandle.RxFrameInfos.FSRxDesc;
+
   // Set Own bit in Rx descriptors: gives the buffers back to DMA
-  for (i=0; i< EthHandle.RxFrameInfos.SegCount; i++) {
+  for (uint32_t i = 0; i< EthHandle.RxFrameInfos.SegCount; i++) {
     dmarxdesc->Status |= ETH_DMARXDESC_OWN;
     dmarxdesc = (ETH_DMADescTypeDef *)(dmarxdesc->Buffer2NextDescAddr);
     }
 
   // Clear Segment_Count
-  EthHandle.RxFrameInfos.SegCount =0;
+  EthHandle.RxFrameInfos.SegCount = 0;
 
   // When Rx Buffer unavailable flag is set: clear it and resume reception
   if ((EthHandle.Instance->DMASR & ETH_DMASR_RBUS) != (uint32_t)RESET) {
@@ -87,7 +84,7 @@ static struct pbuf* low_level_input (struct netif* netif) {
   }
 //}}}
 //{{{
-static void ethernetif_input (void const* argument) {
+void ethernetif_input (void const* argument) {
 
   struct netif* netif = (struct netif*)argument;
   struct pbuf* p = NULL;
@@ -106,7 +103,7 @@ static void ethernetif_input (void const* argument) {
   }
 //}}}
 //{{{
-static err_t low_level_output (struct netif* netif, struct pbuf* p) {
+err_t low_level_output (struct netif* netif, struct pbuf* p) {
 
   err_t errval;
 
