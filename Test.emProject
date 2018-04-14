@@ -182,6 +182,7 @@
         <file file_name="../BSP/ts.h" />
         <file file_name="../BSP/cCamera.h" />
         <file file_name="../BSP/cLcd.h" />
+        <file file_name="../BSP/ethernetif.h" />
       </folder>
       <file file_name="../BSP/stm32746g_discovery.c" />
       <file file_name="../BSP/stm32746g_discovery_sd.c" />
@@ -192,7 +193,7 @@
       <file file_name="../BSP/font16.c" />
       <file file_name="../BSP/cLcd.cpp" />
       <file file_name="../BSP/stm32f7xx_hal_timebase_tim.c" />
-      <file file_name="ethernetIf.cpp" />
+      <file file_name="../BSP/ethernetIf.cpp" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />

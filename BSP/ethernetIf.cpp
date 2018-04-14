@@ -229,7 +229,7 @@ err_t ethernetif_init (struct netif* netif) {
 
 #if LWIP_NETIF_HOSTNAME
   /* Initialize interface hostname */
-  netif->hostname = "st";
+  netif->hostname = "cam";
 #endif
   netif->name[0] = 's';
   netif->name[1] = 't';

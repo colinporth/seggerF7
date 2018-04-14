@@ -27,7 +27,7 @@
 //}}}
 #define USE_CAMERA
 
-const char* kVersion = "Camera 14/4/18";
+const char* kVersion = "WebCam 14/4/18";
 const char* kEmpty = "empty";
 
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
@@ -288,23 +288,17 @@ void httpServerThread (void *arg) {
               u16_t buflen;
               netbuf_data (requestNetBuf, (void**)&buf, &buflen);
 
-              // simple HTTP GET command parse
+              // simple HTTP GET command parser
               if ((buflen >= 5) && (strncmp (buf, "GET /", 5) == 0)) {
                 struct fs_file file;
                 if (strncmp(buf, "GET /STM32F7xxTASKS.html", 24) == 0) {
-                  //{{{  dynamic page
                   netconn_write (request, kDynamicPage, strlen ((char*)kDynamicPage), NETCONN_COPY);
-
                   char body[512];
                   sprintf (body, "%d", numPageHits++);
-                  strcat (body, "<pre><br>Name          State  Priority  Stack   Num" );
-                  strcat (body, "<br>");
+                  strcat (body, "<pre><br>Name          State  Priority  Stack   Num<br>");
                   osThreadList ((unsigned char*)(body + strlen (body)));
-                  strcat (body, "<br>B : Blocked, R : Ready, D : Deleted, S : Suspended<br>");
-
                   netconn_write (request, body, strlen (body), NETCONN_COPY);
                   }
-                  //}}}
                 else if ((strncmp (buf, "GET /STM32F7xx.html", 19) == 0) || (strncmp (buf, "GET / ", 6) == 0)) {
                   fs_open (&file, "/STM32F7xx.html");
                   netconn_write (request, (const unsigned char*)(file.data), (size_t)file.len, NETCONN_NOCOPY);
