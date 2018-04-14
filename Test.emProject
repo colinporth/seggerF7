@@ -191,7 +191,6 @@
       <file file_name="../BSP/mt9d111.cpp" />
       <file file_name="../BSP/font16.c" />
       <file file_name="../BSP/cLcd.cpp" />
-      <file file_name="app_ethernet.c" />
       <file file_name="ethernetif.c" />
       <file file_name="httpserver-netconn.c" />
       <file file_name="stm32f7xx_hal_timebase_tim.c" />

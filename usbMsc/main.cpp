@@ -13,10 +13,18 @@
 #include "cCamera.h"
 
 #include "jpeglib.h"
+
+#include "cmsis_os.h"
+#include "lwip/netif.h"
+#include "lwip/tcpip.h"
+#include "lwip/opt.h"
+#include "lwip/dhcp.h"
+#include "ethernetif.h"
+#include "httpserver-netconn.h"
 //}}}
 const char* kVersion = "Camera 13/4/18";
 const char* kEmpty = "empty";
-#define USE_CAMERA
+//#define USE_CAMERA
 
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
 uint8_t* kJpegBuffer    =  (uint8_t*)0xc0200000;
@@ -39,6 +47,7 @@ public:
   cLcd* getLcd() { return mLcd; }
   cPs2* getPs2() { return mPs2; }
 
+  void init();
   void run();
   void onPs2Irq() { mPs2->onIrq(); }
 
@@ -93,6 +102,100 @@ private:
 //}}}
 cApp* gApp;
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
+
+struct netif gnetif;
+//{{{  defines
+#define IP_ADDR0   192
+#define IP_ADDR1   168
+#define IP_ADDR2   0
+#define IP_ADDR3   10
+#define NETMASK_ADDR0   255
+#define NETMASK_ADDR1   255
+#define NETMASK_ADDR2   255
+#define NETMASK_ADDR3   0
+#define GW_ADDR0   192
+#define GW_ADDR1   168
+#define GW_ADDR2   0
+#define GW_ADDR3   1
+
+#define DHCP_OFF                   (uint8_t) 0
+#define DHCP_START                 (uint8_t) 1
+#define DHCP_WAIT_ADDRESS          (uint8_t) 2
+#define DHCP_ADDRESS_ASSIGNED      (uint8_t) 3
+#define DHCP_TIMEOUT               (uint8_t) 4
+#define DHCP_LINK_DOWN             (uint8_t) 5
+
+#define MAX_DHCP_TRIES  4
+__IO uint8_t DHCP_state = DHCP_OFF;
+
+//}}}
+//{{{
+void userNotification (struct netif* netif) {
+
+  if (netif_is_up (netif)) {
+    gApp->getLcd()->debug (LCD_COLOR_MAGENTA, "dhcp up");
+    DHCP_state = DHCP_START;
+    }
+  else {
+    gApp->getLcd()->debug (LCD_COLOR_MAGENTA, "dhcp down");
+    DHCP_state = DHCP_LINK_DOWN;
+    }
+  }
+//}}}
+//{{{
+void dhcpThread (void const* argument) {
+
+  struct netif* netif = (struct netif*)argument;
+  ip_addr_t ipaddr;
+  ip_addr_t netmask;
+  ip_addr_t gw;
+  struct dhcp* dhcp;
+  uint8_t iptxt[20];
+
+  gApp->getLcd()->debug (LCD_COLOR_YELLOW, "dhcpThread launched");
+
+  for (;;) {
+    switch (DHCP_state) {
+      case DHCP_START: 
+        ip_addr_set_zero_ip4 (&netif->ip_addr);
+        ip_addr_set_zero_ip4 (&netif->netmask);
+        ip_addr_set_zero_ip4 (&netif->gw);
+        dhcp_start (netif);
+        DHCP_state = DHCP_WAIT_ADDRESS;
+        gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP - looking for server");
+        break;
+
+      case DHCP_WAIT_ADDRESS: 
+        if (dhcp_supplied_address(netif)) {
+          DHCP_state = DHCP_ADDRESS_ASSIGNED;
+          gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP - address assigned");
+          gApp->getLcd()->debug (LCD_COLOR_GREEN, ip4addr_ntoa((const ip4_addr_t *)&netif->ip_addr));
+          }
+        else {
+          dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
+          if (dhcp->tries > MAX_DHCP_TRIES) {
+            // DHCP timeout
+            DHCP_state = DHCP_TIMEOUT;
+            dhcp_stop (netif);
+            gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP - timeout");
+            }
+          }
+        break;
+
+      case DHCP_LINK_DOWN: 
+        gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP - link down");
+        dhcp_stop (netif);
+        DHCP_state = DHCP_OFF;
+        break;
+
+      default: 
+        break;
+      }
+
+    osDelay(250);
+    }
+  }
+//}}}
 
 //{{{
 const uint8_t kJpegStdQuantTblY_ZZ[64] = {
@@ -168,9 +271,39 @@ const uint16_t kJpegStdHuffmanTbl[384] = {
   0x7fe, 0x8fe, 0x9fe, 0xafe, 0xfff, 0xfff, 0xfff, 0xfff };
 //}}}
 
+//{{{
+void netifConfig() {
+
+  gApp->getLcd()->debug (LCD_COLOR_YELLOW, "netifConfig");
+
+
+  ip_addr_t ipaddr;
+  ip_addr_set_zero_ip4 (&ipaddr);
+
+  ip_addr_t netmask;
+  ip_addr_set_zero_ip4 (&netmask);
+
+  ip_addr_t gw;
+  ip_addr_set_zero_ip4 (&gw);
+//  IP_ADDR4 (&ipaddr,IP_ADDR0,IP_ADDR1,IP_ADDR2,IP_ADDR3);
+//  IP_ADDR4 (&netmask,NETMASK_ADDR0,NETMASK_ADDR1,NETMASK_ADDR2,NETMASK_ADDR3);
+//  IP_ADDR4 (&gw,GW_ADDR0,GW_ADDR1,GW_ADDR2,GW_ADDR3);
+
+  netif_add (&gnetif, &ipaddr, &netmask, &gw, NULL, &ethernetif_init, &tcpip_input);
+
+  //  Registers the default network interface. */
+  netif_set_default (&gnetif);
+
+  if (netif_is_link_up (&gnetif)) /* When the netif is fully configured this function must be called.*/
+    netif_set_up (&gnetif);
+  else // When the netif link is down this function must be called */
+    netif_set_down (&gnetif);
+  }
+//}}}
+
 // public
 //{{{
-void cApp::run() {
+void cApp::init() {
 
   mLcd = new cLcd (16);
   mLcd->init();
@@ -179,10 +312,15 @@ void cApp::run() {
   //mPs2->initKeyboard();
   //}}}
 
-  mscInit (mLcd);
-  mscStart();
+  //mscInit (mLcd);
+  //mscStart();
+  }
+//}}}
+//{{{
+void cApp::run() {
+
   uint8_t* jpegBuf = kJpegBuffer;
-  int jpegLen = loadFile (kJpegBuffer);
+  int jpegLen = 0;//loadFile (kJpegBuffer);
 
   //{{{
   #ifdef USE_CAMERA
@@ -202,6 +340,8 @@ void cApp::run() {
   int lastCount = 0;
   bool lastButton = false;
   while (true) {
+    osDelay (100);
+
     pollTouch();
     //{{{  removed
     //while (mPs2->hasChar()) {
@@ -210,7 +350,6 @@ void cApp::run() {
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
-    //{{{
     #ifdef USE_CAMERA
       //mLcd->startBgnd ((uint16_t*)0xc0100000);
       if (mCamera->getCaptureMode()) {
@@ -238,15 +377,15 @@ void cApp::run() {
           }
         }
       mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
-    //}}}
     #else
-      if (count < 3)
-        saveFile (nullptr, 0, jpegBuf, jpegLen, count++);
-      mLcd->startBgnd (kRgb565Buffer);
+      //if (count < 3)
+      //  saveFile (nullptr, 0, jpegBuf, jpegLen, count++);
+      //mLcd->startBgnd (kRgb565Buffer);
     #endif
+    mLcd->start();
 
     mLcd->drawTitle (kVersion);
-    char info[40];
+    char info[40] = {0};
     if (mCamera)
       sprintf (info, "%4d %2dfps %d", mCamera->getFrames(), mCamera->getFps(), mCamera->getJpegLen());
     mLcd->drawInfo (24, info);
@@ -255,8 +394,10 @@ void cApp::run() {
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
     if (!button && (button != lastButton)) {
-      auto captureMode = !mCamera->getCaptureMode();
-      mCamera->start (captureMode, captureMode ? kJpegBuffer : (uint8_t*)kRgb565Buffer);
+      if (mCamera) {
+        auto captureMode = !mCamera->getCaptureMode();
+        mCamera->start (captureMode, captureMode ? kJpegBuffer : (uint8_t*)kRgb565Buffer);
+        }
       }
     lastButton = button;
     }
@@ -731,8 +872,88 @@ void cApp::setJpegHeader (int width, int height, int qscale) {
 //}}}
 
 //{{{
+void MPU_Config()
+{
+  MPU_Region_InitTypeDef MPU_InitStruct;
+
+  /* Disable the MPU */
+  HAL_MPU_Disable();
+
+  /* Configure the MPU attributes as WT for SRAM */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.BaseAddress = 0x20010000;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_256KB;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER0;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
+
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+  /* Configure the MPU as Normal Non Cacheable for Ethernet Buffers in the SRAM2 */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.BaseAddress = 0x2004C000;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_16KB;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER1;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL1;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
+
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+  /* Configure the MPU as Device for Ethernet Descriptors in the SRAM2 */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.BaseAddress = 0x2004C000;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_256B;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_BUFFERABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER2;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
+
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+  /* Enable the MPU */
+  HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+  }
+//}}}
+//{{{
+void startThread (void const * argument) {
+
+  // Initialize LCD
+  gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
+  gApp->init();
+
+  // init network
+  tcpip_init (NULL, NULL);
+  netifConfig();
+  http_server_netconn_init();
+  userNotification (&gnetif);
+
+  osThreadDef (DHCP, dhcpThread, osPriorityBelowNormal, 0, configMINIMAL_STACK_SIZE * 2);
+  osThreadCreate (osThread(DHCP), &gnetif);
+
+  gApp->run();
+
+  while (true)
+    osThreadTerminate(NULL);
+  }
+//}}}
+//{{{
 int main() {
 
+  MPU_Config();
   SCB_EnableICache();
   SCB_EnableDCache();
   HAL_Init();
@@ -784,7 +1005,10 @@ int main() {
   //}}}
   BSP_PB_Init (BUTTON_KEY, BUTTON_MODE_GPIO);
 
-  gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
-  gApp->run();
+  osThreadDef (Start, startThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE * 5);
+  osThreadCreate (osThread(Start), NULL);
+  osKernelStart();
+
+  while (true);
   }
 //}}}
