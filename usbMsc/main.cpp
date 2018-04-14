@@ -135,7 +135,7 @@ void dhcpThread (void const* argument) {
 
   auto netif = (struct netif*)argument;
 
-  gApp->getLcd()->debug (LCD_COLOR_YELLOW, "dhcpThread launched");
+  gApp->getLcd()->debug (LCD_COLOR_YELLOW, "DHCP - launched");
 
   for (;;) {
     switch (DHCP_state) {
@@ -174,7 +174,7 @@ void dhcpThread (void const* argument) {
         break;
       }
 
-    osDelay(250);
+    osDelay (250);
     }
   }
 //}}}
