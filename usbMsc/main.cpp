@@ -130,19 +130,6 @@ __IO uint8_t DHCP_state = DHCP_OFF;
 
 //}}}
 //{{{
-void userNotification (struct netif* netif) {
-
-  if (netif_is_up (netif)) {
-    gApp->getLcd()->debug (LCD_COLOR_MAGENTA, "dhcp up");
-    DHCP_state = DHCP_START;
-    }
-  else {
-    gApp->getLcd()->debug (LCD_COLOR_MAGENTA, "dhcp down");
-    DHCP_state = DHCP_LINK_DOWN;
-    }
-  }
-//}}}
-//{{{
 void dhcpThread (void const* argument) {
 
   auto netif = (struct netif*)argument;
@@ -334,7 +321,7 @@ void cApp::run() {
   int lastCount = 0;
   bool lastButton = false;
   while (true) {
-    osDelay (100);
+    osDelay (20);
 
     pollTouch();
     //{{{  removed
@@ -933,7 +920,7 @@ void startThread (void const * argument) {
   tcpip_init (NULL, NULL);
   netifConfig();
   http_server_netconn_init();
-  userNotification (&gnetif);
+  DHCP_state = netif_is_up (&gnetif) ? DHCP_START : DHCP_LINK_DOWN;
 
   osThreadDef (DHCP, dhcpThread, osPriorityBelowNormal, 0, configMINIMAL_STACK_SIZE * 2);
   osThreadCreate (osThread(DHCP), &gnetif);
