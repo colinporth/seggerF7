@@ -7,8 +7,8 @@
 
 // common handlers
 void NMI_Handler() {}
-void SVC_Handler() {}
-void PendSV_Handler() {}
+//void SVC_Handler() {}
+//void PendSV_Handler() {}
 void DebugMon_Handler() {}
 
 void BusFault_Handler() { while (1) {} }

@@ -254,8 +254,10 @@ void cApp::run() {
     mLcd->present();
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
-    if (!button && (button != lastButton))
-      mCamera->start (!mCamera->getCaptureMode(), kJpegBuffer);
+    if (!button && (button != lastButton)) {
+      auto captureMode = !mCamera->getCaptureMode();
+      mCamera->start (captureMode, captureMode ? kJpegBuffer : (uint8_t*)kRgb565Buffer);
+      }
     lastButton = button;
     }
   }

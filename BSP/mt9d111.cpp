@@ -362,6 +362,8 @@ void cCamera::dcmiIrqHandler() {
         }
       mStartFramePtr = mCurPtr + dmaBytes;
       }
+    else
+      mJpegLen = getWidth()*getHeight()*2;
   #endif
     }
   }

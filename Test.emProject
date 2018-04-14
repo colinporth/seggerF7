@@ -141,7 +141,7 @@
       arm_target_device_name="STM32F746NG"
       arm_target_interface_type="SWD"
       c_preprocessor_definitions="USE_HAL_DRIVER;STM32F746xx;USE_STM32746G_DISCO"
-      c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/BSP;$(SolutionDir)/LibJPEG/include;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include."
+      c_user_include_directories=".;$(SolutionDir)/Drivers/STM32F7xx_HAL_Driver/Inc;$(SolutionDir)/BSP;$(SolutionDir)/LibJPEG/include;$(SolutionDir)/Drivers/CMSIS/Device/ST/STM32F7xx/Include;$(SolutionDir)/Drivers/CMSIS/Include.;$(SolutionDir)/FreeRTOS/;$(SolutionDir)/FreeRTOS/CMSIS_RTOS;$(SolutionDir)/FreeRTOS/Include;$(SolutionDir)/FreeRTOS/portable/GCC/ARM_CM7/r0p1;$(SolutionDir)/LwIP/src/include;$(SolutionDir)/LwIP/system"
       debug_target_connection="J-Link"
       debug_type_file="$(StudioDir)/bin/STLport.xml"
       gcc_c_language_standard="c11"
@@ -191,6 +191,10 @@
       <file file_name="../BSP/mt9d111.cpp" />
       <file file_name="../BSP/font16.c" />
       <file file_name="../BSP/cLcd.cpp" />
+      <file file_name="app_ethernet.c" />
+      <file file_name="ethernetif.c" />
+      <file file_name="httpserver-netconn.c" />
+      <file file_name="stm32f7xx_hal_timebase_tim.c" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />
@@ -288,8 +292,12 @@
           recurse="No" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal.h" />
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dcmi.h" />
+        <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_eth.h" />
       </folder>
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_dma_ex.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_eth.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim.c" />
+      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim_ex.c" />
     </folder>
     <folder Name="rtt">
       <file file_name="../rtt/SEGGER_RTT.c" />
@@ -374,6 +382,67 @@
         <file file_name="../LibJPEG/source/jquant1.c" />
         <file file_name="../LibJPEG/source/jquant2.c" />
         <file file_name="../LibJPEG/source/jutils.c" />
+      </folder>
+    </folder>
+    <folder Name="FreeRTOS">
+      <file file_name="../FreeRTOS/croutine.c" />
+      <file file_name="../FreeRTOS/list.c" />
+      <file file_name="../FreeRTOS/queue.c" />
+      <file file_name="../FreeRTOS/tasks.c" />
+      <file file_name="../FreeRTOS/timers.c" />
+      <folder Name="portable">
+        <file file_name="../FreeRTOS/portable/GCC/ARM_CM7/r0p1/port.c" />
+        <file file_name="../FreeRTOS/CMSIS_RTOS/cmsis_os.c" />
+        <file file_name="../FreeRTOS/portable/MemMang/heap_4.c" />
+      </folder>
+    </folder>
+    <folder Name="LwIP">
+      <folder Name="apps">
+        <file file_name="../LwIP/src/apps/httpd/fs.c" />
+        <file file_name="../LwIP/src/apps/httpd/httpd.c" />
+      </folder>
+      <folder Name="api">
+        <file file_name="../LwIP/src/api/api_lib.c" />
+        <file file_name="../LwIP/src/api/api_msg.c" />
+        <file file_name="../LwIP/src/api/err.c" />
+        <file file_name="../LwIP/src/api/netbuf.c" />
+        <file file_name="../LwIP/src/api/netdb.c" />
+        <file file_name="../LwIP/src/api/netifapi.c" />
+        <file file_name="../LwIP/src/api/sockets.c" />
+        <file file_name="../LwIP/src/api/tcpip.c" />
+      </folder>
+      <folder Name="Core">
+        <file file_name="../LwIP/src/core/def.c" />
+        <file file_name="../LwIP/src/core/dns.c" />
+        <file file_name="../LwIP/src/core/inet_chksum.c" />
+        <file file_name="../LwIP/src/core/init.c" />
+        <file file_name="../LwIP/src/core/ip.c" />
+        <file file_name="../LwIP/src/core/mem.c" />
+        <file file_name="../LwIP/src/core/memp.c" />
+        <file file_name="../LwIP/src/core/netif.c" />
+        <file file_name="../LwIP/src/core/pbuf.c" />
+        <file file_name="../LwIP/src/core/raw.c" />
+        <file file_name="../LwIP/src/core/stats.c" />
+        <file file_name="../LwIP/src/core/sys.c" />
+        <file file_name="../LwIP/src/core/tcp.c" />
+        <file file_name="../LwIP/src/core/tcp_in.c" />
+        <file file_name="../LwIP/src/core/tcp_out.c" />
+        <file file_name="../LwIP/src/core/timeouts.c" />
+        <file file_name="../LwIP/src/core/udp.c" />
+        <folder Name="IPv4">
+          <file file_name="../LwIP/src/core/ipv4/autoip.c" />
+          <file file_name="../LwIP/src/core/ipv4/dhcp.c" />
+          <file file_name="../LwIP/src/core/ipv4/etharp.c" />
+          <file file_name="../LwIP/src/core/ipv4/icmp.c" />
+          <file file_name="../LwIP/src/core/ipv4/igmp.c" />
+          <file file_name="../LwIP/src/core/ipv4/ip4.c" />
+          <file file_name="../LwIP/src/core/ipv4/ip4_addr.c" />
+          <file file_name="../LwIP/src/core/ipv4/ip4_frag.c" />
+        </folder>
+      </folder>
+      <folder Name="NetIf">
+        <file file_name="../LwIP/src/netif/ethernet.c" />
+        <file file_name="../LwIP/system/OS/sys_arch.c" />
       </folder>
     </folder>
   </project>
