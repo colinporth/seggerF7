@@ -145,18 +145,13 @@ void userNotification (struct netif* netif) {
 //{{{
 void dhcpThread (void const* argument) {
 
-  struct netif* netif = (struct netif*)argument;
-  ip_addr_t ipaddr;
-  ip_addr_t netmask;
-  ip_addr_t gw;
-  struct dhcp* dhcp;
-  uint8_t iptxt[20];
+  auto netif = (struct netif*)argument;
 
   gApp->getLcd()->debug (LCD_COLOR_YELLOW, "dhcpThread launched");
 
   for (;;) {
     switch (DHCP_state) {
-      case DHCP_START: 
+      case DHCP_START:
         ip_addr_set_zero_ip4 (&netif->ip_addr);
         ip_addr_set_zero_ip4 (&netif->netmask);
         ip_addr_set_zero_ip4 (&netif->gw);
@@ -165,16 +160,15 @@ void dhcpThread (void const* argument) {
         gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP - looking for server");
         break;
 
-      case DHCP_WAIT_ADDRESS: 
-        if (dhcp_supplied_address(netif)) {
+      case DHCP_WAIT_ADDRESS:
+        if (dhcp_supplied_address (netif)) {
           DHCP_state = DHCP_ADDRESS_ASSIGNED;
           gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP - address assigned");
-          gApp->getLcd()->debug (LCD_COLOR_GREEN, ip4addr_ntoa((const ip4_addr_t *)&netif->ip_addr));
+          gApp->getLcd()->debug (LCD_COLOR_GREEN, ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
           }
         else {
-          dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
+          auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
           if (dhcp->tries > MAX_DHCP_TRIES) {
-            // DHCP timeout
             DHCP_state = DHCP_TIMEOUT;
             dhcp_stop (netif);
             gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP - timeout");
@@ -182,13 +176,13 @@ void dhcpThread (void const* argument) {
           }
         break;
 
-      case DHCP_LINK_DOWN: 
+      case DHCP_LINK_DOWN:
         gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP - link down");
         dhcp_stop (netif);
         DHCP_state = DHCP_OFF;
         break;
 
-      default: 
+      default:
         break;
       }
 

@@ -9,9 +9,7 @@
 #endif
 //}}}
 
-/* Exported types ------------------------------------------------------------*/
-/* Exported functions ------------------------------------------------------- */
-err_t ethernetif_init(struct netif *netif);
+err_t ethernetif_init (struct netif *netif);
 //{{{
 #ifdef __cplusplus
 }
