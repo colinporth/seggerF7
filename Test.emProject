@@ -161,15 +161,15 @@
         <file file_name="jmorecfg.h" />
         <file file_name="jpegHeader.h" />
         <file file_name="stm32f7xx_hal_conf.h" />
+        <file file_name="lwipopts.h" />
+        <file file_name="FreeRTOSConfig.h" />
       </folder>
     </folder>
     <folder Name="bsp_drivers">
       <file file_name="usbd_msc.cpp" />
       <file file_name="usbd.cpp" />
       <folder Name="includes">
-        <file file_name="usbd.h" />
         <file file_name="usbd_msc.h" />
-        <file file_name="../common/usbd.h" />
         <file file_name="../common/system.h" />
         <file file_name="../common/cTouch.h" />
         <file file_name="../common/cPs2.h" />
@@ -183,6 +183,7 @@
         <file file_name="../BSP/cCamera.h" />
         <file file_name="../BSP/cLcd.h" />
         <file file_name="../BSP/ethernetif.h" />
+        <file file_name="usbd.h" />
       </folder>
       <file file_name="../BSP/stm32746g_discovery.c" />
       <file file_name="../BSP/stm32746g_discovery_sd.c" />
@@ -396,10 +397,6 @@
       </folder>
     </folder>
     <folder Name="LwIP">
-      <folder Name="apps">
-        <file file_name="../LwIP/src/apps/httpd/fs.c" />
-        <file file_name="../LwIP/src/apps/httpd/httpd.c" />
-      </folder>
       <folder Name="api">
         <file file_name="../LwIP/src/api/api_lib.c" />
         <file file_name="../LwIP/src/api/api_msg.c" />

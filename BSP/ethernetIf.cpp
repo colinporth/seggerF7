@@ -1,4 +1,4 @@
-// ethernetif.c
+// ethernetIf.cpp
 #include "ethernetif.h"
 
 #include <string.h>
@@ -9,7 +9,7 @@
 #include "netif/etharp.h"
 
 ETH_HandleTypeDef EthHandle;
-osSemaphoreId s_xSemaphore = NULL;
+osSemaphoreId inputSemaphore = NULL;
 
 extern "C" { void ETH_IRQHandler() { HAL_ETH_IRQHandler (&EthHandle); }}
 
@@ -86,11 +86,11 @@ void ethernetif_input (void const* argument) {
   struct netif* netif = (struct netif*)argument;
   struct pbuf* p = NULL;
 
-  while (true) 
-    if (osSemaphoreWait (s_xSemaphore, osWaitForever) == osOK) 
+  while (true)
+    if (osSemaphoreWait (inputSemaphore, osWaitForever) == osOK)
       do {
         struct pbuf* p = low_level_input (netif);
-        if (p) 
+        if (p)
           if (netif->input (p, netif) != ERR_OK )
             pbuf_free (p);
         } while (p != NULL);
@@ -208,33 +208,28 @@ void HAL_ETH_MspInit (ETH_HandleTypeDef* heth) {
 //}}}
 //{{{
 void HAL_ETH_RxCpltCallback (ETH_HandleTypeDef* heth) {
-  osSemaphoreRelease (s_xSemaphore);
+  osSemaphoreRelease (inputSemaphore);
   }
 //}}}
 
 //{{{
 err_t ethernetIfInit (struct netif* netif) {
 
-  LWIP_ASSERT ("netif != NULL", (netif != NULL));
-
-#if LWIP_NETIF_HOSTNAME
-  /* Initialize interface hostname */
   netif->hostname = "cam";
-#endif
   netif->name[0] = 's';
   netif->name[1] = 't';
 
   // We directly use etharp_output() here to save a function call.
   // You can instead declare your own function an call etharp_output()
-  // from it if you have to do some checks before sending (e.g. if link is available...) */
+  // from it if you have to do some checks before sending (e.g. if link is available...)
   netif->output = etharp_output;
   netif->linkoutput = low_level_output;
 
   // initialize the hardware
-  uint8_t macaddress[6]= { MAC_ADDR0, MAC_ADDR1, MAC_ADDR2, MAC_ADDR3, MAC_ADDR4, MAC_ADDR5 };
+  uint8_t macAddress[6]= { MAC_ADDR0, MAC_ADDR1, MAC_ADDR2, MAC_ADDR3, MAC_ADDR4, MAC_ADDR5 };
 
   EthHandle.Instance = ETH;
-  EthHandle.Init.MACAddr = macaddress;
+  EthHandle.Init.MACAddr = macAddress;
   EthHandle.Init.AutoNegotiation = ETH_AUTONEGOTIATION_ENABLE;
   EthHandle.Init.Speed = ETH_SPEED_100M;
   EthHandle.Init.DuplexMode = ETH_MODE_FULLDUPLEX;
@@ -243,43 +238,40 @@ err_t ethernetIfInit (struct netif* netif) {
   EthHandle.Init.ChecksumMode = ETH_CHECKSUM_BY_HARDWARE;
   EthHandle.Init.PhyAddress = LAN8742A_PHY_ADDRESS;
 
-  // configure ethernet peripheral (GPIOs, clocks, MAC, DMA) */
-  if (HAL_ETH_Init(&EthHandle) == HAL_OK)
-    // Set netif link flag */
+  // configure ethernet peripheral (GPIOs, clocks, MAC, DMA)
+  if (HAL_ETH_Init (&EthHandle) == HAL_OK)
     netif->flags |= NETIF_FLAG_LINK_UP;
 
-  // Initialize Tx Descriptors list: Chain Mode */
+  // init txDescriptors list: Chain Mode
   HAL_ETH_DMATxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x2004C080, (uint8_t*)0x2004D8D0, ETH_TXBUFNB);
 
-  // Initialize Rx Descriptors list: Chain Mode  */
-  HAL_ETH_DMARxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x2004C000, (uint8_t *)0x2004C100, ETH_RXBUFNB);
+  // init rxDescriptors list: Chain Mode
+  HAL_ETH_DMARxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x2004C000, (uint8_t*)0x2004C100, ETH_RXBUFNB);
 
-  //* set netif MAC hardware address length */
-  netif->hwaddr_len = ETHARP_HWADDR_LEN;
-
-  // set netif MAC hardware address */
+  // set netif MAC hardware address
   netif->hwaddr[0] =  MAC_ADDR0;
   netif->hwaddr[1] =  MAC_ADDR1;
   netif->hwaddr[2] =  MAC_ADDR2;
   netif->hwaddr[3] =  MAC_ADDR3;
   netif->hwaddr[4] =  MAC_ADDR4;
   netif->hwaddr[5] =  MAC_ADDR5;
+  netif->hwaddr_len = ETHARP_HWADDR_LEN;
 
-  // set netif maximum transfer unit */
+  // set netif maximum transfer unit
   netif->mtu = 1500;
 
-  // Accept broadcast address and ARP traffic */
+  // Accept broadcast address and ARP traffic
   netif->flags |= NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP;
 
-  // create a binary semaphore used for informing ethernetif of frame reception */
+  // binary semaphore for frame reception
   osSemaphoreDef (SEM);
-  s_xSemaphore = osSemaphoreCreate(osSemaphore(SEM) , 1 );
+  inputSemaphore = osSemaphoreCreate (osSemaphore (SEM) , 1 );
 
-  // create the task that handles the ETH_MAC */
-  osThreadDef (EthIf, ethernetif_input, osPriorityRealtime, 0, 350);
-  osThreadCreate (osThread(EthIf), netif);
+  // create the task that handles the ETH_MAC
+  osThreadDef (ethIf, ethernetif_input, osPriorityRealtime, 0, 350);
+  osThreadCreate (osThread (ethIf), netif);
 
-  //Enable MAC and DMA transmission and reception */
+  // enable MAC and DMA transmission and reception
   HAL_ETH_Start (&EthHandle);
 
   return ERR_OK;
