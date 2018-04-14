@@ -107,66 +107,7 @@ cApp* gApp;
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
 //{{{
-void dhcpThread (void* arg) {
-
-  #define DHCP_OFF                   (uint8_t) 0
-  #define DHCP_START                 (uint8_t) 1
-  #define DHCP_WAIT_ADDRESS          (uint8_t) 2
-  #define DHCP_ADDRESS_ASSIGNED      (uint8_t) 3
-  #define DHCP_TIMEOUT               (uint8_t) 4
-  #define DHCP_LINK_DOWN             (uint8_t) 5
-  #define MAX_DHCP_TRIES  4
-
-  auto netif = (struct netif*)arg;
-__IO uint8_t DHCP_state = netif_is_up (netif) ? DHCP_START : DHCP_LINK_DOWN;
-
-  gApp->getLcd()->debug (LCD_COLOR_YELLOW, "DHCP - launched");
-
-  for (;;) {
-    switch (DHCP_state) {
-      case DHCP_START:
-        ip_addr_set_zero_ip4 (&netif->ip_addr);
-        ip_addr_set_zero_ip4 (&netif->netmask);
-        ip_addr_set_zero_ip4 (&netif->gw);
-        dhcp_start (netif);
-        DHCP_state = DHCP_WAIT_ADDRESS;
-        gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP - looking for server");
-        break;
-
-      case DHCP_WAIT_ADDRESS:
-        if (dhcp_supplied_address (netif)) {
-          DHCP_state = DHCP_ADDRESS_ASSIGNED;
-          gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP - address assigned");
-          gApp->getLcd()->debug (LCD_COLOR_GREEN, ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
-          }
-        else {
-          auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
-          if (dhcp->tries > MAX_DHCP_TRIES) {
-            DHCP_state = DHCP_TIMEOUT;
-            dhcp_stop (netif);
-            gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP - timeout");
-            }
-          }
-        break;
-
-      case DHCP_LINK_DOWN:
-        gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP - link down");
-        dhcp_stop (netif);
-        DHCP_state = DHCP_OFF;
-        break;
-
-      default:
-        break;
-      }
-
-    osDelay (250);
-    }
-  }
-//}}}
-
-int numPageHits = 0;
-//{{{
-const unsigned char kDynamicPage[] = {
+const uint8_t kDynamicPage[] = {
 0x3c,0x21,0x44,0x4f,0x43,0x54,0x59,0x50,0x45,0x20,0x68,0x74,0x6d,0x6c,0x20,0x50,
 0x55,0x42,0x4c,0x49,0x43,0x20,0x22,0x2d,0x2f,0x2f,0x57,0x33,0x43,0x2f,0x2f,0x44,
 0x54,0x44,0x20,0x48,0x54,0x4d,0x4c,0x20,0x34,0x2e,0x30,0x31,0x2f,0x2f,0x45,0x4e,
@@ -271,6 +212,8 @@ const unsigned char kDynamicPage[] = {
 //{{{
 void httpServerThread (void* arg) {
 
+  int numPageHits = 0;
+
   // Create a new TCP connection handle
   struct netconn* connection = netconn_new (NETCONN_TCP);
   if (connection != NULL) {
@@ -333,6 +276,63 @@ void httpServerThread (void* arg) {
           }
         }
       }
+    }
+  }
+//}}}
+//{{{
+void dhcpThread (void* arg) {
+
+  #define DHCP_OFF                   (uint8_t) 0
+  #define DHCP_START                 (uint8_t) 1
+  #define DHCP_WAIT_ADDRESS          (uint8_t) 2
+  #define DHCP_ADDRESS_ASSIGNED      (uint8_t) 3
+  #define DHCP_TIMEOUT               (uint8_t) 4
+  #define DHCP_LINK_DOWN             (uint8_t) 5
+  #define MAX_DHCP_TRIES  4
+
+  auto netif = (struct netif*)arg;
+__IO uint8_t DHCP_state = netif_is_up (netif) ? DHCP_START : DHCP_LINK_DOWN;
+
+  gApp->getLcd()->debug (LCD_COLOR_YELLOW, "DHCP - launched");
+
+  for (;;) {
+    switch (DHCP_state) {
+      case DHCP_START:
+        ip_addr_set_zero_ip4 (&netif->ip_addr);
+        ip_addr_set_zero_ip4 (&netif->netmask);
+        ip_addr_set_zero_ip4 (&netif->gw);
+        dhcp_start (netif);
+        DHCP_state = DHCP_WAIT_ADDRESS;
+        gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP - looking for server");
+        break;
+
+      case DHCP_WAIT_ADDRESS:
+        if (dhcp_supplied_address (netif)) {
+          DHCP_state = DHCP_ADDRESS_ASSIGNED;
+          gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP - address assigned");
+          gApp->getLcd()->debug (LCD_COLOR_GREEN, ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
+          }
+        else {
+          auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
+          if (dhcp->tries > MAX_DHCP_TRIES) {
+            DHCP_state = DHCP_TIMEOUT;
+            dhcp_stop (netif);
+            gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP - timeout");
+            }
+          }
+        break;
+
+      case DHCP_LINK_DOWN:
+        gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP - link down");
+        dhcp_stop (netif);
+        DHCP_state = DHCP_OFF;
+        break;
+
+      default:
+        break;
+      }
+
+    osDelay (250);
     }
   }
 //}}}
@@ -1063,7 +1063,7 @@ void startThread (void* arg) {
   //  IP_ADDR4 (&gw,192,168,GW_ADDR2,1);
 
   struct netif netIf;
-  netif_add (&netIf, &ipaddr, &netmask, &gw, NULL, &ethernetif_init, &tcpip_input);
+  netif_add (&netIf, &ipaddr, &netmask, &gw, NULL, &ethernetIfInit, &tcpip_input);
   netif_set_default (&netIf);
   if (netif_is_link_up (&netIf))
     netif_set_up (&netIf);
@@ -1071,10 +1071,10 @@ void startThread (void* arg) {
     netif_set_down (&netIf);
 
   // init httpServer
-  sys_thread_new ("Http", httpServerThread, NULL, DEFAULT_THREAD_STACKSIZE, osPriorityAboveNormal);
+  sys_thread_new ("http", httpServerThread, NULL, DEFAULT_THREAD_STACKSIZE, osPriorityAboveNormal);
 
   // init dhcp
-  sys_thread_new ("Dhcp", dhcpThread, &netIf, configMINIMAL_STACK_SIZE * 2, osPriorityBelowNormal);
+  sys_thread_new ("dhcp", dhcpThread, &netIf, configMINIMAL_STACK_SIZE * 2, osPriorityBelowNormal);
 
   gApp->run();
   //while (true)

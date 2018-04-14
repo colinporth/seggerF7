@@ -8,9 +8,6 @@
 #include "netif/ethernet.h"
 #include "netif/etharp.h"
 
-#define TIME_WAITING_FOR_INPUT                 ( osWaitForever )
-#define INTERFACE_THREAD_STACK_SIZE            ( 350 )
-
 ETH_HandleTypeDef EthHandle;
 osSemaphoreId s_xSemaphore = NULL;
 
@@ -89,17 +86,14 @@ void ethernetif_input (void const* argument) {
   struct netif* netif = (struct netif*)argument;
   struct pbuf* p = NULL;
 
-  for( ;; ) {
-    if (osSemaphoreWait (s_xSemaphore, TIME_WAITING_FOR_INPUT) == osOK) {
+  while (true) 
+    if (osSemaphoreWait (s_xSemaphore, osWaitForever) == osOK) 
       do {
         struct pbuf* p = low_level_input (netif);
-        if (p != NULL) {
+        if (p) 
           if (netif->input (p, netif) != ERR_OK )
             pbuf_free (p);
-          }
         } while (p != NULL);
-      }
-    }
   }
 //}}}
 //{{{
@@ -171,28 +165,24 @@ error:
 
 //{{{
 void HAL_ETH_MspInit (ETH_HandleTypeDef* heth) {
+// RMII_REF_CLK ----------------------> PA1
+// RMII_MDIO -------------------------> PA2
+// RMII_MDC --------------------------> PC1
+// RMII_MII_CRS_DV -------------------> PA7
+// RMII_MII_RXD0 ---------------------> PC4
+// RMII_MII_RXD1 ---------------------> PC5
+// RMII_MII_RXER ---------------------> PG2
+// RMII_MII_TX_EN --------------------> PG11
+// RMII_MII_TXD0 ---------------------> PG13
+// RMII_MII_TXD1 ---------------------> PG14
 
-  GPIO_InitTypeDef GPIO_InitStructure;
-
-  /* Enable GPIOs clocks */
+  // Enable GPIOs clocks
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
 
-  /*
-        RMII_REF_CLK ----------------------> PA1
-        RMII_MDIO -------------------------> PA2
-        RMII_MDC --------------------------> PC1
-        RMII_MII_CRS_DV -------------------> PA7
-        RMII_MII_RXD0 ---------------------> PC4
-        RMII_MII_RXD1 ---------------------> PC5
-        RMII_MII_RXER ---------------------> PG2
-        RMII_MII_TX_EN --------------------> PG11
-        RMII_MII_TXD0 ---------------------> PG13
-        RMII_MII_TXD1 ---------------------> PG14
-  */
-
-  /* Configure PA1, PA2 and PA7 */
+  // Configure PA1, PA2 and PA7
+  GPIO_InitTypeDef GPIO_InitStructure;
   GPIO_InitStructure.Speed = GPIO_SPEED_HIGH;
   GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStructure.Pull = GPIO_NOPULL;
@@ -200,19 +190,19 @@ void HAL_ETH_MspInit (ETH_HandleTypeDef* heth) {
   GPIO_InitStructure.Pin = GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_7;
   HAL_GPIO_Init (GPIOA, &GPIO_InitStructure);
 
-  /* Configure PC1, PC4 and PC5 */
+  // Configure PC1, PC4 and PC5
   GPIO_InitStructure.Pin = GPIO_PIN_1 | GPIO_PIN_4 | GPIO_PIN_5;
   HAL_GPIO_Init (GPIOC, &GPIO_InitStructure);
 
-  /* Configure PG2, PG11, PG13 and PG14 */
+  // Configure PG2, PG11, PG13 and PG14
   GPIO_InitStructure.Pin =  GPIO_PIN_2 | GPIO_PIN_11 | GPIO_PIN_13 | GPIO_PIN_14;
   HAL_GPIO_Init (GPIOG, &GPIO_InitStructure);
 
-  /* Enable the Ethernet global Interrupt */
+  // Enable the Ethernet global Interrupt
   HAL_NVIC_SetPriority (ETH_IRQn, 0x7, 0);
   HAL_NVIC_EnableIRQ (ETH_IRQn);
 
-  /* Enable ETHERNET clock  */
+  // Enable ETHERNET clock
   __HAL_RCC_ETH_CLK_ENABLE();
   }
 //}}}
@@ -223,7 +213,7 @@ void HAL_ETH_RxCpltCallback (ETH_HandleTypeDef* heth) {
 //}}}
 
 //{{{
-err_t ethernetif_init (struct netif* netif) {
+err_t ethernetIfInit (struct netif* netif) {
 
   LWIP_ASSERT ("netif != NULL", (netif != NULL));
 
@@ -286,7 +276,7 @@ err_t ethernetif_init (struct netif* netif) {
   s_xSemaphore = osSemaphoreCreate(osSemaphore(SEM) , 1 );
 
   // create the task that handles the ETH_MAC */
-  osThreadDef (EthIf, ethernetif_input, osPriorityRealtime, 0, INTERFACE_THREAD_STACK_SIZE);
+  osThreadDef (EthIf, ethernetif_input, osPriorityRealtime, 0, 350);
   osThreadCreate (osThread(EthIf), netif);
 
   //Enable MAC and DMA transmission and reception */

@@ -9,7 +9,8 @@
 #endif
 //}}}
 
-err_t ethernetif_init (struct netif *netif);
+err_t ethernetIfInit (struct netif *netif);
+
 //{{{
 #ifdef __cplusplus
 }
