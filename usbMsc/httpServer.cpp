@@ -14,7 +14,7 @@
 u32_t nPageHits = 0;
 
 //{{{
-static const unsigned char PAGE_START[] = {
+const unsigned char PAGE_START[] = {
 0x3c,0x21,0x44,0x4f,0x43,0x54,0x59,0x50,0x45,0x20,0x68,0x74,0x6d,0x6c,0x20,0x50,
 0x55,0x42,0x4c,0x49,0x43,0x20,0x22,0x2d,0x2f,0x2f,0x57,0x33,0x43,0x2f,0x2f,0x44,
 0x54,0x44,0x20,0x48,0x54,0x4d,0x4c,0x20,0x34,0x2e,0x30,0x31,0x2f,0x2f,0x45,0x4e,
@@ -117,36 +117,36 @@ static const unsigned char PAGE_START[] = {
 0x61,0x67,0x65,0x20,0x68,0x69,0x74,0x73,0x3a,0x0d,0x0a,0x00};
 //}}}
 //{{{
-void DynWebPage (struct netconn *conn)
-{
+void DynWebPage (struct netconn *conn) {
+
   portCHAR PAGE_BODY[512];
   portCHAR pagehits[10] = {0};
 
-  memset(PAGE_BODY, 0,512);
+  memset (PAGE_BODY, 0,512);
 
-  /* Update the hit count */
+  // Update the hit count
   nPageHits++;
-  sprintf(pagehits, "%d", (int)nPageHits);
-  strcat(PAGE_BODY, pagehits);
-  strcat((char *)PAGE_BODY, "<pre><br>Name          State  Priority  Stack   Num" );
-  strcat((char *)PAGE_BODY, "<br>---------------------------------------------<br>");
+  sprintf (pagehits, "%d", (int)nPageHits);
+  strcat (PAGE_BODY, pagehits);
+  strcat ((char*)PAGE_BODY, "<pre><br>Name          State  Priority  Stack   Num" );
+  strcat ((char*)PAGE_BODY, "<br>---------------------------------------------<br>");
 
-  /* The list of tasks and their status */
-  osThreadList((unsigned char *)(PAGE_BODY + strlen(PAGE_BODY)));
-  strcat((char *)PAGE_BODY, "<br><br>---------------------------------------------");
-  strcat((char *)PAGE_BODY, "<br>B : Blocked, R : Ready, D : Deleted, S : Suspended<br>");
+  // The list of tasks and their status
+  osThreadList ((unsigned char *)(PAGE_BODY + strlen(PAGE_BODY)));
+  strcat ((char*)PAGE_BODY, "<br><br>---------------------------------------------");
+  strcat ((char*)PAGE_BODY, "<br>B : Blocked, R : Ready, D : Deleted, S : Suspended<br>");
 
-  /* Send the dynamically generated page */
-  netconn_write(conn, PAGE_START, strlen((char*)PAGE_START), NETCONN_COPY);
-  netconn_write(conn, PAGE_BODY, strlen(PAGE_BODY), NETCONN_COPY);
-}
+  // Send the dynamically generated page
+  netconn_write (conn, PAGE_START, strlen((char*)PAGE_START), NETCONN_COPY);
+  netconn_write (conn, PAGE_BODY, strlen(PAGE_BODY), NETCONN_COPY);
+  }
 //}}}
 
 //{{{
-static void http_server_serve (struct netconn* conn) {
+void http_server_serve (struct netconn* conn) {
 
-  /* Read the data from the port, blocking if nothing yet there.
-   We assume the request (the part we care about) is in one netbuf */
+  // Read the data from the port, blocking if nothing yet there.
+ //  We assume the request (the part we care about) is in one netbuf */
   struct netbuf* inbuf;
   err_t recv_err = netconn_recv (conn, &inbuf);
 
@@ -211,7 +211,7 @@ static void http_server_serve (struct netconn* conn) {
   }
 //}}}
 //{{{
-static void http_server_netconn_thread (void *arg) {
+void http_server_netconn_thread (void *arg) {
 
   struct netconn *conn, *newconn;
   err_t err, accept_err;
