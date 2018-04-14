@@ -24,7 +24,7 @@
 //}}}
 const char* kVersion = "Camera 13/4/18";
 const char* kEmpty = "empty";
-//#define USE_CAMERA
+#define USE_CAMERA
 
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
 uint8_t* kJpegBuffer    =  (uint8_t*)0xc0200000;
@@ -292,7 +292,6 @@ void cApp::init() {
   //mPs2 = new cPs2 (mLcd);
   //mPs2->initKeyboard();
   //}}}
-
   //mscInit (mLcd);
   //mscStart();
   }
@@ -301,7 +300,8 @@ void cApp::init() {
 void cApp::run() {
 
   uint8_t* jpegBuf = kJpegBuffer;
-  int jpegLen = 0;//loadFile (kJpegBuffer);
+  //int jpegLen = loadFile (kJpegBuffer);
+  int jpegLen = 0;
 
   //{{{
   #ifdef USE_CAMERA
@@ -322,7 +322,6 @@ void cApp::run() {
   bool lastButton = false;
   while (true) {
     osDelay (20);
-
     pollTouch();
     //{{{  removed
     //while (mPs2->hasChar()) {
@@ -332,16 +331,13 @@ void cApp::run() {
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
     #ifdef USE_CAMERA
-      //mLcd->startBgnd ((uint16_t*)0xc0100000);
       if (mCamera->getCaptureMode()) {
         jpegBuf = mCamera->getJpegFrame (jpegLen);
-        if (jpegBuf) {
-          //{{{  crude wraparound jpegBuf
+        if (false && jpegBuf) {
+          //{{{  jpeg decode buffer
           if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
             memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
-          //}}}
-          count++;
-          //saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count);
+
           // decode jpeg header
           jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
           jpeg_read_header (&mCinfo, TRUE);
@@ -355,21 +351,27 @@ void cApp::run() {
             mLcd->convertRgb888toRgbB565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
             }
           jpeg_finish_decompress (&mCinfo);
+
+          count++;
+          //saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count);
           }
+          //}}}
         }
       mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
     #else
       //if (count < 3)
       //  saveFile (nullptr, 0, jpegBuf, jpegLen, count++);
-      //mLcd->startBgnd (kRgb565Buffer);
+      mLcd->startBgnd (kRgb565Buffer);
     #endif
-    mLcd->start();
 
     mLcd->drawTitle (kVersion);
-    char info[40] = {0};
-    if (mCamera)
+    if (mCamera) {
+      //{{{  drawInfo
+      char info[40] = {0};
       sprintf (info, "%4d %2dfps %d", mCamera->getFrames(), mCamera->getFps(), mCamera->getJpegLen());
-    mLcd->drawInfo (24, info);
+      mLcd->drawInfo (24, info);
+      }
+      //}}}
     mLcd->drawDebug();
     mLcd->present();
 
