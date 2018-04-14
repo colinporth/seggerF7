@@ -162,6 +162,7 @@
         <file file_name="jpegHeader.h" />
         <file file_name="stm32f7xx_hal_conf.h" />
       </folder>
+      <file file_name="httpServer.c" />
     </folder>
     <folder Name="bsp_drivers">
       <file file_name="usbd_msc.cpp" />
@@ -192,8 +193,7 @@
       <file file_name="../BSP/font16.c" />
       <file file_name="../BSP/cLcd.cpp" />
       <file file_name="ethernetif.c" />
-      <file file_name="httpserver-netconn.c" />
-      <file file_name="stm32f7xx_hal_timebase_tim.c" />
+      <file file_name="../BSP/stm32f7xx_hal_timebase_tim.c" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />

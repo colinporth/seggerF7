@@ -7,7 +7,7 @@
  extern "C" {
 #endif
 //}}}
-void http_server_netconn_init();
+void httpServerInit();
 void DynWebPage (struct netconn *conn);
 //{{{
 #ifdef __cplusplus

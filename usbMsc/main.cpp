@@ -20,14 +20,15 @@
 #include "lwip/opt.h"
 #include "lwip/dhcp.h"
 #include "ethernetif.h"
-#include "httpserver-netconn.h"
+#include "httpServer.h"
 //}}}
-const char* kVersion = "Camera 13/4/18";
-const char* kEmpty = "empty";
 #define USE_CAMERA
 
+const char* kVersion = "Camera 14/4/18";
+const char* kEmpty = "empty";
+
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
-uint8_t* kJpegBuffer    =  (uint8_t*)0xc0200000;
+uint8_t*  kJpegBuffer   =  (uint8_t*)0xc0200000;
 
 int focus = 0;
 cCamera camera;
@@ -921,7 +922,7 @@ void startThread (void const * argument) {
   // init network
   tcpip_init (NULL, NULL);
   netifConfig();
-  http_server_netconn_init();
+  httpServerInit();
   DHCP_state = netif_is_up (&gnetif) ? DHCP_START : DHCP_LINK_DOWN;
 
   osThreadDef (DHCP, dhcpThread, osPriorityBelowNormal, 0, configMINIMAL_STACK_SIZE * 2);

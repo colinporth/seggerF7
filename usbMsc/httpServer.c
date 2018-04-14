@@ -1,5 +1,5 @@
 // netserver
-#include "httpserver-netconn.h"
+#include "httpServer.h"
 
 #include "string.h"
 #include <stdio.h>
@@ -242,8 +242,9 @@ static void http_server_netconn_thread (void *arg) {
     }
   }
 //}}}
+
 //{{{
-void http_server_netconn_init() {
+void httpServerInit() {
   sys_thread_new ("HTTP", http_server_netconn_thread, NULL, DEFAULT_THREAD_STACKSIZE, WEBSERVER_THREAD_PRIO);
   }
 //}}}
