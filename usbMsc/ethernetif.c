@@ -18,6 +18,8 @@ osSemaphoreId s_xSemaphore = NULL;
 /* Global Ethernet handle*/
 ETH_HandleTypeDef EthHandle;
 
+void ETH_IRQHandler() { HAL_ETH_IRQHandler(&EthHandle); }
+
 /* Private function prototypes -----------------------------------------------*/
 static void ethernetif_input( void const * argument );
 

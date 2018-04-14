@@ -1,9 +1,9 @@
 // system.c
-//{{{  includes
+//includes
 #include "system.h"
+#include "cmsis_os.h"
 #include "stm32f7xx.h"
 #include "stm32f7xx_hal.h"
-//}}}
 
 // common handlers
 void NMI_Handler() {}
@@ -15,7 +15,8 @@ void BusFault_Handler() { while (1) {} }
 void MemManage_Handler() { while (1) {} }
 void UsageFault_Handler() { while (1) {} }
 
-void SysTick_Handler() { HAL_IncTick(); }
+//void SysTick_Handler() { HAL_IncTick(); }
+void SysTick_Handler() { osSystickHandler(); }
 
 const uint8_t APBPrescTable[8] = {0, 0, 0, 0, 1, 2, 3, 4};
 const uint8_t AHBPrescTable[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9};
