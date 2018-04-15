@@ -164,30 +164,31 @@ void httpServerThread (void* arg) {
               char* buf;
               u16_t bufLen;
               netbuf_data (requestNetBuf, (void**)&buf, &bufLen);
+
               //{{{  debug request buf
-              //gApp->getLcd()->debug (LCD_COLOR_GREEN, "http %d", bufLen);
-              //int len = 0;
-              //while (len < bufLen) {
-                //char str[40];
-                //int i = 0;
-                //while ((len < bufLen) && (buf[len] != 0x0d)) {
-                  //if ((buf[len] != 0x0a) & (i < 39))
-                    //str[i++] = buf[len];
-                  //len++;
-                  //}
-                //len++;
-                //str[i] = 0;
-                //gApp->getLcd()->debug (LCD_COLOR_YELLOW, str);
-                //}
+              char str[40];
+              int i = 0;
+              int len = 0;
+              while ((len < bufLen) && (buf[len] != 0x0d)) {
+                if ((buf[len] != 0x0a) & (i < 39))
+                  str[i++] = buf[len++];
+                }
+              str[i] = 0;
+              gApp->getLcd()->debug (LCD_COLOR_YELLOW, str);
               //}}}
 
               // simple HTTP GET command parser
+              bool ok = false;
               if ((bufLen >= 5) && !strncmp (buf, "GET /", 5)) {
                 if (!strncmp (buf, "GET / ", 6)) {
+                  //{{{  html
                   netconn_write (request, kHtmlResponse, sizeof(kHtmlResponse)-1, NETCONN_NOCOPY);
                   netconn_write (request, kHtml, sizeof(kHtml)-1, NETCONN_NOCOPY);
+                  ok = true;
                   }
+                  //}}}
                 else if (!strncmp (buf, "GET /cam.jpg", 12)) {
+                  //{{{  cam.jpg
                   if (gApp->mCamera && gApp->mCamera->getCaptureMode()) {
                     int jpegLen;
                     auto jpegBuf = gApp->mCamera->getJpegFrame (jpegLen);
@@ -196,14 +197,12 @@ void httpServerThread (void* arg) {
                       netconn_write (request, kJpgResponse, sizeof(kJpgResponse)-1, NETCONN_NOCOPY);
                       netconn_write (request, gApp->mJpegHeader, gApp->mJpegHeaderLen, NETCONN_NOCOPY);
                       netconn_write (request, kJpegBuffer1, jpegLen, NETCONN_NOCOPY);
+                      ok = true;
                       }
-                    else
-                      netconn_write (request, k404Response, sizeof(k404Response)-1, NETCONN_NOCOPY);
                     }
-                  else
-                    netconn_write (request, k404Response, sizeof(k404Response)-1, NETCONN_NOCOPY);
                   }
-                else
+                  //}}}
+                if (!ok)
                   netconn_write (request, k404Response, sizeof(k404Response)-1, NETCONN_NOCOPY);
                 }
               }
