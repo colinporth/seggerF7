@@ -314,7 +314,7 @@ void cApp::run() {
   #ifdef USE_CAMERA
     mCamera = new cCamera();
     mCamera->init();
-    mCamera->start (true, kJpegBuffer);
+    mCamera->start (false, kJpegBuffer);
 
     setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
     mCinfo.scale_num = 1;
@@ -364,9 +364,8 @@ void cApp::run() {
           jpeg_finish_decompress (&mCinfo);
 
           mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, true);
-          //}}}
-          //saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count++);
           }
+          //}}}
         else
           mLcd->start();
         }
@@ -375,8 +374,7 @@ void cApp::run() {
       int rgb565Len = 0;
       auto rgb565Buf = mCamera->getFrameBuf (rgb565Len);
       if (rgb565Buf + rgb565Len > mCamera->getBufEnd())
-       memcpy ((void*)0xc0600000, rgb565Buf, rgb565Buf + rgb565Len -  mCamera->getBufEnd());
-
+        memcpy ((void*)0xc0600000, rgb565Buf, rgb565Buf + rgb565Len -  mCamera->getBufEnd());
       if (rgb565Buf)
         mLcd->startBgnd ((uint16_t*)rgb565Buf, mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
       else
@@ -385,12 +383,12 @@ void cApp::run() {
 
     mLcd->drawTitle (kVersion);
     if (mCamera) {
-      //{{{  drawInfo
-      char info[40] = {0};
-      sprintf (info, "%4d %2dfps %d", mCamera->getFrames(), mCamera->getFps(), mCamera->getFrameBufLen());
-      mLcd->drawInfo (24, info);
+      // drawInfo
+      char str[40] = {0};
+      sprintf (str, "%d:%dfps %d%c",
+               mCamera->getFrames(), mCamera->getFps(), mCamera->getFrameBufLen(), mCamera->getJpegMode() ? 'j':'p');
+      mLcd->drawInfo (24, str);
       }
-      //}}}
     mLcd->drawDebug();
     mLcd->present();
 
@@ -1027,7 +1025,6 @@ void startThread (void* arg) {
     netif_set_up (&netIf);
   else
     netif_set_down (&netIf);
-
   // init httpServer
   sys_thread_new ("http", httpServerThread, NULL, DEFAULT_THREAD_STACKSIZE, osPriorityAboveNormal);
 
