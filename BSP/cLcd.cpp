@@ -2,6 +2,9 @@
 //{{{  includes
 #include "cLcd.h"
 
+#include "cmsis_os.h"
+#include "semphr.h"
+
 #include "../common/system.h"
 #include "stm32746g_discovery_sd.h"
 #include "stm32746g_discovery_sdram.h"
@@ -28,28 +31,36 @@ extern const sFONT Font16;
 LTDC_HandleTypeDef hLtdcHandler;
 DMA2D_HandleTypeDef hDma2dHandler;
 cLcd* cLcd::mLcd = nullptr;
+bool gFrame = false;
+
+bool gFrameWait = false;
+SemaphoreHandle_t gSem;
 
 extern "C" {
   //{{{
   void LTDC_IRQHandler() {
 
     // line Interrupt
-    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_LI) != RESET)
+    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_LI) != RESET) {
       if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_LI) != RESET) {
-        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_LI);
         __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_LI);
+
+        if (gFrameWait) {
+          portBASE_TYPE taskWoken = pdFALSE;
+          if (xSemaphoreGiveFromISR (gSem, &taskWoken) == pdTRUE)
+            portEND_SWITCHING_ISR (taskWoken);
+          }
+        gFrameWait = false;
         }
+      }
 
     // register reload Interrupt
-    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_RR) != RESET)
+    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_RR) != RESET) {
       if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_RR) != RESET) {
-        //__HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_RR);
         __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_RR);
-
-        cLcd::mLcd->debug (LCD_COLOR_YELLOW, "frame");
-        // Register reload interrupt Callback
-        //HAL_LTDC_ReloadEventCallback (&hLtdcHandler);
+        cLcd::mLcd->debug (LCD_COLOR_YELLOW, "cLcd reload IRQ");
         }
+      }
     }
   //}}}
   //{{{
@@ -198,7 +209,6 @@ void cLcd::init() {
   LTDC->GCR &= ~(LTDC_GCR_HSPOL | LTDC_GCR_VSPOL | LTDC_GCR_DEPOL | LTDC_GCR_PCPOL);
   LTDC->GCR |=  (uint32_t)(hLtdcHandler.Init.HSPolarity | hLtdcHandler.Init.VSPolarity |
                                             hLtdcHandler.Init.DEPolarity | hLtdcHandler.Init.PCPolarity);
-
   // set Synchronization size
   LTDC->SSCR &= ~(LTDC_SSCR_VSH | LTDC_SSCR_HSW);
   uint32_t tmp = (hLtdcHandler.Init.HorizontalSync << 16);
@@ -225,12 +235,19 @@ void cLcd::init() {
   LTDC->BCCR &= ~(LTDC_BCCR_BCBLUE | LTDC_BCCR_BCGREEN | LTDC_BCCR_BCRED);
   LTDC->BCCR |= (tmp1 | tmp | hLtdcHandler.Init.Backcolor.Blue);
 
+  // set line interupt line number
+  LTDC->LIPCR = 0;
+  gFrameWait = false;
+  vSemaphoreCreateBinary (gSem);
+
   // enable transferError,fifoUnderrun interrupt
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_TE);
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_FU);
+  __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_LI);
   //__HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_FLAG_RR);
 
-  //__HAL_LTDC_ENABLE (&hLtdcHandler);
+  HAL_NVIC_SetPriority (LTDC_IRQn, 0xE, 0);
+  HAL_NVIC_EnableIRQ (LTDC_IRQn);
   //}}}
 
   // turn on display,backlight pins
@@ -253,16 +270,25 @@ uint16_t cLcd::GetTextHeight() { return Font16.mHeight; }
 
 //{{{
 void cLcd::start() {
+
+  gFrameWait = true;
+  xSemaphoreTake (gSem, 100);
   clear (LCD_COLOR_BLACK);
   }
 //}}}
 //{{{
 void cLcd::startBgnd (uint16_t* bgnd) {
+
+  gFrameWait = true;
+  xSemaphoreTake (gSem, 100);
   memcpy (getBuffer(), bgnd, 480*272*2);
   }
 //}}}
 //{{{
 void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
+
+  gFrameWait = true;
+  xSemaphoreTake (gSem, 100);
 
   if (zoom)
     copyFrame (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
@@ -273,11 +299,8 @@ void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool 
 //{{{
 void cLcd::drawTitle (const char* title) {
 
-  char str1[40];
-  sprintf (str1, "%s %d", title, (int)mTick);
-
   SetTextColor (LCD_COLOR_WHITE);
-  DisplayStringAtLine (0, str1);
+  DisplayStringAtLine (0, title);
   }
 //}}}
 //{{{
@@ -309,10 +332,7 @@ void cLcd::drawDebug() {
 //{{{
 void cLcd::present() {
 
-  uint32_t wait = 40 - (HAL_GetTick() % 40);
-  HAL_Delay (wait);
-  mTick = HAL_GetTick();
-
+  gFrame = false;
   auto buffer = getBuffer();
   mFlip = !mFlip;
   SetAddress (0, buffer, getBuffer());

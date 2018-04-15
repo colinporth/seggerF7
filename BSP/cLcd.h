@@ -134,7 +134,6 @@ private:
   uint32_t mBackColor = LCD_COLOR_BLACK;
 
   bool mFlip = false;
-  uint32_t mTick = 0;
 
   int mDisplayLines;
   unsigned mDebugLine = 0;

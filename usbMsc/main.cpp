@@ -193,7 +193,16 @@ void httpServerThread (void* arg) {
                     int jpegLen;
                     auto jpegBuf = gApp->mCamera->getJpegFrame (jpegLen);
                     if (jpegBuf) {
-                      memcpy (kJpegBuffer1, jpegBuf, jpegLen);
+                      if (jpegBuf + jpegLen <= (uint8_t*)0xc0600000)
+                        memcpy (kJpegBuffer1, jpegBuf, jpegLen);
+                      else {
+                        // wrap around case
+                        uint32_t firstChunkLen = (uint8_t*)0xc0600000 - jpegBuf;
+                        uint32_t secondChunkLen = jpegLen - firstChunkLen;
+                        memcpy (kJpegBuffer1, jpegBuf, firstChunkLen);
+                        memcpy (kJpegBuffer1 + firstChunkLen, kJpegBuffer, secondChunkLen);
+                        }
+
                       netconn_write (request, kJpgResponse, sizeof(kJpgResponse)-1, NETCONN_NOCOPY);
                       netconn_write (request, gApp->mJpegHeader, gApp->mJpegHeaderLen, NETCONN_NOCOPY);
                       netconn_write (request, kJpegBuffer1, jpegLen, NETCONN_NOCOPY);
@@ -319,7 +328,6 @@ void cApp::run() {
   int lastCount = 0;
   bool lastButton = false;
   while (true) {
-    osDelay (20);
     pollTouch();
     //{{{  removed
     //while (mPs2->hasChar()) {
@@ -328,39 +336,39 @@ void cApp::run() {
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
-    if (mCamera){
-      if (mCamera->getCaptureMode()) {
-        jpegBuf = mCamera->getJpegFrame (jpegLen);
-        if (jpegBuf) {
+    //if (mCamera){
+    //  if (mCamera->getCaptureMode()) {
+    //    jpegBuf = mCamera->getJpegFrame (jpegLen);
+    //    if (jpegBuf) {
           //{{{  jpeg decode buffer
-          if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
-            memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
+          //if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
+            //memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
 
-          // decode jpeg header
-          jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
-          jpeg_read_header (&mCinfo, TRUE);
+          //// decode jpeg header
+          //jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
+          //jpeg_read_header (&mCinfo, TRUE);
 
-          // decode jpeg body
-          jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
-          jpeg_start_decompress (&mCinfo);
+          //// decode jpeg body
+          //jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
+          //jpeg_start_decompress (&mCinfo);
 
-          while (mCinfo.output_scanline < mCinfo.output_height) {
-            jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-            mLcd->convertRgb888toRgbB565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-            }
-          jpeg_finish_decompress (&mCinfo);
+          //while (mCinfo.output_scanline < mCinfo.output_height) {
+            //jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
+            //mLcd->convertRgb888toRgbB565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+            //}
+          //jpeg_finish_decompress (&mCinfo);
 
-          count++;
-          //saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count);
-          }
+          //count++;
+          ////saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count);
+          //}
           //}}}
-        }
-      mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
-      }
-    else
-      mLcd->startBgnd (kRgb565Buffer);
+    //    }
+    //  mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
+    //  }
+    //else
+    //  mLcd->startBgnd (kRgb565Buffer);
       //saveFile (nullptr, 0, jpegBuf, jpegLen, count++);
-
+    mLcd->start();
     mLcd->drawTitle (kVersion);
     if (mCamera) {
       //{{{  drawInfo
