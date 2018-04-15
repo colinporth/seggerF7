@@ -14,8 +14,9 @@ public:
   int getFps() { return 1000/mTookTicks; }
   int getFocus() { return mFocus; }
 
-  uint8_t* getFrameBuf (int& jpegLen);
-  int getFrameBufLen() { return mJpegLen; }
+  uint8_t* getFrameBuf (int& frameBufLen) { frameBufLen = mFrameBufLen; return mFrameBuf; }
+  uint8_t* getBufEnd() { return mBufEnd; }
+  int getFrameBufLen() { return mFrameBufLen; }
 
   void setFocus (int value);
 
@@ -29,7 +30,6 @@ private:
   void dcmiStart (uint8_t* buffer);
 
   void preview();
-  void capture();
   void jpeg();
 
   //{{{  vars
@@ -61,8 +61,10 @@ private:
   uint8_t* mBufPtr = nullptr;  // Pointer to DMA output buffer
   uint8_t* mCurPtr = nullptr;  // Pointer to DMA output buffer
 
+  uint8_t* mFrameBuf = nullptr;
+  int mFrameBufLen = 0;
+
   uint8_t* mStartFramePtr = nullptr;
-  uint8_t* mJpegBuf = nullptr;
-  int      mJpegLen = 0;
+  uint8_t* mBufEnd = nullptr;
   //}}}
   };
