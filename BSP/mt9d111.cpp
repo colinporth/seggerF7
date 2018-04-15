@@ -7,7 +7,6 @@
 
 #define i2cAddress 0x90
 #define capture800x600
-#define captureJpeg
 //{{{  dcmi defines
 #define DCMI_MODE_CONTINUOUS ((uint32_t)0x00000000U)
 #define DCMI_MODE_SNAPSHOT   ((uint32_t)DCMI_CR_CM)
@@ -126,11 +125,7 @@ uint8_t* cCamera::getJpegFrame (int& jpegLen) {
 void cCamera::start (bool captureMode, uint8_t* buffer) {
 
   if (mCapture != captureMode) {
-    #ifdef captureJpeg
-      captureMode ? jpeg() : preview();
-    #else
-      captureMode ? capture() : preview();
-    #endif
+    captureMode ? jpeg() : preview();
     mCapture = captureMode;
     }
 
@@ -323,7 +318,6 @@ void cCamera::dcmiIrqHandler() {
   if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
     // synchronizationError interrupt
     DCMI->ICR = DCMI_FLAG_ERRRI;
-
     //__HAL_DMA_DISABLE (DMA_Handle);
     cLcd::mLcd->debug (LCD_COLOR_RED, "syncIrq");
     }
@@ -343,9 +337,8 @@ void cCamera::dcmiIrqHandler() {
     mTicks = ticks;
     mFrames++;
 
-  #ifdef captureJpeg
+    uint32_t dmaBytes = (mXferSize - DMA2_Stream1->NDTR) * 4;
     if (mCapture) {
-      uint32_t dmaBytes = (mXferSize - DMA2_Stream1->NDTR) * 4;
       uint8_t jpegStatus = mCurPtr[dmaBytes-1];
       if ((jpegStatus & 0x0f) == 0x01) {
         mJpegBuf = nullptr;
@@ -353,8 +346,8 @@ void cCamera::dcmiIrqHandler() {
         mStartFramePtr[mJpegLen++] = 0xFF;
         mStartFramePtr[mJpegLen++] = 0xD9;
         mJpegBuf = mStartFramePtr;
-        //cLcd::mLcd->debug (LCD_COLOR_GREEN,
-        //                   "v%2d:%6d:%8x %x:%d", mXferCount,dmaBytes,mJpegBuf, jpegStatus,mJpegLen, mJpegBuf);
+        cLcd::mLcd->debug (LCD_COLOR_GREEN,
+                           "v%2d:%6d:%8x %x:%d", mXferCount,dmaBytes,mJpegBuf, jpegStatus,mJpegLen);
         }
       else {
         mJpegBuf = nullptr;
@@ -362,11 +355,13 @@ void cCamera::dcmiIrqHandler() {
         cLcd::mLcd->debug (LCD_COLOR_WHITE,
                            "v%d:%d %x %d", mXferCount,dmaBytes, jpegStatus, mCurPtr + dmaBytes - mStartFramePtr);
         }
-      mStartFramePtr = mCurPtr + dmaBytes;
       }
-    else
+    else {
+      mJpegBuf = mStartFramePtr;
       mJpegLen = getWidth()*getHeight()*2;
-  #endif
+      cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mJpegBuf, mJpegLen);
+      }
+    mStartFramePtr = mCurPtr + dmaBytes;
     }
   }
 //}}}
@@ -736,7 +731,7 @@ void cCamera::dcmiInit() {
 //{{{
 void cCamera::dcmiStart (uint8_t* buffer) {
 
-  uint32_t dmaLength = mCapture ? 0x00100000 : getWidth()*getHeight()/2;
+  uint32_t dmaLength = mCapture ? 0x00100000 : getWidth()*getHeight()*2;
 
   // disable DCMI by resetting DCMIEN bit
   DCMI->CR &= ~DCMI_CR_ENABLE;
