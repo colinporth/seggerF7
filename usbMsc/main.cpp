@@ -252,7 +252,7 @@ void dhcpThread (void* arg) {
       case DHCP_WAIT_ADDRESS:
         if (dhcp_supplied_address (netif)) {
           dhcpState = DHCP_ADDRESS_ASSIGNED;
-          gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
+          gApp->getLcd()->debug (LCD_COLOR_GREEN, "DHCP %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
           }
         else {
           auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
@@ -381,8 +381,7 @@ void cApp::run() {
     if (mCamera) {
       // drawInfo
       char str[40] = {0};
-      sprintf (str, "%d:%dfps %d%c",
-               mCamera->getFrames(), mCamera->getFps(), mCamera->getFrameBufLen(), mCamera->getJpegMode() ? 'j':'p');
+      sprintf (str, "%dfps %d%c", mCamera->getFps(), mCamera->getFrameBufLen(), mCamera->getJpegMode() ? 'j':'p');
       mLcd->drawInfo (24, str);
       }
     mLcd->drawDebug();
