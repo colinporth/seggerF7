@@ -189,9 +189,9 @@ void httpServerThread (void* arg) {
                   //}}}
                 else if (!strncmp (buf, "GET /cam.jpg", 12)) {
                   //{{{  cam.jpg
-                  if (gApp->mCamera && gApp->mCamera->getCaptureMode()) {
+                  if (gApp->mCamera && gApp->mCamera->getJpegMode()) {
                     int jpegLen;
-                    auto jpegBuf = gApp->mCamera->getJpegFrame (jpegLen);
+                    auto jpegBuf = gApp->mCamera->getFrameBuf (jpegLen);
                     if (jpegBuf) {
                       if (jpegBuf + jpegLen <= (uint8_t*)0xc0600000)
                         memcpy (kJpegBuffer1, jpegBuf, jpegLen);
@@ -336,44 +336,55 @@ void cApp::run() {
     //  }
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
-    //if (mCamera){
-    //  if (mCamera->getCaptureMode()) {
-    //    jpegBuf = mCamera->getJpegFrame (jpegLen);
-    //    if (jpegBuf) {
-          //{{{  jpeg decode buffer
-          //if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
-            //memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
 
-          //// decode jpeg header
-          //jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
-          //jpeg_read_header (&mCinfo, TRUE);
+    if (!mCamera) 
+      mLcd->start();
+    else if (mCamera->getJpegMode()) {
+      mLcd->start();
+      //jpegBuf = mCamera->getFrameBuf (jpegLen);
+      //if (jpegBuf) {
+        //{{{  jpeg decode buffer
+        //if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
+          //memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
 
-          //// decode jpeg body
-          //jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
-          //jpeg_start_decompress (&mCinfo);
+        //// decode jpeg header
+        //jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
+        //jpeg_read_header (&mCinfo, TRUE);
 
-          //while (mCinfo.output_scanline < mCinfo.output_height) {
-            //jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-            //mLcd->convertRgb888toRgbB565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-            //}
-          //jpeg_finish_decompress (&mCinfo);
+        //// decode jpeg body
+        //jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
+        //jpeg_start_decompress (&mCinfo);
 
-          //count++;
-          ////saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count);
+        //while (mCinfo.output_scanline < mCinfo.output_height) {
+          //jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
+          //mLcd->convertRgb888toRgbB565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
           //}
-          //}}}
-    //    }
-    //  mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
-    //  }
-    //else
-    //  mLcd->startBgnd (kRgb565Buffer);
+        //jpeg_finish_decompress (&mCinfo);
+
+        //count++;
+        ////saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count);
+        //}
+        //}}}
+        //mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
+        //}
+      //else
+        //mLcd->start();
+      }
+    else {
+      int rgb565Len = 0;
+      auto rgb565Buf = (uint16_t*)mCamera->getFrameBuf (rgb565Len);
+      if (rgb565Buf) 
+        mLcd->startBgnd (rgb565Buf, mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+      else
+        mLcd->start();
       //saveFile (nullptr, 0, jpegBuf, jpegLen, count++);
-    mLcd->start();
+      }
+
     mLcd->drawTitle (kVersion);
     if (mCamera) {
       //{{{  drawInfo
       char info[40] = {0};
-      sprintf (info, "%4d %2dfps %d", mCamera->getFrames(), mCamera->getFps(), mCamera->getJpegLen());
+      sprintf (info, "%4d %2dfps %d", mCamera->getFrames(), mCamera->getFps(), mCamera->getFrameBufLen());
       mLcd->drawInfo (24, info);
       }
       //}}}
@@ -383,8 +394,8 @@ void cApp::run() {
     bool button = BSP_PB_GetState (BUTTON_KEY);
     if (!button && (button != lastButton)) {
       if (mCamera) {
-        auto captureMode = !mCamera->getCaptureMode();
-        mCamera->start (captureMode, captureMode ? kJpegBuffer : (uint8_t*)kRgb565Buffer);
+        auto jpegMode = !mCamera->getJpegMode();
+        mCamera->start (jpegMode, jpegMode ? kJpegBuffer : (uint8_t*)kRgb565Buffer);
         }
       }
     lastButton = button;

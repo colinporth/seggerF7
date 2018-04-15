@@ -277,14 +277,6 @@ void cLcd::start() {
   }
 //}}}
 //{{{
-void cLcd::startBgnd (uint16_t* bgnd) {
-
-  gFrameWait = true;
-  xSemaphoreTake (gFrameSem, 100);
-  memcpy (getBuffer(), bgnd, 480*272*2);
-  }
-//}}}
-//{{{
 void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
 
   gFrameWait = true;
@@ -835,7 +827,7 @@ void cLcd::copyFrame (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
 //}}}
 //{{{
 void cLcd::copyFrameScaled (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                             uint16_t* dst, uint16_t xsize, uint16_t ysize) {
+                            uint16_t* dst, uint16_t xsize, uint16_t ysize) {
 
   int srcScale = ((srcXsize-1) / xsize) + 1;
   int xpad = (xsize - (srcXsize/srcScale)) / 2;

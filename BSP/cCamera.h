@@ -5,16 +5,17 @@
 class cCamera {
 public:
   void init();
-  void start (bool captureMode, uint8_t* buffer);
+  void start (bool jpegMode, uint8_t* buffer);
 
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
-  bool getCaptureMode() { return mCapture; }
+  bool getJpegMode() { return mJpegMode; }
   int getFrames() { return mFrames; }
   int getFps() { return 1000/mTookTicks; }
   int getFocus() { return mFocus; }
-  int getJpegLen() { return mJpegLen; }
-  uint8_t* getJpegFrame (int& jpegLen);
+
+  uint8_t* getFrameBuf (int& jpegLen);
+  int getFrameBufLen() { return mJpegLen; }
 
   void setFocus (int value);
 
@@ -34,7 +35,7 @@ private:
   //{{{  vars
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;
-  bool mCapture = false;
+  bool mJpegMode = false;
 
   int mFocus = 0;
 

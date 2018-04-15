@@ -78,10 +78,7 @@ void cCamera::init() {
   // init camera registers
   mt9d111Init();
 
-  mCapture = false;
   jpeg();
-  mCapture = true;
-
 
   // startup dcmi
   dcmiInit();
@@ -115,18 +112,18 @@ void cCamera::setFocus (int value) {
 //}}}
 
 //{{{
-uint8_t* cCamera::getJpegFrame (int& jpegLen) {
-  jpegLen = mJpegLen;
+uint8_t* cCamera::getFrameBuf (int& frameLen) {
+  frameLen = mJpegLen;
   return mJpegBuf;
   }
 //}}}
 
 //{{{
-void cCamera::start (bool captureMode, uint8_t* buffer) {
+void cCamera::start (bool jpegMode, uint8_t* buffer) {
 
-  if (mCapture != captureMode) {
-    captureMode ? jpeg() : preview();
-    mCapture = captureMode;
+  if (mJpegMode != jpegMode) {
+    jpegMode ? jpeg() : preview();
+    mJpegMode = jpegMode;
     }
 
   dcmiStart (buffer);
@@ -137,6 +134,8 @@ void cCamera::preview() {
 
   mWidth = 800;
   mHeight = 600;
+  mJpegMode = false;
+
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview %dx%d", mWidth, mHeight);
 
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x270B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0030); // mode_config = disable jpeg A,B
@@ -172,6 +171,7 @@ void cCamera::jpeg() {
   mWidth = 1600;
   mHeight = 1200;
 #endif
+  mJpegMode = true;
 
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
 
@@ -338,7 +338,7 @@ void cCamera::dcmiIrqHandler() {
     mFrames++;
 
     uint32_t dmaBytes = (mXferSize - DMA2_Stream1->NDTR) * 4;
-    if (mCapture) {
+    if (mJpegMode) {
       uint8_t jpegStatus = mCurPtr[dmaBytes-1];
       if ((jpegStatus & 0x0f) == 0x01) {
         mJpegBuf = nullptr;
@@ -668,7 +668,7 @@ void cCamera::mt9d111Init() {
   //}}}
 
   jpeg();
-  mCapture = true;
+  mJpegMode = true;
 
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x06); // Sequencer Refresh Mode
   HAL_Delay (200);
@@ -731,7 +731,7 @@ void cCamera::dcmiInit() {
 //{{{
 void cCamera::dcmiStart (uint8_t* buffer) {
 
-  uint32_t dmaLength = mCapture ? 0x00100000 : getWidth()*getHeight()*2;
+  uint32_t dmaLength = mJpegMode ? 0x00100000 : getWidth()*getHeight()*2;
 
   // disable DCMI by resetting DCMIEN bit
   DCMI->CR &= ~DCMI_CR_ENABLE;
