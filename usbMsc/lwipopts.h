@@ -14,27 +14,19 @@
    byte alignment -> define MEM_ALIGNMENT to 2. */
 #define MEM_ALIGNMENT           4
 
-/* MEM_SIZE: the size of the heap memory. If the application will send
-a lot of data that needs to be copied, this should be set high. */
-#define MEM_SIZE                (10*1024)
-/* MEMP_NUM_PBUF: the number of memp struct pbufs. If the application
-   sends a lot of data out of ROM (or other static memory), this
-   should be set high. */
+// MEM_SIZE: the size of the heap memory
+#define MEM_SIZE                (30*1024)
+// MEMP_NUM_PBUF: the number of memp struct pbufs.
 #define MEMP_NUM_PBUF           10
-/* MEMP_NUM_UDP_PCB: the number of UDP protocol control blocks. One
-   per active UDP "connection". */
+/* MEMP_NUM_UDP_PCB: the number of UDP protocol control blocks. One per active UDP "connection". */
 #define MEMP_NUM_UDP_PCB        6
-/* MEMP_NUM_TCP_PCB: the number of simulatenously active TCP
-   connections. */
+/* MEMP_NUM_TCP_PCB: the number of simulatenously active TCP connections. */
 #define MEMP_NUM_TCP_PCB        10
-/* MEMP_NUM_TCP_PCB_LISTEN: the number of listening TCP
-   connections. */
+/* MEMP_NUM_TCP_PCB_LISTEN: the number of listening TCP connections. */
 #define MEMP_NUM_TCP_PCB_LISTEN 5
-/* MEMP_NUM_TCP_SEG: the number of simultaneously queued TCP
-   segments. */
-#define MEMP_NUM_TCP_SEG        8
-/* MEMP_NUM_SYS_TIMEOUT: the number of simulateously active
-   timeouts. */
+/* MEMP_NUM_TCP_SEG: the number of simultaneously queued TCP segments. */
+#define MEMP_NUM_TCP_SEG        16
+/* MEMP_NUM_SYS_TIMEOUT: the number of simulateously active timeouts. */
 #define MEMP_NUM_SYS_TIMEOUT    10
 
 /* ---------- Pbuf options ---------- */
@@ -48,7 +40,7 @@ a lot of data that needs to be copied, this should be set high. */
 #define TCP_TTL                 255
 
 /* Controls if TCP should queue segments that arrive out of order. Define to 0 if your device is low on memory. */
-#define TCP_QUEUE_OOSEQ         0
+#define TCP_QUEUE_OOSEQ         1
 
 /* TCP Maximum segment size. */
 #define TCP_MSS                 (1500 - 40)   /* TCP_MSS = (Ethernet MTU - IP header size - TCP header size) */
@@ -58,7 +50,7 @@ a lot of data that needs to be copied, this should be set high. */
 
 /*  TCP_SND_QUEUELEN: TCP sender buffer space (pbufs). This must be at least
   as much as (2 * TCP_SND_BUF/TCP_MSS) for things to work. */
-#define TCP_SND_QUEUELEN        (2* TCP_SND_BUF/TCP_MSS)
+#define TCP_SND_QUEUELEN        16
 
 /* TCP receive window. */
 #define TCP_WND                 (2*TCP_MSS)
@@ -84,10 +76,6 @@ a lot of data that needs to be copied, this should be set high. */
 #define CHECKSUM_CHECK_UDP              0
 #define CHECKSUM_CHECK_TCP              0
 #define CHECKSUM_GEN_ICMP               0
-
-//Set this to 1 to include "fsdata_custom.c" instead of "fsdata.c" for the
-// * file system (to prevent changing the file included in CVS) */
-#define HTTPD_USE_CUSTOM_FSDATA         1
 
 #define TCPIP_THREAD_NAME              "TCP/IP"
 #define TCPIP_THREAD_STACKSIZE          1000

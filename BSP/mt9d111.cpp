@@ -691,7 +691,7 @@ void cCamera::dcmiInit() {
                       DMA_SxCR_MINC   | DMA_SxCR_PINC   | DMA_SxCR_CIRC   |
                       DMA_SxCR_DIR    | DMA_SxCR_CT     | DMA_SxCR_DBM));
   tmp |=  DMA_CHANNEL_1       | DMA_PERIPH_TO_MEMORY | DMA_PINC_DISABLE | DMA_MINC_ENABLE |
-          DMA_PDATAALIGN_WORD | DMA_MDATAALIGN_WORD  | DMA_CIRCULAR     | DMA_PRIORITY_VERY_HIGH |
+          DMA_PDATAALIGN_WORD | DMA_MDATAALIGN_WORD  | DMA_CIRCULAR     | DMA_PRIORITY_HIGH |
           DMA_MBURST_INC4     | DMA_PBURST_SINGLE;
   DMA2_Stream1->CR = tmp;
 
