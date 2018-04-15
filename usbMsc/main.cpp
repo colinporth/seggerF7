@@ -104,59 +104,49 @@ cApp* gApp;
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
 //{{{
-const char* kHtmlHeader =
+const char kHtmlHeader[] =
   "HTTP/1.0 200 OK\n\r"
   "Server: lwIP/1.3.1\n\r"
-   "Content-type: text/html\n\r\n\r";
+  "Content-type: text/html\n\r\n\r"; // header + body follows
 //}}}
 //{{{
-const char* kHtml =
-  "<html>\n\r"
-  "<body>\n\r"
-  "<h1>My First Heading</h1>\n\r"
-  "<p>My first paragraph.</p>\n\r"
-  "</body>\n\r"
+const char kHtmlMin[] =
+  "<html>"
+    "<body>"
+      "<h1>Min Html Heading</h1>"
+      "<p>Min Html Paragraph</p>"
+    "</body>"
   "</html>\n\r";
 //}}}
 //{{{
-const char* k404 =
+const char kHtml404[] =
   "HTTP/1.0 404 File not found\n\r"
   "Server: lwIP/1.3.1\n\r"
   "Content-type: text/html\n\r\n\r"
 
-  "<html>\n\r"
-    "<body>\n\r"
-      "<h1>404 not found heading</h1>\n\r"
-      "<p>404 not found paragraph</p>\n\r"
-    "</body>\n\r"
+  "<html>"
+    "<body>"
+      "<h1>404 not found heading</h1>"
+      "<p>404 not found paragraph</p>"
+    "</body>"
   "</html>\n\r";
 //}}}
 //{{{
-const char* k404Cam =
+const char kHtml404Cam[] =
   "HTTP/1.0 404 File not found\n\r"
   "Server: lwIP/1.3.1\n\r"
   "Content-type: text/html\n\r\n\r"
 
-  "<html>\n\r"
-    "<body>\n\r"
-      "<h1>404 cam not found heading</h1>\n\r"
-      "<p>404 cam not found paragraph</p>\n\r"
-    "</body>\n\r"
+  "<html>"
+    "<body>"
+      "<h1>404 cam not found heading</h1>"
+      "<p>404 cam not found paragraph</p>"
+    "</body>"
   "</html>\n\r";
 //}}}
 
 //{{{
 const char kSTM32F7xxHtml[] = {
-// HTTP/1.0 200 OK
-0x48,0x54,0x54,0x50,0x2f,0x31,0x2e,0x30,0x20,0x32,0x30,0x30,0x20,0x4f,0x4b,0x0d,0x0a,
-
-// Server: lwIP/1.3.1
-0x53,0x65,0x72,0x76,0x65,0x72,0x3a,0x20,0x6c,0x77,0x49,0x50,0x2f,0x31,0x2e,0x33,0x2e,0x31,0x0d,0x0a,
-
-// Content-type: text/html
-0x43,0x6f,0x6e,0x74,0x65,0x6e,0x74,0x2d,0x74,0x79,0x70,0x65,0x3a,0x20,0x74,0x65,
-0x78,0x74,0x2f,0x68,0x74,0x6d,0x6c,0x0d,0x0a,0x0d,0x0a,
-
 // raw file data
 0x3c,0x21,0x44,0x4f,0x43,0x54,0x59,0x50,0x45,0x20,0x48,0x54,0x4d,0x4c,0x20,0x50,
 0x55,0x42,0x4c,0x49,0x43,0x20,0x22,0x2d,0x2f,0x2f,0x57,0x33,0x43,0x2f,0x2f,0x44,
@@ -2474,8 +2464,10 @@ void httpServerThread (void* arg) {
                   osThreadList ((uint8_t*)(body + strlen (body)));
                   netconn_write (request, body, strlen (body), NETCONN_NOCOPY);
                   }
-                else if (!strncmp (buf, "GET /STM32F7xx.html", 19) || !strncmp (buf, "GET / ", 6))
+                else if (!strncmp (buf, "GET /STM32F7xx.html", 19) || !strncmp (buf, "GET / ", 6)) {
+                  netconn_write (request, kHtmlHeader, sizeof(kHtmlHeader), NETCONN_NOCOPY);
                   netconn_write (request, kSTM32F7xxHtml, strlen (kSTM32F7xxHtml), NETCONN_NOCOPY);
+                  }
                 else if (!strncmp (buf, "GET /STM32F7xx_files/ST.gif", 27))
                   netconn_write (request, kSTM32F7xxStGif, sizeof(kSTM32F7xxStGif), NETCONN_NOCOPY);
                 else if (!strncmp(buf, "GET /STM32F7xx_files/stm32.jpg", 30))
@@ -2483,13 +2475,13 @@ void httpServerThread (void* arg) {
                 else if (!strncmp (buf, "GET /STM32F7xx_files/logo.jpg", 29))
                   netconn_write (request, kSTM32F7xxLogoJpg, sizeof(kSTM32F7xxLogoJpg), NETCONN_NOCOPY);
                 else if (!strncmp (buf, "GET /min.html", 13)) {
-                  netconn_write (request, kHtmlHeader, strlen(kHtmlHeader), NETCONN_NOCOPY);
-                  netconn_write (request, kHtml, strlen(kHtml), NETCONN_NOCOPY);
+                  netconn_write (request, kHtmlHeader, sizeof(kHtmlHeader), NETCONN_NOCOPY);
+                  netconn_write (request, kHtmlMin, sizeof(kHtmlMin), NETCONN_NOCOPY);
                   }
                 else if (!strncmp (buf, "GET /cam.jpg", 12))
-                  netconn_write (request, k404Cam, strlen(k404Cam), NETCONN_NOCOPY);
+                  netconn_write (request, kHtml404Cam, sizeof(kHtml404Cam), NETCONN_NOCOPY);
                 else
-                  netconn_write (request, k404, strlen(k404), NETCONN_NOCOPY);
+                  netconn_write (request, kHtml404, sizeof(kHtml404), NETCONN_NOCOPY);
                 }
               }
             }
