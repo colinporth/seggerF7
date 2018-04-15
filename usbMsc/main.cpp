@@ -106,28 +106,13 @@ cApp* gApp;
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
 //{{{
-const char kJpgHeader[] =
-  "HTTP/1.0 200 OK\r\n"
-  "Server: lwIP/1.3.1\r\n"
-  "Content-type: image/jpeg\r\n\r\n"; // header + body follows
-//}}}
-//{{{
-const char kHtmlHeader[] =
+const char kHtmlResponse[] =
   "HTTP/1.0 200 OK\r\n"
   "Server: lwIP/1.3.1\r\n"
   "Content-type: text/html\r\n\r\n"; // header + body follows
 //}}}
 //{{{
-const char kHtmlMin[] =
-  "<html>"
-    "<body>"
-      "<h1>Min Html Heading</h1>"
-      "<p>Min Html Paragraph</p>"
-    "</body>"
-  "</html>\r\n";
-//}}}
-//{{{
-const char kHtml404[] =
+const char k404Response[] =
   "HTTP/1.0 404 File not found\r\n"
   "Server: lwIP/1.3.1\r\n"
   "Content-type: text/html\r\n\r\n"
@@ -136,6 +121,28 @@ const char kHtml404[] =
     "<body>"
       "<h1>404 not found heading</h1>"
       "<p>404 not found paragraph</p>"
+    "</body>"
+  "</html>\r\n";
+//}}}
+//{{{
+const char kJpgResponse[] =
+  "HTTP/1.0 200 OK\r\n"
+  "Server: lwIP/1.3.1\r\n"
+  "Content-type: image/jpeg\r\n\r\n"; // header + body follows
+//}}}
+//{{{
+const char kHtml[] =
+  "<!DOCTYPE html>"
+  "<html lang=en-GB>"
+    "<body>"
+      "<h1>Colin's webcam</h1>"
+      "<p style=color:green title=tooltip>800x600</p>"
+      "<img src=cam.jpg alt=missing width=800 height=600>"
+      "<button>Click me</button>"
+      "<a href=img1.jpg>This is a link</a>"
+      "<svg width=100 height=100>"
+        "<circle cx=50 cy=50 r=40 stroke=green stroke-width=8 fill=yellow>"
+      "</svg>"
     "</body>"
   "</html>\r\n";
 //}}}
@@ -157,48 +164,47 @@ void httpServerThread (void* arg) {
               char* buf;
               u16_t bufLen;
               netbuf_data (requestNetBuf, (void**)&buf, &bufLen);
-
-              //{{{  debug request
-              gApp->getLcd()->debug (LCD_COLOR_GREEN, "http %d", bufLen);
-              int len = 0;
-              while (len < bufLen) {
-                char str[40];
-                int i = 0;
-                while ((len < bufLen) && (buf[len] != 0x0d)) {
-                  if ((buf[len] != 0x0a) & (i < 39))
-                    str[i++] = buf[len];
-                  len++;
-                  }
-                len++;
-                str[i] = 0;
-                gApp->getLcd()->debug (LCD_COLOR_YELLOW, str);
-                }
+              //{{{  debug request buf
+              //gApp->getLcd()->debug (LCD_COLOR_GREEN, "http %d", bufLen);
+              //int len = 0;
+              //while (len < bufLen) {
+                //char str[40];
+                //int i = 0;
+                //while ((len < bufLen) && (buf[len] != 0x0d)) {
+                  //if ((buf[len] != 0x0a) & (i < 39))
+                    //str[i++] = buf[len];
+                  //len++;
+                  //}
+                //len++;
+                //str[i] = 0;
+                //gApp->getLcd()->debug (LCD_COLOR_YELLOW, str);
+                //}
               //}}}
 
               // simple HTTP GET command parser
               if ((bufLen >= 5) && !strncmp (buf, "GET /", 5)) {
                 if (!strncmp (buf, "GET / ", 6)) {
+                  netconn_write (request, kHtmlResponse, sizeof(kHtmlResponse)-1, NETCONN_NOCOPY);
+                  netconn_write (request, kHtml, sizeof(kHtml)-1, NETCONN_NOCOPY);
+                  }
+                else if (!strncmp (buf, "GET /cam.jpg", 12)) {
                   if (gApp->mCamera && gApp->mCamera->getCaptureMode()) {
                     int jpegLen;
                     auto jpegBuf = gApp->mCamera->getJpegFrame (jpegLen);
                     if (jpegBuf) {
                       memcpy (kJpegBuffer1, jpegBuf, jpegLen);
-                      netconn_write (request, kJpgHeader, sizeof(kJpgHeader)-1, NETCONN_NOCOPY);
+                      netconn_write (request, kJpgResponse, sizeof(kJpgResponse)-1, NETCONN_NOCOPY);
                       netconn_write (request, gApp->mJpegHeader, gApp->mJpegHeaderLen, NETCONN_NOCOPY);
                       netconn_write (request, kJpegBuffer1, jpegLen, NETCONN_NOCOPY);
                       }
                     else
-                      netconn_write (request, kHtml404, sizeof(kHtml404)-1, NETCONN_NOCOPY);
+                      netconn_write (request, k404Response, sizeof(k404Response)-1, NETCONN_NOCOPY);
                     }
                   else
-                    netconn_write (request, kHtml404, sizeof(kHtml404)-1, NETCONN_NOCOPY);
-                  }
-                else if (!strncmp (buf, "GET /min.html", 13)) {
-                  netconn_write (request, kHtmlHeader, sizeof(kHtmlHeader)-1, NETCONN_NOCOPY);
-                  netconn_write (request, kHtmlMin, sizeof(kHtmlMin)-1, NETCONN_NOCOPY);
+                    netconn_write (request, k404Response, sizeof(k404Response)-1, NETCONN_NOCOPY);
                   }
                 else
-                  netconn_write (request, kHtml404, sizeof(kHtml404)-1, NETCONN_NOCOPY);
+                  netconn_write (request, k404Response, sizeof(k404Response)-1, NETCONN_NOCOPY);
                 }
               }
             }

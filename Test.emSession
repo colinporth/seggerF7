@@ -11,9 +11,8 @@
   <BreakpointListItem trigger="" line="11" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="BSP/cLcd.h" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="3255" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="FatFs/ff.c" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="517" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="52" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="52" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="682" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="855" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="134" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="usbMsc/usbd_msc.cpp" useHWbreakpoint="false"/>
  </Breakpoints>
  <ExecutionProfileWindow/>
@@ -47,8 +46,6 @@
  <Project>
   <ProjectSessionItem path="usb"/>
   <ProjectSessionItem path="usb;usbMsc"/>
-  <ProjectSessionItem path="usb;usbMsc;LwIP"/>
-  <ProjectSessionItem path="usb;usbMsc;LwIP;NetIf"/>
   <ProjectSessionItem path="usb;usbMsc;main"/>
  </Project>
  <Register1>
@@ -90,6 +87,9 @@
  <Watch4>
   <Watches active="0" update="Never"/>
  </Watch4>
- <Files/>
+ <Files>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="17" useTextEdit="1" useBinaryEdit="0" left="0" path="common/system.c" debugPath="common/system.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="56" y="155" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="1" top="132" codecName="Default"/>
+ </Files>
  <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Release" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

@@ -230,7 +230,7 @@ void cLcd::init() {
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_FU);
   //__HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_FLAG_RR);
 
-  __HAL_LTDC_ENABLE (&hLtdcHandler);
+  //__HAL_LTDC_ENABLE (&hLtdcHandler);
   //}}}
 
   // turn on display,backlight pins
@@ -244,6 +244,7 @@ void cLcd::init() {
 
   layerInit (0, SDRAM_DEVICE_ADDR);
   clear (LCD_COLOR_BLACK);
+
   displayOn();
   }
 //}}}
