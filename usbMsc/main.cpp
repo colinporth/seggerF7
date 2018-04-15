@@ -237,11 +237,9 @@ void dhcpThread (void* arg) {
   #define DHCP_LINK_DOWN         5
 
   auto netif = (struct netif*)arg;
+
   uint8_t dhcpState = netif_is_up (netif) ? DHCP_START : DHCP_LINK_DOWN;
-
-  gApp->getLcd()->debug (LCD_COLOR_YELLOW, "DHCP - launched");
-
-  for (;;) {
+  while (true) {
     switch (dhcpState) {
       case DHCP_START:
         ip_addr_set_zero_ip4 (&netif->ip_addr);
@@ -249,27 +247,25 @@ void dhcpThread (void* arg) {
         ip_addr_set_zero_ip4 (&netif->gw);
         dhcp_start (netif);
         dhcpState = DHCP_WAIT_ADDRESS;
-        gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP - looking for server");
         break;
 
       case DHCP_WAIT_ADDRESS:
         if (dhcp_supplied_address (netif)) {
           dhcpState = DHCP_ADDRESS_ASSIGNED;
-          gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP - address assigned");
-          gApp->getLcd()->debug (LCD_COLOR_GREEN, ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
+          gApp->getLcd()->debug (LCD_COLOR_WHITE, "DHCP %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
           }
         else {
           auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
           if (dhcp->tries > 4) {
             dhcpState = DHCP_TIMEOUT;
             dhcp_stop (netif);
-            gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP - timeout");
+            gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP timeout");
             }
           }
         break;
 
       case DHCP_LINK_DOWN:
-        gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP - link down");
+        gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP link down");
         dhcp_stop (netif);
         dhcpState = DHCP_OFF;
         break;
@@ -945,6 +941,40 @@ void cApp::setJpegHeader (int width, int height, int qscale) {
 //}}}
 
 //{{{
+void startThread (void* arg) {
+
+  // network config
+  tcpip_init (NULL, NULL);
+
+  struct netif netIf;
+  ip_addr_t ipaddr;
+  ip_addr_t netmask;
+  ip_addr_t gw;
+
+  ip_addr_set_zero_ip4 (&ipaddr);
+  ip_addr_set_zero_ip4 (&netmask);
+  ip_addr_set_zero_ip4 (&gw);
+  netif_add (&netIf, &ipaddr, &netmask, &gw, NULL, &ethernetIfInit, &tcpip_input);
+
+  netif_set_default (&netIf);
+  if (netif_is_link_up (&netIf))
+    netif_set_up (&netIf);
+  else
+    netif_set_down (&netIf);
+
+  // init httpServer
+  sys_thread_new ("http", httpServerThread, NULL, DEFAULT_THREAD_STACKSIZE, osPriorityAboveNormal);
+
+  // init dhcp
+  sys_thread_new ("dhcp", dhcpThread, &netIf, configMINIMAL_STACK_SIZE * 2, osPriorityBelowNormal);
+
+  gApp->run();
+  //while (true)
+  //  osThreadTerminate(NULL);
+  }
+//}}}
+
+//{{{
 void MPU_Config() {
 
   // Disable the MPU
@@ -998,50 +1028,12 @@ void MPU_Config() {
   }
 //}}}
 //{{{
-void startThread (void* arg) {
-
-  // Initialize app
-  gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
-  gApp->init();
-
-  // init network
-  tcpip_init (NULL, NULL);
-
-  // network config
-  ip_addr_t ipaddr;
-  ip_addr_t netmask;
-  ip_addr_t gw;
-  ip_addr_set_zero_ip4 (&ipaddr);
-  ip_addr_set_zero_ip4 (&netmask);
-  ip_addr_set_zero_ip4 (&gw);
-  //  IP_ADDR4 (&ipaddr,192,168,0,10);
-  //  IP_ADDR4 (&netmask,255,255,255,0);
-  //  IP_ADDR4 (&gw,192,168,GW_ADDR2,1);
-
-  struct netif netIf;
-  netif_add (&netIf, &ipaddr, &netmask, &gw, NULL, &ethernetIfInit, &tcpip_input);
-  netif_set_default (&netIf);
-  if (netif_is_link_up (&netIf))
-    netif_set_up (&netIf);
-  else
-    netif_set_down (&netIf);
-  // init httpServer
-  sys_thread_new ("http", httpServerThread, NULL, DEFAULT_THREAD_STACKSIZE, osPriorityAboveNormal);
-
-  // init dhcp
-  sys_thread_new ("dhcp", dhcpThread, &netIf, configMINIMAL_STACK_SIZE * 2, osPriorityBelowNormal);
-
-  gApp->run();
-  //while (true)
-  //  osThreadTerminate(NULL);
-  }
-//}}}
-//{{{
 int main() {
 
   MPU_Config();
   SCB_EnableICache();
   SCB_EnableDCache();
+
   HAL_Init();
   //{{{  config system clock
   // System Clock source            = PLL (HSE)
@@ -1091,7 +1083,10 @@ int main() {
   //}}}
   BSP_PB_Init (BUTTON_KEY, BUTTON_MODE_GPIO);
 
-  sys_thread_new ("Start", startThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
+  gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
+  gApp->init();
+
+  sys_thread_new ("start", startThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
   osKernelStart();
 
   while (true);
