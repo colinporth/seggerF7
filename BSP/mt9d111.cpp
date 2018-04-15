@@ -7,6 +7,8 @@
 
 #define i2cAddress 0x90
 #define capture800x600
+const bool kDebugIrq = false;
+
 //{{{  dcmi defines
 #define DCMI_MODE_CONTINUOUS ((uint32_t)0x00000000U)
 #define DCMI_MODE_SNAPSHOT   ((uint32_t)DCMI_CR_CM)
@@ -78,8 +80,6 @@ void cCamera::init() {
   // init camera registers
   mt9d111Init();
 
-  jpeg();
-
   // startup dcmi
   dcmiInit();
   }
@@ -114,111 +114,10 @@ void cCamera::setFocus (int value) {
 //{{{
 void cCamera::start (bool jpegMode, uint8_t* buffer) {
 
-  if (mJpegMode != jpegMode) {
-    jpegMode ? jpeg() : preview();
-    mJpegMode = jpegMode;
-    }
+  jpegMode ? jpeg() : preview();
+  mJpegMode = jpegMode;
 
   dcmiStart (buffer);
-  }
-//}}}
-//{{{
-void cCamera::preview() {
-
-  mWidth = 800;
-  mHeight = 600;
-  mJpegMode = false;
-
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview %dx%d", mWidth, mHeight);
-
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x270B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0030); // mode_config = disable jpeg A,B
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00);   // Sequencer.params.mode - none
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01);   // Sequencer goto preview A
-  }
-//}}}
-//{{{
-void cCamera::jpeg() {
-
-#ifdef capture800x600
-  mWidth = 800;
-  mHeight = 600;
-#else
-  mWidth = 1600;
-  mHeight = 1200;
-#endif
-
-  mJpegMode = true;
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
-
-  //{{{  last data byte status ifp page2 0x02
-  // b:0 = 1  transfer done
-  // b:1 = 1  output fifo overflow
-  // b:2 = 1  spoof oversize error
-  // b:3 = 1  reorder buffer error
-  // b:5:4    fifo watermark
-  // b:7:6    quant table 0 to 2
-  //}}}
-  CAMERA_IO_Write16 (i2cAddress, 0xf0, 0x0001);
-
-  // mode_config JPG bypass - shadow ifp page2 0x0a
-  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x270b); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0010);
-
-  //{{{  jpeg.config id=9  0x07
-  // b:0 =1  video
-  // b:1 =1  handshake on error
-  // b:2 =1  enable retry on error
-  // b:3 =1  host indicates ready
-  // ------
-  // b:4 =1  scaled quant
-  // b:5 =1  auto select quant
-  // b:6:7   quant table id
-  //}}}
-  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa907); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0031);
-
-  //{{{  mode fifo_config0_B - shadow ifp page2 0x0d
-  //   output config  ifp page2  0x0d
-  //   b:0 = 1  enable spoof frame
-  //   b:1 = 1  enable pixclk between frames
-  //   b:2 = 1  enable pixclk during invalid data
-  //   b:3 = 1  enable soi/eoi
-  //   -------
-  //   b:4 = 1  enable soi/eoi during FV
-  //   b:5 = 1  enable ignore spoof height
-  //   b:6 = 1  enable variable pixclk
-  //   b:7 = 1  enable byteswap
-  //   -------
-  //   b:8 = 1  enable FV on LV
-  //   b:9 = 1  enable status inserted after data
-  //   b:10 = 1  enable spoof codes
-  //}}}
-  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2772); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0067);
-
-  //{{{  mode fifo_config1_B - shadow ifp page2 0x0e
-  //   b:3:0   pclk1 divisor
-  //   b:7:5   pclk1 slew
-  //   -----
-  //   b:11:8  pclk2 divisor
-  //   b:15:13 pclk2 slew
-  //}}}
-  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2774); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0101);
-
-  //{{{  mode fifo_config2_B - shadow ifp page2 0x0f
-  //   b:3:0   pclk3 divisor
-  //   b:7:5   pclk3 slew
-  //}}}
-  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2776); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0001);
-
-  // mode OUTPUT WIDTH HEIGHT B
-  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2707); CAMERA_IO_Write16 (i2cAddress, 0xc8, mWidth);
-  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2709); CAMERA_IO_Write16 (i2cAddress, 0xc8, mHeight);
-
-  // mode SPOOF WIDTH HEIGHT B
-  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2779); CAMERA_IO_Write16 (i2cAddress, 0xc8, mWidth);
-  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x277b); CAMERA_IO_Write16 (i2cAddress, 0xc8, mHeight);
-
-  CAMERA_IO_Write16 (i2cAddress, 0x09, 0x000A); // factory bypass 10 bit sensor
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
-  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B
   }
 //}}}
 
@@ -321,20 +220,23 @@ void cCamera::dcmiIrqHandler() {
         mStartFramePtr[mFrameBufLen++] = 0xFF;
         mStartFramePtr[mFrameBufLen++] = 0xD9;
         mFrameBuf = mStartFramePtr;
-        cLcd::mLcd->debug (LCD_COLOR_GREEN,
-                           "v%2d:%6d:%8x %x:%d", mXferCount,dmaBytes,mFrameBuf, jpegStatus,mFrameBufLen);
+        if (kDebugIrq)
+          cLcd::mLcd->debug (LCD_COLOR_GREEN,
+                             "v%2d:%6d:%8x %x:%d", mXferCount,dmaBytes,mFrameBuf, jpegStatus,mFrameBufLen);
         }
       else {
         mFrameBuf = nullptr;
         mFrameBufLen = 0;
-        cLcd::mLcd->debug (LCD_COLOR_WHITE,
-                           "v%d:%d %x %d", mXferCount,dmaBytes, jpegStatus, mCurPtr + dmaBytes - mStartFramePtr);
+        if (kDebugIrq)
+          cLcd::mLcd->debug (LCD_COLOR_WHITE,
+                             "v%d:%d %x %d", mXferCount,dmaBytes, jpegStatus, mCurPtr + dmaBytes - mStartFramePtr);
         }
       }
     else {
       mFrameBuf = mStartFramePtr;
       mFrameBufLen = getWidth()*getHeight()*2;
-      cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrameBuf, mFrameBufLen);
+      if (kDebugIrq)
+        cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrameBuf, mFrameBufLen);
       }
     mStartFramePtr = mCurPtr + dmaBytes;
     }
@@ -642,13 +544,10 @@ void cCamera::mt9d111Init() {
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x90B6); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00); // SFR GPIO suspend
   //}}}
 
-  jpeg();
-  mJpegMode = true;
-
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x06); // Sequencer Refresh Mode
-  HAL_Delay (200);
+  HAL_Delay (100);
   CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x05); // Sequencer Refresh
-  HAL_Delay (200);
+  HAL_Delay (100);
   }
 //}}}
 //{{{
@@ -673,6 +572,7 @@ void cCamera::dcmiInit() {
 
   // config mDmaBaseRegisters, mStreamIndex
   const uint8_t kFlagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
+
   auto streamNum = (((uint32_t)DMA2_Stream1 & 0xFFU) - 16U) / 24U;
   mStreamIndex = kFlagBitshiftOffset[streamNum];
   if (streamNum > 3U) // return pointer to HISR and HIFCR
@@ -706,8 +606,8 @@ void cCamera::dcmiInit() {
 //{{{
 void cCamera::dcmiStart (uint8_t* buffer) {
 
-  uint32_t dmaLength = mJpegMode ? 0x00100000 : getWidth()*getHeight()*2;
-  mBufEnd = buffer + (4 * dmaLength);
+  uint32_t dmaLen = mJpegMode ? 0x00100000 : getWidth()*getHeight()*2;
+  mBufEnd = buffer + (4 * dmaLen);
 
   // disable DCMI by resetting DCMIEN bit
   DCMI->CR &= ~DCMI_CR_ENABLE;
@@ -728,7 +628,7 @@ void cCamera::dcmiStart (uint8_t* buffer) {
   // calc the number of xfers with xferSize <= 64k
   mXferCount = 0;
   mXferMaxCount = 1;
-  mXferSize = dmaLength;
+  mXferSize = dmaLen;
   while (mXferSize > 0xFFFF) {
     mXferSize = mXferSize / 2;
     mXferMaxCount = mXferMaxCount * 2;
@@ -755,20 +655,113 @@ void cCamera::dcmiStart (uint8_t* buffer) {
   // enable dma
   DMA2_Stream1->CR |= DMA_SxCR_EN;
 
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", mXferCount, mXferSize, dmaLength);
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", mXferMaxCount, mXferSize, dmaLen);
 
   // enable dcmi capture
   DCMI->CR |= DCMI_CR_CAPTURE;
   }
 //}}}
 
-//{{{  jpeg
-//int jpegLen = framePtr[frameLen-4] | (framePtr[frameLen-3] << 8) | (framePtr[frameLen-2] << 16);
-//auto jpegStatus = framePtr[frameLen-1];
-// make jpeg header
-//uint8_t jpegHeader[1000];
-//int jpegHeaderLen = setJpegHeader (jpegHeader, mWidth, mHeight, 0, mJpegQscale1);
-// append EOI marker
-//framePtr[jpegLen] = 0xff;
-//framePtr[jpegLen+1] = 0xd9;
+//{{{
+void cCamera::preview() {
+
+  mWidth = 800;
+  mHeight = 600;
+  mJpegMode = false;
+
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview %dx%d", mWidth, mHeight);
+
+  // switch to preview
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0x270B); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x0030); // mode_config = disable jpeg A,B
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x00);   // Sequencer.params.mode - none
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x01);   // Sequencer goto preview A
+  HAL_Delay (100);
+  }
+//}}}
+//{{{
+void cCamera::jpeg() {
+
+#ifdef capture800x600
+  mWidth = 800;
+  mHeight = 600;
+#else
+  mWidth = 1600;
+  mHeight = 1200;
+#endif
+
+  mJpegMode = true;
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
+
+  //{{{  last data byte status ifp page2 0x02
+  // b:0 = 1  transfer done
+  // b:1 = 1  output fifo overflow
+  // b:2 = 1  spoof oversize error
+  // b:3 = 1  reorder buffer error
+  // b:5:4    fifo watermark
+  // b:7:6    quant table 0 to 2
+  //}}}
+  CAMERA_IO_Write16 (i2cAddress, 0xf0, 0x0001);
+
+  // mode_config JPG bypass - shadow ifp page2 0x0a
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x270b); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0010);
+
+  //{{{  jpeg.config id=9  0x07
+  // b:0 =1  video
+  // b:1 =1  handshake on error
+  // b:2 =1  enable retry on error
+  // b:3 =1  host indicates ready
+  // ------
+  // b:4 =1  scaled quant
+  // b:5 =1  auto select quant
+  // b:6:7   quant table id
+  //}}}
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0xa907); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0031);
+
+  //{{{  mode fifo_config0_B - shadow ifp page2 0x0d
+  //   output config  ifp page2  0x0d
+  //   b:0 = 1  enable spoof frame
+  //   b:1 = 1  enable pixclk between frames
+  //   b:2 = 1  enable pixclk during invalid data
+  //   b:3 = 1  enable soi/eoi
+  //   -------
+  //   b:4 = 1  enable soi/eoi during FV
+  //   b:5 = 1  enable ignore spoof height
+  //   b:6 = 1  enable variable pixclk
+  //   b:7 = 1  enable byteswap
+  //   -------
+  //   b:8 = 1  enable FV on LV
+  //   b:9 = 1  enable status inserted after data
+  //   b:10 = 1  enable spoof codes
+  //}}}
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2772); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0067);
+
+  //{{{  mode fifo_config1_B - shadow ifp page2 0x0e
+  //   b:3:0   pclk1 divisor
+  //   b:7:5   pclk1 slew
+  //   -----
+  //   b:11:8  pclk2 divisor
+  //   b:15:13 pclk2 slew
+  //}}}
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2774); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0101);
+
+  //{{{  mode fifo_config2_B - shadow ifp page2 0x0f
+  //   b:3:0   pclk3 divisor
+  //   b:7:5   pclk3 slew
+  //}}}
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2776); CAMERA_IO_Write16 (i2cAddress, 0xc8, 0x0001);
+
+  // mode OUTPUT WIDTH HEIGHT B
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2707); CAMERA_IO_Write16 (i2cAddress, 0xc8, mWidth);
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2709); CAMERA_IO_Write16 (i2cAddress, 0xc8, mHeight);
+
+  // mode SPOOF WIDTH HEIGHT B
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x2779); CAMERA_IO_Write16 (i2cAddress, 0xc8, mWidth);
+  CAMERA_IO_Write16 (i2cAddress, 0xc6, 0x277b); CAMERA_IO_Write16 (i2cAddress, 0xc8, mHeight);
+
+  // switch to capture
+  CAMERA_IO_Write16 (i2cAddress, 0x09, 0x000A); // factory bypass 10 bit sensor
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA120); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer.params.mode - capture video
+  CAMERA_IO_Write16 (i2cAddress, 0xC6, 0xA103); CAMERA_IO_Write16 (i2cAddress, 0xC8, 0x02); // Sequencer goto capture B
+  HAL_Delay (100);
+  }
 //}}}

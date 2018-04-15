@@ -5,7 +5,6 @@
 class cCamera {
 public:
   void init();
-  void start (bool jpegMode, uint8_t* buffer);
 
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
@@ -20,6 +19,8 @@ public:
 
   void setFocus (int value);
 
+  void start (bool jpegMode, uint8_t* buffer);
+
   void dmaIrqHandler();
   void dcmiIrqHandler();
 
@@ -27,6 +28,7 @@ private:
   void gpioInit();
   void mt9d111Init();
   void dcmiInit();
+
   void dcmiStart (uint8_t* buffer);
 
   void preview();
