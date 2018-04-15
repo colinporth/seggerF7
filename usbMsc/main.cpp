@@ -337,47 +337,47 @@ void cApp::run() {
     //mLcd->startBgnd (kVersion, mscGetSectors());
     //}}}
 
-    if (!mCamera) 
+    if (!mCamera)
       mLcd->start();
     else if (mCamera->getJpegMode()) {
-      mLcd->start();
-      //jpegBuf = mCamera->getFrameBuf (jpegLen);
-      //if (jpegBuf) {
-        //{{{  jpeg decode buffer
-        //if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
-          //memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
+      if (!BSP_PB_GetState (BUTTON_KEY))
+        mLcd->start();
+      else {
+        jpegBuf = mCamera->getFrameBuf (jpegLen);
+        if (jpegBuf) {
+          //{{{  jpeg decode buffer
+          if (jpegBuf + jpegLen > (uint8_t*)0xc0600000)
+            memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen - (uint8_t*)0xc0600000);
 
-        //// decode jpeg header
-        //jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
-        //jpeg_read_header (&mCinfo, TRUE);
+          // decode jpeg header
+          jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
+          jpeg_read_header (&mCinfo, TRUE);
 
-        //// decode jpeg body
-        //jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
-        //jpeg_start_decompress (&mCinfo);
+          // decode jpeg body
+          jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
+          jpeg_start_decompress (&mCinfo);
 
-        //while (mCinfo.output_scanline < mCinfo.output_height) {
-          //jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-          //mLcd->convertRgb888toRgbB565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-          //}
-        //jpeg_finish_decompress (&mCinfo);
+          while (mCinfo.output_scanline < mCinfo.output_height) {
+            jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
+            mLcd->convertRgb888toRgbB565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+            }
+          jpeg_finish_decompress (&mCinfo);
 
-        //count++;
-        ////saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count);
-        //}
-        //}}}
-        //mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, BSP_PB_GetState (BUTTON_KEY));
-        //}
-      //else
-        //mLcd->start();
+          mLcd->startBgnd (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, true);
+          //}}}
+          //saveFile (mJpegHeader, mJpegHeaderLen, jpegBuf, jpegLen, count++);
+          }
+        else
+          mLcd->start();
+        }
       }
     else {
       int rgb565Len = 0;
       auto rgb565Buf = (uint16_t*)mCamera->getFrameBuf (rgb565Len);
-      if (rgb565Buf) 
+      if (rgb565Buf)
         mLcd->startBgnd (rgb565Buf, mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
       else
         mLcd->start();
-      //saveFile (nullptr, 0, jpegBuf, jpegLen, count++);
       }
 
     mLcd->drawTitle (kVersion);
