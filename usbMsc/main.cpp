@@ -148,138 +148,6 @@ const char kHtml[] =
     "</body>"
   "</html>\r\n";
 //}}}
-//{{{
-void httpServerThread (void* arg) {
-
-  // create a new TCP connection handle
-  struct netconn* connection = netconn_new (NETCONN_TCP);
-  if (connection != NULL) {
-    // bind to port 80 (HTTP) with default IP address
-    if (netconn_bind (connection, NULL, 80) == ERR_OK) {
-      netconn_listen (connection);
-      while (true) {
-        struct netconn* request;
-        if (netconn_accept (connection, &request) == ERR_OK) {
-          struct netbuf* requestNetBuf;
-          if (netconn_recv (request, &requestNetBuf) == ERR_OK) {
-            if (netconn_err (request) == ERR_OK) {
-              char* buf;
-              u16_t bufLen;
-              netbuf_data (requestNetBuf, (void**)&buf, &bufLen);
-
-              //{{{  debug request buf
-              char str[40];
-              int i = 0;
-              int len = 0;
-              while ((len < bufLen) && (buf[len] != 0x0d)) {
-                if ((buf[len] != 0x0a) & (i < 39))
-                  str[i++] = buf[len++];
-                }
-              str[i] = 0;
-              cLcd::mLcd->debug (LCD_COLOR_YELLOW, str);
-              //}}}
-
-              // simple HTTP GET command parser
-              bool ok = false;
-              if ((bufLen >= 5) && !strncmp (buf, "GET /", 5)) {
-                if (!strncmp (buf, "GET / ", 6)) {
-                  //{{{  html
-                  netconn_write (request, kHtmlResponse, sizeof(kHtmlResponse)-1, NETCONN_NOCOPY);
-                  netconn_write (request, kHtml, sizeof(kHtml)-1, NETCONN_NOCOPY);
-                  ok = true;
-                  }
-                  //}}}
-                else if (!strncmp (buf, "GET /cam.jpg", 12)) {
-                  //{{{  cam.jpg
-                  if (gApp->mCamera && gApp->mCamera->getJpegMode()) {
-                    int jpegLen;
-                    auto jpegBuf = gApp->mCamera->getFrameBuf (jpegLen);
-                    if (jpegBuf) {
-                      if (jpegBuf + jpegLen <= (uint8_t*)0xc0600000)
-                        memcpy (kJpegBuffer1, jpegBuf, jpegLen);
-                      else {
-                        // wrap around case
-                        uint32_t firstChunkLen = (uint8_t*)0xc0600000 - jpegBuf;
-                        uint32_t secondChunkLen = jpegLen - firstChunkLen;
-                        memcpy (kJpegBuffer1, jpegBuf, firstChunkLen);
-                        memcpy (kJpegBuffer1 + firstChunkLen, kJpegBuffer, secondChunkLen);
-                        }
-
-                      netconn_write (request, kJpgResponse, sizeof(kJpgResponse)-1, NETCONN_NOCOPY);
-                      netconn_write (request, gApp->mJpegHeader, gApp->mJpegHeaderLen, NETCONN_NOCOPY);
-                      netconn_write (request, kJpegBuffer1, jpegLen, NETCONN_NOCOPY);
-                      ok = true;
-                      }
-                    }
-                  }
-                  //}}}
-                if (!ok)
-                  netconn_write (request, k404Response, sizeof(k404Response)-1, NETCONN_NOCOPY);
-                }
-              }
-            }
-
-          netconn_close (request);
-          netbuf_delete (requestNetBuf);
-          netconn_delete (request);
-          }
-        }
-      }
-    }
-  }
-//}}}
-//{{{
-void dhcpThread (void* arg) {
-
-  #define DHCP_OFF               0
-  #define DHCP_START             1
-  #define DHCP_WAIT_ADDRESS      2
-  #define DHCP_ADDRESS_ASSIGNED  3
-  #define DHCP_TIMEOUT           4
-  #define DHCP_LINK_DOWN         5
-
-  auto netif = (struct netif*)arg;
-
-  uint8_t dhcpState = netif_is_up (netif) ? DHCP_START : DHCP_LINK_DOWN;
-  while (true) {
-    switch (dhcpState) {
-      case DHCP_START:
-        ip_addr_set_zero_ip4 (&netif->ip_addr);
-        ip_addr_set_zero_ip4 (&netif->netmask);
-        ip_addr_set_zero_ip4 (&netif->gw);
-        dhcp_start (netif);
-        dhcpState = DHCP_WAIT_ADDRESS;
-        break;
-
-      case DHCP_WAIT_ADDRESS:
-        if (dhcp_supplied_address (netif)) {
-          dhcpState = DHCP_ADDRESS_ASSIGNED;
-          cLcd::mLcd->debug (LCD_COLOR_GREEN, "DHCP %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
-          }
-        else {
-          auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
-          if (dhcp->tries > 4) {
-            dhcpState = DHCP_TIMEOUT;
-            dhcp_stop (netif);
-            cLcd::mLcd->debug (LCD_COLOR_RED, "DHCP timeout");
-            }
-          }
-        break;
-
-      case DHCP_LINK_DOWN:
-        cLcd::mLcd->debug (LCD_COLOR_RED, "DHCP link down");
-        dhcp_stop (netif);
-        dhcpState = DHCP_OFF;
-        break;
-
-      default:
-        break;
-      }
-
-    osDelay (250);
-    }
-  }
-//}}}
 
 // public
 //{{{
@@ -951,6 +819,146 @@ void appThread (void* arg) {
   }
 //}}}
 //{{{
+void serverThread (void* arg) {
+// minimal http server
+
+  // create a new TCP connection handle
+  struct netconn* connection = netconn_new (NETCONN_TCP);
+  if (connection != NULL) {
+    // bind to port 80 (HTTP) with default IP address
+    if (netconn_bind (connection, NULL, 80) == ERR_OK) {
+      netconn_listen (connection);
+      while (true) {
+        struct netconn* request;
+        if (netconn_accept (connection, &request) == ERR_OK) {
+          struct netbuf* requestNetBuf;
+          if (netconn_recv (request, &requestNetBuf) == ERR_OK) {
+            if (netconn_err (request) == ERR_OK) {
+              char* buf;
+              u16_t bufLen;
+              netbuf_data (requestNetBuf, (void**)&buf, &bufLen);
+
+              //{{{  debug request buf
+              char str[40];
+              int src = 0;
+              int dst = 0;
+
+              // copy till return
+              while ((src < bufLen) && (buf[src] != 0x0d)) {
+                if (buf[src] == 0x0a) // skip lineFeed
+                  src++;
+                else if (dst < 39)
+                  str[dst++] = buf[src++];
+                }
+
+              // terminate str
+              str[dst] = 0;
+
+              cLcd::mLcd->debug (LCD_COLOR_YELLOW, str);
+              //}}}
+
+              // simple HTTP GET command parser
+              bool ok = false;
+              if ((bufLen >= 5) && !strncmp (buf, "GET /", 5)) {
+                if (!strncmp (buf, "GET / ", 6)) {
+                  //{{{  html
+                  netconn_write (request, kHtmlResponse, sizeof(kHtmlResponse)-1, NETCONN_NOCOPY);
+                  netconn_write (request, kHtml, sizeof(kHtml)-1, NETCONN_NOCOPY);
+                  ok = true;
+                  }
+                  //}}}
+                else if (!strncmp (buf, "GET /cam.jpg", 12)) {
+                  //{{{  cam.jpg
+                  if (gApp->mCamera && gApp->mCamera->getJpegMode()) {
+                    int jpegLen;
+                    auto jpegBuf = gApp->mCamera->getFrameBuf (jpegLen);
+                    if (jpegBuf) {
+                      if (jpegBuf + jpegLen <= (uint8_t*)0xc0600000)
+                        memcpy (kJpegBuffer1, jpegBuf, jpegLen);
+                      else {
+                        // wrap around case
+                        uint32_t firstChunkLen = (uint8_t*)0xc0600000 - jpegBuf;
+                        uint32_t secondChunkLen = jpegLen - firstChunkLen;
+                        memcpy (kJpegBuffer1, jpegBuf, firstChunkLen);
+                        memcpy (kJpegBuffer1 + firstChunkLen, kJpegBuffer, secondChunkLen);
+                        }
+
+                      netconn_write (request, kJpgResponse, sizeof(kJpgResponse)-1, NETCONN_NOCOPY);
+                      netconn_write (request, gApp->mJpegHeader, gApp->mJpegHeaderLen, NETCONN_NOCOPY);
+                      netconn_write (request, kJpegBuffer1, jpegLen, NETCONN_NOCOPY);
+                      ok = true;
+                      }
+                    }
+                  }
+                  //}}}
+                if (!ok)
+                  netconn_write (request, k404Response, sizeof(k404Response)-1, NETCONN_NOCOPY);
+                }
+              }
+            }
+
+          netconn_close (request);
+          netbuf_delete (requestNetBuf);
+          netconn_delete (request);
+          }
+        }
+      }
+    }
+  }
+//}}}
+//{{{
+void dhcpThread (void* arg) {
+
+  #define DHCP_OFF               0
+  #define DHCP_START             1
+  #define DHCP_WAIT_ADDRESS      2
+  #define DHCP_ADDRESS_ASSIGNED  3
+  #define DHCP_TIMEOUT           4
+  #define DHCP_LINK_DOWN         5
+
+  auto netif = (struct netif*)arg;
+
+  uint8_t dhcpState = netif_is_up (netif) ? DHCP_START : DHCP_LINK_DOWN;
+  while (true) {
+    switch (dhcpState) {
+      case DHCP_START:
+        ip_addr_set_zero_ip4 (&netif->ip_addr);
+        ip_addr_set_zero_ip4 (&netif->netmask);
+        ip_addr_set_zero_ip4 (&netif->gw);
+        dhcp_start (netif);
+        dhcpState = DHCP_WAIT_ADDRESS;
+        break;
+
+      case DHCP_WAIT_ADDRESS:
+        if (dhcp_supplied_address (netif)) {
+          dhcpState = DHCP_ADDRESS_ASSIGNED;
+          cLcd::mLcd->debug (LCD_COLOR_GREEN, "DHCP %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
+          }
+        else {
+          auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
+          if (dhcp->tries > 4) {
+            dhcpState = DHCP_TIMEOUT;
+            dhcp_stop (netif);
+            cLcd::mLcd->debug (LCD_COLOR_RED, "DHCP timeout");
+            }
+          }
+        break;
+
+      case DHCP_LINK_DOWN:
+        cLcd::mLcd->debug (LCD_COLOR_RED, "DHCP link down");
+        dhcp_stop (netif);
+        dhcpState = DHCP_OFF;
+        break;
+
+      default:
+        break;
+      }
+
+    osDelay (250);
+    }
+  }
+//}}}
+//{{{
 void netThread (void* arg) {
 
   tcpip_init (NULL, NULL);
@@ -972,7 +980,7 @@ void netThread (void* arg) {
     netif_set_down (&netIf);
 
   sys_thread_new ("dhcp", dhcpThread, &netIf, configMINIMAL_STACK_SIZE * 2, osPriorityBelowNormal);
-  sys_thread_new ("http", httpServerThread, NULL, DEFAULT_THREAD_STACKSIZE, osPriorityAboveNormal);
+  sys_thread_new ("server", serverThread, NULL, DEFAULT_THREAD_STACKSIZE, osPriorityAboveNormal);
 
   while (true)
     osThreadTerminate(NULL);
