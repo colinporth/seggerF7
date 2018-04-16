@@ -1,4 +1,9 @@
 // ethernetIf.cpp
+// - hardCoded rxDescriptors,txDescriptors,buffers, chainMode to uncacheable DTCM    0x20000000 to 0x20003FFF
+// - ETH_DMADescTypeDef  DMARxDscrTab[ETH_RXBUFNB] // Ethernet Rx DMA Descriptors -   64*4 =  256 =      0x80
+// - uint8_t Rx_Buff[ETH_RXBUFNB][ETH_RX_BUF_SIZE] // Ethernet Receive Buffers    - 1524*4 = 6096 =    0x17D0 pad to 0x1800
+// - ETH_DMADescTypeDef  DMATxDscrTab[ETH_TXBUFNB] // Ethernet Tx DMA Descriptors -   64*4 =  256 =      0x80
+// - uint8_t Tx_Buff[ETH_TXBUFNB][ETH_TX_BUF_SIZE] // Ethernet Transmit Buffers   - 1524*4 = 6096 =    0x17D0 pad to 0x1800
 //{{{  includes
 #include "ethernetif.h"
 
@@ -18,7 +23,7 @@ osSemaphoreId inputSemaphore = NULL;
 extern "C" { void ETH_IRQHandler() { HAL_ETH_IRQHandler (&EthHandle); }}
 
 //{{{
-void ethernetInput (void const* argument) {
+void ethernetInputThread (void const* argument) {
 
   struct netif* netif = (struct netif*)argument;
 
@@ -66,7 +71,7 @@ void ethernetInput (void const* argument) {
           // clear segCount
           EthHandle.RxFrameInfos.SegCount = 0;
 
-          if ((EthHandle.Instance->DMASR & ETH_DMASR_RBUS) != (uint32_t)RESET) {
+          if (EthHandle.Instance->DMASR & ETH_DMASR_RBUS) {
             // rxBuffer unavailable flag set, clear RBUS ETHERNET DMA flag, resume DMA reception
             EthHandle.Instance->DMASR = ETH_DMASR_RBUS;
             EthHandle.Instance->DMARPDR = 0;
@@ -90,14 +95,14 @@ err_t lowLevelOutput (struct netif* netif, struct pbuf* pbuf) {
   // copy frame from pbufs to driver buffers
   uint32_t bufOffset = 0;
   uint32_t frameLength = 0;
-  uint8_t* buf = (uint8_t *)(EthHandle.TxDesc->Buffer1Addr);
+  uint8_t* buf = (uint8_t*)EthHandle.TxDesc->Buffer1Addr;
 
   for (struct pbuf* qpbuf = pbuf; qpbuf != NULL; qpbuf = qpbuf->next) {
     // is this buffer available? If not, goto error
     __IO ETH_DMADescTypeDef* dmaTxDesc = EthHandle.TxDesc;
-    if ((dmaTxDesc->Status & ETH_DMATXDESC_OWN) != (uint32_t)RESET) {
+    if (dmaTxDesc->Status & ETH_DMATXDESC_OWN) {
       //{{{  buffer not available, error exit
-      if ((EthHandle.Instance->DMASR & ETH_DMASR_TUS) != (uint32_t)RESET) {
+      if (EthHandle.Instance->DMASR & ETH_DMASR_TUS) {
         // transmitUnderflow flag set, clear it, issue txPollDemand to resume tx
         EthHandle.Instance->DMASR = ETH_DMASR_TUS;
         EthHandle.Instance->DMATPDR = 0;
@@ -118,9 +123,9 @@ err_t lowLevelOutput (struct netif* netif, struct pbuf* pbuf) {
 
       // point to next descriptor
       dmaTxDesc = (ETH_DMADescTypeDef*)(dmaTxDesc->Buffer2NextDescAddr);
-      if ((dmaTxDesc->Status & ETH_DMATXDESC_OWN) != (uint32_t)RESET) {
+      if (dmaTxDesc->Status & ETH_DMATXDESC_OWN) {
         //{{{  buffer not available, error exit
-        if ((EthHandle.Instance->DMASR & ETH_DMASR_TUS) != (uint32_t)RESET) {
+        if (EthHandle.Instance->DMASR & ETH_DMASR_TUS) {
           // transmitUnderflow flag set, clear it, issue txPollDemand to resume tx
           EthHandle.Instance->DMASR = ETH_DMASR_TUS;
           EthHandle.Instance->DMATPDR = 0;
@@ -148,7 +153,7 @@ err_t lowLevelOutput (struct netif* netif, struct pbuf* pbuf) {
   // prepare transmit descriptors to give to DMA
   HAL_ETH_TransmitFrame (&EthHandle, frameLength);
 
-  if ((EthHandle.Instance->DMASR & ETH_DMASR_TUS) != (uint32_t)RESET) {
+  if (EthHandle.Instance->DMASR & ETH_DMASR_TUS) {
     // transmitUnderflow flag set, clear it, issue txPollDemand to resume tx
     EthHandle.Instance->DMASR = ETH_DMASR_TUS;
     EthHandle.Instance->DMATPDR = 0;
@@ -243,11 +248,6 @@ err_t ethernetIfInit (struct netif* netif) {
   if (HAL_ETH_Init (&EthHandle) == HAL_OK)
     netif->flags |= NETIF_FLAG_LINK_UP;
 
-  // init rxDescriptors,txDescriptors, Chain Mode, hardCode buffers in         CM 0x20000000 to 0x20003FFF
-  // ETH_DMADescTypeDef  DMARxDscrTab[ETH_RXBUFNB] // Ethernet Rx DMA Descriptors -   64*4 =  256 =   0x80
-  // uint8_t Rx_Buff[ETH_RXBUFNB][ETH_RX_BUF_SIZE] // Ethernet Receive Buffers    - 1524*4 = 6096 = 0x17D0 pad to 0x1800
-  // ETH_DMADescTypeDef  DMATxDscrTab[ETH_TXBUFNB] // Ethernet Tx DMA Descriptors -   64*4 =  256 =   0x80
-  // uint8_t Tx_Buff[ETH_TXBUFNB][ETH_TX_BUF_SIZE] // Ethernet Transmit Buffers   - 1524*4 = 6096 = 0x17D0 pad to 0x1800
   HAL_ETH_DMARxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x20000000, (uint8_t*)0x20000080, ETH_RXBUFNB);
   HAL_ETH_DMATxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x20002000, (uint8_t*)0x20002080, ETH_TXBUFNB);
 
@@ -271,7 +271,7 @@ err_t ethernetIfInit (struct netif* netif) {
   inputSemaphore = osSemaphoreCreate (osSemaphore (SEM) , 1 );
 
   // create the task that handles the ETH_MAC
-  osThreadDef (ethIf, ethernetInput, osPriorityRealtime, 0, 350);
+  osThreadDef (ethIf, ethernetInputThread, osPriorityRealtime, 0, 350);
   osThreadCreate (osThread (ethIf), netif);
 
   // enable MAC and DMA transmission and reception
