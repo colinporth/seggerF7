@@ -108,12 +108,6 @@ cApp* gApp;
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
 //{{{
-const char kHtmlResponse[] =
-  "HTTP/1.0 200 OK\r\n"
-  "Server: lwIP/1.3.1\r\n"
-  "Content-type: text/html\r\n\r\n"; // header + body follows
-//}}}
-//{{{
 const char k404Response[] =
   "HTTP/1.0 404 File not found\r\n"
   "Server: lwIP/1.3.1\r\n"
@@ -127,13 +121,19 @@ const char k404Response[] =
   "</html>\r\n";
 //}}}
 //{{{
-const char kJpgResponse[] =
+const char kJpgHeader[] =
   "HTTP/1.0 200 OK\r\n"
   "Server: lwIP/1.3.1\r\n"
   "Content-type: image/jpeg\r\n\r\n"; // header + body follows
 //}}}
 //{{{
-const char kHtml[] =
+const char kHtmlHeader[] =
+  "HTTP/1.0 200 OK\r\n"
+  "Server: lwIP/1.3.1\r\n"
+  "Content-type: text/html\r\n\r\n"; // header + body follows
+//}}}
+//{{{
+const char kHtmlBody[] =
   "<!DOCTYPE html>"
   "<html lang=en-GB>"
     "<body>"
@@ -251,7 +251,7 @@ void cApp::run() {
     if (mCamera) {
       // drawInfo
       char str[40] = {0};
-      sprintf (str, "%dfps %d%c", mCamera->getFps(), mCamera->getFrameBufLen(), mCamera->getJpegMode() ? 'j':'p');
+      sprintf (str, "%dfps %d%s", mCamera->getFps(), mCamera->getFrameBufLen(), mCamera->getJpegMode() ? "jpg":"pre");
       mLcd->drawInfo (24, str);
       }
     mLcd->drawDebug();
@@ -854,8 +854,8 @@ void serverThread (void* arg) {
               if ((bufLen >= 5) && !strncmp (buf, "GET /", 5)) {
                 if (!strncmp (buf, "GET / ", 6)) {
                   //{{{  html
-                  netconn_write (request, kHtmlResponse, sizeof(kHtmlResponse)-1, NETCONN_NOCOPY);
-                  netconn_write (request, kHtml, sizeof(kHtml)-1, NETCONN_NOCOPY);
+                  netconn_write (request, kHtmlHeader, sizeof(kHtmlHeader)-1, NETCONN_NOCOPY);
+                  netconn_write (request, kHtmlBody, sizeof(kHtmlBody)-1, NETCONN_NOCOPY);
                   ok = true;
                   }
                   //}}}
@@ -875,7 +875,7 @@ void serverThread (void* arg) {
                         memcpy (kJpegBuffer1 + firstChunkLen, kJpegBuffer, secondChunkLen);
                         }
 
-                      netconn_write (request, kJpgResponse, sizeof(kJpgResponse)-1, NETCONN_NOCOPY);
+                      netconn_write (request, kJpgHeader, sizeof(kJpgHeader)-1, NETCONN_NOCOPY);
                       netconn_write (request, gApp->mJpegHeader, gApp->mJpegHeaderLen, NETCONN_NOCOPY);
                       netconn_write (request, kJpegBuffer1, jpegLen, NETCONN_NOCOPY);
                       ok = true;
