@@ -243,15 +243,13 @@ err_t ethernetIfInit (struct netif* netif) {
   if (HAL_ETH_Init (&EthHandle) == HAL_OK)
     netif->flags |= NETIF_FLAG_LINK_UP;
 
-  // init rxDescriptors,txDescriptors, Chain Mode, hardCode buffers in SRAM2  0x2004C100 to 0x2004FFFF
-  // ETH_DMADescTypeDef  DMARxDscrTab[ETH_RXBUFNB] // Ethernet Rx DMA Descriptors - 256 = 0x80
-  // ETH_DMADescTypeDef  DMATxDscrTab[ETH_TXBUFNB] // Ethernet Tx DMA Descriptors - 256 = 0x80
-  // uint8_t Rx_Buff[ETH_RXBUFNB][ETH_RX_BUF_SIZE] // Ethernet Receive Buffers    - 1524*4 = 6096 = 0x17D0
-  // uint8_t Tx_Buff[ETH_TXBUFNB][ETH_TX_BUF_SIZE] // Ethernet Transmit Buffers   - 1524*4 = 6096 = 0x17D0
-  //HAL_ETH_DMARxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x2004C000, (uint8_t*)0x2004C100, ETH_RXBUFNB);
-  //HAL_ETH_DMATxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x2004C080, (uint8_t*)0x2004D8D0, ETH_TXBUFNB);
-  HAL_ETH_DMARxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x20000000, (uint8_t*)0x20000100, ETH_RXBUFNB);
-  HAL_ETH_DMATxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x20000080, (uint8_t*)0x200018D0, ETH_TXBUFNB);
+  // init rxDescriptors,txDescriptors, Chain Mode, hardCode buffers in         CM 0x20000000 to 0x20003FFF
+  // ETH_DMADescTypeDef  DMARxDscrTab[ETH_RXBUFNB] // Ethernet Rx DMA Descriptors -   64*4 =  256 =   0x80
+  // uint8_t Rx_Buff[ETH_RXBUFNB][ETH_RX_BUF_SIZE] // Ethernet Receive Buffers    - 1524*4 = 6096 = 0x17D0 pad to 0x1800
+  // ETH_DMADescTypeDef  DMATxDscrTab[ETH_TXBUFNB] // Ethernet Tx DMA Descriptors -   64*4 =  256 =   0x80
+  // uint8_t Tx_Buff[ETH_TXBUFNB][ETH_TX_BUF_SIZE] // Ethernet Transmit Buffers   - 1524*4 = 6096 = 0x17D0 pad to 0x1800
+  HAL_ETH_DMARxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x20000000, (uint8_t*)0x20000080, ETH_RXBUFNB);
+  HAL_ETH_DMATxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x20002000, (uint8_t*)0x20002080, ETH_TXBUFNB);
 
   // set netif MAC hardware address
   netif->hwaddr[0] = MAC_ADDR0;
