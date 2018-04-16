@@ -967,6 +967,13 @@ void startThread (void* arg) {
   // init dhcp
   sys_thread_new ("dhcp", dhcpThread, &netIf, configMINIMAL_STACK_SIZE * 2, osPriorityBelowNormal);
 
+  while (true)
+    osThreadTerminate(NULL);
+  }
+//}}}
+//{{{
+void appThread (void* arg) {
+
   gApp->run();
   //while (true)
   //  osThreadTerminate(NULL);
@@ -1086,6 +1093,7 @@ int main() {
   gApp->init();
 
   sys_thread_new ("start", startThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
+  sys_thread_new ("app", appThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
   osKernelStart();
 
   while (true);

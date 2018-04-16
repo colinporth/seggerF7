@@ -61,7 +61,7 @@ void ethernetInputThread (void const* argument) {
               }
             }
 
-          // release descriptors to DMA, point to first, set ownBit in Rx descriptor
+          // release descriptors to DMA, point to first, set ownBit in rxDescriptor
           dmaRxDesc = EthHandle.RxFrameInfos.FSRxDesc;
           for (uint32_t i = 0; i < EthHandle.RxFrameInfos.SegCount; i++) {
             dmaRxDesc->Status |= ETH_DMARXDESC_OWN;
@@ -207,17 +207,9 @@ void HAL_ETH_MspInit (ETH_HandleTypeDef* heth) {
   __HAL_RCC_ETH_CLK_ENABLE();
   }
 //}}}
-//{{{
-void HAL_ETH_RxCpltCallback (ETH_HandleTypeDef* heth) {
-  osSemaphoreRelease (inputSemaphore);
-  }
-//}}}
+void HAL_ETH_RxCpltCallback (ETH_HandleTypeDef* heth) { osSemaphoreRelease (inputSemaphore); }
+u32_t sys_now() { return HAL_GetTick(); }
 
-//{{{
-u32_t sys_now() {
-  return HAL_GetTick();
-  }
-//}}}
 //{{{
 err_t ethernetIfInit (struct netif* netif) {
 
