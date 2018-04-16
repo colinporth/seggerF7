@@ -156,9 +156,9 @@ void cApp::init() {
   mLcd = new cLcd (16);
   mLcd->init();
 
+  // show title early
   mLcd->start();
   mLcd->drawTitle (kVersion);
-  mLcd->drawDebug();
   mLcd->present();
 
   //{{{  removed
@@ -811,14 +811,6 @@ void cApp::setJpegHeader (int width, int height, int qscale) {
 //}}}
 
 //{{{
-void appThread (void* arg) {
-
-  gApp->run();
-  //while (true)
-  //  osThreadTerminate(NULL);
-  }
-//}}}
-//{{{
 void serverThread (void* arg) {
 // minimal http server
 
@@ -986,6 +978,14 @@ void netThread (void* arg) {
     osThreadTerminate(NULL);
   }
 //}}}
+//{{{
+void appThread (void* arg) {
+
+  gApp->run();
+  //while (true)
+  //  osThreadTerminate(NULL);
+  }
+//}}}
 
 //{{{
 int main() {
@@ -1045,8 +1045,8 @@ int main() {
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
   gApp->init();
 
-  sys_thread_new ("app", appThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
   sys_thread_new ("net", netThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
+  sys_thread_new ("app", appThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
   osKernelStart();
 
   while (true);
