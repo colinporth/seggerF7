@@ -62,8 +62,10 @@ public:
   //}}}
 
   cCamera* mCamera = nullptr;
-  uint8_t mJpegHeader[1000];
+  uint8_t mJpegHeader[700];
   int mJpegHeaderLen = 0;
+  uint8_t mBmpHeader[54];
+  int mBmpHeaderLen = 0;
 
 protected:
   virtual void onProx (int x, int y, int z);
@@ -90,6 +92,7 @@ private:
   int huffTableMarkerAC (uint8_t* ptr, const uint16_t* htable, int classId);
   int sosMarker (uint8_t* ptr);
   void setJpegHeader (int width, int height, int qscale);
+  void setBmpHeader (int width, int height);
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
@@ -121,10 +124,16 @@ const char k404Response[] =
   "</html>\r\n";
 //}}}
 //{{{
-const char kJpgHeader[] =
+const char kJpegHeader[] =
   "HTTP/1.0 200 OK\r\n"
   "Server: lwIP/1.3.1\r\n"
   "Content-type: image/jpeg\r\n\r\n"; // header + body follows
+//}}}
+//{{{
+const char kBmpHeader[] =
+  "HTTP/1.0 200 OK\r\n"
+  "Server: lwIP/1.3.1\r\n"
+  "Content-type: image/bmp\r\n\r\n"; // header + body follows
 //}}}
 //{{{
 const char kHtmlHeader[] =
@@ -183,6 +192,7 @@ void cApp::run() {
     mCamera->start (false, kJpegBuffer);
 
     setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
+    setBmpHeader (mCamera->getWidth(), mCamera->getHeight());
     mCinfo.scale_num = 1;
     mCinfo.scale_denom = (mCamera->getWidth() / mLcd->getWidth()) + 1;
     mCinfo.dct_method = JDCT_FLOAT;
@@ -809,6 +819,16 @@ void cApp::setJpegHeader (int width, int height, int qscale) {
   mJpegHeaderLen += sosMarker (mJpegHeader + mJpegHeaderLen);
   }
 //}}}
+//{{{
+void cApp::setBmpHeader (int width, int height) {
+
+  mBmpHeaderLen = 54;
+  memset (mBmpHeader, 0, mBmpHeaderLen);
+  mBmpHeader[0x12] = width;
+  mBmpHeader[0x16] = height;
+
+  }
+//}}}
 
 //{{{
 void serverThread (void* arg) {
@@ -861,23 +881,32 @@ void serverThread (void* arg) {
                   //}}}
                 else if (!strncmp (buf, "GET /cam.jpg", 12)) {
                   //{{{  cam.jpg
-                  if (gApp->mCamera && gApp->mCamera->getJpegMode()) {
-                    int jpegLen;
-                    auto jpegBuf = gApp->mCamera->getFrameBuf (jpegLen);
-                    if (jpegBuf) {
-                      if (jpegBuf + jpegLen <= (uint8_t*)0xc0600000)
-                        memcpy (kJpegBuffer1, jpegBuf, jpegLen);
+                  if (gApp->mCamera) {
+                    int frameBufLen;
+                    auto frameBuf = gApp->mCamera->getFrameBuf (frameBufLen);
+
+                    if (frameBuf) {
+                      if (frameBuf + frameBufLen <= gApp->mCamera->getBufEnd())
+                        memcpy (kJpegBuffer1, frameBuf, frameBufLen);
                       else {
                         // wrap around case
-                        uint32_t firstChunkLen = (uint8_t*)0xc0600000 - jpegBuf;
-                        uint32_t secondChunkLen = jpegLen - firstChunkLen;
-                        memcpy (kJpegBuffer1, jpegBuf, firstChunkLen);
-                        memcpy (kJpegBuffer1 + firstChunkLen, kJpegBuffer, secondChunkLen);
+                        uint32_t firstChunkLen = gApp->mCamera->getBufEnd() - frameBuf;
+                        memcpy (kJpegBuffer1, frameBuf, firstChunkLen);
+                        memcpy (kJpegBuffer1 + firstChunkLen, kJpegBuffer, frameBufLen - firstChunkLen);
+                        cLcd::mLcd->debug (LCD_COLOR_YELLOW, "wraparound");
                         }
 
-                      netconn_write (request, kJpgHeader, sizeof(kJpgHeader)-1, NETCONN_NOCOPY);
-                      netconn_write (request, gApp->mJpegHeader, gApp->mJpegHeaderLen, NETCONN_NOCOPY);
-                      netconn_write (request, kJpegBuffer1, jpegLen, NETCONN_NOCOPY);
+                      if (gApp->mCamera->getJpegMode()) {
+                        netconn_write (request, kJpegHeader, sizeof(kJpegHeader)-1, NETCONN_NOCOPY);
+                        netconn_write (request, gApp->mJpegHeader, gApp->mJpegHeaderLen, NETCONN_NOCOPY);
+                        }
+                      else {
+                        cLcd::mLcd->debug (LCD_COLOR_YELLOW, "%x %x %d", frameBuf, gApp->mCamera->getBufEnd(), frameBufLen);
+                        netconn_write (request, kBmpHeader, sizeof(kBmpHeader)-1, NETCONN_NOCOPY);
+                        netconn_write (request, gApp->mBmpHeader, gApp->mBmpHeaderLen, NETCONN_NOCOPY);
+                        }
+
+                      netconn_write (request, kJpegBuffer1, frameBufLen, NETCONN_NOCOPY);
                       ok = true;
                       }
                     }
