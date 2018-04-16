@@ -6,6 +6,8 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdint.h>
+
+#include "cmsis_os.h"
 //}}}
 //{{{
 #ifdef __cplusplus
@@ -98,6 +100,8 @@ public:
   void displayOn();
 
   static cLcd* mLcd;
+  static bool mFrameWait;
+  static SemaphoreHandle_t mFrameSem;
 
 private:
   uint16_t* getBuffer();

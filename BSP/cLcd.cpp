@@ -31,10 +31,8 @@ extern const sFONT Font16;
 LTDC_HandleTypeDef hLtdcHandler;
 DMA2D_HandleTypeDef hDma2dHandler;
 cLcd* cLcd::mLcd = nullptr;
-bool gFrame = false;
-
-bool gFrameWait = false;
-SemaphoreHandle_t gFrameSem;
+bool cLcd::mFrameWait = false;
+SemaphoreHandle_t  cLcd::mFrameSem;
 
 extern "C" {
   //{{{
@@ -45,12 +43,12 @@ extern "C" {
       if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_LI) != RESET) {
         __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_LI);
 
-        if (gFrameWait) {
+        if (cLcd::mFrameWait) {
           portBASE_TYPE taskWoken = pdFALSE;
-          if (xSemaphoreGiveFromISR (gFrameSem, &taskWoken) == pdTRUE)
+          if (xSemaphoreGiveFromISR (cLcd::mFrameSem, &taskWoken) == pdTRUE)
             portEND_SWITCHING_ISR (taskWoken);
           }
-        gFrameWait = false;
+        cLcd::mFrameWait = false;
         }
       }
 
@@ -237,8 +235,8 @@ void cLcd::init() {
 
   // set line interupt line number
   LTDC->LIPCR = 0;
-  gFrameWait = false;
-  vSemaphoreCreateBinary (gFrameSem);
+  mFrameWait = false;
+  vSemaphoreCreateBinary (mFrameSem);
 
   // enable transferError,fifoUnderrun interrupt
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_TE);
@@ -271,16 +269,16 @@ uint16_t cLcd::GetTextHeight() { return Font16.mHeight; }
 //{{{
 void cLcd::start() {
 
-  gFrameWait = true;
-  xSemaphoreTake (gFrameSem, 100);
+  mFrameWait = true;
+  xSemaphoreTake (mFrameSem, 100);
   clear (LCD_COLOR_BLACK);
   }
 //}}}
 //{{{
 void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
 
-  gFrameWait = true;
-  xSemaphoreTake (gFrameSem, 100);
+  mFrameWait = true;
+  xSemaphoreTake (mFrameSem, 100);
 
   if (zoom)
     copyFrame (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
@@ -324,7 +322,6 @@ void cLcd::drawDebug() {
 //{{{
 void cLcd::present() {
 
-  gFrame = false;
   auto buffer = getBuffer();
   mFlip = !mFlip;
 

@@ -593,25 +593,6 @@ int cApp::loadFile (uint8_t* jpegBuffer) {
   }
 //}}}
 //{{{
-void cApp::saveFile (uint8_t* jpegHeadBuf, int jpegHeadLen, uint8_t* jpegBuf, int jpegLen, int num) {
-
-  char saveName[40];
-  sprintf (saveName, "saveImage%03d.jpg", num);
-  mLcd->debug (LCD_COLOR_GREEN, saveName);
-
-  FIL file;
-  if (!f_open (&file, saveName, FA_WRITE | FA_CREATE_ALWAYS)) {
-    UINT bytesWritten;
-    if (jpegHeadBuf && jpegHeadLen)
-      f_write (&file, jpegHeadBuf, jpegHeadLen, &bytesWritten);
-    f_write (&file, jpegBuf, jpegLen, &bytesWritten);
-    f_close (&file);
-    }
-  else
-    mLcd->debug (LCD_COLOR_RED, saveName);
-  }
-//}}}
-//{{{
 void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale) {
 
   jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
@@ -632,6 +613,26 @@ void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int s
   jpeg_finish_decompress (&mCinfo);
 
   mLcd->debug (LCD_COLOR_WHITE, "jpegDecode out:%dx%d %d", mCinfo.output_width, mCinfo.output_height, scale);
+  }
+//}}}
+
+//{{{
+void cApp::saveFile (uint8_t* jpegHeadBuf, int jpegHeadLen, uint8_t* jpegBuf, int jpegLen, int num) {
+
+  char saveName[40];
+  sprintf (saveName, "saveImage%03d.jpg", num);
+  mLcd->debug (LCD_COLOR_GREEN, saveName);
+
+  FIL file;
+  if (!f_open (&file, saveName, FA_WRITE | FA_CREATE_ALWAYS)) {
+    UINT bytesWritten;
+    if (jpegHeadBuf && jpegHeadLen)
+      f_write (&file, jpegHeadBuf, jpegHeadLen, &bytesWritten);
+    f_write (&file, jpegBuf, jpegLen, &bytesWritten);
+    f_close (&file);
+    }
+  else
+    mLcd->debug (LCD_COLOR_RED, saveName);
   }
 //}}}
 
