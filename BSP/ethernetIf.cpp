@@ -16,7 +16,7 @@ osSemaphoreId inputSemaphore = NULL;
 extern "C" { void ETH_IRQHandler() { HAL_ETH_IRQHandler (&EthHandle); }}
 
 //{{{
-void ethernetif_input (void const* argument) {
+void ethernetInput (void const* argument) {
 
   struct netif* netif = (struct netif*)argument;
 
@@ -78,65 +78,61 @@ void ethernetif_input (void const* argument) {
   }
 //}}}
 //{{{
-err_t low_level_output (struct netif* netif, struct pbuf* p) {
+err_t lowLevelOutput (struct netif* netif, struct pbuf* p) {
 
   err_t errval;
 
-  uint8_t* buffer = (uint8_t *)(EthHandle.TxDesc->Buffer1Addr);
-  __IO ETH_DMADescTypeDef* DmaTxDesc = EthHandle.TxDesc;
-  uint32_t bufferoffset = 0;
-  uint32_t framelength = 0;
+  __IO ETH_DMADescTypeDef* dmaTxDesc = EthHandle.TxDesc;
 
   // copy frame from pbufs to driver buffers
+  uint32_t bufOffset = 0;
+  uint32_t frameLength = 0;
+  uint8_t* buf = (uint8_t *)(EthHandle.TxDesc->Buffer1Addr);
   for (struct pbuf* q = p; q != NULL; q = q->next) {
-    // Is this buffer available? If not, goto error
-    if((DmaTxDesc->Status & ETH_DMATXDESC_OWN) != (uint32_t)RESET) {
+    // is this buffer available? If not, goto error
+    if ((dmaTxDesc->Status & ETH_DMATXDESC_OWN) != (uint32_t)RESET) {
       errval = ERR_USE;
-      goto error;
+      goto exit;
       }
 
-    // Get bytes in current lwIP buffer
-    uint32_t byteslefttocopy = q->len;
-    uint32_t payloadoffset = 0;
+    // get bytes in current lwIP buffer
+    uint32_t bytesLeft = q->len;
+    uint32_t payloadOffset = 0;
 
-    // Check if the length of data to copy is bigger than Tx buffer size
-    while( (byteslefttocopy + bufferoffset) > ETH_TX_BUF_SIZE) {
-      // Copy data to Tx buffer
-      memcpy( (uint8_t*)((uint8_t*)buffer + bufferoffset), (uint8_t*)((uint8_t*)q->payload + payloadoffset), (ETH_TX_BUF_SIZE - bufferoffset) );
+    // check if the length of data to copy is bigger than txBuffer size
+    while ((bytesLeft + bufOffset) > ETH_TX_BUF_SIZE) {
+      // copy data to txBuffer
+      memcpy ((uint8_t*)buf + bufOffset, (uint8_t*)q->payload + payloadOffset, ETH_TX_BUF_SIZE - bufOffset);
 
-      // Point to next descriptor
-      DmaTxDesc = (ETH_DMADescTypeDef*)(DmaTxDesc->Buffer2NextDescAddr);
-
-      // Check if the buffer is available
-      if ((DmaTxDesc->Status & ETH_DMATXDESC_OWN) != (uint32_t)RESET) {
+      // point to next descriptor
+      dmaTxDesc = (ETH_DMADescTypeDef*)(dmaTxDesc->Buffer2NextDescAddr);
+      // check if the buffer is available
+      if ((dmaTxDesc->Status & ETH_DMATXDESC_OWN) != (uint32_t)RESET) {
         errval = ERR_USE;
-        goto error;
+        goto exit;
+        }
+
+      buf = (uint8_t*)(dmaTxDesc->Buffer1Addr);
+      bytesLeft -= ETH_TX_BUF_SIZE - bufOffset;
+      payloadOffset += ETH_TX_BUF_SIZE - bufOffset;
+      frameLength += ETH_TX_BUF_SIZE - bufOffset;
+      bufOffset = 0;
       }
 
-      buffer = (uint8_t *)(DmaTxDesc->Buffer1Addr);
-
-      byteslefttocopy = byteslefttocopy - (ETH_TX_BUF_SIZE - bufferoffset);
-      payloadoffset = payloadoffset + (ETH_TX_BUF_SIZE - bufferoffset);
-      framelength = framelength + (ETH_TX_BUF_SIZE - bufferoffset);
-      bufferoffset = 0;
-      }
-
-    // Copy the remaining bytes
-    memcpy ((uint8_t*)((uint8_t*)buffer + bufferoffset), (uint8_t*)((uint8_t*)q->payload + payloadoffset), byteslefttocopy);
-    bufferoffset = bufferoffset + byteslefttocopy;
-    framelength = framelength + byteslefttocopy;
+    // copy the remaining bytes
+    memcpy ((uint8_t*)buf + bufOffset, (uint8_t*)q->payload + payloadOffset, bytesLeft);
+    bufOffset = bufOffset + bytesLeft;
+    frameLength = frameLength + bytesLeft;
     }
 
-  // Prepare transmit descriptors to give to DMA
-  HAL_ETH_TransmitFrame(&EthHandle, framelength);
+  // prepare transmit descriptors to give to DMA
+  HAL_ETH_TransmitFrame (&EthHandle, frameLength);
   errval = ERR_OK;
 
-error:
-  // When Transmit Underflow flag is set, clear it and issue a Transmit Poll Demand to resume transmission
+exit:
   if ((EthHandle.Instance->DMASR & ETH_DMASR_TUS) != (uint32_t)RESET) {
-    // Clear TUS ETHERNET DMA flag
+    // when Transmit Underflow flag is set, clear it and issue a Transmit Poll Demand to resume transmission
     EthHandle.Instance->DMASR = ETH_DMASR_TUS;
-    // Resume DMA transmission
     EthHandle.Instance->DMATPDR = 0;
     }
 
@@ -209,7 +205,7 @@ err_t ethernetIfInit (struct netif* netif) {
   // You can instead declare your own function an call etharp_output()
   // from it if you have to do some checks before sending (e.g. if link is available...)
   netif->output = etharp_output;
-  netif->linkoutput = low_level_output;
+  netif->linkoutput = lowLevelOutput;
 
   // initialize the hardware
   uint8_t macAddress[6]= { MAC_ADDR0, MAC_ADDR1, MAC_ADDR2, MAC_ADDR3, MAC_ADDR4, MAC_ADDR5 };
@@ -254,7 +250,7 @@ err_t ethernetIfInit (struct netif* netif) {
   inputSemaphore = osSemaphoreCreate (osSemaphore (SEM) , 1 );
 
   // create the task that handles the ETH_MAC
-  osThreadDef (ethIf, ethernetif_input, osPriorityRealtime, 0, 350);
+  osThreadDef (ethIf, ethernetInput, osPriorityRealtime, 0, 350);
   osThreadCreate (osThread (ethIf), netif);
 
   // enable MAC and DMA transmission and reception
