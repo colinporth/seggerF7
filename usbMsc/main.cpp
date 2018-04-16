@@ -64,8 +64,27 @@ public:
   cCamera* mCamera = nullptr;
   uint8_t mJpegHeader[700];
   int mJpegHeaderLen = 0;
-  uint8_t mBmpHeader[54];
-  int mBmpHeaderLen = 0;
+  uint8_t mBmpHeader[0x42] = {'B','M',  // 0 - bitmap file header
+                              0,0,0,0,  // 2  - filesize
+                              0,0,      // 6
+                              0,0,      // 8
+                              0x42,0,0,0, // 10
+                              0x28,0,0,0, // 0x0e - DIB header - BITMAPINFOHEADER - size of header
+                              0,0,0,0,  // 0x12 width
+                              0,0,0,0,  // 0x16 heigth
+                              1,0,      // 0x1A number color planes
+                              16,0,     // 0x1C bits per pixel
+                              3,0,0,0,  // 0x1E compression
+                              0,0,0,0,  // 0x22 image bits size
+                              0x13,0x0B,0,0, // 0x26 horz resolution in pixelm
+                              0x13,0x0B,0,0, // 0x2A vert resolution  0x0B13 = 72 dpi
+                              0,0,0,0,  // 0x2e #colors in pallete
+                              0,0,0,0,  // 0x32 #important colors
+                              0x00,0xF8,0x00,0x00,
+                              0xE0,0x07,0x00,0x00,
+                              0x1F,0x00,0x00,0x00,
+                              };
+  int mBmpHeaderLen = 0x42;
 
 protected:
   virtual void onProx (int x, int y, int z);
@@ -193,6 +212,7 @@ void cApp::run() {
 
     setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
     setBmpHeader (mCamera->getWidth(), mCamera->getHeight());
+
     mCinfo.scale_num = 1;
     mCinfo.scale_denom = (mCamera->getWidth() / mLcd->getWidth()) + 1;
     mCinfo.dct_method = JDCT_FLOAT;
@@ -822,11 +842,29 @@ void cApp::setJpegHeader (int width, int height, int qscale) {
 //{{{
 void cApp::setBmpHeader (int width, int height) {
 
-  mBmpHeaderLen = 54;
-  memset (mBmpHeader, 0, mBmpHeaderLen);
-  mBmpHeader[0x12] = width;
-  mBmpHeader[0x16] = height;
+  int imageSize = width*height*2;
+  int fileSize = mBmpHeaderLen + imageSize;
 
+  mBmpHeader[2] = fileSize & 0xFF;
+  mBmpHeader[3] = (fileSize >> 8) & 0xFF;
+  mBmpHeader[4] = (fileSize >> 16) & 0xFF;
+  mBmpHeader[5] = (fileSize >> 24) & 0xFF;
+
+  mBmpHeader[0x12] = width & 0xFF;
+  mBmpHeader[0x13] = (width >> 8) & 0xFF;
+  mBmpHeader[0x14] = (width >> 16) & 0xFF;
+  mBmpHeader[0x15] = (width >> 24) & 0xFF;
+
+  height = -height;
+  mBmpHeader[0x16] = height & 0xFF;
+  mBmpHeader[0x17] = (height >> 8) & 0xFF;
+  mBmpHeader[0x18] = (height >> 16) & 0xFF;
+  mBmpHeader[0x19] = (height >> 24) & 0xFF;
+
+  mBmpHeader[0x22] = imageSize & 0xFF;
+  mBmpHeader[0x23] = (imageSize >> 8) & 0xFF;
+  mBmpHeader[0x24] = (imageSize >> 16) & 0xFF;
+  mBmpHeader[0x25] = (imageSize >> 24) & 0xFF;
   }
 //}}}
 
@@ -901,9 +939,14 @@ void serverThread (void* arg) {
                         netconn_write (request, gApp->mJpegHeader, gApp->mJpegHeaderLen, NETCONN_NOCOPY);
                         }
                       else {
-                        cLcd::mLcd->debug (LCD_COLOR_YELLOW, "%x %x %d", frameBuf, gApp->mCamera->getBufEnd(), frameBufLen);
                         netconn_write (request, kBmpHeader, sizeof(kBmpHeader)-1, NETCONN_NOCOPY);
                         netconn_write (request, gApp->mBmpHeader, gApp->mBmpHeaderLen, NETCONN_NOCOPY);
+
+                        //for (int i = 0; i < frameBufLen; i +=2) {
+                        // auto tmp = kJpegBuffer1 [i];
+                        //  kJpegBuffer1 [i] = kJpegBuffer1 [i+1];
+                        //  kJpegBuffer1 [i+1] = tmp;
+                        //  }
                         }
 
                       netconn_write (request, kJpegBuffer1, frameBufLen, NETCONN_NOCOPY);
