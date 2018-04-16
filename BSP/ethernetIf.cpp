@@ -22,32 +22,32 @@ void ethernetInput (void const* argument) {
 
   while (true) {
     if (osSemaphoreWait (inputSemaphore, osWaitForever) == osOK) {
-      struct pbuf* p = NULL;
+      struct pbuf* pbuf = NULL;
       do {
         // get received frame
-        p = NULL;
+        pbuf = NULL;
         if (HAL_ETH_GetReceivedFrame_IT (&EthHandle) == HAL_OK) {
           uint16_t len = EthHandle.RxFrameInfos.length;
           uint8_t* buf = (uint8_t*)EthHandle.RxFrameInfos.buffer;
 
           if (len > 0) // allocate a pbuf chain of pbufs from Lwip bufferPool
-            p = pbuf_alloc (PBUF_RAW, len, PBUF_POOL);
-          if (p != NULL) {
+            pbuf = pbuf_alloc (PBUF_RAW, len, PBUF_POOL);
+          if (pbuf != NULL) {
             __IO ETH_DMADescTypeDef* dmaRxDesc = EthHandle.RxFrameInfos.FSRxDesc;
             uint32_t bufOffset = 0;
-            for (struct pbuf* q = p; q != NULL; q = q->next) {
-              // Copy data to pbuf, Check if the length of bytes to copy in current pbuf is bigger than Rx buffer size
-              uint32_t bytesLeft = q->len;
+            for (struct pbuf* qpbuf = pbuf; qpbuf != NULL; qpbuf = qpbuf->next) {
+              // copy data to pbuf, check length in current pbuf is bigger than Rx buffer size
+              uint32_t bytesLeft = qpbuf->len;
               uint32_t payloadOffset = 0;
               while ((bytesLeft + bufOffset) > ETH_RX_BUF_SIZE) {
-                memcpy ((uint8_t*)q->payload + payloadOffset, buf + bufOffset, ETH_RX_BUF_SIZE - bufOffset);
+                memcpy ((uint8_t*)qpbuf->payload + payloadOffset, buf + bufOffset, ETH_RX_BUF_SIZE - bufOffset);
                 dmaRxDesc = (ETH_DMADescTypeDef*)(dmaRxDesc->Buffer2NextDescAddr);
                 buf = (uint8_t*)(dmaRxDesc->Buffer1Addr);
                 bytesLeft -= (ETH_RX_BUF_SIZE - bufOffset);
                 payloadOffset += (ETH_RX_BUF_SIZE - bufOffset);
                 bufOffset = 0;
                 }
-              memcpy ((uint8_t*)q->payload + payloadOffset, buf + bufOffset, bytesLeft);
+              memcpy ((uint8_t*)qpbuf->payload + payloadOffset, buf + bufOffset, bytesLeft);
               bufOffset += bytesLeft;
               }
             }
@@ -68,17 +68,17 @@ void ethernetInput (void const* argument) {
             EthHandle.Instance->DMARPDR = 0;
             }
 
-          if (p)
-            if (netif->input (p, netif) != ERR_OK )
-              pbuf_free (p);
+          if (pbuf)
+            if (netif->input (pbuf, netif) != ERR_OK )
+              pbuf_free (pbuf);
           }
-        } while (p);
+        } while (pbuf);
       }
     }
   }
 //}}}
 //{{{
-err_t lowLevelOutput (struct netif* netif, struct pbuf* p) {
+err_t lowLevelOutput (struct netif* netif, struct pbuf* pbuf) {
 
   err_t errval;
 
@@ -88,7 +88,7 @@ err_t lowLevelOutput (struct netif* netif, struct pbuf* p) {
   uint32_t bufOffset = 0;
   uint32_t frameLength = 0;
   uint8_t* buf = (uint8_t *)(EthHandle.TxDesc->Buffer1Addr);
-  for (struct pbuf* q = p; q != NULL; q = q->next) {
+  for (struct pbuf* qpbuf = pbuf; qpbuf != NULL; qpbuf = qpbuf->next) {
     // is this buffer available? If not, goto error
     if ((dmaTxDesc->Status & ETH_DMATXDESC_OWN) != (uint32_t)RESET) {
       errval = ERR_USE;
@@ -96,13 +96,13 @@ err_t lowLevelOutput (struct netif* netif, struct pbuf* p) {
       }
 
     // get bytes in current lwIP buffer
-    uint32_t bytesLeft = q->len;
+    uint32_t bytesLeft = qpbuf->len;
     uint32_t payloadOffset = 0;
 
     // check if the length of data to copy is bigger than txBuffer size
     while ((bytesLeft + bufOffset) > ETH_TX_BUF_SIZE) {
       // copy data to txBuffer
-      memcpy ((uint8_t*)buf + bufOffset, (uint8_t*)q->payload + payloadOffset, ETH_TX_BUF_SIZE - bufOffset);
+      memcpy ((uint8_t*)buf + bufOffset, (uint8_t*)qpbuf->payload + payloadOffset, ETH_TX_BUF_SIZE - bufOffset);
 
       // point to next descriptor
       dmaTxDesc = (ETH_DMADescTypeDef*)(dmaTxDesc->Buffer2NextDescAddr);
@@ -120,7 +120,7 @@ err_t lowLevelOutput (struct netif* netif, struct pbuf* p) {
       }
 
     // copy the remaining bytes
-    memcpy ((uint8_t*)buf + bufOffset, (uint8_t*)q->payload + payloadOffset, bytesLeft);
+    memcpy ((uint8_t*)buf + bufOffset, (uint8_t*)qpbuf->payload + payloadOffset, bytesLeft);
     bufOffset = bufOffset + bytesLeft;
     frameLength = frameLength + bytesLeft;
     }
