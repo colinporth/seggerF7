@@ -8,7 +8,6 @@
 #include "usbd_msc.h"
 #include "../FatFs/ff.h"
 
-#include "cLcd.h"
 #include "stm32746g_discovery_sd.h"
 #include "cCamera.h"
 
@@ -35,16 +34,19 @@ uint8_t*  kJpegBuffer1  =  (uint8_t*)0xc0700000;
 //{{{
 class cApp : public cTouch {
 public:
+  //{{{
   cApp (int x, int y) : cTouch (x,y) {
     mBufferArray[0] = (uint8_t*)malloc (1600 * 3);
     mCinfo.err = jpeg_std_error (&jerr);
     jpeg_create_decompress (&mCinfo);
     }
+  //}}}
+  //{{{
   ~cApp() {
     jpeg_destroy_decompress (&mCinfo);
     }
+  //}}}
 
-  cLcd* getLcd() { return mLcd; }
   cPs2* getPs2() { return mPs2; }
 
   void init();
@@ -940,9 +942,16 @@ void cApp::setJpegHeader (int width, int height, int qscale) {
 //}}}
 
 //{{{
-void startThread (void* arg) {
+void appThread (void* arg) {
 
-  // network config
+  gApp->run();
+  //while (true)
+  //  osThreadTerminate(NULL);
+  }
+//}}}
+//{{{
+void netThread (void* arg) {
+
   tcpip_init (NULL, NULL);
 
   struct netif netIf;
@@ -961,22 +970,11 @@ void startThread (void* arg) {
   else
     netif_set_down (&netIf);
 
-  // init httpServer
-  sys_thread_new ("http", httpServerThread, NULL, DEFAULT_THREAD_STACKSIZE, osPriorityAboveNormal);
-
-  // init dhcp
   sys_thread_new ("dhcp", dhcpThread, &netIf, configMINIMAL_STACK_SIZE * 2, osPriorityBelowNormal);
+  sys_thread_new ("http", httpServerThread, NULL, DEFAULT_THREAD_STACKSIZE, osPriorityAboveNormal);
 
   while (true)
     osThreadTerminate(NULL);
-  }
-//}}}
-//{{{
-void appThread (void* arg) {
-
-  gApp->run();
-  //while (true)
-  //  osThreadTerminate(NULL);
   }
 //}}}
 
@@ -1092,8 +1090,8 @@ int main() {
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
   gApp->init();
 
-  sys_thread_new ("start", startThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
   sys_thread_new ("app", appThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
+  sys_thread_new ("net", netThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
   osKernelStart();
 
   while (true);
