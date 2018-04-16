@@ -174,7 +174,7 @@ void httpServerThread (void* arg) {
                   str[i++] = buf[len++];
                 }
               str[i] = 0;
-              gApp->getLcd()->debug (LCD_COLOR_YELLOW, str);
+              cLcd::mLcd->debug (LCD_COLOR_YELLOW, str);
               //}}}
 
               // simple HTTP GET command parser
@@ -252,20 +252,20 @@ void dhcpThread (void* arg) {
       case DHCP_WAIT_ADDRESS:
         if (dhcp_supplied_address (netif)) {
           dhcpState = DHCP_ADDRESS_ASSIGNED;
-          gApp->getLcd()->debug (LCD_COLOR_GREEN, "DHCP %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
+          cLcd::mLcd->debug (LCD_COLOR_GREEN, "DHCP %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
           }
         else {
           auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
           if (dhcp->tries > 4) {
             dhcpState = DHCP_TIMEOUT;
             dhcp_stop (netif);
-            gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP timeout");
+            cLcd::mLcd->debug (LCD_COLOR_RED, "DHCP timeout");
             }
           }
         break;
 
       case DHCP_LINK_DOWN:
-        gApp->getLcd()->debug (LCD_COLOR_RED, "DHCP link down");
+        cLcd::mLcd->debug (LCD_COLOR_RED, "DHCP link down");
         dhcp_stop (netif);
         dhcpState = DHCP_OFF;
         break;
@@ -1029,7 +1029,7 @@ void MPU_Config() {
 //{{{
 int main() {
 
-  MPU_Config();
+  //MPU_Config();
   SCB_EnableICache();
   SCB_EnableDCache();
 

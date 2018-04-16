@@ -8,6 +8,8 @@
 #include "lwip/timeouts.h"
 #include "netif/ethernet.h"
 #include "netif/etharp.h"
+
+#include "cLcd.h"
 //}}}
 
 ETH_HandleTypeDef EthHandle;
@@ -29,11 +31,13 @@ void ethernetInput (void const* argument) {
         if (HAL_ETH_GetReceivedFrame_IT (&EthHandle) == HAL_OK) {
           uint16_t len = EthHandle.RxFrameInfos.length;
           uint8_t* buf = (uint8_t*)EthHandle.RxFrameInfos.buffer;
+          __IO ETH_DMADescTypeDef* dmaRxDesc = EthHandle.RxFrameInfos.FSRxDesc;
+
+          //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethIn %x:%d", buf, len);
 
           if (len > 0) // allocate a pbuf chain of pbufs from Lwip bufferPool
             pbuf = pbuf_alloc (PBUF_RAW, len, PBUF_POOL);
-          if (pbuf != NULL) {
-            __IO ETH_DMADescTypeDef* dmaRxDesc = EthHandle.RxFrameInfos.FSRxDesc;
+          if (pbuf) {
             uint32_t bufOffset = 0;
             for (struct pbuf* qpbuf = pbuf; qpbuf != NULL; qpbuf = qpbuf->next) {
               // copy data to pbuf, check length in current pbuf is bigger than Rx buffer size
@@ -53,7 +57,7 @@ void ethernetInput (void const* argument) {
             }
 
           // release descriptors to DMA, point to first, set ownBit in Rx descriptor
-          __IO ETH_DMADescTypeDef* dmaRxDesc = EthHandle.RxFrameInfos.FSRxDesc;
+          dmaRxDesc = EthHandle.RxFrameInfos.FSRxDesc;
           for (uint32_t i = 0; i < EthHandle.RxFrameInfos.SegCount; i++) {
             dmaRxDesc->Status |= ETH_DMARXDESC_OWN;
             dmaRxDesc = (ETH_DMADescTypeDef*)(dmaRxDesc->Buffer2NextDescAddr);
@@ -63,13 +67,14 @@ void ethernetInput (void const* argument) {
           EthHandle.RxFrameInfos.SegCount = 0;
 
           if ((EthHandle.Instance->DMASR & ETH_DMASR_RBUS) != (uint32_t)RESET) {
-            // when rxBuffer unavailable flag is set, clear RBUS ETHERNET DMA flag, resume DMA reception
+            // rxBuffer unavailable flag set, clear RBUS ETHERNET DMA flag, resume DMA reception
             EthHandle.Instance->DMASR = ETH_DMASR_RBUS;
             EthHandle.Instance->DMARPDR = 0;
+            cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethIn rxBuffer unavailable");
             }
 
           if (pbuf)
-            if (netif->input (pbuf, netif) != ERR_OK )
+            if (netif->input (pbuf, netif) != ERR_OK)
               pbuf_free (pbuf);
           }
         } while (pbuf);
@@ -82,18 +87,25 @@ err_t lowLevelOutput (struct netif* netif, struct pbuf* pbuf) {
 
   err_t errval;
 
-  __IO ETH_DMADescTypeDef* dmaTxDesc = EthHandle.TxDesc;
-
   // copy frame from pbufs to driver buffers
   uint32_t bufOffset = 0;
   uint32_t frameLength = 0;
   uint8_t* buf = (uint8_t *)(EthHandle.TxDesc->Buffer1Addr);
+
   for (struct pbuf* qpbuf = pbuf; qpbuf != NULL; qpbuf = qpbuf->next) {
     // is this buffer available? If not, goto error
+    __IO ETH_DMADescTypeDef* dmaTxDesc = EthHandle.TxDesc;
     if ((dmaTxDesc->Status & ETH_DMATXDESC_OWN) != (uint32_t)RESET) {
-      errval = ERR_USE;
-      goto exit;
+      //{{{  buffer not available, error exit
+      if ((EthHandle.Instance->DMASR & ETH_DMASR_TUS) != (uint32_t)RESET) {
+        // transmitUnderflow flag set, clear it, issue txPollDemand to resume tx
+        EthHandle.Instance->DMASR = ETH_DMASR_TUS;
+        EthHandle.Instance->DMATPDR = 0;
+        cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethOut Transmit Underflow1");
+        }
+      return ERR_USE;
       }
+      //}}}
 
     // get bytes in current lwIP buffer
     uint32_t bytesLeft = qpbuf->len;
@@ -106,11 +118,17 @@ err_t lowLevelOutput (struct netif* netif, struct pbuf* pbuf) {
 
       // point to next descriptor
       dmaTxDesc = (ETH_DMADescTypeDef*)(dmaTxDesc->Buffer2NextDescAddr);
-      // check if the buffer is available
       if ((dmaTxDesc->Status & ETH_DMATXDESC_OWN) != (uint32_t)RESET) {
-        errval = ERR_USE;
-        goto exit;
+        //{{{  buffer not available, error exit
+        if ((EthHandle.Instance->DMASR & ETH_DMASR_TUS) != (uint32_t)RESET) {
+          // transmitUnderflow flag set, clear it, issue txPollDemand to resume tx
+          EthHandle.Instance->DMASR = ETH_DMASR_TUS;
+          EthHandle.Instance->DMATPDR = 0;
+          cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethOut Transmit Underflow2");
+          }
+        return ERR_USE;
         }
+        //}}}
 
       buf = (uint8_t*)(dmaTxDesc->Buffer1Addr);
       bytesLeft -= ETH_TX_BUF_SIZE - bufOffset;
@@ -125,18 +143,19 @@ err_t lowLevelOutput (struct netif* netif, struct pbuf* pbuf) {
     frameLength = frameLength + bytesLeft;
     }
 
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethOut %d", frameLength);
+
   // prepare transmit descriptors to give to DMA
   HAL_ETH_TransmitFrame (&EthHandle, frameLength);
-  errval = ERR_OK;
 
-exit:
   if ((EthHandle.Instance->DMASR & ETH_DMASR_TUS) != (uint32_t)RESET) {
-    // when Transmit Underflow flag is set, clear it and issue a Transmit Poll Demand to resume transmission
+    // transmitUnderflow flag set, clear it, issue txPollDemand to resume tx
     EthHandle.Instance->DMASR = ETH_DMASR_TUS;
     EthHandle.Instance->DMATPDR = 0;
+    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethOut Transmit Underflow3");
     }
 
-  return errval;
+  return ERR_OK;
   }
 //}}}
 
@@ -224,19 +243,23 @@ err_t ethernetIfInit (struct netif* netif) {
   if (HAL_ETH_Init (&EthHandle) == HAL_OK)
     netif->flags |= NETIF_FLAG_LINK_UP;
 
-  // init txDescriptors list: Chain Mode
-  HAL_ETH_DMATxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x2004C080, (uint8_t*)0x2004D8D0, ETH_TXBUFNB);
-
-  // init rxDescriptors list: Chain Mode
-  HAL_ETH_DMARxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x2004C000, (uint8_t*)0x2004C100, ETH_RXBUFNB);
+  // init rxDescriptors,txDescriptors, Chain Mode, hardCode buffers in SRAM2  0x2004C100 to 0x2004FFFF
+  // ETH_DMADescTypeDef  DMARxDscrTab[ETH_RXBUFNB] // Ethernet Rx DMA Descriptors - 256 = 0x80
+  // ETH_DMADescTypeDef  DMATxDscrTab[ETH_TXBUFNB] // Ethernet Tx DMA Descriptors - 256 = 0x80
+  // uint8_t Rx_Buff[ETH_RXBUFNB][ETH_RX_BUF_SIZE] // Ethernet Receive Buffers    - 1524*4 = 6096 = 0x17D0
+  // uint8_t Tx_Buff[ETH_TXBUFNB][ETH_TX_BUF_SIZE] // Ethernet Transmit Buffers   - 1524*4 = 6096 = 0x17D0
+  //HAL_ETH_DMARxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x2004C000, (uint8_t*)0x2004C100, ETH_RXBUFNB);
+  //HAL_ETH_DMATxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x2004C080, (uint8_t*)0x2004D8D0, ETH_TXBUFNB);
+  HAL_ETH_DMARxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x20000000, (uint8_t*)0x20000100, ETH_RXBUFNB);
+  HAL_ETH_DMATxDescListInit (&EthHandle, (ETH_DMADescTypeDef*)0x20000080, (uint8_t*)0x200018D0, ETH_TXBUFNB);
 
   // set netif MAC hardware address
-  netif->hwaddr[0] =  MAC_ADDR0;
-  netif->hwaddr[1] =  MAC_ADDR1;
-  netif->hwaddr[2] =  MAC_ADDR2;
-  netif->hwaddr[3] =  MAC_ADDR3;
-  netif->hwaddr[4] =  MAC_ADDR4;
-  netif->hwaddr[5] =  MAC_ADDR5;
+  netif->hwaddr[0] = MAC_ADDR0;
+  netif->hwaddr[1] = MAC_ADDR1;
+  netif->hwaddr[2] = MAC_ADDR2;
+  netif->hwaddr[3] = MAC_ADDR3;
+  netif->hwaddr[4] = MAC_ADDR4;
+  netif->hwaddr[5] = MAC_ADDR5;
   netif->hwaddr_len = ETHARP_HWADDR_LEN;
 
   // set netif maximum transfer unit

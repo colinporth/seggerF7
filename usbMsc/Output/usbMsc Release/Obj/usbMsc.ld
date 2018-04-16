@@ -2,7 +2,7 @@ MEMORY
 {
   UNPLACED_SECTIONS (wx) : ORIGIN = 0x100000000, LENGTH = 0
   FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 0x00100000
-  SRAM (wx) : ORIGIN = 0x20000000, LENGTH = 0x0004c000
+  SRAM (wx) : ORIGIN = 0x20004000, LENGTH = 0x0004c000
 }
 
 SECTIONS
@@ -10,8 +10,8 @@ SECTIONS
   __FLASH_segment_start__ = 0x08000000;
   __FLASH_segment_end__ = 0x08100000;
   __FLASH_segment_size__ = 0x00100000;
-  __SRAM_segment_start__ = 0x20000000;
-  __SRAM_segment_end__ = 0x2004c000;
+  __SRAM_segment_start__ = 0x20004000;
+  __SRAM_segment_end__ = 0x20050000;
   __SRAM_segment_size__ = 0x0004c000;
 
   __HEAPSIZE__ = 128000;
