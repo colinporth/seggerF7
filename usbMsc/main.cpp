@@ -214,23 +214,20 @@ void cApp::run() {
 
     if (!mCamera)
       mLcd->start();
-    else if (mCamera->getJpegMode()) {
-      if (!BSP_PB_GetState (BUTTON_KEY))
-        mLcd->start();
-      else {
-        jpegBuf = mCamera->getFrameBuf();
-        if (jpegBuf) {
+    else {
+      auto frameBuf = mCamera->getFrameBuf();
+      if (frameBuf) {
+        if (mCamera->getJpegMode()) {
           //{{{  jpeg decode buffer
-          jpegLen = mCamera->getFrameBufLen();
-
-          setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
+          auto mFrameBufLen = mCamera->getFrameBufLen();
 
           // decode jpeg header
+          setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
           jpeg_mem_src (&mCinfo, mHeader, mHeaderLen);
           jpeg_read_header (&mCinfo, TRUE);
 
           // decode jpeg body
-          jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
+          jpeg_mem_src (&mCinfo, frameBuf, mFrameBufLen);
           jpeg_start_decompress (&mCinfo);
 
           while (mCinfo.output_scanline < mCinfo.output_height) {
@@ -243,13 +240,8 @@ void cApp::run() {
           }
           //}}}
         else
-          mLcd->start();
+          mLcd->startBgnd ((uint16_t*)frameBuf, mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
         }
-      }
-    else {
-      auto rgb565Buf = mCamera->getFrameBuf();
-      if (rgb565Buf)
-        mLcd->startBgnd ((uint16_t*)rgb565Buf, mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
       else
         mLcd->start();
       }
