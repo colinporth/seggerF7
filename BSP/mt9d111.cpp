@@ -10,30 +10,6 @@ const bool kDebugIrq = false;
 const uint8_t kI2cAddress = 0x90;
 
 //{{{  dcmi defines
-#define DCMI_MODE_CONTINUOUS ((uint32_t)0x00000000U)
-#define DCMI_MODE_SNAPSHOT   ((uint32_t)DCMI_CR_CM)
-
-#define DCMI_PCKPOLARITY_FALLING ((uint32_t)0x00000000U)
-#define DCMI_PCKPOLARITY_RISING  ((uint32_t)DCMI_CR_PCKPOL)
-
-#define DCMI_VSPOLARITY_LOW  ((uint32_t)0x00000000U)
-#define DCMI_VSPOLARITY_HIGH ((uint32_t)DCMI_CR_VSPOL)
-
-#define DCMI_HSPOLARITY_LOW  ((uint32_t)0x00000000U)
-#define DCMI_HSPOLARITY_HIGH ((uint32_t)DCMI_CR_HSPOL)
-
-#define DCMI_JPEG_DISABLE    ((uint32_t)0x00000000U)
-#define DCMI_JPEG_ENABLE     ((uint32_t)DCMI_CR_JPEG)
-
-#define DCMI_CR_ALL_FRAME         ((uint32_t)0x00000000U)     // All frames are captured
-#define DCMI_CR_ALTERNATE_2_FRAME ((uint32_t)DCMI_CR_FCRC_0)  // Every alternate frame captured
-#define DCMI_CR_ALTERNATE_4_FRAME ((uint32_t)DCMI_CR_FCRC_1)  // One frame in 4 frames captured
-
-#define DCMI_EXTEND_DATA_8B  ((uint32_t)0x00000000U)                      // Interface captures 8-bit data on every pixel clock
-#define DCMI_EXTEND_DATA_10B ((uint32_t)DCMI_CR_EDM_0)                    // Interface captures 10-bit data on every pixel clock
-#define DCMI_EXTEND_DATA_12B ((uint32_t)DCMI_CR_EDM_1)                    // Interface captures 12-bit data on every pixel clock
-#define DCMI_EXTEND_DATA_14B ((uint32_t)(DCMI_CR_EDM_0 | DCMI_CR_EDM_1))  // Interface captures 14-bit data on every pixel clock
-
 #define DCMI_IT_FRAME        ((uint32_t)DCMI_IER_FRAME_IE)    // Capture complete interrupt
 #define DCMI_IT_OVR          ((uint32_t)DCMI_IER_OVR_IE)      // Overrun interrupt
 #define DCMI_IT_ERR          ((uint32_t)DCMI_IER_ERR_IE)      // Synchronization error interrupt
@@ -718,10 +694,7 @@ void cCamera::dcmiStart (uint8_t* buf) {
   // enable dcmi - error,overrun,vsync interrupts
   DCMI->IER |= DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC;
   // enable dcmi - continuous,capture,enable
-  DCMI->CR = DCMI_HSPOLARITY_LOW | DCMI_PCKPOLARITY_RISING |
-             DCMI_CR_ALL_FRAME | DCMI_EXTEND_DATA_8B | DCMI_JPEG_ENABLE |
-             DCMI_CR_CAPTURE | DCMI_MODE_CONTINUOUS |
-             DCMI_CR_ENABLE;
+  DCMI->CR = DCMI_CR_PCKPOL | DCMI_CR_JPEG | DCMI_CR_CAPTURE | DCMI_CR_ENABLE;
   }
 //}}}
 
@@ -738,8 +711,7 @@ void cCamera::preview() {
   write (0xf0, 1);
   write1 (0x270b, 0x0030); // mode_config = disable jpeg A,B
   write1 (0xA120, 0x00);   // Sequencer.params.mode - none
-  write1 (0xA103, 0x01);   // Sequencer goto preview A
-  HAL_Delay (100);
+  write1 (0xA103, 0x01);   // Sequencer transition to preview A
   }
 //}}}
 //{{{
@@ -757,9 +729,8 @@ void cCamera::jpeg() {
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
 
   write (0xf0, 1);
-  write1 (0x270b, 0x0010); // mode_config JPG bypass - shadow ifp page2 0x0a
+  write1 (0x270b, 0x0010); // mode_config - disable jpeg A, enable jpeg B
   write1 (0xA120, 0x02);   // Sequencer.params.mode - capture video
-  write1 (0xA103, 0x02);   // Sequencer goto capture B
-  HAL_Delay (100);
+  write1 (0xA103, 0x02);   // Sequencer transition to capture B
   }
 //}}}
