@@ -13,7 +13,7 @@ public:
   int getFps() { return 1000/mTookTicks; }
   int getFocus() { return mFocus; }
 
-  uint8_t* getFrameBuf();
+  uint8_t* getFrameBuf() { return mFrameBuf; }
   int getFrameBufLen() { return mFrameBufLen; }
 
   void setFocus (int value);
@@ -25,6 +25,9 @@ public:
 
 private:
   void gpioInit();
+
+  void write (uint8_t reg, uint16_t value);
+  void write1 (uint16_t reg, uint16_t value);
   void mt9d111Init();
 
   void dcmiStart (uint8_t* buffer);
