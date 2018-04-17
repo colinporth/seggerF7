@@ -224,6 +224,14 @@ void cCamera::dcmiIrqHandler() {
 
     uint32_t dmaBytes = (mXferSize - DMA2_Stream1->NDTR) * 4;
     if (mJpegMode) {
+      //{{{  status ifp page2 0x02
+      // b:0 = 1  transfer done
+      // b:1 = 1  output fifo overflow
+      // b:2 = 1  spoof oversize error
+      // b:3 = 1  reorder buffer error
+      // b:5:4    fifo watermark
+      // b:7:6    quant table 0 to 2
+      //}}}
       uint8_t jpegStatus = mFrameCur[dmaBytes-1];
       if ((jpegStatus & 0x0f) == 0x01) {
         mFrameBuf = nullptr;
@@ -569,11 +577,6 @@ void cCamera::mt9d111Init() {
 //{{{
 void cCamera::dcmiInit() {
 
-  DMA2_Stream1->CR = DMA_CHANNEL_1       | DMA_PERIPH_TO_MEMORY | DMA_CIRCULAR | DMA_PRIORITY_HIGH |
-                     DMA_PINC_DISABLE    | DMA_MINC_ENABLE |
-                     DMA_PDATAALIGN_WORD | DMA_MDATAALIGN_WORD | 
-                     DMA_PBURST_SINGLE   | DMA_MBURST_INC4;
-
   // config dma FCR - clear directMode and fifoThreshold
   auto tmp = DMA2_Stream1->FCR;
   tmp &= (uint32_t)~(DMA_SxFCR_DMDIS | DMA_SxFCR_FTH);
@@ -629,7 +632,6 @@ void cCamera::dcmiStart (uint8_t* buf) {
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", mXferMaxCount, mXferSize, dmaLen);
 
   // enable dma doubleBufferMode,  config src, dst addresses, length
-  DMA2_Stream1->CR |= (uint32_t)DMA_SxCR_DBM;
   DMA2_Stream1->PAR = (uint32_t)&(DCMI->DR);
   DMA2_Stream1->M0AR = (uint32_t)buf;
   DMA2_Stream1->M1AR = (uint32_t)(buf + (4*mXferSize));
@@ -642,18 +644,22 @@ void cCamera::dcmiStart (uint8_t* buf) {
   DMA2->LIFCR = DMA_FLAG_FEIF1_5;
   DMA2->LIFCR = DMA_FLAG_DMEIF1_5;
 
-  // enable dma interrupts
-  DMA2_Stream1->CR  |= DMA_IT_TC | DMA_IT_TE | DMA_IT_DME;
+  // enable interrupts, dma
   DMA2_Stream1->FCR |= DMA_IT_FE;
+  DMA2_Stream1->CR = DMA_CHANNEL_1       | 
+                     DMA_PERIPH_TO_MEMORY | DMA_CIRCULAR | DMA_SxCR_DBM | DMA_PRIORITY_HIGH |
+                     DMA_PDATAALIGN_WORD  | DMA_MDATAALIGN_WORD |
+                     DMA_PBURST_SINGLE    | DMA_MBURST_INC4 |
+                     DMA_PINC_DISABLE     | DMA_MINC_ENABLE |
+                     DMA_IT_TC | DMA_IT_TE | DMA_IT_DME |
+                     DMA_SxCR_EN;
 
-  // enable dma
-  DMA2_Stream1->CR |= DMA_SxCR_EN;
   // enable Error, overrun, vsync interrupts
   DCMI->IER |= DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC;
   // enable dcmi continuous, capture, enable
-  DCMI->CR = DCMI_CR_CAPTURE     | DCMI_MODE_CONTINUOUS    | DCMI_CR_ENABLE |
-             DCMI_HSPOLARITY_LOW | DCMI_PCKPOLARITY_RISING |
-             DCMI_CR_ALL_FRAME   | DCMI_EXTEND_DATA_8B     | DCMI_JPEG_ENABLE;
+  DCMI->CR = DCMI_HSPOLARITY_LOW | DCMI_PCKPOLARITY_RISING | DCMI_CR_ALL_FRAME | DCMI_EXTEND_DATA_8B | DCMI_JPEG_ENABLE |
+             DCMI_CR_CAPTURE | DCMI_MODE_CONTINUOUS |
+             DCMI_CR_ENABLE;
   }
 //}}}
 
@@ -687,14 +693,6 @@ void cCamera::jpeg() {
   mJpegMode = true;
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
 
-  //{{{  last data byte status ifp page2 0x02
-  // b:0 = 1  transfer done
-  // b:1 = 1  output fifo overflow
-  // b:2 = 1  spoof oversize error
-  // b:3 = 1  reorder buffer error
-  // b:5:4    fifo watermark
-  // b:7:6    quant table 0 to 2
-  //}}}
   CAMERA_IO_Write16 (i2cAddress, 0xf0, 0x0001);
 
   // mode_config JPG bypass - shadow ifp page2 0x0a
