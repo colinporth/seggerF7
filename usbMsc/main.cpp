@@ -25,7 +25,7 @@
 //}}}
 #define USE_CAMERA
 
-const char* kVersion = "WebCam 16/4/18";
+const char* kVersion = "WebCam 17/4/18";
 
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
 uint8_t*  kJpegBuffer   =  (uint8_t*)0xc0200000;
@@ -61,30 +61,13 @@ public:
     }
   //}}}
 
+  void setJpegHeader (int width, int height, int qscale);
+  void setBmpHeader (int width, int height);
+
   cCamera* mCamera = nullptr;
-  uint8_t mJpegHeader[700];
-  int mJpegHeaderLen = 0;
-  uint8_t mBmpHeader[0x42] = {'B','M',  // 0 - bitmap file header
-                              0,0,0,0,  // 2  - filesize
-                              0,0,      // 6
-                              0,0,      // 8
-                              0x42,0,0,0, // 10
-                              0x28,0,0,0, // 0x0e - DIB header - BITMAPINFOHEADER - size of header
-                              0,0,0,0,  // 0x12 width
-                              0,0,0,0,  // 0x16 heigth
-                              1,0,      // 0x1A number color planes
-                              16,0,     // 0x1C bits per pixel
-                              3,0,0,0,  // 0x1E compression
-                              0,0,0,0,  // 0x22 image bits size
-                              0x13,0x0B,0,0, // 0x26 horz resolution in pixelm
-                              0x13,0x0B,0,0, // 0x2A vert resolution  0x0B13 = 72 dpi
-                              0,0,0,0,  // 0x2e #colors in pallete
-                              0,0,0,0,  // 0x32 #important colors
-                              0x00,0xF8,0x00,0x00,
-                              0xE0,0x07,0x00,0x00,
-                              0x1F,0x00,0x00,0x00,
-                              };
-  int mBmpHeaderLen = 0x42;
+
+  int mHeaderLen = 0;
+  uint8_t mHeader[700];
 
 protected:
   virtual void onProx (int x, int y, int z);
@@ -110,8 +93,6 @@ private:
   int huffTableMarkerDC (uint8_t* ptr, const uint16_t* htable, int classId);
   int huffTableMarkerAC (uint8_t* ptr, const uint16_t* htable, int classId);
   int sosMarker (uint8_t* ptr);
-  void setJpegHeader (int width, int height, int qscale);
-  void setBmpHeader (int width, int height);
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
@@ -210,9 +191,6 @@ void cApp::run() {
     mCamera->init();
     mCamera->start (false, kJpegBuffer);
 
-    setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
-    setBmpHeader (mCamera->getWidth(), mCamera->getHeight());
-
     mCinfo.scale_num = 1;
     mCinfo.scale_denom = (mCamera->getWidth() / mLcd->getWidth()) + 1;
     mCinfo.dct_method = JDCT_FLOAT;
@@ -239,14 +217,15 @@ void cApp::run() {
       if (!BSP_PB_GetState (BUTTON_KEY))
         mLcd->start();
       else {
-        jpegBuf = mCamera->getFrameBuf (jpegLen);
+        jpegBuf = mCamera->getFrameBuf();
         if (jpegBuf) {
           //{{{  jpeg decode buffer
-          if (jpegBuf + jpegLen >  mCamera->getBufEnd())
-            memcpy ((void*)0xc0600000, kJpegBuffer, jpegBuf + jpegLen -  mCamera->getBufEnd());
+          jpegLen = mCamera->getFrameBufLen();
+
+          setJpegHeader (mCamera->getWidth(), mCamera->getHeight(), 6);
 
           // decode jpeg header
-          jpeg_mem_src (&mCinfo, mJpegHeader, mJpegHeaderLen);
+          jpeg_mem_src (&mCinfo, mHeader, mHeaderLen);
           jpeg_read_header (&mCinfo, TRUE);
 
           // decode jpeg body
@@ -267,10 +246,7 @@ void cApp::run() {
         }
       }
     else {
-      int rgb565Len = 0;
-      auto rgb565Buf = mCamera->getFrameBuf (rgb565Len);
-      if (rgb565Buf + rgb565Len > mCamera->getBufEnd())
-        memcpy ((void*)0xc0600000, rgb565Buf, rgb565Buf + rgb565Len -  mCamera->getBufEnd());
+      auto rgb565Buf = mCamera->getFrameBuf();
       if (rgb565Buf)
         mLcd->startBgnd ((uint16_t*)rgb565Buf, mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
       else
@@ -445,92 +421,6 @@ void cApp::reportFree() {
     int totalSectors = (fatFs->n_fatent - 2) * fatFs->csize;
     mLcd->debug (LCD_COLOR_WHITE, "%d free of %d total", freeSectors/2, totalSectors/2);
     }
-  }
-//}}}
-
-//{{{
-int cApp::loadFile (uint8_t* jpegBuffer) {
-
-  auto fatFs = (FATFS*)malloc (sizeof (FATFS));
-  if (!f_mount (fatFs, "", 0)) {
-    f_getlabel ("", mLabel, &mVsn);
-    mLcd->debug (LCD_COLOR_WHITE, "Label <%s> ", mLabel);
-
-    //char pathName[256] = "/";
-    //readDirectory (pathName);
-    FILINFO filInfo;
-    if (!f_stat ("image.jpg", &filInfo))
-      mLcd->debug (LCD_COLOR_WHITE, "%d %u/%02u/%02u %02u:%02u %c%c%c%c%c",
-                   (int)(filInfo.fsize),
-                   (filInfo.fdate >> 9) + 1980, filInfo.fdate >> 5 & 15, filInfo.fdate & 31,
-                    filInfo.ftime >> 11, filInfo.ftime >> 5 & 63,
-                   (filInfo.fattrib & AM_DIR) ? 'D' : '-',
-                   (filInfo.fattrib & AM_RDO) ? 'R' : '-',
-                   (filInfo.fattrib & AM_HID) ? 'H' : '-',
-                   (filInfo.fattrib & AM_SYS) ? 'S' : '-',
-                   (filInfo.fattrib & AM_ARC) ? 'A' : '-');
-
-    FIL file;
-    if (!f_open (&file, "image.jpg", FA_READ)) {
-      mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
-      UINT bytesRead;
-      f_read (&file, (void*)jpegBuffer, (UINT)filInfo.fsize, &bytesRead);
-      mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
-      f_close (&file);
-      if (bytesRead > 0)
-        jpegDecode (kJpegBuffer, bytesRead, kRgb565Buffer, 4);
-      return bytesRead;
-      }
-    else
-      mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
-    }
-  else
-    mLcd->debug (LCD_COLOR_RED, "not mounted");
-
-  return 0;
-  }
-//}}}
-//{{{
-void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale) {
-
-  jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
-  jpeg_read_header (&mCinfo, TRUE);
-
-  mLcd->debug (LCD_COLOR_WHITE, "jpegDecode in:%dx%d", mCinfo.image_width, mCinfo.image_height);
-
-  mCinfo.dct_method = JDCT_FLOAT;
-  mCinfo.out_color_space = JCS_RGB;
-  mCinfo.scale_num = 1;
-  mCinfo.scale_denom = scale;
-
-  jpeg_start_decompress (&mCinfo);
-  while (mCinfo.output_scanline < mCinfo.output_height) {
-    jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-    mLcd->convertRgb888toRgbB565 (mBufferArray[0], rgb565buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
-    }
-  jpeg_finish_decompress (&mCinfo);
-
-  mLcd->debug (LCD_COLOR_WHITE, "jpegDecode out:%dx%d %d", mCinfo.output_width, mCinfo.output_height, scale);
-  }
-//}}}
-
-//{{{
-void cApp::saveFile (uint8_t* jpegHeadBuf, int jpegHeadLen, uint8_t* jpegBuf, int jpegLen, int num) {
-
-  char saveName[40];
-  sprintf (saveName, "saveImage%03d.jpg", num);
-  mLcd->debug (LCD_COLOR_GREEN, saveName);
-
-  FIL file;
-  if (!f_open (&file, saveName, FA_WRITE | FA_CREATE_ALWAYS)) {
-    UINT bytesWritten;
-    if (jpegHeadBuf && jpegHeadLen)
-      f_write (&file, jpegHeadBuf, jpegHeadLen, &bytesWritten);
-    f_write (&file, jpegBuf, jpegLen, &bytesWritten);
-    f_close (&file);
-    }
-  else
-    mLcd->debug (LCD_COLOR_RED, saveName);
   }
 //}}}
 
@@ -823,48 +713,160 @@ int cApp::sosMarker (uint8_t* ptr) {
 //{{{
 void cApp::setJpegHeader (int width, int height, int qscale) {
 
-  auto ptr = mJpegHeader;
+  auto ptr = mHeader;
 
   *ptr++ = 0xFF; // SOI marker
   *ptr++ = 0xD8;
-  mJpegHeaderLen = 2;
+  mHeaderLen = 2;
 
-  mJpegHeaderLen += jfifApp0Marker (ptr);
-  mJpegHeaderLen += quantTableMarker (mJpegHeader + mJpegHeaderLen, qscale);
-  mJpegHeaderLen += sofMarker (mJpegHeader + mJpegHeaderLen, width, height);
-  mJpegHeaderLen += huffTableMarkerAC (mJpegHeader + mJpegHeaderLen, &kJpegStdHuffmanTbl[0], 0x10);
-  mJpegHeaderLen += huffTableMarkerAC (mJpegHeader + mJpegHeaderLen, &kJpegStdHuffmanTbl[176], 0x11);
-  mJpegHeaderLen += huffTableMarkerDC (mJpegHeader + mJpegHeaderLen, &kJpegStdHuffmanTbl[352], 0x00);
-  mJpegHeaderLen += huffTableMarkerDC (mJpegHeader + mJpegHeaderLen, &kJpegStdHuffmanTbl[368], 0x01);
-  mJpegHeaderLen += sosMarker (mJpegHeader + mJpegHeaderLen);
+  mHeaderLen += jfifApp0Marker (ptr);
+  mHeaderLen += quantTableMarker (mHeader + mHeaderLen, qscale);
+  mHeaderLen += sofMarker (mHeader + mHeaderLen, width, height);
+  mHeaderLen += huffTableMarkerAC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[0], 0x10);
+  mHeaderLen += huffTableMarkerAC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[176], 0x11);
+  mHeaderLen += huffTableMarkerDC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[352], 0x00);
+  mHeaderLen += huffTableMarkerDC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[368], 0x01);
+  mHeaderLen += sosMarker (mHeader + mHeaderLen);
+  }
+//}}}
+
+//{{{
+void cApp::setBmpHeader (int width, int height) {
+// set RGB565 16bpp bmp header, minimal for pic no greater than 1600x1200
+
+  const int kHeaderLen = 14;
+  const int kDibLen = 0x28;
+  const int kMaskLen = 12;
+
+  int imageSize = width*height*2;
+  int fileSize = mHeaderLen + imageSize;
+
+  mHeaderLen = kHeaderLen + kDibLen + kMaskLen;
+
+  memset (mHeader, 0, mHeaderLen);
+
+  mHeader[0] = 'B';  // magic
+  mHeader[1] = 'M';
+
+  mHeader[2] = fileSize;
+  mHeader[3] = fileSize >> 8;
+  mHeader[4] = fileSize >> 16;
+
+  mHeader[0x0a] = mHeaderLen;
+  mHeader[0x0e] = kDibLen;
+
+  mHeader[0x12] = width;
+  mHeader[0x13] = width >> 8;
+
+  mHeader[0x16] = -height;
+  mHeader[0x17] = -height >> 8;
+  mHeader[0x18] = -height >> 16;
+  mHeader[0x19] = -height >> 24;
+
+  mHeader[0x1A] = 1;  // 0x1A number color planes
+  mHeader[0x1C] = 16; // 0x1C bits per pixel
+  mHeader[0x1E] = 3;  // 0x1E compression
+
+  mHeader[0x22] = imageSize;
+  mHeader[0x23] = imageSize >> 8;
+  mHeader[0x24] = imageSize >> 16;
+
+  mHeader[0x26] = 0x13; // 0x26 horz resolution 72 dpi
+  mHeader[0x27] = 0x0B;
+
+  mHeader[0x2a] = 0x13; // 0x2a horz resolution 72 dpi
+  mHeader[0x2b] = 0x0B;
+
+  mHeader[0x37] = 0xF8;
+  mHeader[0x3A] = 0xE0;
+  mHeader[0x3B] = 0x07;
+  mHeader[0x3E] = 0x1F;
+  }
+//}}}
+
+//{{{
+int cApp::loadFile (uint8_t* jpegBuffer) {
+
+  auto fatFs = (FATFS*)malloc (sizeof (FATFS));
+  if (!f_mount (fatFs, "", 0)) {
+    f_getlabel ("", mLabel, &mVsn);
+    mLcd->debug (LCD_COLOR_WHITE, "Label <%s> ", mLabel);
+
+    //char pathName[256] = "/";
+    //readDirectory (pathName);
+    FILINFO filInfo;
+    if (!f_stat ("image.jpg", &filInfo))
+      mLcd->debug (LCD_COLOR_WHITE, "%d %u/%02u/%02u %02u:%02u %c%c%c%c%c",
+                   (int)(filInfo.fsize),
+                   (filInfo.fdate >> 9) + 1980, filInfo.fdate >> 5 & 15, filInfo.fdate & 31,
+                    filInfo.ftime >> 11, filInfo.ftime >> 5 & 63,
+                   (filInfo.fattrib & AM_DIR) ? 'D' : '-',
+                   (filInfo.fattrib & AM_RDO) ? 'R' : '-',
+                   (filInfo.fattrib & AM_HID) ? 'H' : '-',
+                   (filInfo.fattrib & AM_SYS) ? 'S' : '-',
+                   (filInfo.fattrib & AM_ARC) ? 'A' : '-');
+
+    FIL file;
+    if (!f_open (&file, "image.jpg", FA_READ)) {
+      mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
+      UINT bytesRead;
+      f_read (&file, (void*)jpegBuffer, (UINT)filInfo.fsize, &bytesRead);
+      mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
+      f_close (&file);
+      if (bytesRead > 0)
+        jpegDecode (kJpegBuffer, bytesRead, kRgb565Buffer, 4);
+      return bytesRead;
+      }
+    else
+      mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
+    }
+  else
+    mLcd->debug (LCD_COLOR_RED, "not mounted");
+
+  return 0;
   }
 //}}}
 //{{{
-void cApp::setBmpHeader (int width, int height) {
+void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale) {
 
-  int imageSize = width*height*2;
-  int fileSize = mBmpHeaderLen + imageSize;
+  jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
+  jpeg_read_header (&mCinfo, TRUE);
 
-  mBmpHeader[2] = fileSize & 0xFF;
-  mBmpHeader[3] = (fileSize >> 8) & 0xFF;
-  mBmpHeader[4] = (fileSize >> 16) & 0xFF;
-  mBmpHeader[5] = (fileSize >> 24) & 0xFF;
+  mLcd->debug (LCD_COLOR_WHITE, "jpegDecode in:%dx%d", mCinfo.image_width, mCinfo.image_height);
 
-  mBmpHeader[0x12] = width & 0xFF;
-  mBmpHeader[0x13] = (width >> 8) & 0xFF;
-  mBmpHeader[0x14] = (width >> 16) & 0xFF;
-  mBmpHeader[0x15] = (width >> 24) & 0xFF;
+  mCinfo.dct_method = JDCT_FLOAT;
+  mCinfo.out_color_space = JCS_RGB;
+  mCinfo.scale_num = 1;
+  mCinfo.scale_denom = scale;
 
-  height = -height;
-  mBmpHeader[0x16] = height & 0xFF;
-  mBmpHeader[0x17] = (height >> 8) & 0xFF;
-  mBmpHeader[0x18] = (height >> 16) & 0xFF;
-  mBmpHeader[0x19] = (height >> 24) & 0xFF;
+  jpeg_start_decompress (&mCinfo);
+  while (mCinfo.output_scanline < mCinfo.output_height) {
+    jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
+    mLcd->convertRgb888toRgbB565 (mBufferArray[0], rgb565buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
+    }
+  jpeg_finish_decompress (&mCinfo);
 
-  mBmpHeader[0x22] = imageSize & 0xFF;
-  mBmpHeader[0x23] = (imageSize >> 8) & 0xFF;
-  mBmpHeader[0x24] = (imageSize >> 16) & 0xFF;
-  mBmpHeader[0x25] = (imageSize >> 24) & 0xFF;
+  mLcd->debug (LCD_COLOR_WHITE, "jpegDecode out:%dx%d %d", mCinfo.output_width, mCinfo.output_height, scale);
+  }
+//}}}
+
+//{{{
+void cApp::saveFile (uint8_t* jpegHeadBuf, int jpegHeadLen, uint8_t* jpegBuf, int jpegLen, int num) {
+
+  char saveName[40];
+  sprintf (saveName, "saveImage%03d.jpg", num);
+  mLcd->debug (LCD_COLOR_GREEN, saveName);
+
+  FIL file;
+  if (!f_open (&file, saveName, FA_WRITE | FA_CREATE_ALWAYS)) {
+    UINT bytesWritten;
+    if (jpegHeadBuf && jpegHeadLen)
+      f_write (&file, jpegHeadBuf, jpegHeadLen, &bytesWritten);
+    f_write (&file, jpegBuf, jpegLen, &bytesWritten);
+    f_close (&file);
+    }
+  else
+    mLcd->debug (LCD_COLOR_RED, saveName);
   }
 //}}}
 
@@ -920,36 +922,23 @@ void serverThread (void* arg) {
                 else if (!strncmp (buf, "GET /cam.jpg", 12)) {
                   //{{{  cam.jpg
                   if (gApp->mCamera) {
-                    int frameBufLen;
-                    auto frameBuf = gApp->mCamera->getFrameBuf (frameBufLen);
-
+                    auto frameBuf = gApp->mCamera->getFrameBuf();
                     if (frameBuf) {
-                      if (frameBuf + frameBufLen <= gApp->mCamera->getBufEnd())
-                        memcpy (kJpegBuffer1, frameBuf, frameBufLen);
-                      else {
-                        // wrap around case
-                        uint32_t firstChunkLen = gApp->mCamera->getBufEnd() - frameBuf;
-                        memcpy (kJpegBuffer1, frameBuf, firstChunkLen);
-                        memcpy (kJpegBuffer1 + firstChunkLen, kJpegBuffer, frameBufLen - firstChunkLen);
-                        cLcd::mLcd->debug (LCD_COLOR_YELLOW, "wraparound");
-                        }
+                      int frameBufLen = gApp->mCamera->getFrameBufLen();
 
+                      // append http response header, fileFormat header
                       if (gApp->mCamera->getJpegMode()) {
+                        gApp->setJpegHeader (gApp->mCamera->getWidth(), gApp->mCamera->getHeight(), 6);
                         netconn_write (request, kJpegHeader, sizeof(kJpegHeader)-1, NETCONN_NOCOPY);
-                        netconn_write (request, gApp->mJpegHeader, gApp->mJpegHeaderLen, NETCONN_NOCOPY);
+                        netconn_write (request, gApp->mHeader, gApp->mHeaderLen, NETCONN_NOCOPY);
                         }
                       else {
+                        gApp->setBmpHeader (gApp->mCamera->getWidth(), gApp->mCamera->getHeight());
                         netconn_write (request, kBmpHeader, sizeof(kBmpHeader)-1, NETCONN_NOCOPY);
-                        netconn_write (request, gApp->mBmpHeader, gApp->mBmpHeaderLen, NETCONN_NOCOPY);
-
-                        //for (int i = 0; i < frameBufLen; i +=2) {
-                        // auto tmp = kJpegBuffer1 [i];
-                        //  kJpegBuffer1 [i] = kJpegBuffer1 [i+1];
-                        //  kJpegBuffer1 [i+1] = tmp;
-                        //  }
+                        netconn_write (request, gApp->mHeader, gApp->mHeaderLen, NETCONN_NOCOPY);
                         }
 
-                      netconn_write (request, kJpegBuffer1, frameBufLen, NETCONN_NOCOPY);
+                      netconn_write (request, frameBuf, frameBufLen, NETCONN_NOCOPY);
                       ok = true;
                       }
                     }

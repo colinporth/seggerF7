@@ -13,8 +13,7 @@ public:
   int getFps() { return 1000/mTookTicks; }
   int getFocus() { return mFocus; }
 
-  uint8_t* getFrameBuf (int& frameBufLen) { frameBufLen = mFrameBufLen; return mFrameBuf; }
-  uint8_t* getBufEnd() { return mBufEnd; }
+  uint8_t* getFrameBuf();
   int getFrameBufLen() { return mFrameBufLen; }
 
   void setFocus (int value);
@@ -34,7 +33,7 @@ private:
   void preview();
   void jpeg();
 
-  //{{{  vars
+  // vars
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;
   bool mJpegMode = false;
@@ -60,13 +59,12 @@ private:
   __IO uint32_t mXferCount;    // DMA transfer counter
   __IO uint32_t mXferSize;     // DMA transfer size
   uint32_t mXferMaxCount;      // DMA transfer number
-  uint8_t* mBufPtr = nullptr;  // Pointer to DMA output buffer
-  uint8_t* mCurPtr = nullptr;  // Pointer to DMA output buffer
 
+  uint8_t* mBufStart = nullptr;
+  uint8_t* mBufEnd = nullptr;
+
+  uint8_t* mFrameStart = nullptr;
+  uint8_t* mFrameCur = nullptr;
   uint8_t* mFrameBuf = nullptr;
   int mFrameBufLen = 0;
-
-  uint8_t* mStartFramePtr = nullptr;
-  uint8_t* mBufEnd = nullptr;
-  //}}}
   };

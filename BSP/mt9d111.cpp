@@ -85,6 +85,14 @@ void cCamera::init() {
   }
 //}}}
 
+uint8_t* cCamera::getFrameBuf() {
+
+  if (mFrameBuf + mFrameBufLen > mBufEnd) // wrap around
+    memcpy (mBufEnd, mBufStart, mFrameBuf + mFrameBufLen - mBufEnd);
+
+  return mFrameBuf;
+  }
+
 //{{{
 void cCamera::setFocus (int value) {
 
@@ -132,11 +140,11 @@ void cCamera::dmaIrqHandler() {
       mDmaBaseRegisters->IFCR = DMA_FLAG_TCIF0_4 << mStreamIndex;
 
       mXferCount++;
-      mCurPtr += 4 * mXferSize;
+      mFrameCur += 4 * mXferSize;
 
       if (mXferCount <= mXferMaxCount - 2) {
         // next dma chunk
-        auto buf = mBufPtr + ((mXferCount+1) * (4 * mXferSize));
+        auto buf = mBufStart + ((mXferCount+1) * (4 * mXferSize));
         if (mXferCount & 1)
           DMA2_Stream1->M0AR = (uint32_t)buf;
         else
@@ -145,15 +153,15 @@ void cCamera::dmaIrqHandler() {
         }
       else if (mXferCount == mXferMaxCount - 1) {
         // penultimate chunk, reset M0AR for next frame
-        DMA2_Stream1->M0AR = (uint32_t)mBufPtr;
+        DMA2_Stream1->M0AR = (uint32_t)mBufStart;
         //cLcd::mLcd->debug (LCD_COLOR_CYAN, "dma %d", mXferCount);
         }
       else {
         // last chunk, reset M1AR, mXferCount for next frame
-        DMA2_Stream1->M1AR = (uint32_t)mBufPtr + (4 * mXferSize);
+        DMA2_Stream1->M1AR = (uint32_t)mBufStart + (4 * mXferSize);
         //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d done", mXferCount);
         mXferCount = 0;
-        mCurPtr = mBufPtr;
+        mFrameCur = mBufStart;
         }
       }
     }
@@ -213,13 +221,17 @@ void cCamera::dcmiIrqHandler() {
 
     uint32_t dmaBytes = (mXferSize - DMA2_Stream1->NDTR) * 4;
     if (mJpegMode) {
-      uint8_t jpegStatus = mCurPtr[dmaBytes-1];
+      uint8_t jpegStatus = mFrameCur[dmaBytes-1];
       if ((jpegStatus & 0x0f) == 0x01) {
         mFrameBuf = nullptr;
-        mFrameBufLen = (mCurPtr[dmaBytes-2] << 16) + (mCurPtr[dmaBytes-3] << 8) + mCurPtr[dmaBytes-4];
-        mStartFramePtr[mFrameBufLen++] = 0xFF;
-        mStartFramePtr[mFrameBufLen++] = 0xD9;
-        mFrameBuf = mStartFramePtr;
+        // read true length
+        mFrameBufLen = (mFrameCur[dmaBytes-2] << 16) + (mFrameCur[dmaBytes-3] << 8) + mFrameCur[dmaBytes-4];
+
+        // append EOI
+        mBufStart[mFrameBufLen++] = 0xFF;
+        mFrameStart[mFrameBufLen++] = 0xD9;
+
+        mFrameBuf = mFrameStart;
         if (kDebugIrq)
           cLcd::mLcd->debug (LCD_COLOR_GREEN,
                              "v%2d:%6d:%8x %x:%d", mXferCount,dmaBytes,mFrameBuf, jpegStatus,mFrameBufLen);
@@ -229,16 +241,17 @@ void cCamera::dcmiIrqHandler() {
         mFrameBufLen = 0;
         if (kDebugIrq)
           cLcd::mLcd->debug (LCD_COLOR_WHITE,
-                             "v%d:%d %x %d", mXferCount,dmaBytes, jpegStatus, mCurPtr + dmaBytes - mStartFramePtr);
+                             "v%d:%d %x %d", mXferCount,dmaBytes, jpegStatus, mFrameCur + dmaBytes - mFrameStart);
         }
       }
     else {
-      mFrameBuf = mStartFramePtr;
+      mFrameBuf = mFrameStart;
       mFrameBufLen = getWidth()*getHeight()*2;
       if (kDebugIrq)
         cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrameBuf, mFrameBufLen);
       }
-    mStartFramePtr = mCurPtr + dmaBytes;
+
+    mFrameStart = mFrameCur + dmaBytes;
     }
   }
 //}}}
@@ -604,10 +617,23 @@ void cCamera::dcmiInit() {
 //}}}
 
 //{{{
-void cCamera::dcmiStart (uint8_t* buffer) {
+void cCamera::dcmiStart (uint8_t* buf) {
 
+  mBufStart = buf;
   uint32_t dmaLen = mJpegMode ? 0x00100000 : getWidth()*getHeight()*2;
-  mBufEnd = buffer + (4 * dmaLen);
+  mBufEnd = buf + (4 * dmaLen);
+
+  mFrameStart = mBufStart;
+  mFrameCur = mBufStart;
+
+  // calc the number of xfers with xferSize <= 64k
+  mXferCount = 0;
+  mXferMaxCount = 1;
+  mXferSize = dmaLen;
+  while (mXferSize > 0xFFFF) {
+    mXferSize = mXferSize / 2;
+    mXferMaxCount = mXferMaxCount * 2;
+    }
 
   // disable DCMI by resetting DCMIEN bit
   DCMI->CR &= ~DCMI_CR_ENABLE;
@@ -621,24 +647,11 @@ void cCamera::dcmiStart (uint8_t* buffer) {
   // config the DCMI Mode
   DCMI->CR = (DCMI->CR & ~(DCMI_CR_CM)) | DCMI_MODE_CONTINUOUS;
 
-  mBufPtr = buffer;
-  mCurPtr = mBufPtr;
-  mStartFramePtr = mBufPtr;
-
-  // calc the number of xfers with xferSize <= 64k
-  mXferCount = 0;
-  mXferMaxCount = 1;
-  mXferSize = dmaLen;
-  while (mXferSize > 0xFFFF) {
-    mXferSize = mXferSize / 2;
-    mXferMaxCount = mXferMaxCount * 2;
-    }
-
   // enable dma doubleBufferMode,  config src, dst addresses, length
   DMA2_Stream1->CR |= (uint32_t)DMA_SxCR_DBM;
   DMA2_Stream1->PAR = (uint32_t)&DCMI->DR;
-  DMA2_Stream1->M0AR = (uint32_t)buffer;
-  DMA2_Stream1->M1AR = (uint32_t)(buffer + (4*mXferSize));
+  DMA2_Stream1->M0AR = (uint32_t)buf;
+  DMA2_Stream1->M1AR = (uint32_t)(buf + (4*mXferSize));
   DMA2_Stream1->NDTR = mXferSize;
 
   // clear all dma flags
