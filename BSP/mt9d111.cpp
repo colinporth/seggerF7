@@ -76,12 +76,29 @@ void cCamera::init() {
   CAMERA_IO_Init();
   CAMERA_IO_Write16 (i2cAddress, 0xF0, 0);
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (i2cAddress, 0));
-
-  // init camera registers
   mt9d111Init();
 
-  // startup dcmi
-  dcmiInit();
+  // init dcmi dma
+  // - mDmaBaseRegisters, mStreamIndex
+  const uint8_t kFlagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
+
+  auto streamNum = (((uint32_t)DMA2_Stream1 & 0xFFU) - 16U) / 24U;
+  mStreamIndex = kFlagBitshiftOffset[streamNum];
+  if (streamNum > 3U) // return pointer to HISR and HIFCR
+    mDmaBaseRegisters = (tDmaBaseRegisters*)(((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU)) + 4U);
+  else // return pointer to LISR and LIFCR
+    mDmaBaseRegisters = (tDmaBaseRegisters*)((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU));
+
+  // clear all dma interrupt flags
+  mDmaBaseRegisters->IFCR = 0x3FU << mStreamIndex;
+
+  // NVIC configuration for DCMI transfer complete interrupt
+  HAL_NVIC_SetPriority (DCMI_IRQn, 0x0F, 0);
+  HAL_NVIC_EnableIRQ (DCMI_IRQn);
+
+  // NVIC configuration for DMA2D transfer complete interrupt
+  HAL_NVIC_SetPriority (DMA2_Stream1_IRQn, 0x0F, 0);
+  HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
   }
 //}}}
 
@@ -257,7 +274,7 @@ void cCamera::dcmiIrqHandler() {
       }
     else {
       mFrameBuf = mFrameStart;
-      mFrameBufLen = getWidth()*getHeight()*2;
+      mFrameBufLen = mFixedFrameLen;
       if (kDebugIrq)
         cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrameBuf, mFrameBufLen);
       }
@@ -574,54 +591,23 @@ void cCamera::mt9d111Init() {
   HAL_Delay (100);
   }
 //}}}
-//{{{
-void cCamera::dcmiInit() {
-
-  // config dma FCR - clear directMode and fifoThreshold
-  auto tmp = DMA2_Stream1->FCR;
-  tmp &= (uint32_t)~(DMA_SxFCR_DMDIS | DMA_SxFCR_FTH);
-  tmp |= DMA_FIFOMODE_ENABLE | DMA_FIFO_THRESHOLD_FULL;
-  DMA2_Stream1->FCR = tmp;
-
-  // config mDmaBaseRegisters, mStreamIndex
-  const uint8_t kFlagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
-
-  auto streamNum = (((uint32_t)DMA2_Stream1 & 0xFFU) - 16U) / 24U;
-  mStreamIndex = kFlagBitshiftOffset[streamNum];
-  if (streamNum > 3U) // return pointer to HISR and HIFCR
-    mDmaBaseRegisters = (tDmaBaseRegisters*)(((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU)) + 4U);
-  else // return pointer to LISR and LIFCR
-    mDmaBaseRegisters = (tDmaBaseRegisters*)((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU));
-
-  // clear all dma interrupt flags
-  mDmaBaseRegisters->IFCR = 0x3FU << mStreamIndex;
-
-  // NVIC configuration for DCMI transfer complete interrupt
-  HAL_NVIC_SetPriority (DCMI_IRQn, 0x0F, 0);
-  HAL_NVIC_EnableIRQ (DCMI_IRQn);
-
-  // NVIC configuration for DMA2D transfer complete interrupt
-  HAL_NVIC_SetPriority (DMA2_Stream1_IRQn, 0x0F, 0);
-  HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
-  }
-//}}}
 
 //{{{
 void cCamera::dcmiStart (uint8_t* buf) {
 
-  // disable DCMI
+  // disable dcmi
   DCMI->CR &= ~DCMI_CR_ENABLE;
   // disable dma
   DMA2_Stream1->CR &= ~DMA_SxCR_EN;
 
+  // bufEnd, may use more to provide continuos last buffer
   mBufStart = buf;
   uint32_t dmaLen = mJpegMode ? 0x00100000 : getWidth()*getHeight()*2;
   mBufEnd = buf + (4 * dmaLen);
 
+  // calc the number of xfers with xferSize <= 64k
   mFrameStart = mBufStart;
   mFrameCur = mBufStart;
-
-  // calc the number of xfers with xferSize <= 64k
   mXferCount = 0;
   mXferMaxCount = 1;
   mXferSize = dmaLen;
@@ -629,6 +615,9 @@ void cCamera::dcmiStart (uint8_t* buf) {
     mXferSize = mXferSize / 2;
     mXferMaxCount = mXferMaxCount * 2;
     }
+  mFrameBuf = nullptr;
+  mFrameBufLen = 0;
+  mFixedFrameLen = getWidth() * getHeight() * 2;
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", mXferMaxCount, mXferSize, dmaLen);
 
   // enable dma doubleBufferMode,  config src, dst addresses, length
@@ -637,27 +626,30 @@ void cCamera::dcmiStart (uint8_t* buf) {
   DMA2_Stream1->M1AR = (uint32_t)(buf + (4*mXferSize));
   DMA2_Stream1->NDTR = mXferSize;
 
-  // clear all dma flags
+  // clear all dma interrupt flags
   DMA2->LIFCR = DMA_FLAG_TCIF1_5;
-  DMA2->LIFCR = DMA_FLAG_HTIF1_5;
   DMA2->LIFCR = DMA_FLAG_TEIF1_5;
-  DMA2->LIFCR = DMA_FLAG_FEIF1_5;
   DMA2->LIFCR = DMA_FLAG_DMEIF1_5;
+  DMA2->LIFCR = DMA_FLAG_HTIF1_5;
+  DMA2->LIFCR = DMA_FLAG_FEIF1_5;
 
-  // enable interrupts, dma
-  DMA2_Stream1->FCR |= DMA_IT_FE;
-  DMA2_Stream1->CR = DMA_CHANNEL_1       | 
+  // enable dma - fifo, interrupt
+  DMA2_Stream1->FCR = DMA_IT_FE | DMA_FIFOMODE_ENABLE | DMA_FIFO_THRESHOLD_FULL;
+
+  // enable dma
+  DMA2_Stream1->CR = DMA_CHANNEL_1 |
                      DMA_PERIPH_TO_MEMORY | DMA_CIRCULAR | DMA_SxCR_DBM | DMA_PRIORITY_HIGH |
-                     DMA_PDATAALIGN_WORD  | DMA_MDATAALIGN_WORD |
-                     DMA_PBURST_SINGLE    | DMA_MBURST_INC4 |
-                     DMA_PINC_DISABLE     | DMA_MINC_ENABLE |
+                     DMA_PDATAALIGN_WORD | DMA_MDATAALIGN_WORD |
+                     DMA_PBURST_SINGLE | DMA_MBURST_INC4 |
+                     DMA_PINC_DISABLE | DMA_MINC_ENABLE |
                      DMA_IT_TC | DMA_IT_TE | DMA_IT_DME |
                      DMA_SxCR_EN;
 
-  // enable Error, overrun, vsync interrupts
+  // enable dcmi - error,overrun,vsync interrupts
   DCMI->IER |= DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC;
-  // enable dcmi continuous, capture, enable
-  DCMI->CR = DCMI_HSPOLARITY_LOW | DCMI_PCKPOLARITY_RISING | DCMI_CR_ALL_FRAME | DCMI_EXTEND_DATA_8B | DCMI_JPEG_ENABLE |
+  // enable dcmi - continuous,capture,enable
+  DCMI->CR = DCMI_HSPOLARITY_LOW | DCMI_PCKPOLARITY_RISING |
+             DCMI_CR_ALL_FRAME | DCMI_EXTEND_DATA_8B | DCMI_JPEG_ENABLE |
              DCMI_CR_CAPTURE | DCMI_MODE_CONTINUOUS |
              DCMI_CR_ENABLE;
   }

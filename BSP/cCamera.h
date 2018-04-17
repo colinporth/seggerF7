@@ -26,7 +26,6 @@ public:
 private:
   void gpioInit();
   void mt9d111Init();
-  void dcmiInit();
 
   void dcmiStart (uint8_t* buffer);
 
@@ -67,4 +66,5 @@ private:
   uint8_t* mFrameCur = nullptr;
   uint8_t* mFrameBuf = nullptr;
   int mFrameBufLen = 0;
+  int mFixedFrameLen = 0;
   };
