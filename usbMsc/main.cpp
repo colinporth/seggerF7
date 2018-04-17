@@ -108,6 +108,7 @@ private:
 //}}}
 
 cApp* gApp;
+
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
 //{{{
@@ -1012,14 +1013,20 @@ void dhcpThread (void* arg) {
   }
 //}}}
 //{{{
-void netThread (void* arg) {
+void appThread (void* arg) {
 
-  tcpip_init (NULL, NULL);
+  gApp->run();
+  }
+//}}}
+//{{{
+void netThread (void* arg) {
 
   struct netif netIf;
   ip_addr_t ipaddr;
   ip_addr_t netmask;
   ip_addr_t gw;
+
+  tcpip_init (NULL, NULL);
 
   ip_addr_set_zero_ip4 (&ipaddr);
   ip_addr_set_zero_ip4 (&netmask);
@@ -1027,24 +1034,32 @@ void netThread (void* arg) {
   netif_add (&netIf, &ipaddr, &netmask, &gw, NULL, &ethernetIfInit, &tcpip_input);
 
   netif_set_default (&netIf);
-  if (netif_is_link_up (&netIf))
+  if (netif_is_link_up (&netIf)) {
     netif_set_up (&netIf);
-  else
+    sys_thread_new ("dhcp", dhcpThread, &netIf, 2048, osPriorityBelowNormal);
+    sys_thread_new ("server", serverThread, NULL, 2048, osPriorityAboveNormal);
+    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethernet up");
+    }
+  else {
     netif_set_down (&netIf);
+    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethernet down");
+    }
 
-  sys_thread_new ("dhcp", dhcpThread, &netIf, configMINIMAL_STACK_SIZE * 2, osPriorityBelowNormal);
-  sys_thread_new ("server", serverThread, NULL, DEFAULT_THREAD_STACKSIZE, osPriorityAboveNormal);
-
-  while (true)
-    osThreadTerminate(NULL);
+  while (true) {
+    //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "netThread tick");
+    osDelay (5000);
+    }
+  //osThreadTerminate (NULL);
   }
 //}}}
 //{{{
-void appThread (void* arg) {
+void startThread (void* arg) {
 
-  gApp->run();
-  //while (true)
-  //  osThreadTerminate(NULL);
+  sys_thread_new ("app", appThread, NULL, 10000, osPriorityNormal);
+  sys_thread_new ("net", netThread, NULL, 2048, osPriorityNormal);
+
+  while (true)
+    osThreadTerminate (NULL);
   }
 //}}}
 
@@ -1106,8 +1121,8 @@ int main() {
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
   gApp->init();
 
-  sys_thread_new ("net", netThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
-  sys_thread_new ("app", appThread, NULL, configMINIMAL_STACK_SIZE * 5, osPriorityNormal);
+  sys_thread_new ("start", startThread, NULL, 2048, osPriorityNormal);
+
   osKernelStart();
 
   while (true);

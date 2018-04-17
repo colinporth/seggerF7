@@ -85,13 +85,16 @@ void cCamera::init() {
   }
 //}}}
 
+//{{{
 uint8_t* cCamera::getFrameBuf() {
+// possoble race of frameBuf, frameBufLen chaning in interrupt mid test or before call to getFrameBufLen
 
-  if (mFrameBuf + mFrameBufLen > mBufEnd) // wrap around
+  if (mFrameBuf + mFrameBufLen > mBufEnd) // wrap around to deliver contiguous buffer
     memcpy (mBufEnd, mBufStart, mFrameBuf + mFrameBufLen - mBufEnd);
 
   return mFrameBuf;
   }
+//}}}
 
 //{{{
 void cCamera::setFocus (int value) {
