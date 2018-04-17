@@ -28,8 +28,8 @@
 const char* kVersion = "WebCam 17/4/18";
 
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
-uint8_t*  kJpegBuffer   =  (uint8_t*)0xc0200000;
-uint8_t*  kJpegBuffer1  =  (uint8_t*)0xc0700000;
+uint8_t*  kCamBuffer    =  (uint8_t*)0xc0200000;
+uint8_t*  kCamBufferEnd =  (uint8_t*)0xc0600000;
 
 //{{{
 class cApp : public cTouch {
@@ -182,15 +182,13 @@ void cApp::init() {
 //{{{
 void cApp::run() {
 
-  uint8_t* jpegBuf = kJpegBuffer;
-  int jpegLen = 0;
   //int jpegLen = loadFile (kJpegBuffer);
 
   //{{{
   #ifdef USE_CAMERA
     mCamera = new cCamera();
     mCamera->init();
-    mCamera->start (false, kJpegBuffer);
+    mCamera->start (false, kCamBuffer);
 
     mCinfo.scale_num = 1;
     mCinfo.scale_denom = (mCamera->getWidth() / mLcd->getWidth()) + 1;
@@ -257,12 +255,8 @@ void cApp::run() {
     mLcd->present();
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
-    if (!button && (button != lastButton)) {
-      if (mCamera) {
-        auto jpegMode = !mCamera->getJpegMode();
-        mCamera->start (jpegMode, jpegMode ? kJpegBuffer : (uint8_t*)kRgb565Buffer);
-        }
-      }
+    if (!button && (button != lastButton) && mCamera)
+      mCamera->start (!mCamera->getJpegMode(), kCamBuffer);
     lastButton = button;
     }
   }
@@ -807,7 +801,7 @@ int cApp::loadFile (uint8_t* jpegBuffer) {
       mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
       f_close (&file);
       if (bytesRead > 0)
-        jpegDecode (kJpegBuffer, bytesRead, kRgb565Buffer, 4);
+        jpegDecode (kCamBuffer, bytesRead, kRgb565Buffer, 4);
       return bytesRead;
       }
     else
@@ -1112,11 +1106,10 @@ int main() {
 
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
   gApp->init();
+  gApp->run();
 
-  sys_thread_new ("start", startThread, NULL, 2048, osPriorityNormal);
-
-  osKernelStart();
-
-  while (true);
+  //sys_thread_new ("start", startThread, NULL, 2048, osPriorityNormal);
+  //osKernelStart();
+  //while (true);
   }
 //}}}

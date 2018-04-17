@@ -183,18 +183,19 @@ void cCamera::dcmiIrqHandler() {
   uint32_t misr = DCMI->MISR;
 
   if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
-    // synchronizationError interrupt
+    //{{{  synchronizationError interrupt
     DCMI->ICR = DCMI_FLAG_ERRRI;
     cLcd::mLcd->debug (LCD_COLOR_RED, "syncIrq");
     }
-
+    //}}}
   if ((misr & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
-    // overflowError interrupt
+    //{{{  overflowError interrupt
     DCMI->ICR = DCMI_FLAG_OVRRI;
     // dsiable dma
     DMA2_Stream1->CR &= ~DMA_SxCR_EN;
     cLcd::mLcd->debug (LCD_COLOR_RED, "overflowIrq");
     }
+    //}}}
 
   if ((misr & DCMI_FLAG_VSYNCRI) == DCMI_FLAG_VSYNCRI) {
     DCMI->ICR = DCMI_FLAG_VSYNCRI;
@@ -216,11 +217,15 @@ void cCamera::dcmiIrqHandler() {
       //}}}
       uint8_t jpegStatus = mFrameCur[dmaBytes-1];
       if ((jpegStatus & 0x0f) == 0x01) {
-
         mFrameBuf = mFrameStart;
         mFrameBufLen = (mFrameCur[dmaBytes-2] << 16) + (mFrameCur[dmaBytes-3] << 8) + mFrameCur[dmaBytes-4];
+        if (mFrameBufLen > mFrameCur - mFrameStart + dmaBytes) {
+          cLcd::mLcd->debug (LCD_COLOR_RED, "len %d %d", mFrameBufLen, mFrameCur - mFrameStart + dmaBytes);
+          mFrameBuf = nullptr;
+          mFrameBufLen = 0;
+          }
 
-        if (kDebugIrq)
+        //if (kDebugIrq)
           cLcd::mLcd->debug (LCD_COLOR_GREEN,
                              "v%2d:%6d:%8x %x:%d", mXferCount,dmaBytes,mFrameBuf, jpegStatus,mFrameBufLen);
         }
@@ -240,8 +245,12 @@ void cCamera::dcmiIrqHandler() {
       }
 
     // dodgy copy, should manage buffer better instead
-    if (mFrameBuf + mFrameBufLen > mBufEnd) // wrap around to deliver contiguous buffer
-      memcpy (mBufEnd, mBufStart, mFrameBuf + mFrameBufLen - mBufEnd);
+    if (mFrameBuf + mFrameBufLen > mBufEnd) {
+      // wrap around to deliver contiguous buffer
+      auto copyBytes = mFrameBuf + mFrameBufLen - mBufEnd;
+      if (copyBytes < 150000)
+        memcpy (mBufEnd, mBufStart, copyBytes);
+      }
     mFrameStart = mFrameCur + dmaBytes;
     }
   }
@@ -338,6 +347,7 @@ void cCamera::mt9d111Init() {
   // page 1
   write (0xF0, 1);
   write (0x09, 0x000A); // factory bypass 10 bit sensor
+  write (0x0A, 0x0002); // pixclk slew
   write (0x97, 0x22);   // outputFormat - RGB565, swap odd even
 
 #ifdef capture800x600
@@ -401,44 +411,28 @@ void cCamera::mt9d111Init() {
   //}}}
   //{{{  jpeg b config
   // jpeg.config id=9  0x07
-  //   b:0  video
-  //   b:1  handshake on error
-  //   b:2  enable retry on error
-  //   b:3  host indicates ready
-  //   b:4  scaled quant
-  //   b:5  auto select quant
-  //   b:6:7  quant table id
+  //   b:4  scaled quant       b:0  video
+  //   b:5  auto select quant  b:1  handshake on error
+  //   b:6:7  quant table id   b:2  enable retry on error
+  //                           b:3  host indicates ready
   write1 (0xa907, 0x0031);
 
   // mode fifo_config0_B - shadow ifp page2 0x0d output config
-  //   b:0   enable spoof frame
-  //   b:1   enable pixclk between frames
-  //   b:2   enable pixclk during invalid data
-  //   b:3   enable soi/eoi
-  //   b:4   enable soi/eoi during FV
-  //   b:5   enable ignore spoof height
-  //   b:6   enable variable pixclk
-  //   b:7   enable byteswap
-  //   b:8   enable FV on LV
-  //   b:9   enable status inserted after data
-  //   b:10  enable spoof codes
-  write1 (0x2772, 0x0079);
+  //   b:8  enable FV on LV           b:4 enable soi/eoi during FV    b:0 enable spoof frame
+  //   b:9  enable status after data  b:5 enable ignore spoof height  b:1 enable pixclk between frames
+  //   b:10 enable spoof codes        b:6 enable variable pixclk      b:2 enable pixclk during invalid data
+  //                                  b:7 enable byteswap             b:3 enable soi/eoi
+  write1 (0x2772, 0x0261);
 
   // mode fifo_config1_B - shadow ifp page2 0x0e
-  //   b:3:0   pclk1 divisor
-  //   b:7:5   pclk1 slew
-  //   -----
-  //   b:11:8  pclk2 divisor
-  //   b:15:13 pclk2 slew
-  write1 (0x2774, 0x0202);
+  //   15:13 pclk2slew  11:8 pclk2divisor  7:5 pclk1slew  3:0 pclk1divisor
+  write1 (0x2774, 0x4344);
 
   // mode fifo_config2_B - shadow ifp page2 0x0f
-  //   b:3:0   pclk3 divisor
-  //   b:7:5   pclk3 slew
-  write1 (0x2776, 0x0002);
+  //   7:5 pclk3slew  3:0 pclk3divisor
+  write1 (0x2776, 0x0042);
 
-  write1 (0x2707, 800);  // mode OUTPUT WIDTH HEIGHT B
-  write1 (0x2709, 600);
+  write1 (0x2707, 800);  // mode OUTPUT WIDTH B
   //}}}
 #else
   //{{{  register wizard

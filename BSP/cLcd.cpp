@@ -44,9 +44,9 @@ extern "C" {
         __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_LI);
 
         if (cLcd::mFrameWait) {
-          portBASE_TYPE taskWoken = pdFALSE;
-          if (xSemaphoreGiveFromISR (cLcd::mFrameSem, &taskWoken) == pdTRUE)
-            portEND_SWITCHING_ISR (taskWoken);
+          //portBASE_TYPE taskWoken = pdFALSE;
+          //if (xSemaphoreGiveFromISR (cLcd::mFrameSem, &taskWoken) == pdTRUE)
+          //  portEND_SWITCHING_ISR (taskWoken);
           }
         cLcd::mFrameWait = false;
         }
@@ -236,7 +236,7 @@ void cLcd::init() {
   // set line interupt line number
   LTDC->LIPCR = 0;
   mFrameWait = false;
-  vSemaphoreCreateBinary (mFrameSem);
+  //vSemaphoreCreateBinary (mFrameSem);
 
   // enable transferError,fifoUnderrun interrupt
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_TE);
@@ -270,7 +270,10 @@ uint16_t cLcd::GetTextHeight() { return Font16.mHeight; }
 void cLcd::start() {
 
   mFrameWait = true;
-  xSemaphoreTake (mFrameSem, 100);
+
+  while (mFrameWait) { HAL_Delay(1); }
+  //xSemaphoreTake (mFrameSem, 100);
+
   clear (LCD_COLOR_BLACK);
   }
 //}}}
@@ -278,7 +281,9 @@ void cLcd::start() {
 void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
 
   mFrameWait = true;
-  xSemaphoreTake (mFrameSem, 100);
+
+  while (mFrameWait) { HAL_Delay(1); }
+  //xSemaphoreTake (mFrameSem, 100);
 
   if (zoom)
     copyFrame (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
