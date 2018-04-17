@@ -5,9 +5,9 @@
 #include "cLcd.h"
 //}}}
 
-#define i2c 0x90
 #define capture800x600
 const bool kDebugIrq = false;
+const uint8_t kI2cAddress = 0x90;
 
 //{{{  dcmi defines
 #define DCMI_MODE_CONTINUOUS ((uint32_t)0x00000000U)
@@ -75,7 +75,7 @@ void cCamera::init() {
   // init camera i2c, readBack id
   CAMERA_IO_Init();
   write (0xF0, 0);
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (i2c, 0));
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (kI2cAddress, 0));
   mt9d111Init();
 
   // init dcmi dma
@@ -310,7 +310,8 @@ void cCamera::gpioInit() {
 
 //{{{
 void cCamera::write (uint8_t reg, uint16_t value) {
-  CAMERA_IO_Write16 (i2c, reg, value);
+
+  CAMERA_IO_Write16 (kI2cAddress, reg, value);
   }
 //}}}
 //{{{
@@ -554,80 +555,80 @@ void cCamera::mt9d111Init() {
 #endif
 
   //{{{  sequencer transitions
-  write1 (0xA122, 0x01); // EnterPreview: Auto Exposure = 1
-  write1 (0xA123, 0x00); // EnterPreview: Flicker Detection = 0
-  write1 (0xA124, 0x01); // EnterPreview: Auto White Balance = 1
-  write1 (0xA125, 0x00); // EnterPreview: Auto Focus = 0
-  write1 (0xA126, 0x01); // EnterPreview: Histogram = 1
-  write1 (0xA127, 0x00); // EnterPreview: Strobe Control  = 0
-  write1 (0xA128, 0x00); // EnterPreview: Skip Control = 0
+  //write1 (0xA122, 0x01); // previewEnter Auto Exposure = 1
+  //write1 (0xA123, 0x00); // previewEnter Flicker Detection = 0
+  //write1 (0xA124, 0x01); // previewEnter Auto White Balance = 1
+  //write1 (0xA125, 0x00); // previewEnter Auto Focus = 0
+  //write1 (0xA126, 0x01); // previewEnter Histogram = 1
+  //write1 (0xA127, 0x00); // previewEnter Strobe Control  = 0
+  //write1 (0xA128, 0x00); // previewEnter Skip Control = 0
 
-  write1 (0xA129, 0x03); // InPreview: Auto Exposure = 3
-  write1 (0xA12A, 0x02); // InPreview: Flicker Detection = 2
-  write1 (0xA12B, 0x03); // InPreview: Auto White Balance = 3
-  write1 (0xA12C, 0x00); // InPreview: Auto Focus = 0
-  write1 (0xA12D, 0x03); // InPreview: Histogram  = 3
-  write1 (0xA12E, 0x00); // InPreview: Strobe Control = 0
-  write1 (0xA12F, 0x00); // InPreview: Skip Control = 0
+  //write1 (0xA129, 0x03); // Preview Auto Exposure = 3
+  //write1 (0xA12A, 0x02); // Preview Flicker Detection = 2
+  //write1 (0xA12B, 0x03); // Preview Auto White Balance = 3
+  //write1 (0xA12C, 0x00); // Preview Auto Focus = 0
+  //write1 (0xA12D, 0x03); // Preview Histogram  = 3
+  //write1 (0xA12E, 0x00); // Preview Strobe Control = 0
+  //write1 (0xA12F, 0x00); // Preview Skip Control = 0
 
-  write1 (0xA130, 0x04); // ExitPreview: Auto Exposure = 4
-  write1 (0xA131, 0x00); // ExitPreview: Flicker Detection = 0
-  write1 (0xA132, 0x01); // ExitPreview: Auto White Balance = 1
-  write1 (0xA133, 0x00); // ExitPreview: Auto Focus = 0
-  write1 (0xA134, 0x01); // ExitPreview: Histogram = 1
-  write1 (0xA135, 0x00); // ExitPreview: Strobe Control = 0
-  write1 (0xA136, 0x00); // ExitPreview: Skip Control = 0
+  //write1 (0xA130, 0x04); // previewLeave Auto Exposure = 4
+  //write1 (0xA131, 0x00); // previewLeave Flicker Detection = 0
+  //write1 (0xA132, 0x01); // previewLeave Auto White Balance = 1
+  //write1 (0xA133, 0x00); // previewLeave Auto Focus = 0
+  //write1 (0xA134, 0x01); // previewLeave Histogram = 1
+  //write1 (0xA135, 0x00); // previewLeave Strobe Control = 0
+  //write1 (0xA136, 0x00); // previewLeave Skip Control = 0
 
-  write1 (0xA137, 0x00); // Capture: Auto Exposure = 0
-  write1 (0xA138, 0x00); // Capture: Flicker Detection = 0
-  write1 (0xA139, 0x00); // Capture: Auto White Balance  = 0
-  write1 (0xA13A, 0x00); // Capture: Auto Focus = 0
-  write1 (0xA13B, 0x00); // Capture: Histogram = 0
-  write1 (0xA13C, 0x00); // Capture: Strobe Control = 0
-  write1 (0xA13D, 0x00); // Capture: Skip Control = 0
+  //write1 (0xA137, 0x00); // CaptureEnter Auto Exposure = 4
+  //write1 (0xA138, 0x00); // CaptureEnter Flicker Detection = 0
+  //write1 (0xA139, 0x00); // CaptureEnter Auto White Balance = 3
+  //write1 (0xA13A, 0x00); // CaptureEnter Auto Focus = 0
+  //write1 (0xA13B, 0x00); // CaptureEnter Histogram = 3
+  //write1 (0xA13C, 0x00); // CaptureEnter Strobe Control = 0
+  //write1 (0xA13D, 0x00); // CaptureEnter Skip Control = 0
   //}}}
   //{{{  gamma tables
-  // gamma table A 0 to 18
-  write1 (0xA745, 0x00);  // 0
-  write1 (0xA746, 0x14);  // 20
-  write1 (0xA747, 0x23);  // 35
-  write1 (0xA748, 0x3A);  // 58
-  write1 (0xA749, 0x5E);  // 94
-  write1 (0xA74A, 0x76);  // 118
-  write1 (0xA74B, 0x88);  // 136
-  write1 (0xA74C, 0x96);  // 150
-  write1 (0xA74D, 0xA3);  // 163
-  write1 (0xA74E, 0xAF);  // 175
-  write1 (0xA74F, 0xBA);  // 186
-  write1 (0xA750, 0xC4);  // 196
-  write1 (0xA751, 0xCE);  // 206
-  write1 (0xA752, 0xD7);  // 215
-  write1 (0xA753, 0xE0);  // 224
-  write1 (0xA754, 0xE8);  // 232
-  write1 (0xA755, 0xF0);  // 240
-  write1 (0xA756, 0xF8);  // 248
-  write1 (0xA757, 0xFF);  // 255
+  //// gamma table A 0 to 18
+  //write1 (0xA745, 0x00);  // 0
+  //write1 (0xA746, 0x14);  // 20
+  //write1 (0xA747, 0x23);  // 35
+  //write1 (0xA748, 0x3A);  // 58
+  //write1 (0xA749, 0x5E);  // 94
+  //write1 (0xA74A, 0x76);  // 118
+  //write1 (0xA74B, 0x88);  // 136
+  //write1 (0xA74C, 0x96);  // 150
+  //write1 (0xA74D, 0xA3);  // 163
+  //write1 (0xA74E, 0xAF);  // 175
+  //write1 (0xA74F, 0xBA);  // 186
+  //write1 (0xA750, 0xC4);  // 196
+  //write1 (0xA751, 0xCE);  // 206
+  //write1 (0xA752, 0xD7);  // 215
+  //write1 (0xA753, 0xE0);  // 224
+  //write1 (0xA754, 0xE8);  // 232
+  //write1 (0xA755, 0xF0);  // 240
+  //write1 (0xA756, 0xF8);  // 248
+  //write1 (0xA757, 0xFF);  // 255
 
-  // gamma table B 0 to 18
-  write1 (0xA758, 0x00);  // 0
-  write1 (0xA759, 0x14);  // 20
-  write1 (0xA75A, 0x23);  // 35
-  write1 (0xA75B, 0x3A);  // 58
-  write1 (0xA75C, 0x5E);  // 94
-  write1 (0xA75D, 0x76);  // 118
-  write1 (0xA75E, 0x88);  // 136
-  write1 (0xA75F, 0x96);  // 150
-  write1 (0xA760, 0xA3);  // 163
-  write1 (0xA761, 0xAF);  // 175
-  write1 (0xA762, 0xBA);  // 186
-  write1 (0xA763, 0xC4);  // 196
-  write1 (0xA764, 0xCE);  // 206
-  write1 (0xA765, 0xD7);  // 215
-  write1 (0xA766, 0xE0);  // 224
-  write1 (0xA767, 0xE8);  // 232
-  write1 (0xA768, 0xF0);  // 240
-  write1 (0xA769, 0xF8);  // 248
-  write1 (0xA76A, 0xFF);  // 255
+  //// gamma table B 0 to 18
+  //write1 (0xA758, 0x00);  // 0
+  //write1 (0xA759, 0x14);  // 20
+  //write1 (0xA75A, 0x23);  // 35
+  //write1 (0xA75B, 0x3A);  // 58
+  //write1 (0xA75C, 0x5E);  // 94
+  //write1 (0xA75D, 0x76);  // 118
+  //write1 (0xA75E, 0x88);  // 136
+  //write1 (0xA75F, 0x96);  // 150
+  //write1 (0xA760, 0xA3);  // 163
+  //write1 (0xA761, 0xAF);  // 175
+  //write1 (0xA762, 0xBA);  // 186
+  //write1 (0xA763, 0xC4);  // 196
+  //write1 (0xA764, 0xCE);  // 206
+  //write1 (0xA765, 0xD7);  // 215
+  //write1 (0xA766, 0xE0);  // 224
+  //write1 (0xA767, 0xE8);  // 232
+  //write1 (0xA768, 0xF0);  // 240
+  //write1 (0xA769, 0xF8);  // 248
+  //write1 (0xA76A, 0xFF);  // 255
   //}}}
   //{{{  focus init
   write1 (0x90B6, 0x01); // SFR GPIO suspend
