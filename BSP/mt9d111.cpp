@@ -198,7 +198,7 @@ void cCamera::dmaIrqHandler() {
 //{{{
 void cCamera::dcmiIrqHandler() {
 
-  uint32_t misr = READ_REG (DCMI->MISR);
+  uint32_t misr = DCMI->MISR;
 
   if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
     // synchronizationError interrupt
@@ -569,19 +569,13 @@ void cCamera::mt9d111Init() {
 //{{{
 void cCamera::dcmiInit() {
 
-  // config dma CR - CHSEL, MBURST, PBURST, PL, MSIZE, PSIZE, MINC, PINC, CIRC, DIR, CT and DBM bits
-  uint32_t tmp = DMA2_Stream1->CR;
-  tmp &= ((uint32_t)~(DMA_SxCR_CHSEL | DMA_SxCR_MBURST | DMA_SxCR_PBURST |
-                      DMA_SxCR_PL     | DMA_SxCR_MSIZE  | DMA_SxCR_PSIZE  |
-                      DMA_SxCR_MINC   | DMA_SxCR_PINC   | DMA_SxCR_CIRC   |
-                      DMA_SxCR_DIR    | DMA_SxCR_CT     | DMA_SxCR_DBM));
-  tmp |=  DMA_CHANNEL_1       | DMA_PERIPH_TO_MEMORY | DMA_PINC_DISABLE | DMA_MINC_ENABLE |
-          DMA_PDATAALIGN_WORD | DMA_MDATAALIGN_WORD  | DMA_CIRCULAR     | DMA_PRIORITY_HIGH |
-          DMA_MBURST_INC4     | DMA_PBURST_SINGLE;
-  DMA2_Stream1->CR = tmp;
+  DMA2_Stream1->CR = DMA_CHANNEL_1       | DMA_PERIPH_TO_MEMORY | DMA_CIRCULAR | DMA_PRIORITY_HIGH |
+                     DMA_PINC_DISABLE    | DMA_MINC_ENABLE |
+                     DMA_PDATAALIGN_WORD | DMA_MDATAALIGN_WORD | 
+                     DMA_PBURST_SINGLE   | DMA_MBURST_INC4;
 
   // config dma FCR - clear directMode and fifoThreshold
-  tmp = DMA2_Stream1->FCR;
+  auto tmp = DMA2_Stream1->FCR;
   tmp &= (uint32_t)~(DMA_SxFCR_DMDIS | DMA_SxFCR_FTH);
   tmp |= DMA_FIFOMODE_ENABLE | DMA_FIFO_THRESHOLD_FULL;
   DMA2_Stream1->FCR = tmp;
@@ -599,13 +593,6 @@ void cCamera::dcmiInit() {
   // clear all dma interrupt flags
   mDmaBaseRegisters->IFCR = 0x3FU << mStreamIndex;
 
-  // config DCMI HS, VS, DE and PC polarity
-  DCMI->CR &= ~(DCMI_CR_PCKPOL | DCMI_CR_HSPOL  | DCMI_CR_VSPOL  | DCMI_CR_EDM_0  | DCMI_CR_EDM_1  | DCMI_CR_FCRC_0 |
-                DCMI_CR_FCRC_1 | DCMI_CR_JPEG   | DCMI_CR_ESS    | DCMI_CR_BSM_0  | DCMI_CR_BSM_1  | DCMI_CR_OEBS |
-                DCMI_CR_LSM    | DCMI_CR_OELS);
-  DCMI->CR |= DCMI_CR_ALL_FRAME       | DCMI_HSPOLARITY_LOW | DCMI_HSPOLARITY_LOW  |
-              DCMI_PCKPOLARITY_RISING | DCMI_EXTEND_DATA_8B | DCMI_JPEG_ENABLE;
-
   // NVIC configuration for DCMI transfer complete interrupt
   HAL_NVIC_SetPriority (DCMI_IRQn, 0x0F, 0);
   HAL_NVIC_EnableIRQ (DCMI_IRQn);
@@ -613,14 +600,16 @@ void cCamera::dcmiInit() {
   // NVIC configuration for DMA2D transfer complete interrupt
   HAL_NVIC_SetPriority (DMA2_Stream1_IRQn, 0x0F, 0);
   HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
-
-  // enable Error, overrun, vsync interrupts
-  DCMI->IER |= DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC;
   }
 //}}}
 
 //{{{
 void cCamera::dcmiStart (uint8_t* buf) {
+
+  // disable DCMI
+  DCMI->CR &= ~DCMI_CR_ENABLE;
+  // disable dma
+  DMA2_Stream1->CR &= ~DMA_SxCR_EN;
 
   mBufStart = buf;
   uint32_t dmaLen = mJpegMode ? 0x00100000 : getWidth()*getHeight()*2;
@@ -637,22 +626,11 @@ void cCamera::dcmiStart (uint8_t* buf) {
     mXferSize = mXferSize / 2;
     mXferMaxCount = mXferMaxCount * 2;
     }
-
-  // disable DCMI by resetting DCMIEN bit
-  DCMI->CR &= ~DCMI_CR_ENABLE;
-
-  // disable dma
-  DMA2_Stream1->CR &= ~DMA_SxCR_EN;
-
-  // enable DCMI by setting DCMIEN bit
-  DCMI->CR |= DCMI_CR_ENABLE;
-
-  // config the DCMI Mode
-  DCMI->CR = (DCMI->CR & ~(DCMI_CR_CM)) | DCMI_MODE_CONTINUOUS;
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", mXferMaxCount, mXferSize, dmaLen);
 
   // enable dma doubleBufferMode,  config src, dst addresses, length
   DMA2_Stream1->CR |= (uint32_t)DMA_SxCR_DBM;
-  DMA2_Stream1->PAR = (uint32_t)&DCMI->DR;
+  DMA2_Stream1->PAR = (uint32_t)&(DCMI->DR);
   DMA2_Stream1->M0AR = (uint32_t)buf;
   DMA2_Stream1->M1AR = (uint32_t)(buf + (4*mXferSize));
   DMA2_Stream1->NDTR = mXferSize;
@@ -670,11 +648,12 @@ void cCamera::dcmiStart (uint8_t* buf) {
 
   // enable dma
   DMA2_Stream1->CR |= DMA_SxCR_EN;
-
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%d", mXferMaxCount, mXferSize, dmaLen);
-
-  // enable dcmi capture
-  DCMI->CR |= DCMI_CR_CAPTURE;
+  // enable Error, overrun, vsync interrupts
+  DCMI->IER |= DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC;
+  // enable dcmi continuous, capture, enable
+  DCMI->CR = DCMI_CR_CAPTURE     | DCMI_MODE_CONTINUOUS    | DCMI_CR_ENABLE |
+             DCMI_HSPOLARITY_LOW | DCMI_PCKPOLARITY_RISING |
+             DCMI_CR_ALL_FRAME   | DCMI_EXTEND_DATA_8B     | DCMI_JPEG_ENABLE;
   }
 //}}}
 
