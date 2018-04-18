@@ -276,7 +276,6 @@ uint16_t cLcd::GetTextHeight() { return Font16.mHeight; }
 void cLcd::start() {
 
   mFrameWait = true;
-
 #ifdef freeRtos
   xSemaphoreTake (mFrameSem, 100);
 #else
@@ -287,11 +286,10 @@ void cLcd::start() {
   }
 //}}}
 //{{{
-void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
+void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool unity) {
 // copy src to screen
 
   mFrameWait = true;
-
 #ifdef freeRtos
   xSemaphoreTake (mFrameSem, 100);
 #else
@@ -300,16 +298,27 @@ void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom
 
   uint16_t* dst = getBuffer();
 
-  if (zoom) {
+  if (unity) {
+    // 1:1 pixel copy, centre of src to centre of screen
+    int xcopy = (getWidth() > srcXsize) ? srcXsize : getWidth();
+    int xpad = (getWidth() > srcXsize) ? (getWidth() - srcXsize) / 2 : 0;
+
     src += ((srcXsize-getWidth())/2) + (((srcYsize - getHeight()) / 2) * srcXsize);
     for (uint16_t y = 0; y < getHeight(); y++) {
-      memcpy (dst, src, getWidth()*2);
+      memset (dst, 0, xpad*2);
+      dst += xpad;
+
+      memcpy (dst, src, xcopy*2);
       src += srcXsize;
-      dst += getWidth();
+      dst += xcopy;
+
+      memset (dst, 0, xpad*2);
+      dst += xpad;
       }
     }
 
   else {
+    // scaled copy to fit all of xsize on screen
     int srcScale = ((srcXsize-1) / getWidth()) + 1;
     int xpad = (getWidth() - (srcXsize/srcScale)) / 2;
 
@@ -319,8 +328,8 @@ void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom
       src += ((getHeight() - srcYsize) / 2) * srcXsize;
 
     for (uint16_t y = 0; y < getHeight(); y++) {
-      for (uint16_t x = 0; x < xpad; x++)
-        *dst++ = 0;
+      memset (dst, 0, xpad*2);
+      dst += xpad;
 
       for (uint16_t x = 0; x < getWidth() - xpad - xpad; x++) {
         *dst++ = *src;
@@ -328,8 +337,8 @@ void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom
         }
       src += (srcScale - 1) * srcXsize;
 
-      for (uint16_t x = 0; x < xpad; x++)
-        *dst++ = 0;
+      memset (dst, 0, xpad*2);
+      dst += xpad;
       }
     }
   }

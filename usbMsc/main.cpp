@@ -218,7 +218,7 @@ void cApp::run() {
     mLcd->present();
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
-    if (!button && (button != lastButton) && mCam)
+    if (!button && (button != lastButton))
       mCam->start (!mCam->getMode(), kCamBuffer);
     lastButton = button;
     }
