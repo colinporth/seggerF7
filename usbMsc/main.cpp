@@ -195,7 +195,7 @@ void cApp::run() {
       jpeg_mem_src (&mCinfo, mCam->getHeader(), mCam->getHeaderLen());
       jpeg_read_header (&mCinfo, TRUE);
       mCinfo.scale_num = 1;
-      mCinfo.scale_denom = 2;
+      mCinfo.scale_denom = BSP_PB_GetState (BUTTON_KEY) ? 1 : 2;
       mCinfo.dct_method = JDCT_FLOAT;
       mCinfo.out_color_space = JCS_RGB;
 

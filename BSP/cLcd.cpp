@@ -288,6 +288,7 @@ void cLcd::start() {
 //}}}
 //{{{
 void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
+// copy src to screen
 
   mFrameWait = true;
 
@@ -297,10 +298,40 @@ void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom
   while (mFrameWait) { HAL_Delay(1); }
 #endif
 
-  if (zoom)
-    copyFrame (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
-  else
-    copyFrameScaled (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());
+  uint16_t* dst = getBuffer();
+
+  if (zoom) {
+    src += ((srcXsize-getWidth())/2) + (((srcYsize - getHeight()) / 2) * srcXsize);
+    for (uint16_t y = 0; y < getHeight(); y++) {
+      memcpy (dst, src, getWidth()*2);
+      src += srcXsize;
+      dst += getWidth();
+      }
+    }
+
+  else {
+    int srcScale = ((srcXsize-1) / getWidth()) + 1;
+    int xpad = (getWidth() - (srcXsize/srcScale)) / 2;
+
+    if (srcYsize >= getHeight())
+      src += (((srcYsize/srcScale) - getHeight()) / 2) * srcXsize;
+    else
+      src += ((getHeight() - srcYsize) / 2) * srcXsize;
+
+    for (uint16_t y = 0; y < getHeight(); y++) {
+      for (uint16_t x = 0; x < xpad; x++)
+        *dst++ = 0;
+
+      for (uint16_t x = 0; x < getWidth() - xpad - xpad; x++) {
+        *dst++ = *src;
+        src += srcScale;
+        }
+      src += (srcScale - 1) * srcXsize;
+
+      for (uint16_t x = 0; x < xpad; x++)
+        *dst++ = 0;
+      }
+    }
   }
 //}}}
 //{{{
@@ -853,44 +884,6 @@ void cLcd::rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t size) {
     uint8_t g = (*src++) & 0xFC;
     uint8_t r = (*src++) & 0xF8;
     *dst++ = (r << 8) | (g << 3) | (b >> 3);
-    }
-  }
-//}}}
-//{{{
-void cLcd::copyFrame (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                       uint16_t* dst, uint16_t xsize, uint16_t ysize) {
-
-  src += ((srcXsize-xsize)/2) + (((srcYsize - ysize) / 2) * srcXsize);
-
-  for (uint16_t y = 0; y < ysize; y++) {
-    memcpy (dst, src, xsize*2);
-    src += srcXsize;
-    dst += xsize;
-    }
-  }
-//}}}
-//{{{
-void cLcd::copyFrameScaled (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                            uint16_t* dst, uint16_t xsize, uint16_t ysize) {
-
-  int srcScale = ((srcXsize-1) / xsize) + 1;
-  int xpad = (xsize - (srcXsize/srcScale)) / 2;
-
-  if (srcYsize >= ysize)
-    src += (((srcYsize/srcScale) - ysize) / 2) * srcXsize;
-  else
-    src += ((ysize - srcYsize) / 2) * srcXsize;
-
-  for (uint16_t y = 0; y < ysize; y++) {
-    for (auto x = 0; x < xpad; x++)
-      *dst++ = 0;
-    for (auto x = 0; x < xsize - xpad - xpad; x++) {
-      *dst++ = *src;
-      src += srcScale;
-      }
-    src += (srcScale - 1) * srcXsize;
-    for (auto x = 0; x < xpad; x++)
-      *dst++ = 0;
     }
   }
 //}}}
