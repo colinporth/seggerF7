@@ -8,15 +8,16 @@ public:
 
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
+
   bool getMode() { return mJpegMode; }
   int getFps() { return 1000/mTookTicks; }
   int getFocus() { return mFocus; }
 
+  uint8_t getStatus() { return mJpegStatus; }
   uint8_t* getHeader() { return mHeader; }
   int getHeaderLen() { return mHeaderLen; }
   uint8_t* getFrame() { return mFrame; }
   int getFrameLen() { return mFrameLen; }
-  uint8_t getStatus() { return mJpegStatus; }
 
   void setFocus (int value);
 

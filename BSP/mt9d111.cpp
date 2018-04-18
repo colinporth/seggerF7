@@ -931,6 +931,9 @@ void cCamera::setJpegHeader (int qscale) {
   mHeaderLen += huffTableMarkerDC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[352], 0x00);
   mHeaderLen += huffTableMarkerDC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[368], 0x01);
   mHeaderLen += sosMarker (mHeader + mHeaderLen);
+
+  if (mHeaderLen > 700)
+    cLcd::mLcd->debug (LCD_COLOR_RED, "jpegHeader len error %d", mHeaderLen);
   }
 //}}}
 //{{{

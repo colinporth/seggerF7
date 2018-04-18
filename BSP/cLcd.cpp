@@ -304,14 +304,7 @@ void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom
   }
 //}}}
 //{{{
-void cLcd::drawTitle (const char* title) {
-
-  SetTextColor (LCD_COLOR_WHITE);
-  DisplayStringAtLine (0, title);
-  }
-//}}}
-//{{{
-void cLcd::drawInfo (uint16_t column, const char* format, ... ) {
+void cLcd::drawInfo (uint32_t color, uint16_t column, const char* format, ... ) {
 
   char str[50];
 
@@ -320,7 +313,7 @@ void cLcd::drawInfo (uint16_t column, const char* format, ... ) {
   vsnprintf (str, 50-1, format, args);
   va_end (args);
 
-  SetTextColor (LCD_COLOR_YELLOW);
+  SetTextColor (color);
   DisplayStringAtLineColumn (0, column, str);
   }
 //}}}

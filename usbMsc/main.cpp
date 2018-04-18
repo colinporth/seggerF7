@@ -25,7 +25,7 @@
 //}}}
 #define freeRtos
 
-const char* kVersion = "WebCam 17/4/18";
+const char* kVersion = "WebCam 18/4/18";
 
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
 uint8_t*  kCamBuffer    =  (uint8_t*)0xc0200000;
@@ -157,7 +157,7 @@ void cApp::init() {
 
   // show title early
   mLcd->start();
-  mLcd->drawTitle (kVersion);
+  mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
   mLcd->present();
 
   //{{{  removed
@@ -185,11 +185,10 @@ void cApp::run() {
     //  }
     //}}}
 
-    auto frame = mCam->getFrame();
-    if (frame) {
+    if (mCam->getFrame()) {
       if (mCam->getMode()) {
         // jpegDecode
-        auto mFrameLen = mCam->getFrameLen();
+        auto frameLen = mCam->getFrameLen();
         jpeg_mem_src (&mCinfo, mCam->getHeader(), mCam->getHeaderLen());
         jpeg_read_header (&mCinfo, TRUE);
         mCinfo.scale_num = 1;
@@ -197,8 +196,8 @@ void cApp::run() {
         mCinfo.dct_method = JDCT_FLOAT;
         mCinfo.out_color_space = JCS_RGB;
 
-        // body
-        jpeg_mem_src (&mCinfo, frame, mFrameLen);
+        // jpegBody
+        jpeg_mem_src (&mCinfo, mCam->getFrame(), mCam->getFrameLen());
         jpeg_start_decompress (&mCinfo);
         while (mCinfo.output_scanline < mCinfo.output_height) {
           jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
@@ -207,15 +206,14 @@ void cApp::run() {
         jpeg_finish_decompress (&mCinfo);
         mLcd->start (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, true);
         }
-      else
-        mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+      else // rgb565
+        mLcd->start ((uint16_t*)mCam->getFrame(), mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
       }
-    else
+    else // no frame, clear
       mLcd->start();
 
-    mLcd->drawTitle (kVersion);
-    char str[20];
-    mLcd->drawInfo (24, "%dfps %d:%x:%s", mCam->getFps(), mCam->getFrameLen(), mCam->getStatus(), mCam->getMode() ? "j":"p");
+    mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
+    mLcd->drawInfo (LCD_COLOR_YELLOW, 24, "%dfps %d:%x:%s", mCam->getFps(), mCam->getFrameLen(), mCam->getStatus(), mCam->getMode() ? "j":"p");
     mLcd->drawDebug();
     mLcd->present();
 
