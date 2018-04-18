@@ -10,6 +10,8 @@ public:
   uint32_t getHeight() { return mHeight; }
 
   bool getMode() { return mJpegMode; }
+  uint8_t getStatus() { return mJpegStatus; }
+  int getDmaCount() { return mXferCount; }
   int getFps() { return 1000/mTookTicks; }
   int getFocus() { return mFocus; }
 
@@ -17,9 +19,6 @@ public:
   int getHeaderLen() { return mHeaderLen; }
   uint8_t* getFrame() { return mFrame; }
   int getFrameLen() { return mFrameLen; }
-
-  uint8_t getStatus() { return mJpegStatus; }
-  int getDmaCount() { return mXferCount; }
 
   void setFocus (int value);
 
@@ -38,12 +37,12 @@ private:
   void dcmiStart (uint8_t* buffer);
 
   int jfifApp0Marker (uint8_t* ptr);
-  int sofMarker (uint8_t* ptr, int width, int height);
-  int quantTableMarker (uint8_t* ptr, int qscale);
+  int sofMarker (uint8_t* ptr, uint16_t width, uint16_t height);
+  int quantTableMarker (uint8_t* ptr, uint8_t qscale);
   int huffTableMarkerDC (uint8_t* ptr, const uint16_t* htable, int classId);
   int huffTableMarkerAC (uint8_t* ptr, const uint16_t* htable, int classId);
   int sosMarker (uint8_t* ptr);
-  void setJpegHeader (int qscale);
+  void setJpegHeader (uint8_t qscale);
   void setBmpHeader();
 
   void preview();

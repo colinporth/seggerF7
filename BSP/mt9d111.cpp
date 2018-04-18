@@ -732,7 +732,7 @@ int cCamera::jfifApp0Marker (uint8_t* ptr) {
   }
 //}}}
 //{{{
-int cCamera::sofMarker (uint8_t* ptr, int width, int height) {
+int cCamera::sofMarker (uint8_t* ptr, uint16_t width, uint16_t height) {
 
   *ptr++ = 0xFF; // startOfFrame: baseline DCT
   *ptr++ = 0xC0;
@@ -767,7 +767,7 @@ int cCamera::sofMarker (uint8_t* ptr, int width, int height) {
   }
 //}}}
 //{{{
-int cCamera::quantTableMarker (uint8_t* ptr, int qscale) {
+int cCamera::quantTableMarker (uint8_t* ptr, uint8_t qscale) {
 
   *ptr++ = 0xFF;// quantization table marker
   *ptr++ = 0xDB;
@@ -915,7 +915,7 @@ int cCamera::sosMarker (uint8_t* ptr) {
 //}}}
 
 //{{{
-void cCamera::setJpegHeader (int qscale) {
+void cCamera::setJpegHeader (uint8_t qscale) {
 
   auto ptr = mHeader;
 

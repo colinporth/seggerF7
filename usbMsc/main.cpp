@@ -607,6 +607,24 @@ void appThread (void* arg) {
 //{{{
 void netThread (void* arg) {
 
+  // Static IP ADDRESS
+  #define IP_ADDR0   192
+  #define IP_ADDR1   168
+  #define IP_ADDR2   1
+  #define IP_ADDR3   100
+
+  // NETMASK
+  #define NETMASK_ADDR0   255
+  #define NETMASK_ADDR1   255
+  #define NETMASK_ADDR2   255
+  #define NETMASK_ADDR3   0
+
+  // Gateway Address
+  #define GW_ADDR0   192
+  #define GW_ADDR1   168
+  #define GW_ADDR2   0
+  #define GW_ADDR3   1
+
   struct netif netIf;
   ip_addr_t ipaddr;
   ip_addr_t netmask;
@@ -614,21 +632,24 @@ void netThread (void* arg) {
 
   tcpip_init (NULL, NULL);
 
-  ip_addr_set_zero_ip4 (&ipaddr);
-  ip_addr_set_zero_ip4 (&netmask);
-  ip_addr_set_zero_ip4 (&gw);
+  IP_ADDR4(&ipaddr, IP_ADDR0 ,IP_ADDR1 , IP_ADDR2 , IP_ADDR3 );
+  IP_ADDR4(&netmask, NETMASK_ADDR0, NETMASK_ADDR1, NETMASK_ADDR2, NETMASK_ADDR3);
+  IP_ADDR4(&gw, GW_ADDR0, GW_ADDR1, GW_ADDR2, GW_ADDR3);
+  //ip_addr_set_zero_ip4 (&ipaddr);
+  //ip_addr_set_zero_ip4 (&netmask);
+  //ip_addr_set_zero_ip4 (&gw);
   netif_add (&netIf, &ipaddr, &netmask, &gw, NULL, &ethernetIfInit, &tcpip_input);
 
   netif_set_default (&netIf);
   if (netif_is_link_up (&netIf)) {
     netif_set_up (&netIf);
-    sys_thread_new ("dhcp", dhcpThread, &netIf, 2048, osPriorityBelowNormal);
-    sys_thread_new ("server", serverThread, NULL, 2048, osPriorityAboveNormal);
     cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethernet up");
+    //sys_thread_new ("dhcp", dhcpThread, &netIf, 2048, osPriorityBelowNormal);
+    sys_thread_new ("server", serverThread, NULL, 2048, osPriorityAboveNormal);
     }
   else {
-    netif_set_down (&netIf);
     cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethernet down");
+    netif_set_down (&netIf);
     }
 
   while (true) {
