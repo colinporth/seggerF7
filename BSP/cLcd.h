@@ -50,7 +50,7 @@ public:
 
   // flipped display
   void start();
-  void startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom);
+  void start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom);
   void drawTitle (const char* title);
   void drawInfo (uint16_t column, const char* str);
   void drawDebug();
@@ -93,8 +93,8 @@ public:
   void copyFrameScaled (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, uint16_t* dst, uint16_t xsize, uint16_t ysize);
   void convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                         uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
-  void convertRgb888toRgbB565 (uint8_t* src, uint16_t* dst, uint16_t xSize);
-  void convertRgb888toRgbB565cpu (uint8_t* src, uint16_t* dst, uint16_t xSize);
+  void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xSize);
+  void rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t xSize);
 
   void displayOff();
   void displayOn();

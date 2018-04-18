@@ -27,7 +27,7 @@ extern const sFONT Font16;
 #define LCD_BL_CTRL_GPIO_CLK_ENABLE()    __HAL_RCC_GPIOK_CLK_ENABLE()
 #define LCD_BL_CTRL_GPIO_CLK_DISABLE()   __HAL_RCC_GPIOK_CLK_DISABLE()
 //}}}
-//#define freeRtos
+#define freeRtos
 
 LTDC_HandleTypeDef hLtdcHandler;
 DMA2D_HandleTypeDef hDma2dHandler;
@@ -50,7 +50,7 @@ extern "C" {
           if (xSemaphoreGiveFromISR (cLcd::mFrameSem, &taskWoken) == pdTRUE)
             portEND_SWITCHING_ISR (taskWoken);
           }
-        #endif freeRtos
+        #endif
         cLcd::mFrameWait = false;
         }
       }
@@ -287,7 +287,7 @@ void cLcd::start() {
   }
 //}}}
 //{{{
-void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
+void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool zoom) {
 
   mFrameWait = true;
 
@@ -1692,7 +1692,7 @@ void cLcd::convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
   }
 //}}}
 //{{{
-void cLcd::convertRgb888toRgbB565 (uint8_t* src, uint16_t* dst, uint16_t xSize) {
+void cLcd::rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xSize) {
 
   hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
   hDma2dHandler.Init.ColorMode = DMA2D_OUTPUT_RGB565;
@@ -1711,7 +1711,7 @@ void cLcd::convertRgb888toRgbB565 (uint8_t* src, uint16_t* dst, uint16_t xSize) 
   }
 //}}}
 //{{{
-void cLcd::convertRgb888toRgbB565cpu (uint8_t* src, uint16_t* dst, uint16_t xSize) {
+void cLcd::rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t xSize) {
 
   for (int x = 0; x < xSize; x++) {
     uint8_t b = (*src++) & 0xF8;

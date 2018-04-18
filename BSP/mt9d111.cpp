@@ -4,33 +4,8 @@
 
 #include "cLcd.h"
 //}}}
-
 #define Capture800x600
 #define I2cAddress 0x90
-
-//{{{  dcmi defines
-#define DCMI_IT_FRAME        ((uint32_t)DCMI_IER_FRAME_IE)    // Capture complete interrupt
-#define DCMI_IT_OVR          ((uint32_t)DCMI_IER_OVR_IE)      // Overrun interrupt
-#define DCMI_IT_ERR          ((uint32_t)DCMI_IER_ERR_IE)      // Synchronization error interrupt
-#define DCMI_IT_VSYNC        ((uint32_t)DCMI_IER_VSYNC_IE)    // VSYNC interrupt
-#define DCMI_IT_LINE         ((uint32_t)DCMI_IER_LINE_IE)     // Line interrupt
-
-#define DCMI_FLAG_HSYNC      ((uint32_t)DCMI_SR_INDEX | DCMI_SR_HSYNC) // HSYNC pin state (active line / synchronization between lines)
-#define DCMI_FLAG_VSYNC      ((uint32_t)DCMI_SR_INDEX | DCMI_SR_VSYNC) // VSYNC pin state (active frame / synchronization between frames)
-#define DCMI_FLAG_FNE        ((uint32_t)DCMI_SR_INDEX | DCMI_SR_FNE)   // FIFO not empty flag
-
-#define DCMI_FLAG_FRAMERI    ((uint32_t)DCMI_RIS_FRAME_RIS)  // Frame capture complete interrupt flag
-#define DCMI_FLAG_OVRRI      ((uint32_t)DCMI_RIS_OVR_RIS)    // Overrun interrupt flag
-#define DCMI_FLAG_ERRRI      ((uint32_t)DCMI_RIS_ERR_RIS)    // Synchronization error interrupt flag
-#define DCMI_FLAG_VSYNCRI    ((uint32_t)DCMI_RIS_VSYNC_RIS)  // VSYNC interrupt flag
-#define DCMI_FLAG_LINERI     ((uint32_t)DCMI_RIS_LINE_RIS)   // Line interrupt flag
-
-#define DCMI_FLAG_FRAMEMI    ((uint32_t)DCMI_MIS_INDEX | DCMI_MIS_FRAME_MIS)  // DCMI Frame capture complete masked interrupt status
-#define DCMI_FLAG_OVRMI      ((uint32_t)DCMI_MIS_INDEX | DCMI_MIS_OVR_MIS  )  // DCMI Overrun masked interrupt status
-#define DCMI_FLAG_ERRMI      ((uint32_t)DCMI_MIS_INDEX | DCMI_MIS_ERR_MIS  )  // DCMI Synchronization error masked interrupt status
-#define DCMI_FLAG_VSYNCMI    ((uint32_t)DCMI_MIS_INDEX | DCMI_MIS_VSYNC_MIS)  // DCMI VSYNC masked interrupt status
-#define DCMI_FLAG_LINEMI     ((uint32_t)DCMI_MIS_INDEX | DCMI_MIS_LINE_MIS )  // DCMI Line masked interrupt status
-//}}}
 
 cCamera* gCamera = nullptr;
 
@@ -187,29 +162,27 @@ void cCamera::dmaIrqHandler() {
 void cCamera::dcmiIrqHandler() {
 
   uint32_t misr = DCMI->MISR;
-
-  if ((misr & DCMI_FLAG_ERRRI) == DCMI_FLAG_ERRRI) {
+  if ((misr & DCMI_RIS_ERR_RIS) == DCMI_RIS_ERR_RIS) {
     //{{{  synchronizationError interrupt
-    DCMI->ICR = DCMI_FLAG_ERRRI;
+    DCMI->ICR = DCMI_RIS_ERR_RIS;
     cLcd::mLcd->debug (LCD_COLOR_RED, "syncIrq");
     }
     //}}}
-  if ((misr & DCMI_FLAG_OVRRI) == DCMI_FLAG_OVRRI) {
+  if ((misr & DCMI_RIS_OVR_RIS) == DCMI_RIS_OVR_RIS) {
     //{{{  overflowError interrupt
-    DCMI->ICR = DCMI_FLAG_OVRRI;
+    DCMI->ICR = DCMI_RIS_OVR_RIS;
     // dsiable dma
     DMA2_Stream1->CR &= ~DMA_SxCR_EN;
     cLcd::mLcd->debug (LCD_COLOR_RED, "overflowIrq");
     }
     //}}}
 
-  if ((misr & DCMI_FLAG_VSYNCRI) == DCMI_FLAG_VSYNCRI) {
-    DCMI->ICR = DCMI_FLAG_VSYNCRI;
+  if ((misr & DCMI_RIS_VSYNC_RIS) == DCMI_RIS_VSYNC_RIS) {
+    DCMI->ICR = DCMI_RIS_VSYNC_RIS;
 
     auto ticks = HAL_GetTick();
     mTookTicks = ticks - mTicks;
     mTicks = ticks;
-    mFrames++;
 
     uint32_t dmaBytes = (mXferSize - DMA2_Stream1->NDTR) * 4;
     if (mJpegMode) {
@@ -334,7 +307,7 @@ void cCamera::mt9d111Init() {
   write (0x21, 0x8400); // preview A Read Mode
 #endif
 
-  // page 0 PLL - M=16,N=1,P=3 - (24mhz/(N+1))*M / 2*(P+1) = 24mhz
+  // page 0 PLL - M=16,N=1,P=3 - (24mhz/(N+1))*M / 2*(P+1) = 24mhz, can goto 48mhz?
   write (0x66, 0x1001); // PLLControl1 - M:N
   write (0x67, 0x0503); // PLLControl2 - 0x05:P
   write (0x65, 0xA000); // Clock(R/W)  - pllOn
@@ -401,8 +374,6 @@ void cCamera::mt9d111Init() {
   write1 (0xA40B, 0x000C); // search_f2_60
   write1 (0x2411, 0x003B); // R9_Step_60
   write1 (0x2413, 0x0047); // R9_Step_50
-
-  HAL_Delay (100);
   //}}}
 #else
   //{{{  register wizard
@@ -459,8 +430,6 @@ void cCamera::mt9d111Init() {
   write1 (0xA40B, 0x0009); // search_f2_60
   write1 (0x2411, 0x002B); // R9_Step_60
   write1 (0x2413, 0x0034); // R9_Step_50
-
-  HAL_Delay (100);
   //}}}
 #endif
   //{{{  jpeg b config
@@ -592,9 +561,9 @@ void cCamera::mt9d111Init() {
   //}}}
 
   write1 (0xA103, 0x06); // Sequencer Refresh Mode
-  HAL_Delay (100);
+  //HAL_Delay (100);
   write1 (0xA103, 0x05); // Sequencer Refresh
-  HAL_Delay (100);
+  //HAL_Delay (100);
   }
 //}}}
 
@@ -649,19 +618,382 @@ void cCamera::dcmiStart (uint8_t* buf) {
                      DMA_SxCR_EN;
 
   // enable dcmi - error,overrun,vsync interrupts
-  DCMI->IER |= DCMI_IT_ERR | DCMI_IT_OVR | DCMI_IT_VSYNC;
+  DCMI->IER |= DCMI_IER_ERR_IE | DCMI_IER_OVR_IE | DCMI_IER_VSYNC_IE;
   // enable dcmi - continuous,capture,enable
   DCMI->CR = DCMI_CR_PCKPOL | DCMI_CR_JPEG | DCMI_CR_CAPTURE | DCMI_CR_ENABLE;
+  }
+//}}}
+
+//line2 ("cam AE 6500");
+//writeReg111 (0xC6, 0xA102); writeReg111 (0xC8, 0x21);
+//writeReg111 (0xC6, 0xA102); writeReg111 (0xC8, 0);
+//{{{
+const uint8_t kJpegStdQuantTblY_ZZ[64] = {
+   16,  11,  12,  14,  12,  10,  16,  14,
+   13,  14,  18,  17,  16,  19,  24,  40,
+   26,  24,  22,  22,  24,  49,  35,  37,
+   29,  40,  58,  51,  61,  60,  57,  51,
+   56,  55,  64,  72,  92,  78,  64,  68,
+   87,  69,  55,  56,  80, 109,  81,  87,
+   95,  98, 103, 104, 103,  62,  77, 113,
+  121, 112, 100, 120,  92, 101, 103,  99 };
+//}}}
+//{{{
+const uint8_t kJpegStdQuantTblC_ZZ[64] = {
+  17, 18, 18, 24, 21, 24, 47, 26,
+  26, 47, 99, 66, 56, 66, 99, 99,
+  99, 99, 99, 99, 99, 99, 99, 99,
+  99, 99, 99, 99, 99, 99, 99, 99,
+  99, 99, 99, 99, 99, 99, 99, 99,
+  99, 99, 99, 99, 99, 99, 99, 99,
+  99, 99, 99, 99, 99, 99, 99, 99,
+  99, 99, 99, 99, 99, 99, 99, 99 };
+//}}}
+//{{{
+const uint16_t kJpegStdHuffmanTbl[384] = {
+  0x100, 0x101, 0x204, 0x30b, 0x41a, 0x678, 0x7f8, 0x9f6,
+  0xf82, 0xf83, 0x30c, 0x41b, 0x679, 0x8f6, 0xaf6, 0xf84,
+  0xf85, 0xf86, 0xf87, 0xf88, 0x41c, 0x7f9, 0x9f7, 0xbf4,
+  0xf89, 0xf8a, 0xf8b, 0xf8c, 0xf8d, 0xf8e, 0x53a, 0x8f7,
+  0xbf5, 0xf8f, 0xf90, 0xf91, 0xf92, 0xf93, 0xf94, 0xf95,
+  0x53b, 0x9f8, 0xf96, 0xf97, 0xf98, 0xf99, 0xf9a, 0xf9b,
+  0xf9c, 0xf9d, 0x67a, 0xaf7, 0xf9e, 0xf9f, 0xfa0, 0xfa1,
+  0xfa2, 0xfa3, 0xfa4, 0xfa5, 0x67b, 0xbf6, 0xfa6, 0xfa7,
+  0xfa8, 0xfa9, 0xfaa, 0xfab, 0xfac, 0xfad, 0x7fa, 0xbf7,
+  0xfae, 0xfaf, 0xfb0, 0xfb1, 0xfb2, 0xfb3, 0xfb4, 0xfb5,
+  0x8f8, 0xec0, 0xfb6, 0xfb7, 0xfb8, 0xfb9, 0xfba, 0xfbb,
+  0xfbc, 0xfbd, 0x8f9, 0xfbe, 0xfbf, 0xfc0, 0xfc1, 0xfc2,
+  0xfc3, 0xfc4, 0xfc5, 0xfc6, 0x8fa, 0xfc7, 0xfc8, 0xfc9,
+  0xfca, 0xfcb, 0xfcc, 0xfcd, 0xfce, 0xfcf, 0x9f9, 0xfd0,
+  0xfd1, 0xfd2, 0xfd3, 0xfd4, 0xfd5, 0xfd6, 0xfd7, 0xfd8,
+  0x9fa, 0xfd9, 0xfda, 0xfdb, 0xfdc, 0xfdd, 0xfde, 0xfdf,
+  0xfe0, 0xfe1, 0xaf8, 0xfe2, 0xfe3, 0xfe4, 0xfe5, 0xfe6,
+  0xfe7, 0xfe8, 0xfe9, 0xfea, 0xfeb, 0xfec, 0xfed, 0xfee,
+  0xfef, 0xff0, 0xff1, 0xff2, 0xff3, 0xff4, 0xff5, 0xff6,
+  0xff7, 0xff8, 0xff9, 0xffa, 0xffb, 0xffc, 0xffd, 0xffe,
+  0x30a, 0xaf9, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff,
+  0xfd0, 0xfd1, 0xfd2, 0xfd3, 0xfd4, 0xfd5, 0xfd6, 0xfd7,
+  0x101, 0x204, 0x30a, 0x418, 0x419, 0x538, 0x678, 0x8f4,
+  0x9f6, 0xbf4, 0x30b, 0x539, 0x7f6, 0x8f5, 0xaf6, 0xbf5,
+  0xf88, 0xf89, 0xf8a, 0xf8b, 0x41a, 0x7f7, 0x9f7, 0xbf6,
+  0xec2, 0xf8c, 0xf8d, 0xf8e, 0xf8f, 0xf90, 0x41b, 0x7f8,
+  0x9f8, 0xbf7, 0xf91, 0xf92, 0xf93, 0xf94, 0xf95, 0xf96,
+  0x53a, 0x8f6, 0xf97, 0xf98, 0xf99, 0xf9a, 0xf9b, 0xf9c,
+  0xf9d, 0xf9e, 0x53b, 0x9f9, 0xf9f, 0xfa0, 0xfa1, 0xfa2,
+  0xfa3, 0xfa4, 0xfa5, 0xfa6, 0x679, 0xaf7, 0xfa7, 0xfa8,
+  0xfa9, 0xfaa, 0xfab, 0xfac, 0xfad, 0xfae, 0x67a, 0xaf8,
+  0xfaf, 0xfb0, 0xfb1, 0xfb2, 0xfb3, 0xfb4, 0xfb5, 0xfb6,
+  0x7f9, 0xfb7, 0xfb8, 0xfb9, 0xfba, 0xfbb, 0xfbc, 0xfbd,
+  0xfbe, 0xfbf, 0x8f7, 0xfc0, 0xfc1, 0xfc2, 0xfc3, 0xfc4,
+  0xfc5, 0xfc6, 0xfc7, 0xfc8, 0x8f8, 0xfc9, 0xfca, 0xfcb,
+  0xfcc, 0xfcd, 0xfce, 0xfcf, 0xfd0, 0xfd1, 0x8f9, 0xfd2,
+  0xfd3, 0xfd4, 0xfd5, 0xfd6, 0xfd7, 0xfd8, 0xfd9, 0xfda,
+  0x8fa, 0xfdb, 0xfdc, 0xfdd, 0xfde, 0xfdf, 0xfe0, 0xfe1,
+  0xfe2, 0xfe3, 0xaf9, 0xfe4, 0xfe5, 0xfe6, 0xfe7, 0xfe8,
+  0xfe9, 0xfea, 0xfeb, 0xfec, 0xde0, 0xfed, 0xfee, 0xfef,
+  0xff0, 0xff1, 0xff2, 0xff3, 0xff4, 0xff5, 0xec3, 0xff6,
+  0xff7, 0xff8, 0xff9, 0xffa, 0xffb, 0xffc, 0xffd, 0xffe,
+  0x100, 0x9fa, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff, 0xfff,
+  0xfd0, 0xfd1, 0xfd2, 0xfd3, 0xfd4, 0xfd5, 0xfd6, 0xfd7,
+  0x100, 0x202, 0x203, 0x204, 0x205, 0x206, 0x30e, 0x41e,
+  0x53e, 0x67e, 0x7fe, 0x8fe, 0xfff, 0xfff, 0xfff, 0xfff,
+  0x100, 0x101, 0x102, 0x206, 0x30e, 0x41e, 0x53e, 0x67e,
+  0x7fe, 0x8fe, 0x9fe, 0xafe, 0xfff, 0xfff, 0xfff, 0xfff };
+//}}}
+//{{{
+int cCamera::jfifApp0Marker (uint8_t* ptr) {
+
+  *ptr++ = 0xFF; // APP0 marker
+  *ptr++ = 0xE0;
+
+  int length = 16;
+  *ptr++ = length >> 8;// length field
+  *ptr++ = length & 0xFF;
+
+  *ptr++ = 0x4A; // JFIF identifier
+  *ptr++ = 0x46;
+  *ptr++ = 0x49;
+  *ptr++ = 0x46;
+  *ptr++ = 0x00;
+
+  *ptr++ = 0x01; // version
+  *ptr++ = 0x02;
+
+  *ptr++ = 0x00; // units
+  *ptr++ = 0x00; // X density
+  *ptr++ = 0x01;
+  *ptr++ = 0x00; // Y density
+  *ptr++ = 0x01;
+
+  *ptr++ = 0x00; // X thumbnail
+  *ptr++ = 0x00; // Y thumbnail
+
+  return length+2;
+  }
+//}}}
+//{{{
+int cCamera::sofMarker (uint8_t* ptr, int width, int height) {
+
+  *ptr++ = 0xFF; // startOfFrame: baseline DCT
+  *ptr++ = 0xC0;
+
+  int length = 17;
+  *ptr++ = length >> 8;// length field
+  *ptr++ = length & 0xFF;
+
+  *ptr++ = 0x08; // sample precision
+
+  *ptr++ = height >> 8; // number of lines
+  *ptr++ = height & 0xFF;
+
+  *ptr++ = width >> 8; // number of samples per line
+  *ptr++ = width & 0xFF;
+
+  *ptr++ = 0x03; // number of image components in frame
+
+  *ptr++ = 0x00; // component identifier: Y
+  *ptr++ = 0x21; // horizontal | vertical sampling factor: Y
+  *ptr++ = 0x00; // quantization table selector: Y
+
+  *ptr++ = 0x01; // component identifier: Cb
+  *ptr++ = 0x11; // horizontal | vertical sampling factor: Cb
+  *ptr++ = 0x01; // quantization table selector: Cb
+
+  *ptr++ = 0x02; // component identifier: Cr
+  *ptr++ = 0x11; // horizontal | vertical sampling factor: Cr
+  *ptr++ = 0x01; // quantization table selector: Cr
+
+  return length+2;
+  }
+//}}}
+//{{{
+int cCamera::quantTableMarker (uint8_t* ptr, int qscale) {
+
+  *ptr++ = 0xFF;// quantization table marker
+  *ptr++ = 0xDB;
+
+  int length = 132;
+  *ptr++ = length >> 8;// length field
+  *ptr++ = length & 0xFF;
+
+  *ptr++ = 0;// quantization table precision | identifier
+  for (int i = 0; i < 64; i++) {
+    int q = (kJpegStdQuantTblY_ZZ[i] * qscale + 16) >> 5;
+    *ptr++ = q;// quantization table element
+    }
+
+  *ptr++ = 1;// quantization table precision | identifier
+  for (int i = 0; i < 64; i++) {
+    int q = (kJpegStdQuantTblC_ZZ[i] * qscale + 16) >> 5;
+    *ptr++ = q;// quantization table element
+    }
+
+  return length+2;
+  }
+//}}}
+//{{{
+int cCamera::huffTableMarkerAC (uint8_t* ptr, const uint16_t* htable, int classId) {
+
+  *ptr++ = 0xFF; // huffman table marker
+  *ptr++ = 0xC4;
+
+  int length = 19;
+  uint8_t* plength = ptr; // place holder for length field
+  *ptr++;
+  *ptr++;
+
+  *ptr++ = classId;// huffman table class identifier
+  for (int l = 0; l < 16; l++) {
+    int count = 0;
+    for (int i = 0; i < 162; i++) {
+      if ((htable[i] >> 8) == l)
+        count++;
+      }
+    *ptr++ = count; // number of huffman codes of length l+1
+    }
+
+  for (int l = 0; l < 16; l++) {
+    // check EOB: 0|0
+    if ((htable[160] >> 8) == l) {
+      *ptr++ = 0; // HUFFVAL with huffman codes of length l+1
+      length++;
+      }
+
+    // check HUFFVAL: 0|1 to E|A
+    for (int i = 0; i < 150; i++) {
+      if ((htable[i] >> 8) == l) {
+        int a = i/10;
+        int b = i%10;
+        *ptr++ = (a<<4)|(b+1); // HUFFVAL with huffman codes of length l+1
+        length++;
+        }
+      }
+
+    // check ZRL: F|0
+    if ((htable[161] >> 8) == l) {
+      *ptr++ = 0xF0; // HUFFVAL with huffman codes of length l+1
+      length++;
+      }
+
+    // check HUFFVAL: F|1 to F|A
+    for (int i = 150; i < 160; i++) {
+      if ((htable[i] >> 8) == l) {
+        int a = i/10;
+        int b = i%10;
+        *ptr++ = (a<<4)|(b+1); // HUFFVAL with huffman codes of length l+1
+        length++;
+        }
+      }
+    }
+
+  *plength++ = length >> 8; // length field
+  *plength = length & 0xFF;
+
+  return length + 2;
+  }
+//}}}
+//{{{
+int cCamera::huffTableMarkerDC (uint8_t* ptr, const uint16_t* htable, int classId) {
+
+  *ptr++ = 0xFF; // huffman table marker
+  *ptr++ = 0xC4;
+
+  int length = 19;
+  uint8_t* plength = ptr; // place holder for length field
+  *ptr++;
+  *ptr++;
+
+  *ptr++ = classId; // huffman table class identifier
+  for (int l = 0; l < 16; l++) {
+    int count = 0;
+    for (int i = 0; i < 12; i++) {
+      if ((htable[i] >> 8) == l)
+        count++;
+      }
+    *ptr++ = count; // number of huffman codes of length l+1
+    }
+
+  for (int l = 0; l < 16; l++) {
+    for (int i = 0; i < 12; i++) {
+      if ((htable[i] >> 8) == l) {
+        *ptr++ = i; // HUFFVAL with huffman codes of length l+1
+        length++;
+        }
+      }
+    }
+
+  *plength++ = length >> 8;// length field
+  *plength = length & 0xFF;
+
+  return length + 2;
+  }
+//}}}
+//{{{
+int cCamera::sosMarker (uint8_t* ptr) {
+
+  *ptr++ = 0xFF;// startOfScan marker
+  *ptr++ = 0xDA;
+
+  int length = 12;
+  *ptr++ = length >> 8;// length field
+  *ptr++ = length & 0xFF;
+
+  *ptr++ = 0x03;// number of image components in scan
+  *ptr++ = 0x00;// scan component selector: Y
+  *ptr++ = 0x00;// DC | AC huffman table selector: Y
+  *ptr++ = 0x01;// scan component selector: Cb
+  *ptr++ = 0x11;// DC | AC huffman table selector: Cb
+  *ptr++ = 0x02;// scan component selector: Cr
+  *ptr++ = 0x11;// DC | AC huffman table selector: Cr
+
+  *ptr++ = 0x00;// Ss: start of predictor selector
+  *ptr++ = 0x3F;// Se: end of spectral selector
+  *ptr++ = 0x00;// Ah | Al: successive approximation bit position
+
+  return length+2;
+  }
+//}}}
+
+//{{{
+void cCamera::setJpegHeader (int qscale) {
+
+  auto ptr = mHeader;
+
+  *ptr++ = 0xFF; // SOI marker
+  *ptr++ = 0xD8;
+  mHeaderLen = 2;
+
+  mHeaderLen += jfifApp0Marker (ptr);
+  mHeaderLen += quantTableMarker (mHeader + mHeaderLen, qscale);
+  mHeaderLen += sofMarker (mHeader + mHeaderLen, mWidth, mHeight);
+  mHeaderLen += huffTableMarkerAC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[0], 0x10);
+  mHeaderLen += huffTableMarkerAC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[176], 0x11);
+  mHeaderLen += huffTableMarkerDC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[352], 0x00);
+  mHeaderLen += huffTableMarkerDC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[368], 0x01);
+  mHeaderLen += sosMarker (mHeader + mHeaderLen);
+  }
+//}}}
+//{{{
+void cCamera::setBmpHeader() {
+// set RGB565 16bpp bmp header, minimal for pic no greater than 1600x1200
+
+  const int kHeaderLen = 14;
+  const int kDibLen = 0x28;
+  const int kMaskLen = 12;
+
+  int imageSize = mWidth*mHeight*2;
+  int fileSize = mHeaderLen + imageSize;
+
+  mHeaderLen = kHeaderLen + kDibLen + kMaskLen;
+
+  memset (mHeader, 0, mHeaderLen);
+
+  mHeader[0] = 'B';  // magic
+  mHeader[1] = 'M';
+
+  mHeader[2] = fileSize;
+  mHeader[3] = fileSize >> 8;
+  mHeader[4] = fileSize >> 16;
+
+  mHeader[0x0a] = mHeaderLen;
+  mHeader[0x0e] = kDibLen;
+
+  mHeader[0x12] = mWidth;
+  mHeader[0x13] = mWidth >> 8;
+
+  mHeader[0x16] = -mHeight;
+  mHeader[0x17] = -mHeight >> 8;
+  mHeader[0x18] = -mHeight >> 16;
+  mHeader[0x19] = -mHeight >> 24;
+
+  mHeader[0x1A] = 1;  // 0x1A number color planes
+  mHeader[0x1C] = 16; // 0x1C bits per pixel
+  mHeader[0x1E] = 3;  // 0x1E compression
+
+  mHeader[0x22] = imageSize;
+  mHeader[0x23] = imageSize >> 8;
+  mHeader[0x24] = imageSize >> 16;
+
+  mHeader[0x26] = 0x13; // 0x26 horz resolution 72 dpi
+  mHeader[0x27] = 0x0B;
+
+  mHeader[0x2a] = 0x13; // 0x2a horz resolution 72 dpi
+  mHeader[0x2b] = 0x0B;
+
+  mHeader[0x37] = 0xF8;
+  mHeader[0x3A] = 0xE0;
+  mHeader[0x3B] = 0x07;
+  mHeader[0x3E] = 0x1F;
   }
 //}}}
 
 //{{{
 void cCamera::preview() {
 
+  mJpegMode = false;
   mWidth = 800;
   mHeight = 600;
-  mJpegMode = false;
-
+  setBmpHeader();
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview %dx%d", mWidth, mHeight);
 
   // switch to preview
@@ -673,15 +1005,17 @@ void cCamera::preview() {
 //{{{
 void cCamera::jpeg() {
 
+  mJpegMode = true;
+
 #ifdef Capture800x600
   mWidth = 800;
   mHeight = 600;
 #else
   mWidth = 1600;
-  mHeight = 1200;
+  mWidth = 1200;
 #endif
-  mJpegMode = true;
 
+  setJpegHeader (6);
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
 
   write (0xf0, 1);
