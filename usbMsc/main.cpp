@@ -14,6 +14,7 @@
 #include "jpeglib.h"
 
 #include "cmsis_os.h"
+#include "cpuUsage.h"
 #include "lwip/opt.h"
 #include "lwip/netif.h"
 #include "lwip/tcpip.h"
@@ -212,8 +213,10 @@ void cApp::run() {
       }
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
-    mLcd->drawInfo (LCD_COLOR_YELLOW, 24, "%dfps %d:%x:%s:%d",
-                    mCam->getFps(), mCam->getFrameLen(), mCam->getStatus(), mCam->getMode() ? "j":"p", mCam->getDmaCount());
+    mLcd->drawInfo (LCD_COLOR_YELLOW, 16, "%d %d %dfps %d:%x:%s:%d",
+                    osGetCPUUsage(), xPortGetFreeHeapSize(),
+                    mCam->getFps(), mCam->getFrameLen(), mCam->getStatus(),
+                    mCam->getMode() ? "j":"p", mCam->getDmaCount());
     mLcd->drawDebug();
     mLcd->present();
 

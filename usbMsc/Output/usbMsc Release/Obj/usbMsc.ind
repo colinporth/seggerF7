@@ -96,6 +96,7 @@
 "Output/usbMsc Release/Obj/port.o"
 "Output/usbMsc Release/Obj/cmsis_os.o"
 "Output/usbMsc Release/Obj/heap_4.o"
+"Output/usbMsc Release/Obj/cpuUsage.o"
 "Output/usbMsc Release/Obj/api_lib.o"
 "Output/usbMsc Release/Obj/api_msg.o"
 "Output/usbMsc Release/Obj/err.o"

@@ -116,14 +116,9 @@ private:
   class cDebugItem {
   public:
     cDebugItem() {}
-    cDebugItem (char* str, uint32_t ticks, uint32_t colour) : mStr(str), mTicks(ticks), mColour(colour) {}
-    //{{{
-    ~cDebugItem() {
-      free (mStr);
-      }
-    //}}}
+    ~cDebugItem() { free (mStr); }
 
-    char* mStr = (char*)malloc (kMaxStrSize);
+    char* mStr = nullptr;
     uint32_t mTicks = 0;
     uint32_t mColour = 0;
     };

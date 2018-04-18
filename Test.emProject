@@ -396,6 +396,24 @@
         <file file_name="../FreeRTOS/CMSIS_RTOS/cmsis_os.c" />
         <file file_name="../FreeRTOS/portable/MemMang/heap_4.c" />
       </folder>
+      <file file_name="../FreeRTOS/cpuUsage.c" />
+      <folder Name="includes">
+        <file file_name="../FreeRTOS/include/deprecated_definitions.h" />
+        <file file_name="../FreeRTOS/include/event_groups.h" />
+        <file file_name="../FreeRTOS/include/FreeRTOS.h" />
+        <file file_name="../FreeRTOS/include/list.h" />
+        <file file_name="../FreeRTOS/include/mpu_prototypes.h" />
+        <file file_name="../FreeRTOS/include/mpu_wrappers.h" />
+        <file file_name="../FreeRTOS/include/portable.h" />
+        <file file_name="../FreeRTOS/include/projdefs.h" />
+        <file file_name="../FreeRTOS/include/queue.h" />
+        <file file_name="../FreeRTOS/include/semphr.h" />
+        <file file_name="../FreeRTOS/include/StackMacros.h" />
+        <file file_name="../FreeRTOS/include/task.h" />
+        <file file_name="../FreeRTOS/include/timers.h" />
+        <file file_name="../FreeRTOS/include/cpuUsage.h" />
+        <file file_name="../FreeRTOS/include/croutine.h" />
+      </folder>
     </folder>
     <folder Name="LwIP">
       <folder Name="api">

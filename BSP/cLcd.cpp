@@ -417,6 +417,9 @@ void cLcd::debug (uint32_t colour, const char* format, ... ) {
 
   auto line = mDebugLine % kDebugMaxLines;
 
+  if (!mLines[line].mStr)
+    mLines[line].mStr = (char*)malloc (kMaxStrSize);
+
   va_list args;
   va_start (args, format);
   vsnprintf (mLines[line].mStr, kMaxStrSize-1, format, args);
