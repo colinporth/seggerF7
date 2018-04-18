@@ -311,7 +311,14 @@ void cLcd::drawTitle (const char* title) {
   }
 //}}}
 //{{{
-void cLcd::drawInfo (uint16_t column, const char* str) {
+void cLcd::drawInfo (uint16_t column, const char* format, ... ) {
+
+  char str[50];
+
+  va_list args;
+  va_start (args, format);
+  vsnprintf (str, 50-1, format, args);
+  va_end (args);
 
   SetTextColor (LCD_COLOR_YELLOW);
   DisplayStringAtLineColumn (0, column, str);

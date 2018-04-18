@@ -63,7 +63,7 @@ public:
     }
   //}}}
 
-  cCamera* mCamera = nullptr;
+  cCamera* mCam = nullptr;
 
 protected:
   virtual void onProx (int x, int y, int z);
@@ -171,13 +171,10 @@ void cApp::init() {
 //{{{
 void cApp::run() {
 
-  //int jpegLen = loadFile (kJpegBuffer);
-  mCamera = new cCamera();
-  mCamera->init();
-  mCamera->start (false, kCamBuffer);
+  mCam = new cCamera();
+  mCam->init();
+  mCam->start (false, kCamBuffer);
 
-  int count = 0;
-  int lastCount = 0;
   bool lastButton = false;
   while (true) {
     pollTouch();
@@ -188,55 +185,43 @@ void cApp::run() {
     //  }
     //}}}
 
-    if (!mCamera)
-      mLcd->start();
-    else {
-      auto frameBuf = mCamera->getFrameBuf();
-      if (frameBuf) {
-        if (mCamera->getJpegMode()) {
-          // jpegDecode
-          auto mFrameBufLen = mCamera->getFrameBufLen();
-          jpeg_mem_src (&mCinfo, mCamera->getHeader(), mCamera->getHeaderLen());
-          jpeg_read_header (&mCinfo, TRUE);
-          mCinfo.scale_num = 1;
-          mCinfo.scale_denom = 2;
-          mCinfo.dct_method = JDCT_FLOAT;
-          mCinfo.out_color_space = JCS_RGB;
+    auto frame = mCam->getFrame();
+    if (frame) {
+      if (mCam->getMode()) {
+        // jpegDecode
+        auto mFrameLen = mCam->getFrameLen();
+        jpeg_mem_src (&mCinfo, mCam->getHeader(), mCam->getHeaderLen());
+        jpeg_read_header (&mCinfo, TRUE);
+        mCinfo.scale_num = 1;
+        mCinfo.scale_denom = 2;
+        mCinfo.dct_method = JDCT_FLOAT;
+        mCinfo.out_color_space = JCS_RGB;
 
-          // body
-          jpeg_mem_src (&mCinfo, frameBuf, mFrameBufLen);
-          jpeg_start_decompress (&mCinfo);
-          while (mCinfo.output_scanline < mCinfo.output_height) {
-            jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-            mLcd->rgb888to565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-            }
-          jpeg_finish_decompress (&mCinfo);
-          mLcd->start (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, true);
+        // body
+        jpeg_mem_src (&mCinfo, frame, mFrameLen);
+        jpeg_start_decompress (&mCinfo);
+        while (mCinfo.output_scanline < mCinfo.output_height) {
+          jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
+          mLcd->rgb888to565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
           }
-        else
-          mLcd->start ((uint16_t*)frameBuf, mCamera->getWidth(), mCamera->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+        jpeg_finish_decompress (&mCinfo);
+        mLcd->start (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, true);
         }
       else
-        mLcd->start();
+        mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
       }
+    else
+      mLcd->start();
 
     mLcd->drawTitle (kVersion);
-    if (mCamera) {
-      // drawInfo
-      char str[20];
-      sprintf (str, "%dfps %d:%x:%s",
-               mCamera->getFps(), mCamera->getFrameBufLen(),
-               mCamera->getJpegStatus(),
-               mCamera->getJpegMode() ? "jpg":"pre"
-               );
-      mLcd->drawInfo (24, str);
-      }
+    char str[20];
+    mLcd->drawInfo (24, "%dfps %d:%x:%s", mCam->getFps(), mCam->getFrameLen(), mCam->getStatus(), mCam->getMode() ? "j":"p");
     mLcd->drawDebug();
     mLcd->present();
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
-    if (!button && (button != lastButton) && mCamera)
-      mCamera->start (!mCamera->getJpegMode(), kCamBuffer);
+    if (!button && (button != lastButton) && mCam)
+      mCam->start (!mCam->getMode(), kCamBuffer);
     lastButton = button;
     }
   }
@@ -267,12 +252,12 @@ void cApp::onMove (int x, int y, int z) {
   if (x || y) {
     //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
     //hidSendReport (&gUsbDevice, HID_Buffer);
-    int focus = mCamera->getFocus() + x;
+    int focus = mCam->getFocus() + x;
     if (focus < 0)
       focus = 0;
     else if (focus > 254)
       focus = 254;
-    mCamera->setFocus (focus);
+    mCam->setFocus (focus);
     mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d %d", x, y, z, focus);
     }
   }
@@ -528,22 +513,22 @@ void serverThread (void* arg) {
                   //}}}
                 else if (!strncmp (buf, "GET /cam.jpg", 12)) {
                   //{{{  cam.jpg
-                  if (gApp->mCamera) {
-                    auto frameBuf = gApp->mCamera->getFrameBuf();
-                    if (frameBuf) {
-                      int frameBufLen = gApp->mCamera->getFrameBufLen();
+                  if (gApp->mCam) {
+                    auto frame = gApp->mCam->getFrame();
+                    if (frame) {
+                      int frameLen = gApp->mCam->getFrameLen();
 
                       // send http response header
-                      if (gApp->mCamera->getJpegMode())
+                      if (gApp->mCam->getMode())
                         netconn_write (request, kJpegResponseHeader, sizeof(kJpegResponseHeader)-1, NETCONN_NOCOPY);
                       else
                         netconn_write (request, kBmpResponseHeader, sizeof(kBmpResponseHeader)-1, NETCONN_NOCOPY);
 
                       // send imageFile format header
-                      netconn_write (request, gApp->mCamera->getHeader(), gApp->mCamera->getHeaderLen(), NETCONN_NOCOPY);
+                      netconn_write (request, gApp->mCam->getHeader(), gApp->mCam->getHeaderLen(), NETCONN_NOCOPY);
 
                       // send imageFile body
-                      netconn_write (request, frameBuf, frameBufLen, NETCONN_NOCOPY);
+                      netconn_write (request, frame, frameLen, NETCONN_NOCOPY);
                       ok = true;
                       }
                     }

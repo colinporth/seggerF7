@@ -8,15 +8,15 @@ public:
 
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
-  bool getJpegMode() { return mJpegMode; }
+  bool getMode() { return mJpegMode; }
   int getFps() { return 1000/mTookTicks; }
   int getFocus() { return mFocus; }
 
   uint8_t* getHeader() { return mHeader; }
   int getHeaderLen() { return mHeaderLen; }
-  uint8_t* getFrameBuf() { return mFrameBuf; }
-  int getFrameBufLen() { return mFrameBufLen; }
-  uint8_t getJpegStatus() { return mJpegStatus; }
+  uint8_t* getFrame() { return mFrame; }
+  int getFrameLen() { return mFrameLen; }
+  uint8_t getStatus() { return mJpegStatus; }
 
   void setFocus (int value);
 
@@ -77,8 +77,9 @@ private:
 
   uint8_t* mFrameStart = nullptr;
   uint8_t* mFrameCur = nullptr;
-  uint8_t* mFrameBuf = nullptr;
-  int mFrameBufLen = 0;
+  uint8_t* mFrame = nullptr;
+
+  int mFrameLen = 0;
   int mFixedFrameLen = 0;
   uint8_t mJpegStatus = 0;
 

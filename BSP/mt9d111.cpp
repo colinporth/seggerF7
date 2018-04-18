@@ -196,30 +196,30 @@ void cCamera::dcmiIrqHandler() {
       //}}}
       mJpegStatus = mFrameCur[dmaBytes-1];
       if ((mJpegStatus & 0x0f) == 0x01) {
-        mFrameBuf = mFrameStart;
-        mFrameBufLen = (mFrameCur[dmaBytes-2] << 16) + (mFrameCur[dmaBytes-3] << 8) + mFrameCur[dmaBytes-4];
-        if (mFrameBufLen > mFrameCur - mFrameStart + dmaBytes) {
-          cLcd::mLcd->debug (LCD_COLOR_RED, "len %d %d", mFrameBufLen, mFrameCur - mFrameStart + dmaBytes);
-          mFrameBuf = nullptr;
-          mFrameBufLen = 0;
+        mFrame = mFrameStart;
+        mFrameLen = (mFrameCur[dmaBytes-2] << 16) + (mFrameCur[dmaBytes-3] << 8) + mFrameCur[dmaBytes-4];
+        if (mFrameLen > mFrameCur - mFrameStart + dmaBytes) {
+          cLcd::mLcd->debug (LCD_COLOR_RED, "len %d %d", mFrameLen, mFrameCur - mFrameStart + dmaBytes);
+          mFrame = nullptr;
+          mFrameLen = 0;
           }
-        //cLcd::mLcd->debug (LCD_COLOR_GREEN, "v%2d:%6d %x:%d", mXferCount,dmaBytes, mJpegStatus,mFrameBufLen);
+        //cLcd::mLcd->debug (LCD_COLOR_GREEN, "v%2d:%6d %x:%d", mXferCount,dmaBytes, mJpegStatus,mFrameLen);
         }
       else {
-        mFrameBuf = nullptr;
-        mFrameBufLen = 0;
+        mFrame = nullptr;
+        mFrameLen = 0;
         cLcd::mLcd->debug (LCD_COLOR_RED, "f%d:%d %d:%x", mXferCount,dmaBytes, mFrameCur-mFrameStart+dmaBytes, mJpegStatus);
         }
       }
     else {
-      mFrameBuf = mFrameStart;
-      mFrameBufLen = mFixedFrameLen;
-      //cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrameBuf, mFrameBufLen);
+      mFrame = mFrameStart;
+      mFrameLen = mFixedFrameLen;
+      //cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrame, mFrameLen);
       }
 
-    if (mFrameBuf + mFrameBufLen > mBufEnd)
+    if (mFrame + mFrameLen > mBufEnd)
       // dodgy copy to deliver contiguous buffer, should manage buffer better instead
-      memcpy (mBufEnd, mBufStart, mFrameBuf + mFrameBufLen - mBufEnd);
+      memcpy (mBufEnd, mBufStart, mFrame + mFrameLen - mBufEnd);
 
     mFrameStart = mFrameCur + dmaBytes;
     }
@@ -585,8 +585,8 @@ void cCamera::dcmiStart (uint8_t* buf) {
     mXferSize = mXferSize / 2;
     mXferMaxCount = mXferMaxCount * 2;
     }
-  mFrameBuf = nullptr;
-  mFrameBufLen = 0;
+  mFrame = nullptr;
+  mFrameLen = 0;
   mFixedFrameLen = getWidth() * getHeight() * 2;
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%x", mXferMaxCount, mXferSize, dmaLen);
 
