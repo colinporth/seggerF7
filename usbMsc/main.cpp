@@ -185,33 +185,31 @@ void cApp::run() {
     //  }
     //}}}
 
-    if (mCam->getFrame()) {
-      if (mCam->getMode()) {
-        // jpegDecode
-        auto frameLen = mCam->getFrameLen();
-        jpeg_mem_src (&mCinfo, mCam->getHeader(), mCam->getHeaderLen());
-        jpeg_read_header (&mCinfo, TRUE);
-        mCinfo.scale_num = 1;
-        mCinfo.scale_denom = 2;
-        mCinfo.dct_method = JDCT_FLOAT;
-        mCinfo.out_color_space = JCS_RGB;
-
-        // jpegBody
-        jpeg_mem_src (&mCinfo, mCam->getFrame(), mCam->getFrameLen());
-        jpeg_start_decompress (&mCinfo);
-        while (mCinfo.output_scanline < mCinfo.output_height) {
-          jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-          //mLcd->rgb888to565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-          mLcd->rgb888to565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-          }
-        jpeg_finish_decompress (&mCinfo);
-        mLcd->start (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, true);
-        }
-      else // rgb565
-        mLcd->start ((uint16_t*)mCam->getFrame(), mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
-      }
-    else // no frame, clear
+    if (!mCam->getFrame()) // no frame, clear
       mLcd->start();
+    else if (!mCam->getMode())  // rgb565
+      mLcd->start ((uint16_t*)mCam->getFrame(), mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+    else {
+      // jpegDecode
+      auto frameLen = mCam->getFrameLen();
+      jpeg_mem_src (&mCinfo, mCam->getHeader(), mCam->getHeaderLen());
+      jpeg_read_header (&mCinfo, TRUE);
+      mCinfo.scale_num = 1;
+      mCinfo.scale_denom = 2;
+      mCinfo.dct_method = JDCT_FLOAT;
+      mCinfo.out_color_space = JCS_RGB;
+
+      // jpegBody
+      jpeg_mem_src (&mCinfo, mCam->getFrame(), mCam->getFrameLen());
+      jpeg_start_decompress (&mCinfo);
+      while (mCinfo.output_scanline < mCinfo.output_height) {
+        jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
+        //mLcd->rgb888to565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+        mLcd->rgb888to565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+        }
+      jpeg_finish_decompress (&mCinfo);
+      mLcd->start (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, true);
+      }
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawInfo (LCD_COLOR_YELLOW, 24, "%dfps %d:%x:%s:%d",
