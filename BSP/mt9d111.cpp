@@ -357,8 +357,6 @@ void cCamera::mt9d111Init() {
   write1 (0x2707, 0x0320); // Output Width B
   write1 (0x2709, 0x0258); // Output Height B
 
-  write1 (0x270B, 0x0030); // mode_config = disable jpeg A,B
-
   write1 (0x270F, 0x001C); // Row Start A
   write1 (0x2711, 0x003C); // Column Start A
   write1 (0x2713, 0x04b0); // Row Height A
@@ -409,39 +407,12 @@ void cCamera::mt9d111Init() {
 
   HAL_Delay (100);
   //}}}
-  //{{{  jpeg b config
-  // jpeg.config id=9  0x07
-  //   b:4  scaled quant       b:0  video
-  //   b:5  auto select quant  b:1  handshake on error
-  //   b:6:7  quant table id   b:2  enable retry on error
-  //                           b:3  host indicates ready
-  write1 (0xa907, 0x0031);
-
-  // mode fifo_config0_B - shadow ifp page2 0x0d output config
-  //   b:8  enable FV on LV           b:4 enable soi/eoi during FV    b:0 enable spoof frame
-  //   b:9  enable status after data  b:5 enable ignore spoof height  b:1 enable pixclk between frames
-  //   b:10 enable spoof codes        b:6 enable variable pixclk      b:2 enable pixclk during invalid data
-  //                                  b:7 enable byteswap             b:3 enable soi/eoi
-  write1 (0x2772, 0x0261);
-
-  // mode fifo_config1_B - shadow ifp page2 0x0e
-  //   15:13 pclk2slew  11:8 pclk2divisor  7:5 pclk1slew  3:0 pclk1divisor
-  write1 (0x2774, 0x4344);
-
-  // mode fifo_config2_B - shadow ifp page2 0x0f
-  //   7:5 pclk3slew  3:0 pclk3divisor
-  write1 (0x2776, 0x0042);
-
-  write1 (0x2707, 800);  // mode OUTPUT WIDTH B
-  //}}}
 #else
   //{{{  register wizard
   write1 (0x2703, 0x0320); // Output Width A
   write1 (0x2705, 0x0258); // Output Height A
   write1 (0x2707, 0x0640); // Output Width B
   write1 (0x2709, 0x04b0); // Output Height B
-
-  write1 (0x270B, 0x0030); // mode_config = disable jpeg A,B
 
   write1 (0x270F, 0x001C); // Row Start A
   write1 (0x2711, 0x003C); // Column Start A
@@ -494,35 +465,33 @@ void cCamera::mt9d111Init() {
 
   HAL_Delay (100);
   //}}}
+#endif
   //{{{  jpeg b config
   // jpeg.config id=9  0x07
-  //   b:0  video
-  //   b:1  handshake on error
-  //   b:2  enable retry on error
-  //   b:3  host indicates ready
-  //   b:4  scaled quant
-  //   b:5  auto select quant
-  //   b:6:7  quant table id
+  //   b:4  scaled quant       b:0  video
+  //   b:5  auto select quant  b:1  handshake on error
+  //   b:6:7  quant table id   b:2  enable retry on error
+  //                           b:3  host indicates ready
   write1 (0xa907, 0x0031);
 
-  // mode fifo_config0_B - shadow ifp page2 0x0d output config
-  //   b:0   enable spoof frame
-  //   b:1   enable pixclk between frames
-  //   b:2   enable pixclk during invalid data
-  //   b:3   enable soi/eoi
-  //   b:4   enable soi/eoi during FV
-  //   b:5   enable ignore spoof height
-  //   b:6   enable variable pixclk
-  //   b:7   enable byteswap
-  //   b:8   enable FV on LV
-  //   b:9   enable status inserted after data
-  //   b:10  enable spoof codes
-  write1 (0x2772, 0x0039);
+  // mode fifo_config0_B - shadow ifp page2 0x0d - Output Configuration Register
+  //   b:8  enable FV on LV      b:4 enable soi/eoi during FV     b:0 enable spoof frame
+  //   b:9  enable status byte   b:5 enable ignore spoof height   b:1 enable pixclk between frames
+  //   b:10 enable spoof codes   b:6 enable variable pixclk       b:2 enable pixclk during invalid data
+  //   b:11 freezeUpdate         b:7 enable byteswap              b:3 enable soi/eoi
+  write1 (0x2772, 0x0261);
 
-  write1 (0x2707, 1600);  // mode OUTPUT WIDTH HEIGHT B
-  write1 (0x2709, 800);
+  // mode fifo_config1_B - shadow ifp page2 0x0e - Output PCLK1 & PCLK2 Configuration Register
+  //   15:13 pclk2slew  11:8 pclk2divisor  7:5 pclk1slew  3:0 pclk1divisor
+  write1 (0x2774, 0x4344);
+
+  // mode fifo_config2_B - shadow ifp page2 0x0f - Output PCLK3 Configuration Register
+  //   7:5 pclk3slew  3:0 pclk3divisor
+  write1 (0x2776, 0x0042);
+
+  write1 (0x270b, 0x0010); // mode_config - disable jpeg A, enable jpeg B
+  //write1 (0x270B, 0x0030); // mode_config = disable jpeg A,B
   //}}}
-#endif
 
   //{{{  sequencer transitions
   //write1 (0xA122, 0x01); // previewEnter Auto Exposure = 1
@@ -703,7 +672,6 @@ void cCamera::preview() {
 
   // switch to preview
   write (0xf0, 1);
-  write1 (0x270b, 0x0030); // mode_config = disable jpeg A,B
   write1 (0xA120, 0x00);   // Sequencer.params.mode - none
   write1 (0xA103, 0x01);   // Sequencer transition to preview A
   }
@@ -723,7 +691,6 @@ void cCamera::jpeg() {
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
 
   write (0xf0, 1);
-  write1 (0x270b, 0x0010); // mode_config - disable jpeg A, enable jpeg B
   write1 (0xA120, 0x02);   // Sequencer.params.mode - capture video
   write1 (0xA103, 0x02);   // Sequencer transition to capture B
   }

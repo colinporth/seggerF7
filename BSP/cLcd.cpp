@@ -27,6 +27,7 @@ extern const sFONT Font16;
 #define LCD_BL_CTRL_GPIO_CLK_ENABLE()    __HAL_RCC_GPIOK_CLK_ENABLE()
 #define LCD_BL_CTRL_GPIO_CLK_DISABLE()   __HAL_RCC_GPIOK_CLK_DISABLE()
 //}}}
+//#define freeRtos
 
 LTDC_HandleTypeDef hLtdcHandler;
 DMA2D_HandleTypeDef hDma2dHandler;
@@ -43,11 +44,13 @@ extern "C" {
       if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_LI) != RESET) {
         __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_LI);
 
+        #ifdef freeRtos
         if (cLcd::mFrameWait) {
-          //portBASE_TYPE taskWoken = pdFALSE;
-          //if (xSemaphoreGiveFromISR (cLcd::mFrameSem, &taskWoken) == pdTRUE)
-          //  portEND_SWITCHING_ISR (taskWoken);
+          portBASE_TYPE taskWoken = pdFALSE;
+          if (xSemaphoreGiveFromISR (cLcd::mFrameSem, &taskWoken) == pdTRUE)
+            portEND_SWITCHING_ISR (taskWoken);
           }
+        #endif freeRtos
         cLcd::mFrameWait = false;
         }
       }
@@ -236,7 +239,10 @@ void cLcd::init() {
   // set line interupt line number
   LTDC->LIPCR = 0;
   mFrameWait = false;
-  //vSemaphoreCreateBinary (mFrameSem);
+
+  #ifdef freeRtos
+    vSemaphoreCreateBinary (mFrameSem);
+  #endif
 
   // enable transferError,fifoUnderrun interrupt
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_TE);
@@ -271,8 +277,11 @@ void cLcd::start() {
 
   mFrameWait = true;
 
+#ifdef freeRtos
+  xSemaphoreTake (mFrameSem, 100);
+#else
   while (mFrameWait) { HAL_Delay(1); }
-  //xSemaphoreTake (mFrameSem, 100);
+#endif
 
   clear (LCD_COLOR_BLACK);
   }
@@ -282,8 +291,11 @@ void cLcd::startBgnd (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool 
 
   mFrameWait = true;
 
+#ifdef freeRtos
+  xSemaphoreTake (mFrameSem, 100);
+#else
   while (mFrameWait) { HAL_Delay(1); }
-  //xSemaphoreTake (mFrameSem, 100);
+#endif
 
   if (zoom)
     copyFrame (src, srcXsize, srcYsize, getBuffer(), getWidth(), getHeight());

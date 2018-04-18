@@ -24,6 +24,7 @@
 #include "ethernetif.h"
 //}}}
 #define USE_CAMERA
+//#define freeRtos
 
 const char* kVersion = "WebCam 17/4/18";
 
@@ -1106,10 +1107,13 @@ int main() {
 
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
   gApp->init();
-  gApp->run();
 
-  //sys_thread_new ("start", startThread, NULL, 2048, osPriorityNormal);
-  //osKernelStart();
-  //while (true);
-  }
+#ifdef freeRtos
+  sys_thread_new ("start", startThread, NULL, 2048, osPriorityNormal);
+  osKernelStart();
+  while (true);
+#else
+  gApp->run();
+#endif
+}
 //}}}
