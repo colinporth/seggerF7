@@ -346,11 +346,11 @@ void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool unit
 //{{{
 void cLcd::drawInfo (uint32_t color, uint16_t column, const char* format, ... ) {
 
-  char str[50];
+  char str[kMaxStrSize];
 
   va_list args;
   va_start (args, format);
-  vsnprintf (str, 50-1, format, args);
+  vsnprintf (str, kMaxStrSize-1, format, args);
   va_end (args);
 
   SetTextColor (color);
