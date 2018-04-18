@@ -25,11 +25,11 @@
 //}}}
 #define freeRtos
 
-const char* kVersion = "WebCam 18/4/18";
+const char kVersion[] = "WebCam 18/4/18";
 
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
 uint8_t*  kCamBuffer    =  (uint8_t*)0xc0200000;
-uint8_t*  kCamBufferEnd =  (uint8_t*)0xc0600000;
+uint8_t*  kCamBufferEnd =  (uint8_t*)0xc0600000; // plus a bit for wraparound
 
 //{{{
 class cApp : public cTouch {
@@ -126,7 +126,7 @@ const char kBmpResponseHeader[] =
   "Content-type: image/bmp\r\n\r\n"; // header + body follows
 //}}}
 //{{{
-const char kHtmlHeader[] =
+const char kHtmlResponseHeader[] =
   "HTTP/1.0 200 OK\r\n"
   "Server: lwIP/1.3.1\r\n"
   "Content-type: text/html\r\n\r\n"; // header + body follows
@@ -201,7 +201,8 @@ void cApp::run() {
         jpeg_start_decompress (&mCinfo);
         while (mCinfo.output_scanline < mCinfo.output_height) {
           jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-          mLcd->rgb888to565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+          //mLcd->rgb888to565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+          mLcd->rgb888to565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
           }
         jpeg_finish_decompress (&mCinfo);
         mLcd->start (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, true);
@@ -213,7 +214,8 @@ void cApp::run() {
       mLcd->start();
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
-    mLcd->drawInfo (LCD_COLOR_YELLOW, 24, "%dfps %d:%x:%s", mCam->getFps(), mCam->getFrameLen(), mCam->getStatus(), mCam->getMode() ? "j":"p");
+    mLcd->drawInfo (LCD_COLOR_YELLOW, 24, "%dfps %d:%x:%s:%d",
+                    mCam->getFps(), mCam->getFrameLen(), mCam->getStatus(), mCam->getMode() ? "j":"p", mCam->getDmaCount());
     mLcd->drawDebug();
     mLcd->present();
 
@@ -439,7 +441,6 @@ void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int s
   mLcd->debug (LCD_COLOR_WHITE, "jpegDecode out:%dx%d %d", mCinfo.output_width, mCinfo.output_height, scale);
   }
 //}}}
-
 //{{{
 void cApp::saveFile (uint8_t* jpegHeadBuf, int jpegHeadLen, uint8_t* jpegBuf, int jpegLen, int num) {
 
@@ -504,7 +505,7 @@ void serverThread (void* arg) {
               if ((bufLen >= 5) && !strncmp (buf, "GET /", 5)) {
                 if (!strncmp (buf, "GET / ", 6)) {
                   //{{{  html
-                  netconn_write (request, kHtmlHeader, sizeof(kHtmlHeader)-1, NETCONN_NOCOPY);
+                  netconn_write (request, kHtmlResponseHeader, sizeof(kHtmlResponseHeader)-1, NETCONN_NOCOPY);
                   netconn_write (request, kHtmlBody, sizeof(kHtmlBody)-1, NETCONN_NOCOPY);
                   ok = true;
                   }

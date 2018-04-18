@@ -827,6 +827,36 @@ void cLcd::DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
 //}}}
 
 //{{{
+void cLcd::rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t size) {
+
+  hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
+  hDma2dHandler.Init.ColorMode = DMA2D_OUTPUT_RGB565;
+  hDma2dHandler.Init.OutputOffset = 0;
+
+  // Foreground Configuration
+  hDma2dHandler.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
+  hDma2dHandler.LayerCfg[1].InputAlpha = 0xFF;
+  hDma2dHandler.LayerCfg[1].InputColorMode = DMA2D_INPUT_RGB888;
+  hDma2dHandler.LayerCfg[1].InputOffset = 0;
+
+  HAL_DMA2D_Init (&hDma2dHandler);
+  HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1);
+  HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, size, 1);
+  HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
+  }
+//}}}
+//{{{
+void cLcd::rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t size) {
+
+  for (uint16_t x = 0; x < size; x++) {
+    uint8_t b = (*src++) & 0xF8;
+    uint8_t g = (*src++) & 0xFC;
+    uint8_t r = (*src++) & 0xF8;
+    *dst++ = (r << 8) | (g << 3) | (b >> 3);
+    }
+  }
+//}}}
+//{{{
 void cLcd::copyFrame (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize,
                        uint16_t* dst, uint16_t xsize, uint16_t ysize) {
 
@@ -1688,36 +1718,6 @@ void cLcd::convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
       *dst++ = 0xFF;
       }
     dst += (xsize - srcXsize) * 4;
-    }
-  }
-//}}}
-//{{{
-void cLcd::rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xSize) {
-
-  hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
-  hDma2dHandler.Init.ColorMode = DMA2D_OUTPUT_RGB565;
-  hDma2dHandler.Init.OutputOffset = 0;
-
-  // Foreground Configuration
-  hDma2dHandler.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
-  hDma2dHandler.LayerCfg[1].InputAlpha = 0xFF;
-  hDma2dHandler.LayerCfg[1].InputColorMode = DMA2D_INPUT_RGB888;
-  hDma2dHandler.LayerCfg[1].InputOffset = 0;
-
-  HAL_DMA2D_Init (&hDma2dHandler);
-  HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1);
-  HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, xSize, 1);
-  HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
-  }
-//}}}
-//{{{
-void cLcd::rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t xSize) {
-
-  for (int x = 0; x < xSize; x++) {
-    uint8_t b = (*src++) & 0xF8;
-    uint8_t g = (*src++) & 0xFC;
-    uint8_t r = (*src++) & 0xF8;
-    *dst++ = (r << 8) | (g << 3) | (b >> 3);
     }
   }
 //}}}

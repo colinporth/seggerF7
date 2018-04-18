@@ -13,11 +13,13 @@ public:
   int getFps() { return 1000/mTookTicks; }
   int getFocus() { return mFocus; }
 
-  uint8_t getStatus() { return mJpegStatus; }
   uint8_t* getHeader() { return mHeader; }
   int getHeaderLen() { return mHeaderLen; }
   uint8_t* getFrame() { return mFrame; }
   int getFrameLen() { return mFrameLen; }
+
+  uint8_t getStatus() { return mJpegStatus; }
+  int getDmaCount() { return mXferCount; }
 
   void setFocus (int value);
 

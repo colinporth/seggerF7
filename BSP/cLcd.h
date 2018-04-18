@@ -88,12 +88,12 @@ public:
   void FillEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius);
   void DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 
+  void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t size);
+  void rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t size);
   void copyFrame (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, uint16_t* dst, uint16_t xsize, uint16_t ysize);
   void copyFrameScaled (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, uint16_t* dst, uint16_t xsize, uint16_t ysize);
   void convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                         uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
-  void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xSize);
-  void rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t xSize);
 
   void displayOff();
   void displayOn();
