@@ -87,8 +87,8 @@ void cCamera::start (bool jpegMode, uint8_t* buffer) {
   DMA2_Stream1->CR &= ~DMA_SxCR_EN;
 
   // change mode
+  mJpegMode = false;
   jpegMode ? jpeg() : preview();
-  mJpegMode = jpegMode;
 
   // start dma,dcmi with new dma
   dcmiStart (buffer);
@@ -570,12 +570,12 @@ void cCamera::mt9d111Init() {
 //{{{
 void cCamera::dcmiStart (uint8_t* buf) {
 
-  // bufEnd, may use more to provide continuos last buffer
   mBufStart = buf;
+
   uint32_t dmaLen = mJpegMode ? 0x00100000 : getWidth()*getHeight()*2;
   mBufEnd = buf + (4 * dmaLen);
 
-  // calc the number of xfers with xferSize <= 64k
+  // calc num of xfers with xferSize <= 64k
   mFrameStart = mBufStart;
   mFrameCur = mBufStart;
   mXferCount = 0;
