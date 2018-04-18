@@ -5,9 +5,9 @@
 #include "cLcd.h"
 //}}}
 
-#define capture800x600
-const bool kDebugIrq = false;
-const uint8_t kI2cAddress = 0x90;
+//#define DebugIrq
+#define Capture800x600
+#define I2cAddress 0x90
 
 //{{{  dcmi defines
 #define DCMI_IT_FRAME        ((uint32_t)DCMI_IER_FRAME_IE)    // Capture complete interrupt
@@ -51,7 +51,7 @@ void cCamera::init() {
   // init camera i2c, readBack id
   CAMERA_IO_Init();
   write (0xF0, 0);
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (kI2cAddress, 0));
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (I2cAddress, 0));
   mt9d111Init();
 
   // init dcmi dma
@@ -107,9 +107,16 @@ void cCamera::setFocus (int value) {
 //{{{
 void cCamera::start (bool jpegMode, uint8_t* buffer) {
 
+  // disable dcmi
+  DCMI->CR &= ~DCMI_CR_ENABLE;
+  // disable dma
+  DMA2_Stream1->CR &= ~DMA_SxCR_EN;
+
+  // change mode
   jpegMode ? jpeg() : preview();
   mJpegMode = jpegMode;
 
+  // start dma,dcmi with new dma
   dcmiStart (buffer);
   }
 //}}}
@@ -224,24 +231,26 @@ void cCamera::dcmiIrqHandler() {
           mFrameBuf = nullptr;
           mFrameBufLen = 0;
           }
-
-        //if (kDebugIrq)
-          cLcd::mLcd->debug (LCD_COLOR_GREEN,
+      #ifdef DebugIrq
+        cLcd::mLcd->debug (LCD_COLOR_GREEN,
                              "v%2d:%6d:%8x %x:%d", mXferCount,dmaBytes,mFrameBuf, jpegStatus,mFrameBufLen);
+      #endif
         }
       else {
         mFrameBuf = nullptr;
         mFrameBufLen = 0;
-        if (kDebugIrq)
-          cLcd::mLcd->debug (LCD_COLOR_WHITE,
-                             "v%d:%d %x %d", mXferCount,dmaBytes, jpegStatus, mFrameCur + dmaBytes - mFrameStart);
+      #ifdef DebugIrq
+        cLcd::mLcd->debug (LCD_COLOR_WHITE,
+                           "v%d:%d %x %d", mXferCount,dmaBytes, jpegStatus, mFrameCur + dmaBytes - mFrameStart);
+      #endif
         }
       }
     else {
       mFrameBuf = mFrameStart;
       mFrameBufLen = mFixedFrameLen;
-      if (kDebugIrq)
-        cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrameBuf, mFrameBufLen);
+    #ifdef DebugIrq
+      cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrameBuf, mFrameBufLen);
+    #endif
       }
 
     // dodgy copy, should manage buffer better instead
@@ -296,7 +305,7 @@ void cCamera::gpioInit() {
 //{{{
 void cCamera::write (uint8_t reg, uint16_t value) {
 
-  CAMERA_IO_Write16 (kI2cAddress, reg, value);
+  CAMERA_IO_Write16 (I2cAddress, reg, value);
   }
 //}}}
 //{{{
@@ -321,7 +330,7 @@ void cCamera::mt9d111Init() {
   //}}}
 
   // page 0
-#ifdef capture800x600
+#ifdef Capture800x600
   write (0x05, 0x0247); // capture B HBLANK
   write (0x06, 0x000B); // capture B VBLANK
   write (0x07, 0x0136); // preview A HBLANK
@@ -350,7 +359,7 @@ void cCamera::mt9d111Init() {
   write (0x0A, 0x0002); // pixclk slew
   write (0x97, 0x22);   // outputFormat - RGB565, swap odd even
 
-#ifdef capture800x600
+#ifdef Capture800x600
   //{{{  register wizard
   write1 (0x2703, 0x0320); // Output Width A
   write1 (0x2705, 0x0258); // Output Height A
@@ -604,11 +613,6 @@ void cCamera::mt9d111Init() {
 //{{{
 void cCamera::dcmiStart (uint8_t* buf) {
 
-  // disable dcmi
-  DCMI->CR &= ~DCMI_CR_ENABLE;
-  // disable dma
-  DMA2_Stream1->CR &= ~DMA_SxCR_EN;
-
   // bufEnd, may use more to provide continuos last buffer
   mBufStart = buf;
   uint32_t dmaLen = mJpegMode ? 0x00100000 : getWidth()*getHeight()*2;
@@ -641,6 +645,8 @@ void cCamera::dcmiStart (uint8_t* buf) {
   DMA2->LIFCR = DMA_FLAG_DMEIF1_5;
   DMA2->LIFCR = DMA_FLAG_HTIF1_5;
   DMA2->LIFCR = DMA_FLAG_FEIF1_5;
+
+  HAL_Delay (40);
 
   // enable dma - fifo, interrupt
   DMA2_Stream1->FCR = DMA_IT_FE | DMA_FIFOMODE_ENABLE | DMA_FIFO_THRESHOLD_FULL;
@@ -679,7 +685,7 @@ void cCamera::preview() {
 //{{{
 void cCamera::jpeg() {
 
-#ifdef capture800x600
+#ifdef Capture800x600
   mWidth = 800;
   mHeight = 600;
 #else
