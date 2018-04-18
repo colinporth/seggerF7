@@ -15,6 +15,7 @@ public:
 
   uint8_t* getFrameBuf() { return mFrameBuf; }
   int getFrameBufLen() { return mFrameBufLen; }
+  uint8_t getJpegStatus() { return mJpegStatus; }
 
   void setFocus (int value);
 
@@ -70,4 +71,5 @@ private:
   uint8_t* mFrameBuf = nullptr;
   int mFrameBufLen = 0;
   int mFixedFrameLen = 0;
+  uint8_t mJpegStatus = 0;
   };

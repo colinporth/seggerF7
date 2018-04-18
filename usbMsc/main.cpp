@@ -248,8 +248,12 @@ void cApp::run() {
     mLcd->drawTitle (kVersion);
     if (mCamera) {
       // drawInfo
-      char str[40] = {0};
-      sprintf (str, "%dfps %d%s", mCamera->getFps(), mCamera->getFrameBufLen(), mCamera->getJpegMode() ? "jpg":"pre");
+      char str[20];
+      sprintf (str, "%dfps %d:%x:%s",
+               mCamera->getFps(), mCamera->getFrameBufLen(),
+               mCamera->getJpegStatus(),
+               mCamera->getJpegMode() ? "jpg":"pre"
+               );
       mLcd->drawInfo (24, str);
       }
     mLcd->drawDebug();

@@ -5,7 +5,6 @@
 #include "cLcd.h"
 //}}}
 
-//#define DebugIrq
 #define Capture800x600
 #define I2cAddress 0x90
 
@@ -214,7 +213,7 @@ void cCamera::dcmiIrqHandler() {
 
     uint32_t dmaBytes = (mXferSize - DMA2_Stream1->NDTR) * 4;
     if (mJpegMode) {
-      //{{{  status ifp page2 0x02
+      //{{{  jpegStatus bits
       // b:0 = 1  transfer done
       // b:1 = 1  output fifo overflow
       // b:2 = 1  spoof oversize error
@@ -222,8 +221,8 @@ void cCamera::dcmiIrqHandler() {
       // b:5:4    fifo watermark
       // b:7:6    quant table 0 to 2
       //}}}
-      uint8_t jpegStatus = mFrameCur[dmaBytes-1];
-      if ((jpegStatus & 0x0f) == 0x01) {
+      mJpegStatus = mFrameCur[dmaBytes-1];
+      if ((mJpegStatus & 0x0f) == 0x01) {
         mFrameBuf = mFrameStart;
         mFrameBufLen = (mFrameCur[dmaBytes-2] << 16) + (mFrameCur[dmaBytes-3] << 8) + mFrameCur[dmaBytes-4];
         if (mFrameBufLen > mFrameCur - mFrameStart + dmaBytes) {
@@ -231,35 +230,24 @@ void cCamera::dcmiIrqHandler() {
           mFrameBuf = nullptr;
           mFrameBufLen = 0;
           }
-      #ifdef DebugIrq
-        cLcd::mLcd->debug (LCD_COLOR_GREEN,
-                             "v%2d:%6d:%8x %x:%d", mXferCount,dmaBytes,mFrameBuf, jpegStatus,mFrameBufLen);
-      #endif
+        //cLcd::mLcd->debug (LCD_COLOR_GREEN, "v%2d:%6d %x:%d", mXferCount,dmaBytes, mJpegStatus,mFrameBufLen);
         }
       else {
         mFrameBuf = nullptr;
         mFrameBufLen = 0;
-      #ifdef DebugIrq
-        cLcd::mLcd->debug (LCD_COLOR_WHITE,
-                           "v%d:%d %x %d", mXferCount,dmaBytes, jpegStatus, mFrameCur + dmaBytes - mFrameStart);
-      #endif
+        cLcd::mLcd->debug (LCD_COLOR_RED, "f%d:%d %d:%x", mXferCount,dmaBytes, mFrameCur-mFrameStart+dmaBytes, mJpegStatus);
         }
       }
     else {
       mFrameBuf = mFrameStart;
       mFrameBufLen = mFixedFrameLen;
-    #ifdef DebugIrq
-      cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrameBuf, mFrameBufLen);
-    #endif
+      //cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrameBuf, mFrameBufLen);
       }
 
-    // dodgy copy, should manage buffer better instead
-    if (mFrameBuf + mFrameBufLen > mBufEnd) {
-      // wrap around to deliver contiguous buffer
-      auto copyBytes = mFrameBuf + mFrameBufLen - mBufEnd;
-      if (copyBytes < 150000)
-        memcpy (mBufEnd, mBufStart, copyBytes);
-      }
+    if (mFrameBuf + mFrameBufLen > mBufEnd)
+      // dodgy copy to deliver contiguous buffer, should manage buffer better instead
+      memcpy (mBufEnd, mBufStart, mFrameBuf + mFrameBufLen - mBufEnd);
+
     mFrameStart = mFrameCur + dmaBytes;
     }
   }
@@ -318,10 +306,10 @@ void cCamera::write1 (uint16_t reg, uint16_t value) {
 void cCamera::mt9d111Init() {
 
   //{{{  soft reset
-  write (0x65, 0xA000); // Bypass the PLL, R0x65:0 = 0xA000,
+  write (0x65, 0xA000); // Clock(R/W) - bypass PLL, R0x65:0 = 0xA000,
 
   write (0xF0, 1);      // page 1
-  write (0xC3, 0x0501); // Perform MCU reset by setting R0xC3:1 = 0x0501.
+  write (0xC3, 0x0501); // MicrocontrollerBootMode - reset MCU by setting R0xC3:1 = 0x0501.
 
   write (0xF0, 0);      // page 0
   write (0x0D, 0x0021); // Enable soft reset by setting R0x0D:0 = 0x0021. Bit 0 is used for the sensor core reset
@@ -347,17 +335,17 @@ void cCamera::mt9d111Init() {
 #endif
 
   // page 0 PLL - M=16,N=1,P=3 - (24mhz/(N+1))*M / 2*(P+1) = 24mhz
-  write (0x66, 0x1001); // PLLControl1 -    M:N
+  write (0x66, 0x1001); // PLLControl1 - M:N
   write (0x67, 0x0503); // PLLControl2 - 0x05:P
-  write (0x65, 0xA000); // Clock CNTRL - pllOn
-  write (0x65, 0x2000); // Clock CNTRL - usePll
+  write (0x65, 0xA000); // Clock(R/W)  - pllOn
+  write (0x65, 0x2000); // Clock(R/W)  - usePll
   HAL_Delay (100);
 
   // page 1
   write (0xF0, 1);
-  write (0x09, 0x000A); // factory bypass 10 bit sensor
-  write (0x0A, 0x0002); // pixclk slew
-  write (0x97, 0x22);   // outputFormat - RGB565, swap odd even
+  write (0x09, 0x000A); // FactoryBypass             - 10 bit sensor
+  write (0x0A, 0x0002); // PadSlew                   - pixclk slew
+  write (0x97, 0x22);   // OutputFormatConfiguration - RGB565, swap odd even
 
 #ifdef Capture800x600
   //{{{  register wizard
@@ -477,17 +465,17 @@ void cCamera::mt9d111Init() {
 #endif
   //{{{  jpeg b config
   // jpeg.config id=9  0x07
-  //   b:4  scaled quant       b:0  video
-  //   b:5  auto select quant  b:1  handshake on error
-  //   b:6:7  quant table id   b:2  enable retry on error
   //                           b:3  host indicates ready
+  //   b:6:7  quant table id   b:2  enable retry on error
+  //   b:5  auto select quant  b:1  handshake on error
+  //   b:4  scaled quant       b:0  video
   write1 (0xa907, 0x0031);
 
   // mode fifo_config0_B - shadow ifp page2 0x0d - Output Configuration Register
-  //   b:8  enable FV on LV      b:4 enable soi/eoi during FV     b:0 enable spoof frame
-  //   b:9  enable status byte   b:5 enable ignore spoof height   b:1 enable pixclk between frames
-  //   b:10 enable spoof codes   b:6 enable variable pixclk       b:2 enable pixclk during invalid data
   //   b:11 freezeUpdate         b:7 enable byteswap              b:3 enable soi/eoi
+  //   b:10 enable spoof codes  xb:6 enable variable pixclk       b:2 enable pixclk during invalid data
+  //  xb:9  enable status byte  xb:5 enable ignore spoof height   b:1 enable pixclk between frames
+  //   b:8  enable FV on LV      b:4 enable soi/eoi during FV    xb:0 enable spoof frame
   write1 (0x2772, 0x0261);
 
   // mode fifo_config1_B - shadow ifp page2 0x0e - Output PCLK1 & PCLK2 Configuration Register
@@ -502,6 +490,30 @@ void cCamera::mt9d111Init() {
   //write1 (0x270B, 0x0030); // mode_config = disable jpeg A,B
   //}}}
 
+  //{{{  focus init
+  write1 (0x90B6, 0x01); // SFR GPIO suspend
+
+  // enable GPIO0,1 as output, initial value 0
+  write1 (0x9079, 0xFC); // SFR GPIO data direction
+  write1 (0x9071, 0x00); // SFR GPIO data b1:0 = 0 GPIO0,1 initial 0
+
+  // use 8bit counter clkdiv 2^(1+2)=8 -> 48mhz -> 6mhz ->> 23.7khz
+  write1 (0x90B0, 0x01); // SFR GPIO wg_config b0 = 1 8bit counter
+  write1 (0x90B2, 0x02); // SFR GPIO wg_clkdiv b0 = 2
+
+  // GPIO0
+  write1 (0x908B, 0x00); // SFR GPIO wg_n0 = 0 infinite
+  write1 (0x9081, 255);  // SFR GPIO wg_t00 = 255 initial off
+  write1 (0x9083, 0);    // SFR GPIO wg_t10 = 0 no on
+
+  // GPIO1
+  write1 (0x908A, 0x00); // SFR GPIO wg_n1 = 0 infinite
+  write1 (0x9080, 0xFF); // SFR GPIO wg_t01 = 255 max initial on
+  write1 (0x9082, 0x00); // SFR GPIO wg_t11 = 0 no off
+
+  write1 (0x90B5, 0x00); // SFR GPIO reset
+  write1 (0x90B6, 0x00); // SFR GPIO suspend
+  //}}}
   //{{{  sequencer transitions
   //write1 (0xA122, 0x01); // previewEnter Auto Exposure = 1
   //write1 (0xA123, 0x00); // previewEnter Flicker Detection = 0
@@ -577,30 +589,6 @@ void cCamera::mt9d111Init() {
   //write1 (0xA768, 0xF0);  // 240
   //write1 (0xA769, 0xF8);  // 248
   //write1 (0xA76A, 0xFF);  // 255
-  //}}}
-  //{{{  focus init
-  write1 (0x90B6, 0x01); // SFR GPIO suspend
-
-  // enable GPIO0,1 as output, initial value 0
-  write1 (0x9079, 0xFC); // SFR GPIO data direction
-  write1 (0x9071, 0x00); // SFR GPIO data b1:0 = 0 GPIO0,1 initial 0
-
-  // use 8bit counter clkdiv 2^(1+2)=8 -> 48mhz -> 6mhz ->> 23.7khz
-  write1 (0x90B0, 0x01); // SFR GPIO wg_config b0 = 1 8bit counter
-  write1 (0x90B2, 0x02); // SFR GPIO wg_clkdiv b0 = 2
-
-  // GPIO0
-  write1 (0x908B, 0x00); // SFR GPIO wg_n0 = 0 infinite
-  write1 (0x9081, 255);  // SFR GPIO wg_t00 = 255 initial off
-  write1 (0x9083, 0);    // SFR GPIO wg_t10 = 0 no on
-
-  // GPIO1
-  write1 (0x908A, 0x00); // SFR GPIO wg_n1 = 0 infinite
-  write1 (0x9080, 0xFF); // SFR GPIO wg_t01 = 255 max initial on
-  write1 (0x9082, 0x00); // SFR GPIO wg_t11 = 0 no off
-
-  write1 (0x90B5, 0x00); // SFR GPIO reset
-  write1 (0x90B6, 0x00); // SFR GPIO suspend
   //}}}
 
   write1 (0xA103, 0x06); // Sequencer Refresh Mode
