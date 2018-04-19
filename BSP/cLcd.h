@@ -9,12 +9,6 @@
 
 #include "cmsis_os.h"
 //}}}
-//{{{
-#ifdef __cplusplus
-  extern "C" {
-#endif
-//}}}
-
 //{{{  colour defines
 #define LCD_COLOR_BLUE          0x001F
 #define LCD_COLOR_GREEN         0x07D0
@@ -135,9 +129,3 @@ private:
   cDebugItem mLines[kDebugMaxLines];
   int mScroll = 0;
   };
-
-//{{{
-#ifdef __cplusplus
-}
-#endif
-//}}}

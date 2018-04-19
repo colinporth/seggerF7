@@ -1,6 +1,7 @@
 --start-group
 "Output/usbMsc Release/Obj/main.o"
 "Output/usbMsc Release/Obj/system.o"
+"Output/usbMsc Release/Obj/sntp.o"
 "Output/usbMsc Release/Obj/usbd_msc.o"
 "Output/usbMsc Release/Obj/usbd.o"
 "Output/usbMsc Release/Obj/stm32746g_discovery.o"
@@ -132,7 +133,6 @@
 "Output/usbMsc Release/Obj/ip4_frag.o"
 "Output/usbMsc Release/Obj/ethernet.o"
 "Output/usbMsc Release/Obj/sys_arch.o"
-"Output/usbMsc Release/Obj/sntp.o"
 "C:/Program Files/SEGGER/SEGGER Embedded Studio for ARM 3.34a/lib/libdebugio_mempoll_v7em_fpv5_sp_d16_hard_t_le_eabi.a"
 "C:/Program Files/SEGGER/SEGGER Embedded Studio for ARM 3.34a/lib/libm_v7em_fpv5_sp_d16_hard_t_le_eabi.a"
 "C:/Program Files/SEGGER/SEGGER Embedded Studio for ARM 3.34a/lib/libc_v7em_fpv5_sp_d16_hard_t_le_eabi.a"
