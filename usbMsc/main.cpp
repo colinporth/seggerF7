@@ -33,6 +33,7 @@ uint16_t* kRgb565Buf = (uint16_t*)0xc0100000;
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0200000;
 uint8_t*  kCamBufEnd =  (uint8_t*)0xc0600000; // plus a bit for wraparound
 uint8_t*  kFileBuf   =  (uint8_t*)0xc0700000;
+uint8_t*  kFileBuf1  =  (uint8_t*)0xc0600000;
 
 //{{{
 class cApp : public cTouch {
@@ -82,11 +83,13 @@ private:
   void reportFree();
   void reportLabel();
 
-  void loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf);
+  bool mount();
+  int loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf);
   void saveFile (char* fileName, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen);
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
+  FATFS* mFatFs = nullptr;
 
   int mFiles = 0;
   DWORD mVsn = 0;
@@ -177,15 +180,16 @@ void cApp::run() {
   mCam->init();
   mCam->start (false, kCamBuf);
 
-  loadFile ("image.jpg", kFileBuf, kRgb565Buf);
-  mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
-  mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
-  mLcd->drawDebug();
-  mLcd->present();
-  osDelay (1000);
+  if (mount()) {
+    auto fileBufLen = loadFile ("image.jpg", kFileBuf1, kRgb565Buf);
+    mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
+    mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
+    mLcd->drawDebug();
+    mLcd->present();
+    osDelay (1000);
+    }
 
-  int count1 = 0;
-  int count2 = 0;
+  int count = 0;
   bool lastButton = false;
   while (true) {
     pollTouch();
@@ -196,21 +200,22 @@ void cApp::run() {
     //  }
     //}}}
 
-    if (!mCam->getFrame()) // no frame, clear
+    if (mFatFs) {
       mLcd->start();
-    else if (!mCam->getMode()) {
-      // rgb565
-      mLcd->start ((uint16_t*)mCam->getFrame(), mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
-      //if (count1++ < 20) {
-      //  char saveName[40] = {0};
-      //  sprintf (saveName, "Save%d.bmp", count1);
-      //  saveFile (saveName, mCam->getHeader(), mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
-      //  }
-      }
-    else {
-      if (count2++ < 1000) {
+      if (count++ < 1000) {
         char saveName[40] = {0};
-        sprintf (saveName, "Save%03d.jpg", count2);
+        sprintf (saveName, "Save%03d.jpg", count);
+        saveFile (saveName, kFileBuf1, 619, kFileBuf1+619, 65000-619);
+        }
+      }
+    else if (!mCam->getFrame()) // no frame, clear
+      mLcd->start();
+    else if (!mCam->getMode())
+      mLcd->start ((uint16_t*)mCam->getFrame(), mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+    else {
+      if (count++ < 1000) {
+        char saveName[40] = {0};
+        sprintf (saveName, "Save%03d.jpg", count);
         saveFile (saveName, mCam->getHeader(), mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
         mLcd->start();
         }
@@ -238,15 +243,16 @@ void cApp::run() {
       }
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
-    mLcd->drawInfo (LCD_COLOR_YELLOW, 16, "%d:%d:%dfps %d:%x:%s:%d",
-                    osGetCPUUsage(), xPortGetFreeHeapSize(),
-                    mCam->getFps(), mCam->getFrameLen(), mCam->getStatus(),
-                    mCam->getMode() ? "j":"p", mCam->getDmaCount());
+    if (mCam)
+      mLcd->drawInfo (LCD_COLOR_YELLOW, 16, "%d:%d:%dfps %d:%x:%s:%d",
+                      osGetCPUUsage(), xPortGetFreeHeapSize(),
+                      mCam->getFps(), mCam->getFrameLen(), mCam->getStatus(),
+                      mCam->getMode() ? "j":"p", mCam->getDmaCount());
     mLcd->drawDebug();
     mLcd->present();
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
-    if (!button && (button != lastButton))
+    if (mCam && !button && (button != lastButton))
       mCam->start (!mCam->getMode(), kCamBuf);
     lastButton = button;
     }
@@ -403,58 +409,67 @@ void cApp::reportFree() {
 //}}}
 
 //{{{
-void cApp::loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf) {
+bool cApp::mount() {
 
-  auto fatFs = (FATFS*)malloc (sizeof (FATFS));
-  if (!f_mount (fatFs, "", 0)) {
+  mFatFs = (FATFS*)malloc (sizeof (FATFS));
+  if (!f_mount (mFatFs, "", 0)) {
     f_getlabel ("", mLabel, &mVsn);
-    mLcd->debug (LCD_COLOR_WHITE, "Label <%s> ", mLabel);
+    mLcd->debug (LCD_COLOR_WHITE, "Mounted label:%s ", mLabel);
+    return true;
+    }
 
-    //char pathName[256] = "/";
-    //readDirectory (pathName);
-    FILINFO filInfo;
-    if (!f_stat (fileName, &filInfo))
-      mLcd->debug (LCD_COLOR_WHITE, "%d %u/%02u/%02u %02u:%02u %c%c%c%c%c",
-                   (int)(filInfo.fsize),
-                   (filInfo.fdate >> 9) + 1980, filInfo.fdate >> 5 & 15, filInfo.fdate & 31,
-                    filInfo.ftime >> 11, filInfo.ftime >> 5 & 63,
-                   (filInfo.fattrib & AM_DIR) ? 'D' : '-',
-                   (filInfo.fattrib & AM_RDO) ? 'R' : '-',
-                   (filInfo.fattrib & AM_HID) ? 'H' : '-',
-                   (filInfo.fattrib & AM_SYS) ? 'S' : '-',
-                   (filInfo.fattrib & AM_ARC) ? 'A' : '-');
+  mLcd->debug (LCD_COLOR_RED, "Not mounted");
+  return false;
+  }
+//}}}
+//{{{
+int cApp::loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf) {
 
-    FIL file;
-    if (!f_open (&file, fileName, FA_READ)) {
-      mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
-      UINT bytesRead;
-      f_read (&file, (void*)fileBuf, (UINT)filInfo.fsize, &bytesRead);
-      mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
-      f_close (&file);
-      if (bytesRead > 0) {
-        jpeg_mem_src (&mCinfo, fileBuf, bytesRead);
-        jpeg_read_header (&mCinfo, TRUE);
-        mLcd->debug (LCD_COLOR_WHITE, "jpegDecode in:%dx%d", mCinfo.image_width, mCinfo.image_height);
+  //char pathName[256] = "/";
+  //readDirectory (pathName);
+  FILINFO filInfo;
+  if (!f_stat (fileName, &filInfo))
+    mLcd->debug (LCD_COLOR_WHITE, "%d %u/%02u/%02u %02u:%02u %c%c%c%c%c",
+                 (int)(filInfo.fsize),
+                 (filInfo.fdate >> 9) + 1980, filInfo.fdate >> 5 & 15, filInfo.fdate & 31,
+                  filInfo.ftime >> 11, filInfo.ftime >> 5 & 63,
+                 (filInfo.fattrib & AM_DIR) ? 'D' : '-',
+                 (filInfo.fattrib & AM_RDO) ? 'R' : '-',
+                 (filInfo.fattrib & AM_HID) ? 'H' : '-',
+                 (filInfo.fattrib & AM_SYS) ? 'S' : '-',
+                 (filInfo.fattrib & AM_ARC) ? 'A' : '-');
 
-        mCinfo.dct_method = JDCT_FLOAT;
-        mCinfo.out_color_space = JCS_RGB;
-        mCinfo.scale_num = 1;
-        mCinfo.scale_denom = 4;
-        jpeg_start_decompress (&mCinfo);
-        while (mCinfo.output_scanline < mCinfo.output_height) {
-          jpeg_read_scanlines (&mCinfo, mBufArray, 1);
-          mLcd->rgb888to565 (mBufArray[0], rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
-          }
-        jpeg_finish_decompress (&mCinfo);
+  FIL file;
+  if (!f_open (&file, fileName, FA_READ)) {
+    mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
+    UINT bytesRead;
+    f_read (&file, (void*)fileBuf, (UINT)filInfo.fsize, &bytesRead);
+    mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
+    f_close (&file);
+    if (bytesRead > 0) {
+      jpeg_mem_src (&mCinfo, fileBuf, bytesRead);
+      jpeg_read_header (&mCinfo, TRUE);
+      mLcd->debug (LCD_COLOR_WHITE, "jpegDecode in:%dx%d", mCinfo.image_width, mCinfo.image_height);
 
-        mLcd->debug (LCD_COLOR_WHITE, "jpegDecode out:%dx%d %d", mCinfo.output_width, mCinfo.output_height, 4);
+      mCinfo.dct_method = JDCT_FLOAT;
+      mCinfo.out_color_space = JCS_RGB;
+      mCinfo.scale_num = 1;
+      mCinfo.scale_denom = 4;
+      jpeg_start_decompress (&mCinfo);
+      while (mCinfo.output_scanline < mCinfo.output_height) {
+        jpeg_read_scanlines (&mCinfo, mBufArray, 1);
+        mLcd->rgb888to565 (mBufArray[0], rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
         }
+      jpeg_finish_decompress (&mCinfo);
+
+      mLcd->debug (LCD_COLOR_WHITE, "jpegDecode out:%dx%d %d", mCinfo.output_width, mCinfo.output_height, 4);
+      return bytesRead;
       }
-    else
-      mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
     }
   else
-    mLcd->debug (LCD_COLOR_RED, "not mounted");
+    mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
+
+  return 0;
   }
 //}}}
 //{{{
@@ -471,7 +486,7 @@ void cApp::saveFile (char* fileName, uint8_t* headBuf, int headBufLen, uint8_t* 
     UINT bytesWritten;
     f_write (&file, kFileBuf, (headBufLen + bodyBufLen+3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&file);
-    //mLcd->debug (LCD_COLOR_YELLOW, "save %s %d:%d:%d", fileName,  headBufLen,bodyBufLen, bytesWritten);
+    mLcd->debug (LCD_COLOR_YELLOW, "save %s %d:%d:%d", fileName,  headBufLen,bodyBufLen, bytesWritten);
     }
    }
 //}}}
