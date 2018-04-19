@@ -25,12 +25,16 @@ extern "C" {
   }
 //}}}
 
-
 bool gSdChanged = false;
+//{{{
+bool hasSdChanged() {
+  bool changed = gSdChanged;
+  gSdChanged = false;
+  return changed;
+  }
+//}}}
 
-//{{{  sd card handlers
-// BSP
-
+volatile DSTATUS Stat = STA_NOINIT;
 //{{{
 void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
 
@@ -62,6 +66,7 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   HAL_NVIC_EnableIRQ (SDMMC1_IRQn);
 
   //{{{  Configure DMA Rx parameters
+  dma_rx_handle.Instance = SD_DMAx_Rx_STREAM;
   dma_rx_handle.Init.Channel             = SD_DMAx_Rx_CHANNEL;
   dma_rx_handle.Init.Direction           = DMA_PERIPH_TO_MEMORY;
   dma_rx_handle.Init.PeriphInc           = DMA_PINC_DISABLE;
@@ -74,12 +79,13 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   dma_rx_handle.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
   dma_rx_handle.Init.MemBurst            = DMA_MBURST_INC4;
   dma_rx_handle.Init.PeriphBurst         = DMA_PBURST_INC4;
-  dma_rx_handle.Instance = SD_DMAx_Rx_STREAM;
   __HAL_LINKDMA(hsd, hdmarx, dma_rx_handle);
-  HAL_DMA_DeInit(&dma_rx_handle);
-  HAL_DMA_Init(&dma_rx_handle);
+
+  HAL_DMA_DeInit (&dma_rx_handle);
+  HAL_DMA_Init (&dma_rx_handle);
   //}}}
   //{{{  Configure DMA Tx parameters
+  dma_tx_handle.Instance = SD_DMAx_Tx_STREAM;
   dma_tx_handle.Init.Channel             = SD_DMAx_Tx_CHANNEL;
   dma_tx_handle.Init.Direction           = DMA_MEMORY_TO_PERIPH;
   dma_tx_handle.Init.PeriphInc           = DMA_PINC_DISABLE;
@@ -92,10 +98,10 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   dma_tx_handle.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
   dma_tx_handle.Init.MemBurst            = DMA_MBURST_INC4;
   dma_tx_handle.Init.PeriphBurst         = DMA_PBURST_INC4;
-  dma_tx_handle.Instance = SD_DMAx_Tx_STREAM;
   __HAL_LINKDMA(hsd, hdmatx, dma_tx_handle);
-  HAL_DMA_DeInit(&dma_tx_handle);
-  HAL_DMA_Init(&dma_tx_handle);
+
+  HAL_DMA_DeInit (&dma_tx_handle);
+  HAL_DMA_Init (&dma_tx_handle);
   //}}}
 
   // NVIC configuration for DMA transfer complete interrupt
@@ -107,145 +113,6 @@ void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
   HAL_NVIC_EnableIRQ (SD_DMAx_Tx_IRQn);
   }
 //}}}
-
-//{{{
-bool hasSdChanged() {
-  bool changed = gSdChanged;
-  gSdChanged = false;
-  return changed;
-  }
-//}}}
-
-// msc sdCard interface
-#define STANDARD_INQUIRY_DATA_LEN  36
-//{{{
-const uint8_t kSdInquiryData[STANDARD_INQUIRY_DATA_LEN] = {
-  0x00,  // LUN 0
-  0x80,
-  0x02,
-  0x02,
-  (STANDARD_INQUIRY_DATA_LEN - 5),
-  0x00,
-  0x00,
-  0x00,
-  'S', 'T', 'M', ' ', ' ', ' ', ' ', ' ', /* Manufacturer: 8 bytes  */
-  'P', 'r', 'o', 'd', 'u', 'c', 't', ' ', /* Product     : 16 Bytes */
-  ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-  '0', '.', '0','1',                      /* Version     : 4 Bytes  */
-  };
-//}}}
-//{{{
-bool sdIsReady (uint8_t lun) {
-
-  static int8_t prev_status = 0;
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    if (prev_status < 0) {
-      BSP_SD_Init();
-      prev_status = 0;
-      }
-    if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
-      return true;
-    }
-  else if (prev_status == 0)
-    prev_status = -1;
-
-  return false;
-  }
-//}}}
-//{{{
-bool sdIsWriteProtected (uint8_t lun) {
-  return false;
-  }
-//}}}
-//{{{
-bool sdGetCapacity (uint8_t lun, uint32_t& block_num, uint16_t& block_size) {
-
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    HAL_SD_CardInfoTypeDef info;
-    BSP_SD_GetCardInfo (&info);
-    block_num = info.LogBlockNbr - 1;
-    block_size = info.LogBlockSize;
-    //gLcd->debug (LCD_COLOR_YELLOW, "getCapacity %dk blocks size:%d", int(block_num)/1024, int(block_size));
-    return true;
-    }
-  else
-    gLcd->debug (LCD_COLOR_RED, "getCapacity SD_NOT_PRESENT");
-
-  return false;
-  }
-//}}}
-
-__IO uint32_t gReadstatus = 0;
-void BSP_SD_ReadCpltCallback() { gReadstatus = 1; }
-//{{{
-bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
-
-  if ((uint32_t)buf & 0x3)
-    gLcd->debug (LCD_COLOR_RED, "sdRead buf alignment %x", buf);
-
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    gReadstatus = 0;
-    BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
-    auto ticks = HAL_GetTick();
-    while (!gReadstatus)
-      if (HAL_GetTick() - ticks > 1000) {
-        gLcd->debug (LCD_COLOR_RED, "sdRead %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
-        return false;
-        }
-    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
-    uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
-    SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, ((uint32_t)buf - alignedAddr) + blk_len*512);
-    //BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
-
-    //gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
-    return true;
-    }
-
-  return false;
-  }
-//}}}
-
-__IO uint32_t writestatus = 0;
-void BSP_SD_WriteCpltCallback() { writestatus = 1; }
-//{{{
-bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
-
-  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-    if ((uint32_t)buf & 0x3)
-      gLcd->debug (LCD_COLOR_RED, "sdWrite buf alignment %p", buf);
-
-    uint32_t alignedAddr = (uint32_t)buf &  ~0x1F;
-    SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, blk_len*512 + ((uint32_t)buf - alignedAddr));
-    BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
-
-    writestatus = 0;
-    uint32_t timeout = HAL_GetTick();
-    while  ((writestatus == 0) && ((HAL_GetTick() - timeout) < 2000)) {}
-    writestatus = 0;
-    while ((HAL_GetTick() - timeout) < 2000) {
-      if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
-        gLcd->debug (LCD_COLOR_MAGENTA, "w %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
-        gSdChanged = true;
-        return true;
-        }
-      }
-    //gLcd->debug (LCD_COLOR_RED, "wrDmaFail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
-
-    //BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
-    //if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
-    //  gLcd->debug (LCD_COLOR_YELLOW, "wr ok %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
-    //  gSdChanged = true;
-    //  return true;
-    //  }
-    //gLcd->debug (LCD_COLOR_RED, "wr fail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
-    }
-
-  return false;
-  }
-//}}}
-
-// fatFs sdCard interface
-volatile DSTATUS Stat = STA_NOINIT;
 //{{{
 uint8_t disk_initialize (uint8_t lun) {
   return disk_status (lun);
@@ -301,28 +168,136 @@ DRESULT disk_ioctl (uint8_t lun, BYTE cmd, void* buff) {
   }
 //}}}
 //{{{
+bool sdIsReady (uint8_t lun) {
+
+  static int8_t prev_status = 0;
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    if (prev_status < 0) {
+      BSP_SD_Init();
+      prev_status = 0;
+      }
+    if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
+      return true;
+    }
+  else if (prev_status == 0)
+    prev_status = -1;
+
+  return false;
+  }
+//}}}
+//{{{
+bool sdIsWriteProtected (uint8_t lun) {
+  return false;
+  }
+//}}}
+//{{{
+bool sdGetCapacity (uint8_t lun, uint32_t& block_num, uint16_t& block_size) {
+
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    HAL_SD_CardInfoTypeDef info;
+    BSP_SD_GetCardInfo (&info);
+    block_num = info.LogBlockNbr - 1;
+    block_size = info.LogBlockSize;
+    //gLcd->debug (LCD_COLOR_YELLOW, "getCapacity %dk blocks size:%d", int(block_num)/1024, int(block_size));
+    return true;
+    }
+  else
+    gLcd->debug (LCD_COLOR_RED, "getCapacity SD_NOT_PRESENT");
+
+  return false;
+  }
+//}}}
+DWORD get_fattime() { return 0; }
+
+__IO uint32_t gReadstatus = 0;
+void BSP_SD_ReadCpltCallback() { gReadstatus = 1; }
+//{{{
+bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
+
+  if ((uint32_t)buf & 0x3)
+    gLcd->debug (LCD_COLOR_RED, "sdRead buf alignment %x", buf);
+
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    gReadstatus = 0;
+    BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
+    auto ticks = HAL_GetTick();
+    while (!gReadstatus)
+      if (HAL_GetTick() - ticks > 1000) {
+        gLcd->debug (LCD_COLOR_RED, "sdRead %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+        return false;
+        }
+    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
+    uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
+    SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, ((uint32_t)buf - alignedAddr) + blk_len*512);
+    //BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+
+    //gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+    return true;
+    }
+
+  return false;
+  }
+//}}}
+//{{{
 DRESULT disk_read (uint8_t lun, uint8_t* buff, uint32_t sector, uint16_t count) {
 
-  HAL_NVIC_DisableIRQ (OTG_HS_IRQn);
+  //HAL_NVIC_DisableIRQ (OTG_HS_IRQn);
   auto result = sdRead (lun, buff, sector, count) ? RES_OK : RES_ERROR;
-  HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
+  //HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
 
   return result;
+  }
+//}}}
+
+__IO uint32_t writestatus = 0;
+void BSP_SD_WriteCpltCallback() { writestatus = 1; }
+//{{{
+bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
+
+  if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
+    if ((uint32_t)buf & 0x3)
+      gLcd->debug (LCD_COLOR_RED, "sdWrite buf alignment %p", buf);
+
+    uint32_t alignedAddr = (uint32_t)buf &  ~0x1F;
+    SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, blk_len*512 + ((uint32_t)buf - alignedAddr));
+    BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
+
+    writestatus = 0;
+    uint32_t timeout = HAL_GetTick();
+    while  ((writestatus == 0) && ((HAL_GetTick() - timeout) < 2000)) {}
+    writestatus = 0;
+    while ((HAL_GetTick() - timeout) < 2000) {
+      if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
+        gLcd->debug (LCD_COLOR_MAGENTA, "w %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+        gSdChanged = true;
+        return true;
+        }
+      }
+    //gLcd->debug (LCD_COLOR_RED, "wrDmaFail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+
+    //BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+    //if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
+    //  gLcd->debug (LCD_COLOR_YELLOW, "wr ok %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+    //  gSdChanged = true;
+    //  return true;
+    //  }
+    //gLcd->debug (LCD_COLOR_RED, "wr fail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+    }
+
+  return false;
   }
 //}}}
 //{{{
 DRESULT disk_write (uint8_t lun, const uint8_t* buff, uint32_t sector, uint16_t count) {
 
-  HAL_NVIC_DisableIRQ (OTG_HS_IRQn);
+  //HAL_NVIC_DisableIRQ (OTG_HS_IRQn);
   auto result = sdWrite (lun, buff, sector, count) ? RES_OK : RES_ERROR;
-  HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
+  //HAL_NVIC_EnableIRQ (OTG_HS_IRQn);
 
   return result;
   }
 //}}}
 
-DWORD get_fattime() { return 0; }
-//}}}
 //{{{  msc common descriptors
 #define USBD_VID                      0x0483
 #define USBD_PID                      0x5720
@@ -600,6 +575,24 @@ const uint8_t kMscDeviceQualifierDesc[] __attribute__((aligned(4))) = {
   0x00,
   };
 //}}}
+//}}}
+
+#define STANDARD_INQUIRY_DATA_LEN  36
+//{{{
+const uint8_t kSdInquiryData[STANDARD_INQUIRY_DATA_LEN] = {
+  0x00,  // LUN 0
+  0x80,
+  0x02,
+  0x02,
+  (STANDARD_INQUIRY_DATA_LEN - 5),
+  0x00,
+  0x00,
+  0x00,
+  'S', 'T', 'M', ' ', ' ', ' ', ' ', ' ', /* Manufacturer: 8 bytes  */
+  'P', 'r', 'o', 'd', 'u', 'c', 't', ' ', /* Product     : 16 Bytes */
+  ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+  '0', '.', '0','1',                      /* Version     : 4 Bytes  */
+  };
 //}}}
 //{{{  msc scsi handlers
 //{{{  defines

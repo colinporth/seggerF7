@@ -173,14 +173,15 @@ void cApp::init() {
 //{{{
 void cApp::run() {
 
+  mCam = new cCamera();
+
   loadFile ("image.jpg", kFileBuf, kRgb565Buf);
   mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
   mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
   mLcd->drawDebug();
   mLcd->present();
-  osDelay (1000);
+  osDelay (3000);
 
-  mCam = new cCamera();
   mCam->init();
   mCam->start (false, kCamBuf);
 
