@@ -577,8 +577,8 @@ void dhcpThread (void* arg) {
         if (dhcp_supplied_address (netif)) {
           dhcpState = DHCP_ADDRESS_ASSIGNED;
           cLcd::mLcd->debug (LCD_COLOR_GREEN, "DHCP %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
-          sntp_setservername (0, "pool.ntp.org");
-          sntp_init();
+          sntpSetServerName (0, "pool.ntp.org");
+          sntpInit();
           }
         else {
           auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);

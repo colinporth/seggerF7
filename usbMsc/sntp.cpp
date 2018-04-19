@@ -317,7 +317,7 @@ void sntp_recv (void* arg, struct udp_pcb* pcb, struct pbuf* p, const ip_addr_t*
 
   if (err == ERR_OK) {
     sntp_process (receive_timestamp);
-    // Set up timeout for next request 
+    // Set up timeout for next request
     sys_timeout ((u32_t)SNTP_UPDATE_DELAY, sntp_request, NULL);
     }
   else if (err != ERR_TIMEOUT) {
@@ -373,14 +373,14 @@ void sntp_request (void* arg) {
 
 // init
 //{{{
-void sntp_setservername (u8_t idx, char* server) {
+void sntpSetServerName (u8_t idx, char* server) {
 
   if (idx < SNTP_MAX_SERVERS)
     sntp_servers[idx].name = server;
   }
 //}}}
 //{{{
-void sntp_init() {
+void sntpInit() {
 
   if (sntp_pcb == NULL) {
     sntp_pcb = udp_new_ip_type (IPADDR_TYPE_ANY);
@@ -388,17 +388,6 @@ void sntp_init() {
       udp_recv (sntp_pcb, sntp_recv, NULL);
       sntp_request (NULL);
       }
-    }
-  }
-//}}}
-//{{{
-void sntp_stop() {
-
-  if (sntp_pcb != NULL) {
-    sys_untimeout (sntp_request, NULL);
-    sys_untimeout (sntp_try_next_server, NULL);
-    udp_remove (sntp_pcb);
-    sntp_pcb = NULL;
     }
   }
 //}}}
