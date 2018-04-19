@@ -21,6 +21,7 @@
 #include "lwip/dhcp.h"
 #include "lwip/arch.h"
 #include "lwip/api.h"
+#include "lwip/apps/sntp.h"
 
 #include "ethernetif.h"
 //}}}
@@ -213,7 +214,7 @@ void cApp::run() {
       }
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
-    mLcd->drawInfo (LCD_COLOR_YELLOW, 16, "%d %d %dfps %d:%x:%s:%d",
+    mLcd->drawInfo (LCD_COLOR_YELLOW, 16, "%d:%d:%dfps %d:%x:%s:%d",
                     osGetCPUUsage(), xPortGetFreeHeapSize(),
                     mCam->getFps(), mCam->getFrameLen(), mCam->getStatus(),
                     mCam->getMode() ? "j":"p", mCam->getDmaCount());
@@ -655,10 +656,19 @@ void netThread (void* arg) {
     netif_set_down (&netIf);
     }
 
+  osDelay (5000);
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp");
+
+  sntp_setoperatingmode (SNTP_OPMODE_POLL);
+  sntp_setservername (0, "pool.ntp.org");
+  sntp_init();
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp inited");
+
   while (true) {
     //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "netThread tick");
     osDelay (5000);
     }
+
   //osThreadTerminate (NULL);
   }
 //}}}

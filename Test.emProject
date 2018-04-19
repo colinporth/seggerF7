@@ -459,6 +459,7 @@
         <file file_name="../LwIP/src/netif/ethernet.c" />
         <file file_name="../LwIP/system/OS/sys_arch.c" />
       </folder>
+      <file file_name="../LwIP/src/apps/sntp/sntp.c" />
     </folder>
   </project>
 </solution>
