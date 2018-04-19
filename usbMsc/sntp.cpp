@@ -1,5 +1,5 @@
 //{{{
-//SNTP client module
+// SNTP client module
 /*
  * Copyright (c) 2007-2009 Frédéric Bernon, Simon Goldschmidt
  * All rights reserved.
@@ -32,7 +32,7 @@
  */
 //}}}
 //{{{
-#include "lwip/apps/sntp.h"
+#include "sntp.h"
 
 #include "lwip/opt.h"
 #include "lwip/timeouts.h"
@@ -47,28 +47,62 @@
 
 #include "cLcd.h"
 //}}}
+//{{{  options
+// The maximum number of SNTP servers that can be set
+#define SNTP_MAX_SERVERS  LWIP_DHCP_MAX_NTP_SERVERS
+
+// Set this to 1 to implement the callback function called by dhcp when * NTP servers are received
+#define SNTP_GET_SERVERS_FROM_DHCP LWIP_DHCP_GET_NTP_SRV
+
+// Set this to 1 to support DNS names (or IP address strings) to set sntp servers
+// One server address/name can be defined as default if SNTP_SERVER_DNS == 1:
+//#define SNTP_SERVER_ADDRESS "pool.ntp.org"
+#define SNTP_SERVER_DNS  1
+
+// SNTP_DEBUG: Enable debugging for SNTP
+#define SNTP_DEBUG  LWIP_DBG_OFF
+
+// SNTP server port
+#define SNTP_PORT 123
+
+// Sanity check:
+//  Define this to
+//  - 0 to turn off sanity checks (default; smaller code)
+//  - >= 1 to check address and port of the response packet to ensure the
+//         response comes from the server we sent the request to.
+//  - >= 2 to check returned Originate Timestamp against Transmit Timestamp
+//         sent to the server (to ensure response to older request).
+//  - >= 3 @todo: discard reply if any of the LI, Stratum, or Transmit Timestamp
+//         fields is 0 or the Mode field is not 4 (unicast) or 5 (broadcast).
+//  - >= 4 @todo: to check that the Root Delay and Root Dispersion fields are each
+//         greater than or equal to 0 and less than infinity, where infinity is
+//         currently a cozy number like one second. This check avoids using a
+//         server whose synchronization source has expired for a very long time. */
+#define SNTP_CHECK_RESPONSE   2
+
+// According to the RFC, this shall be a random delay * between 1 and 5 minutes (in milliseconds) to prevent load peaks.
+// This can be defined to a random generation function, * which must return the delay in milliseconds as u32_t.
+#define SNTP_STARTUP_DELAY  0
+
+// If you want the startup delay to be a function, define this
+// to a function (including the brackets) and define SNTP_STARTUP_DELAY to 1. */
+#define SNTP_STARTUP_DELAY_FUNC  SNTP_STARTUP_DELAY
+
+// SNTP receive timeout - in milliseconds
+// Also used as retry timeout - this shouldn't be too low. * Default is 3 seconds. */
+#define SNTP_RECV_TIMEOUT  3000
+
+// SNTP update delay - in milliseconds
+// Default is 1 hour. Must not be beolw 15 seconds by specification (i.e. 15000) */
+#define SNTP_UPDATE_DELAY  3600000
+
+// SNTP macro to get system time, used with SNTP_CHECK_RESPONSE >= 2 * to send in request and compare in response. */
+#define SNTP_GET_SYSTEM_TIME(sec, us)     do { (sec) = 0; (us) = 0; } while(0)
+
+// Default retry msTimeout
+#define SNTP_RETRY_TIMEOUT          SNTP_RECV_TIMEOUT
+//}}}
 //{{{  defines
-// Handle support for more than one server via SNTP_MAX_SERVERS
-#if SNTP_MAX_SERVERS > 1
-  #define SNTP_SUPPORT_MULTIPLE_SERVERS 1
-#else
-  #define SNTP_SUPPORT_MULTIPLE_SERVERS 0
-#endif
-
-#if (SNTP_UPDATE_DELAY < 15000) && !defined(SNTP_SUPPRESS_DELAY_CHECK)
-  #error "SNTPv4 RFC 4330 enforces a minimum update time of 15 seconds (define SNTP_SUPPRESS_DELAY_CHECK to disable this error)!"
-#endif
-
-// Configure behaviour depending on microsecond or second precision
-#ifdef SNTP_SET_SYSTEM_TIME_US
-  #define SNTP_CALC_TIME_US           1
-  #define SNTP_RECEIVE_TIME_SIZE      2
-#else
-  #define SNTP_SET_SYSTEM_TIME_US (sec, us)
-  #define SNTP_CALC_TIME_US           0
-  #define SNTP_RECEIVE_TIME_SIZE      1
-#endif
-
 // the various debug levels for this file
 #define SNTP_DEBUG_TRACE        (SNTP_DEBUG | LWIP_DBG_TRACE)
 #define SNTP_DEBUG_STATE        (SNTP_DEBUG | LWIP_DBG_STATE)
@@ -109,9 +143,6 @@
 #define DIFF_SEC_1970_2036         (2085978496UL)
 //}}}
 
-#ifdef PACK_STRUCT_USE_INCLUDES
-  #include "arch/bpstruct.h"
-#endif
 //{{{
 // SNTP packet format (without optional fields)
 // Timestamps are coded as 64 bits:
@@ -133,258 +164,72 @@ PACK_STRUCT_BEGIN struct sntp_msg {
   } PACK_STRUCT_STRUCT;
 PACK_STRUCT_END
 //}}}
-#ifdef PACK_STRUCT_USE_INCLUDES
-  #include "arch/epstruct.h"
-#endif
-
-static void sntp_request (void* arg);
-static u8_t sntp_opmode;
-
-// The UDP pcb used by the SNTP client
-static struct udp_pcb* sntp_pcb;
-
-// Names/Addresses of servers
 //{{{
 struct sntp_server {
-#if SNTP_SERVER_DNS
   char* name;
-#endif
   ip_addr_t addr;
   };
 //}}}
+static struct udp_pcb* sntp_pcb;
 static struct sntp_server sntp_servers[SNTP_MAX_SERVERS];
+static u8_t sntp_current_server;           // The currently used server (initialized to 0)
+static ip_addr_t sntp_last_server_address; // Saves the last server address to compare with response
+static u32_t sntp_last_timestamp_sent[2];  // Save last timestamp sent to compare against in response
 
-#if SNTP_GET_SERVERS_FROM_DHCP
-  static u8_t sntp_set_servers_from_dhcp;
-#endif
-
-#if SNTP_SUPPORT_MULTIPLE_SERVERS
-  static u8_t sntp_current_server;  // The currently used server (initialized to 0)
-#else
-  #define sntp_current_server 0
-#endif
-
-#if SNTP_RETRY_TIMEOUT_EXP
-  #define SNTP_RESET_RETRY_TIMEOUT() sntp_retry_timeout = SNTP_RETRY_TIMEOUT
-  static u32_t sntp_retry_timeout; // Retry time, initialized with SNTP_RETRY_TIMEOUT and doubled with each retry
-#else
-  #define SNTP_RESET_RETRY_TIMEOUT()
-  #define sntp_retry_timeout SNTP_RETRY_TIMEOUT
-#endif
-
-#if SNTP_CHECK_RESPONSE >= 1
-  static ip_addr_t sntp_last_server_address; // Saves the last server address to compare with response
-#endif
-#if SNTP_CHECK_RESPONSE >= 2
-  static u32_t sntp_last_timestamp_sent[2]; // Save last timestamp sent to compare against in response
-#endif
-
-//{{{
-static void sntp_process (u32_t* receive_timestamp) {
-
-  // convert SNTP time (1900-based) to unix GMT time (1970-based) * if MSB is 0, SNTP time is 2036-based!
-  u32_t rx_secs = lwip_ntohl (receive_timestamp[0]);
-  int is_1900_based = ((rx_secs & 0x80000000) != 0);
-  u32_t t = is_1900_based ? (rx_secs - DIFF_SEC_1900_1970) : (rx_secs + DIFF_SEC_1970_2036);
-  time_t tim = t;
-
-#if SNTP_CALC_TIME_US
-  u32_t us = lwip_ntohl (receive_timestamp[1]) / 4295;
-  SNTP_SET_SYSTEM_TIME_US (t, us);
-  // display local time from GMT time
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_process: %s, %"U32_F" us", ctime(&tim), us);
-#else
-  // change system time and/or the update the RTC clock
-  SNTP_SET_SYSTEM_TIME (t);
-  // display local time from GMT time */
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_process: %s", ctime(&tim));
-#endif
-
-  LWIP_UNUSED_ARG(tim);
-  }
-//}}}
+static void sntp_request (void* arg);
 //{{{
 static void sntp_initialize_request (struct sntp_msg* req) {
 
   memset (req, 0, SNTP_MSG_LEN);
   req->li_vn_mode = SNTP_LI_NO_WARNING | SNTP_VERSION | SNTP_MODE_CLIENT;
 
-  #if SNTP_CHECK_RESPONSE >= 2
-    {
-    u32_t sntp_time_sec, sntp_time_us;
+  u32_t sntp_time_sec, sntp_time_us;
 
-    // fill in transmit timestamp and save it in 'sntp_last_timestamp_sent'
-    SNTP_GET_SYSTEM_TIME (sntp_time_sec, sntp_time_us);
-    sntp_last_timestamp_sent[0] = lwip_htonl (sntp_time_sec + DIFF_SEC_1900_1970);
-    req->transmit_timestamp[0] = sntp_last_timestamp_sent[0];
+  // fill in transmit timestamp and save it in 'sntp_last_timestamp_sent'
+  SNTP_GET_SYSTEM_TIME (sntp_time_sec, sntp_time_us);
+  sntp_last_timestamp_sent[0] = lwip_htonl (sntp_time_sec + DIFF_SEC_1900_1970);
+  req->transmit_timestamp[0] = sntp_last_timestamp_sent[0];
 
-    // we send/save us instead of fraction to be faster...
-    sntp_last_timestamp_sent[1] = lwip_htonl(sntp_time_us);
-    req->transmit_timestamp[1] = sntp_last_timestamp_sent[1];
-    }
-  #endif
+  // we send/save us instead of fraction to be faster...
+  sntp_last_timestamp_sent[1] = lwip_htonl(sntp_time_us);
+  req->transmit_timestamp[1] = sntp_last_timestamp_sent[1];
   }
 //}}}
 //{{{
 static void sntp_retry (void* arg) {
 
-  LWIP_UNUSED_ARG (arg);
-
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_retry: Next request will be sent in %x ms\n", sntp_retry_timeout);
-
-  // set up a timer to send a retry and increase the retry delay
-  sys_timeout (sntp_retry_timeout, sntp_request, NULL);
-
-  #if SNTP_RETRY_TIMEOUT_EXP
-    {
-    u32_t new_retry_timeout;
-
-    // increase the timeout for next retry */
-    new_retry_timeout = sntp_retry_timeout << 1;
-
-    // limit to maximum timeout and prevent overflow */
-    if ((new_retry_timeout <= SNTP_RETRY_TIMEOUT_MAX) &&
-        (new_retry_timeout > sntp_retry_timeout)) {
-      sntp_retry_timeout = new_retry_timeout;
-      }
-    }
-  #endif
-
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_retry next request %d ms", SNTP_RETRY_TIMEOUT);
+  sys_timeout (SNTP_RETRY_TIMEOUT, sntp_request, NULL);
   }
 //}}}
-
-#if SNTP_SUPPORT_MULTIPLE_SERVERS
-  //{{{
-  static void sntp_try_next_server (void* arg) {
-
-    u8_t old_server, i;
-    LWIP_UNUSED_ARG(arg);
-
-    old_server = sntp_current_server;
-    for (i = 0; i < SNTP_MAX_SERVERS - 1; i++) {
-      sntp_current_server++;
-      if (sntp_current_server >= SNTP_MAX_SERVERS) {
-        sntp_current_server = 0;
-        }
-
-      if (!ip_addr_isany(&sntp_servers[sntp_current_server].addr)
-        #if SNTP_SERVER_DNS
-          || (sntp_servers[sntp_current_server].name != NULL)
-        #endif
-          ) {
-        cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_try_next_server: Sending request to server %"U16_F"\n", (u16_t)sntp_current_server);
-
-        // new server: reset retry timeout
-        SNTP_RESET_RETRY_TIMEOUT();
-
-        // instantly send a request to the next server
-        sntp_request(NULL);
-        return;
-        }
-      }
-
-    // no other valid server found
-    sntp_current_server = old_server;
-    sntp_retry(NULL);
-    }
-  //}}}
-#else // Always retry on error if only one server is supported
-  #define sntp_try_next_server    sntp_retry
-#endif
-
 //{{{
-static void sntp_recv (void* arg, struct udp_pcb* pcb, struct pbuf* p, const ip_addr_t* addr, u16_t port) {
+static void sntp_try_next_server (void* arg) {
 
-  u8_t mode;
-  u8_t stratum;
-  u32_t receive_timestamp[SNTP_RECEIVE_TIME_SIZE];
-  err_t err;
+  u8_t old_server, i;
 
-  LWIP_UNUSED_ARG(arg);
-  LWIP_UNUSED_ARG(pcb);
-
-  // packet received: stop retry timeout
-  sys_untimeout(sntp_try_next_server, NULL);
-  sys_untimeout(sntp_request, NULL);
-
-  err = ERR_ARG;
-
-#if SNTP_CHECK_RESPONSE >= 1
-  // check server address and port
-  if (((sntp_opmode != SNTP_OPMODE_POLL) || ip_addr_cmp (addr, &sntp_last_server_address)) &&
-    (port == SNTP_PORT))
-#else
-  LWIP_UNUSED_ARG(addr);
-  LWIP_UNUSED_ARG(port);
-#endif
-    {
-    // process the response
-    if (p->tot_len == SNTP_MSG_LEN) {
-      pbuf_copy_partial (p, &mode, 1, SNTP_OFFSET_LI_VN_MODE);
-      mode &= SNTP_MODE_MASK;
-      // if this is a SNTP response...
-      if (((sntp_opmode == SNTP_OPMODE_POLL) && (mode == SNTP_MODE_SERVER)) ||
-          ((sntp_opmode == SNTP_OPMODE_LISTENONLY) && (mode == SNTP_MODE_BROADCAST))) {
-        pbuf_copy_partial (p, &stratum, 1, SNTP_OFFSET_STRATUM);
-        if (stratum == SNTP_STRATUM_KOD) {
-          // Kiss-of-death packet. Use another server or increase UPDATE_DELAY
-          err = SNTP_ERR_KOD;
-          cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_recv: Received Kiss-of-Death\n");
-          }
-        else {
-          #if SNTP_CHECK_RESPONSE >= 2
-            // check originate_timetamp against sntp_last_timestamp_sent
-            u32_t originate_timestamp[2];
-            pbuf_copy_partial (p, &originate_timestamp, 8, SNTP_OFFSET_ORIGINATE_TIME);
-            if ((originate_timestamp[0] != sntp_last_timestamp_sent[0]) ||
-                (originate_timestamp[1] != sntp_last_timestamp_sent[1])) {
-              cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_recv: Invalid originate timestamp in response\n");
-              }
-            else
-          #endif
-          // todo: add code for SNTP_CHECK_RESPONSE >= 3 and >= 4 here
-            {
-            // correct answer
-            err = ERR_OK;
-            pbuf_copy_partial (p, &receive_timestamp, SNTP_RECEIVE_TIME_SIZE * 4, SNTP_OFFSET_TRANSMIT_TIME);
-            }
-          }
-        }
-      else { // wait for correct response
-        cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_recv: Invalid mode in response: %x\n", (u16_t)mode);
-        err = ERR_TIMEOUT;
-        }
+  old_server = sntp_current_server;
+  for (i = 0; i < SNTP_MAX_SERVERS - 1; i++) {
+    sntp_current_server++;
+    if (sntp_current_server >= SNTP_MAX_SERVERS) {
+      sntp_current_server = 0;
       }
-    else {
-      cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_recv: Invalid packet length: x\n", p->tot_len);
+
+    if (!ip_addr_isany(&sntp_servers[sntp_current_server].addr)
+      #if SNTP_SERVER_DNS
+        || (sntp_servers[sntp_current_server].name != NULL)
+      #endif
+        ) {
+      cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_try_next_server %d", (u16_t)sntp_current_server);
+
+      // instantly send a request to the next server
+      sntp_request (NULL);
+      return;
       }
     }
-#if SNTP_CHECK_RESPONSE >= 1
-  else // packet from wrong remote address or port, wait for correct response
-    err = ERR_TIMEOUT;
-#endif
-  pbuf_free (p);
 
-  if (err == ERR_OK) {
-    sntp_process (receive_timestamp);
-
-    // Set up timeout for next request (only if poll response was received)
-    if (sntp_opmode == SNTP_OPMODE_POLL) {
-      // Correct response, reset retry timeout
-      SNTP_RESET_RETRY_TIMEOUT();
-      sys_timeout ((u32_t)SNTP_UPDATE_DELAY, sntp_request, NULL);
-      cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_recv: Scheduled next time request: %x ms\n", (u32_t)SNTP_UPDATE_DELAY);
-      }
-    }
-  else if (err != ERR_TIMEOUT) {
-    // Errors are only processed in case of an explicit poll response
-    if (sntp_opmode == SNTP_OPMODE_POLL) {
-      if (err == SNTP_ERR_KOD) // Kiss-of-death packet Use another server or increase UPDATE_DELAY
-        sntp_try_next_server(NULL);
-      else // another error, try the same server again */
-        sntp_retry (NULL);
-      }
-    }
+  // no other valid server found
+  sntp_current_server = old_server;
+  sntp_retry (NULL);
   }
 //}}}
 //{{{
@@ -392,129 +237,170 @@ static void sntp_send_request (const ip_addr_t* server_addr) {
 
   struct pbuf* p = pbuf_alloc (PBUF_TRANSPORT, SNTP_MSG_LEN, PBUF_RAM);
   if (p != NULL) {
-    struct sntp_msg* sntpmsg = (struct sntp_msg*)p->payload;
-    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_send_request: Sending request to server\n");
-
     // initialize request message
-    sntp_initialize_request(sntpmsg);
+    struct sntp_msg* sntpmsg = (struct sntp_msg*)p->payload;
+    sntp_initialize_request (sntpmsg);
 
     // send request
-    udp_sendto(sntp_pcb, p, server_addr, SNTP_PORT);
+    udp_sendto (sntp_pcb, p, server_addr, SNTP_PORT);
 
     // free the pbuf after sending it
-    pbuf_free(p);
+    pbuf_free (p);
 
     // set up receive timeout: try next server or retry on timeout
-    sys_timeout((u32_t)SNTP_RECV_TIMEOUT, sntp_try_next_server, NULL);
+    sys_timeout ((u32_t)SNTP_RECV_TIMEOUT, sntp_try_next_server, NULL);
 
-  #if SNTP_CHECK_RESPONSE >= 1
     // save server address to verify it in sntp_recv
-    ip_addr_set(&sntp_last_server_address, server_addr);
-  #endif
+    ip_addr_set (&sntp_last_server_address, server_addr);
     }
   else {
-    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_send_request: Out of memory, trying again in %x ms\n",
-                                      (u32_t)SNTP_RETRY_TIMEOUT);
-    // out of memory: set up a timer to send a retry
+    cLcd::mLcd->debug (LCD_COLOR_RED, "sntp_send_request - no mem");
     sys_timeout ((u32_t)SNTP_RETRY_TIMEOUT, sntp_request, NULL);
     }
   }
 //}}}
+//{{{
+static void sntp_dns_found (const char* hostname, const ip_addr_t* ipaddr, void* arg) {
 
-#if SNTP_SERVER_DNS
-  //{{{
-  static void sntp_dns_found (const char* hostname, const ip_addr_t* ipaddr, void* arg) {
-
-    LWIP_UNUSED_ARG(hostname);
-    LWIP_UNUSED_ARG(arg);
-
-    if (ipaddr != NULL) {
-      // Address resolved, send request
-      cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_dns_found: Server address resolved, sending request\n");
-      sntp_send_request(ipaddr);
-      }
-    else {
-      // DNS resolving failed -> try another server
-      cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_dns_found: Failed to resolve server address resolved, trying next server\n");
-      sntp_try_next_server(NULL);
-      }
+  if (ipaddr != NULL)
+    sntp_send_request(ipaddr);
+  else {
+    // DNS resolving failed -> try another server
+    cLcd::mLcd->debug (LCD_COLOR_RED, "sntp_dns_found - failed to resolve");
+    sntp_try_next_server(NULL);
     }
-  //}}}
-#endif
+  }
+//}}}
+//{{{
+static void sntp_process (u32_t receive_timestamp) {
 
+  // convert SNTP time (1900-based) to unix GMT time (1970-based) * if MSB is 0, SNTP time is 2036-based!
+  u32_t rx_secs = lwip_ntohl (receive_timestamp);
+  int is_1900_based = ((rx_secs & 0x80000000) != 0);
+  u32_t t = is_1900_based ? (rx_secs - DIFF_SEC_1900_1970) : (rx_secs + DIFF_SEC_1970_2036);
+  time_t tim = t;
+
+  // display local time from GMT time
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, ctime(&tim));
+  }
+//}}}
+//{{{
+static void sntp_recv (void* arg, struct udp_pcb* pcb, struct pbuf* p, const ip_addr_t* addr, u16_t port) {
+
+  u8_t mode;
+  u8_t stratum;
+  u32_t receive_timestamp;
+  err_t err;
+
+  // packet received: stop retry timeout
+  sys_untimeout (sntp_try_next_server, NULL);
+  sys_untimeout (sntp_request, NULL);
+
+  err = ERR_ARG;
+
+  // check server address and port
+  if (ip_addr_cmp (addr, &sntp_last_server_address) && (port == SNTP_PORT)) {
+    // process the response
+    if (p->tot_len == SNTP_MSG_LEN) {
+      pbuf_copy_partial (p, &mode, 1, SNTP_OFFSET_LI_VN_MODE);
+      mode &= SNTP_MODE_MASK;
+      // if this is a SNTP response...
+      if (mode == SNTP_MODE_SERVER) {
+        pbuf_copy_partial (p, &stratum, 1, SNTP_OFFSET_STRATUM);
+        if (stratum == SNTP_STRATUM_KOD) {
+          // Kiss-of-death packet. Use another server or increase UPDATE_DELAY
+          err = SNTP_ERR_KOD;
+          cLcd::mLcd->debug (LCD_COLOR_RED, "sntp_recv - Kiss-of-Death");
+          }
+        else {
+          // check originate_timetamp against sntp_last_timestamp_sent
+          u32_t originate_timestamp[2];
+          pbuf_copy_partial (p, &originate_timestamp, 8, SNTP_OFFSET_ORIGINATE_TIME);
+          if ((originate_timestamp[0] != sntp_last_timestamp_sent[0]) ||
+              (originate_timestamp[1] != sntp_last_timestamp_sent[1]))
+            cLcd::mLcd->debug (LCD_COLOR_RED, "sntp_recv - invalid originate timestamp");
+          else { // correct answer
+            err = ERR_OK;
+            pbuf_copy_partial (p, &receive_timestamp, 4, SNTP_OFFSET_TRANSMIT_TIME);
+            }
+          }
+        }
+      else { // wait for correct response
+        cLcd::mLcd->debug (LCD_COLOR_RED, "sntp_recv - invalid mode %d", (u16_t)mode);
+        err = ERR_TIMEOUT;
+        }
+      }
+    else
+      cLcd::mLcd->debug (LCD_COLOR_RED, "sntp_recv - nvalid packetLen %d", p->tot_len);
+    }
+  else // packet from wrong remote address or port, wait for correct response
+    err = ERR_TIMEOUT;
+  pbuf_free (p);
+
+  if (err == ERR_OK) {
+    sntp_process (receive_timestamp);
+
+    // Set up timeout for next request (only if poll response was received)
+    // Correct response, reset retry timeout
+    sys_timeout ((u32_t)SNTP_UPDATE_DELAY, sntp_request, NULL);
+    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_recv in %ds", (u32_t)SNTP_UPDATE_DELAY/1000);
+    }
+  else if (err != ERR_TIMEOUT) {
+    // Errors are only processed in case of an explicit poll response
+    if (err == SNTP_ERR_KOD) // Kiss-of-death packet Use another server or increase UPDATE_DELAY
+      sntp_try_next_server (NULL);
+    else // another error, try the same server again */
+      sntp_retry (NULL);
+    }
+  }
+//}}}
 //{{{
 static void sntp_request (void* arg) {
 
   ip_addr_t sntp_server_address;
   err_t err;
 
-  LWIP_UNUSED_ARG(arg);
-
   // initialize SNTP server address
-#if SNTP_SERVER_DNS
   if (sntp_servers[sntp_current_server].name) {
     // always resolve the name and rely on dns-internal caching & timeout
-    ip_addr_set_zero(&sntp_servers[sntp_current_server].addr);
-    err = dns_gethostbyname(sntp_servers[sntp_current_server].name, &sntp_server_address,
-      sntp_dns_found, NULL);
-    if (err == ERR_INPROGRESS) {
-      // DNS request sent, wait for sntp_dns_found being called
-      cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_request: Waiting for server address to be resolved.\n");
+    ip_addr_set_zero (&sntp_servers[sntp_current_server].addr);
+    err = dns_gethostbyname (sntp_servers[sntp_current_server].name, &sntp_server_address, sntp_dns_found, NULL);
+    if (err == ERR_INPROGRESS)
       return;
-      }
-    else if (err == ERR_OK) {
+    else if (err == ERR_OK)
       sntp_servers[sntp_current_server].addr = sntp_server_address;
-      }
-    }
-  else
-#endif
-    {
-    sntp_server_address = sntp_servers[sntp_current_server].addr;
-    err = (ip_addr_isany_val(sntp_server_address)) ? ERR_ARG : ERR_OK;
-    }
-
-  if (err == ERR_OK) {
-    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_request: current server address is %s\n",
-      ipaddr_ntoa (&sntp_server_address));
-    sntp_send_request (&sntp_server_address);
     }
   else {
+    sntp_server_address = sntp_servers[sntp_current_server].addr;
+    err = (ip_addr_isany_val (sntp_server_address)) ? ERR_ARG : ERR_OK;
+    }
+
+  if (err == ERR_OK)
+    sntp_send_request (&sntp_server_address);
+  else {
     // address conversion failed, try another server
-    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_request: Invalid server address, trying next server.\n");
-    sys_timeout((u32_t)SNTP_RETRY_TIMEOUT, sntp_try_next_server, NULL);
+    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp_request - retry in %ds", SNTP_RETRY_TIMEOUT/1000);
+    sys_timeout ((u32_t)SNTP_RETRY_TIMEOUT, sntp_try_next_server, NULL);
     }
   }
 //}}}
 
+// init
+//{{{
+void sntp_setservername (u8_t idx, char* server) {
+
+  if (idx < SNTP_MAX_SERVERS)
+    sntp_servers[idx].name = server;
+  }
+//}}}
 //{{{
 void sntp_init() {
 
-#ifdef SNTP_SERVER_ADDRESS
-  #if SNTP_SERVER_DNS
-    sntp_setservername(0, SNTP_SERVER_ADDRESS);
-  #else
-    #error SNTP_SERVER_ADDRESS string not supported SNTP_SERVER_DNS==0
-  #endif
-#endif
-
   if (sntp_pcb == NULL) {
     sntp_pcb = udp_new_ip_type (IPADDR_TYPE_ANY);
-    LWIP_ASSERT ("Failed to allocate udp pcb for sntp client", sntp_pcb != NULL);
     if (sntp_pcb != NULL) {
       udp_recv (sntp_pcb, sntp_recv, NULL);
-
-      if (sntp_opmode == SNTP_OPMODE_POLL) {
-        SNTP_RESET_RETRY_TIMEOUT();
-      #if SNTP_STARTUP_DELAY
-        sys_timeout ((u32_t)SNTP_STARTUP_DELAY_FUNC, sntp_request, NULL);
-      #else
-        sntp_request (NULL);
-      #endif
-        }
-      else if (sntp_opmode == SNTP_OPMODE_LISTENONLY) {
-        ip_set_option (sntp_pcb, SOF_BROADCAST);
-        udp_bind (sntp_pcb, IP_ANY_TYPE, SNTP_PORT);
-        }
+      sntp_request (NULL);
       }
     }
   }
@@ -529,89 +415,3 @@ void sntp_stop() {
     }
   }
 //}}}
-//{{{
-void sntp_setoperatingmode (u8_t operating_mode) {
-
-  LWIP_ASSERT("Invalid operating mode", operating_mode <= SNTP_OPMODE_LISTENONLY);
-  LWIP_ASSERT("Operating mode must not be set while SNTP client is running", sntp_pcb == NULL);
-  sntp_opmode = operating_mode;
-  }
-//}}}
-u8_t sntp_getoperatingmode() { return sntp_opmode; }
-u8_t sntp_enabled() { return (sntp_pcb != NULL)? 1 : 0; }
-
-#if SNTP_GET_SERVERS_FROM_DHCP
-  //{{{
-  void sntp_servermode_dhcp (int set_servers_from_dhcp) {
-
-    u8_t new_mode = set_servers_from_dhcp ? 1 : 0;
-    if (sntp_set_servers_from_dhcp != new_mode)
-      sntp_set_servers_from_dhcp = new_mode;
-    }
-  //}}}
-#endif
-
-//{{{
-void sntp_setserver (u8_t idx, const ip_addr_t* server) {
-
-  if (idx < SNTP_MAX_SERVERS) {
-    if (server != NULL)
-      sntp_servers[idx].addr = (*server);
-    else
-      ip_addr_set_zero(&sntp_servers[idx].addr);
-  #if SNTP_SERVER_DNS
-    sntp_servers[idx].name = NULL;
-  #endif
-    }
-  }
-//}}}
-
-#if LWIP_DHCP && SNTP_GET_SERVERS_FROM_DHCP
-  //{{{
-  void dhcp_set_ntp_servers (u8_t num, const ip4_addr_t* server) {
-
-    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp: %s %u.%u.%u.%u as NTP server #%u via DHCP\n",
-                                   (sntp_set_servers_from_dhcp ? "Got" : "Rejected"),
-                                   ip4_addr1(server), ip4_addr2(server), ip4_addr3(server), ip4_addr4(server), num);
-    if (sntp_set_servers_from_dhcp && num) {
-      u8_t i;
-      for (i = 0; (i < num) && (i < SNTP_MAX_SERVERS); i++) {
-        ip_addr_t addr;
-        ip_addr_copy_from_ip4(addr, server[i]);
-        sntp_setserver(i, &addr);
-        }
-      for (i = num; i < SNTP_MAX_SERVERS; i++) {
-        sntp_setserver(i, NULL);
-        }
-      }
-    }
-  //}}}
-#endif
-
-//{{{
-const ip_addr_t* sntp_getserver (u8_t idx) {
-
-  if (idx < SNTP_MAX_SERVERS)
-    return &sntp_servers[idx].addr;
-  return IP_ADDR_ANY;
-  }
-//}}}
-
-#if SNTP_SERVER_DNS
-  //{{{
-  void sntp_setservername (u8_t idx, char* server) {
-
-    if (idx < SNTP_MAX_SERVERS)
-      sntp_servers[idx].name = server;
-    }
-  //}}}
-  //{{{
-  char* sntp_getservername (u8_t idx) {
-
-    if (idx < SNTP_MAX_SERVERS)
-      return sntp_servers[idx].name;
-
-    return NULL;
-    }
-  //}}}
-#endif

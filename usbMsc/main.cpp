@@ -21,7 +21,7 @@
 #include "lwip/dhcp.h"
 #include "lwip/arch.h"
 #include "lwip/api.h"
-#include "lwip/apps/sntp.h"
+#include "sntp.h"
 
 #include "ethernetif.h"
 //}}}
@@ -577,6 +577,8 @@ void dhcpThread (void* arg) {
         if (dhcp_supplied_address (netif)) {
           dhcpState = DHCP_ADDRESS_ASSIGNED;
           cLcd::mLcd->debug (LCD_COLOR_GREEN, "DHCP %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
+          sntp_setservername (0, "pool.ntp.org");
+          sntp_init();
           }
         else {
           auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
@@ -611,23 +613,24 @@ void appThread (void* arg) {
 //{{{
 void netThread (void* arg) {
 
-  // Static IP ADDRESS
+  //{{{  Static IP ADDRESS
   #define IP_ADDR0   192
   #define IP_ADDR1   168
   #define IP_ADDR2   1
   #define IP_ADDR3   100
-
-  // NETMASK
+  //}}}
+  //{{{  NETMASK
   #define NETMASK_ADDR0   255
   #define NETMASK_ADDR1   255
   #define NETMASK_ADDR2   255
   #define NETMASK_ADDR3   0
-
-  // Gateway Address
+  //}}}
+  //{{{  Gateway Address
   #define GW_ADDR0   192
   #define GW_ADDR1   168
   #define GW_ADDR2   0
   #define GW_ADDR3   1
+  //}}}
 
   struct netif netIf;
   ip_addr_t ipaddr;
@@ -656,20 +659,7 @@ void netThread (void* arg) {
     netif_set_down (&netIf);
     }
 
-  osDelay (5000);
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp");
-
-  sntp_setoperatingmode (SNTP_OPMODE_POLL);
-  sntp_setservername (0, "pool.ntp.org");
-  sntp_init();
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sntp inited");
-
-  while (true) {
-    //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "netThread tick");
-    osDelay (5000);
-    }
-
-  //osThreadTerminate (NULL);
+  osThreadTerminate (NULL);
   }
 //}}}
 //{{{
