@@ -98,6 +98,9 @@ DRESULT disk_ioctl (uint8_t pdrv, BYTE cmd, void* buff) {
 //{{{
 DRESULT disk_read (uint8_t pdrv, BYTE* buff, uint32_t sector, uint16_t count) {
 
+  if ((uint32_t)buff & 0x3)
+    cLcd::mLcd->debug (LCD_COLOR_RED, "disk_read bufAlignment %p", buff);
+
   if (BSP_SD_ReadBlocks_DMA ((uint32_t*)buff, sector, count) == MSD_OK) {
     osEvent event = osMessageGet (SDQueueID, SD_TIMEOUT);
     if (event.status == osEventMessage) {
@@ -120,6 +123,11 @@ DRESULT disk_read (uint8_t pdrv, BYTE* buff, uint32_t sector, uint16_t count) {
 //}}}
 //{{{
 DRESULT disk_write (uint8_t pdrv, const BYTE* buff, uint32_t sector, uint16_t count) {
+
+  if ((uint32_t)buff & 0x3) {
+    cLcd::mLcd->debug (LCD_COLOR_RED, "disk_write bufAlignment %p", buff);
+    return RES_ERROR;
+    }
 
   uint32_t alignedAddr = (uint32_t)buff & ~0x1F;
   SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, count*BLOCKSIZE + ((uint32_t)buff - alignedAddr));

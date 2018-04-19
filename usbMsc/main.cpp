@@ -29,6 +29,8 @@
 #define freeRtos
 
 const char kVersion[] = "WebCam 19/4/18";
+const bool kWriteTest = false;
+const bool kWriteJpg = true;
 
 uint16_t* kRgb565Buf = (uint16_t*)0xc0100000;
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0200000;
@@ -204,22 +206,20 @@ void cApp::run() {
     //  }
     //}}}
 
-    if (true) {
+    if (kWriteTest) {
       mLcd->start();
-      if (count++ < 1000) {
-        char saveName[40] = {0};
-        sprintf (saveName, "Save%03d.jpg", count);
-        saveFile (saveName, kFileBuf1, 619, kFileBuf1+619, fileBufLen-619);
-        }
+      char saveName[40];
+      sprintf (saveName, "Save%03d.jpg", count);
+      saveFile (saveName, kFileBuf1, 619, kFileBuf1+619, fileBufLen-619);
       }
     else if (!mCam->getFrame()) // no frame, clear
       mLcd->start();
     else if (!mCam->getMode())
       mLcd->start ((uint16_t*)mCam->getFrame(), mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
     else {
-      if (false && (count++ < 1000)) {
-        char saveName[40] = {0};
-        sprintf (saveName, "Save%03d.jpg", count);
+      if (kWriteJpg) {
+        char saveName[40];
+        sprintf (saveName, "Save%03d.jpg", count++);
         saveFile (saveName, mCam->getHeader(), mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
         mLcd->start();
         }
@@ -483,12 +483,15 @@ void cApp::saveFile (char* fileName, uint8_t* headBuf, int headBufLen, uint8_t* 
   memcpy (kFileBuf, headBuf, headBufLen);
   memcpy (kFileBuf+headBufLen, bodyBuf, bodyBufLen);
 
+  kFileBuf[headBufLen+bodyBufLen+1] = 0xFF;  // EOI
+  kFileBuf[headBufLen+bodyBufLen+2] = 0xD9;
+
   FIL file;
   if (f_open (&file, fileName, FA_WRITE | FA_CREATE_ALWAYS))
     mLcd->debug (LCD_COLOR_RED, "save openFailed %s", fileName);
   else {
     UINT bytesWritten;
-    f_write (&file, kFileBuf, (headBufLen + bodyBufLen+3) & 0xFFFFFFFC, &bytesWritten);
+    f_write (&file, kFileBuf, (headBufLen + bodyBufLen + 2 + 3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&file);
     mLcd->debug (LCD_COLOR_YELLOW, "save %s %d:%d:%d", fileName,  headBufLen,bodyBufLen, bytesWritten);
     }
