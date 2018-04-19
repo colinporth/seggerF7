@@ -29,9 +29,10 @@
 
 const char kVersion[] = "WebCam 19/4/18";
 
-uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
-uint8_t*  kCamBuffer    =  (uint8_t*)0xc0200000;
-uint8_t*  kCamBufferEnd =  (uint8_t*)0xc0600000; // plus a bit for wraparound
+uint16_t* kRgb565Buf = (uint16_t*)0xc0100000;
+uint8_t*  kCamBuf    =  (uint8_t*)0xc0200000;
+uint8_t*  kCamBufEnd =  (uint8_t*)0xc0600000; // plus a bit for wraparound
+uint8_t*  kFileBuf   =  (uint8_t*)0xc0700000;
 
 //{{{
 class cApp : public cTouch {
@@ -42,7 +43,7 @@ public:
     mCinfo.err = jpeg_std_error (&jerr);
     jpeg_create_decompress (&mCinfo);
 
-    mBufferArray[0] = (uint8_t*)malloc (1600 * 3);
+    mBufArray[0] = (uint8_t*)malloc (1600 * 3);
     }
   //}}}
   //{{{
@@ -81,9 +82,8 @@ private:
   void reportFree();
   void reportLabel();
 
-  int loadFile (uint8_t* jpegBuffer);
+  void loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf);
   void saveFile (uint8_t* jpegHeadBuf, int jpegHeadLen, uint8_t* jpegBuf, int jpegLen, int num);
-  void jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale);
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
@@ -91,7 +91,7 @@ private:
   int mFiles = 0;
   DWORD mVsn = 0;
   char mLabel[40];
-  uint8_t* mBufferArray[1];
+  uint8_t* mBufArray[1];
 
   struct jpeg_error_mgr jerr;
   struct jpeg_decompress_struct mCinfo;
@@ -166,16 +166,23 @@ void cApp::init() {
   //mPs2 = new cPs2 (mLcd);
   //mPs2->initKeyboard();
   //}}}
-  //mscInit (mLcd);
+  mscInit (mLcd);
   //mscStart();
   }
 //}}}
 //{{{
 void cApp::run() {
 
+  loadFile ("image.jpg", kFileBuf, kRgb565Buf);
+  mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
+  mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
+  mLcd->drawDebug();
+  mLcd->present();
+  osDelay (1000);
+
   mCam = new cCamera();
   mCam->init();
-  mCam->start (false, kCamBuffer);
+  mCam->start (false, kCamBuf);
 
   bool lastButton = false;
   while (true) {
@@ -205,12 +212,12 @@ void cApp::run() {
       jpeg_mem_src (&mCinfo, mCam->getFrame(), mCam->getFrameLen());
       jpeg_start_decompress (&mCinfo);
       while (mCinfo.output_scanline < mCinfo.output_height) {
-        jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-        //mLcd->rgb888to565 (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-        mLcd->rgb888to565cpu (mBufferArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+        jpeg_read_scanlines (&mCinfo, mBufArray, 1);
+        //mLcd->rgb888to565 (mBufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+        mLcd->rgb888to565cpu (mBufArray[0], kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
         }
       jpeg_finish_decompress (&mCinfo);
-      mLcd->start (kRgb565Buffer, mCinfo.output_width, mCinfo.output_height, true);
+      mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
       }
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
@@ -223,7 +230,7 @@ void cApp::run() {
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
     if (!button && (button != lastButton))
-      mCam->start (!mCam->getMode(), kCamBuffer);
+      mCam->start (!mCam->getMode(), kCamBuf);
     lastButton = button;
     }
   }
@@ -234,8 +241,8 @@ void cApp::run() {
 void cApp::onProx (int x, int y, int z) {
 
   if (x || y) {
-    //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
-    // hidSendReport (&gUsbDevice, HID_Buffer);
+    //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
+    // hidSendReport (&gUsbDevice, HID_Buf);
     mLcd->debug (LCD_COLOR_MAGENTA, "onProx %d %d %d", x, y, z);
     }
   }
@@ -243,8 +250,8 @@ void cApp::onProx (int x, int y, int z) {
 //{{{
 void cApp::onPress (int x, int y) {
 
-  //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,0,0,0 };
-  //hidSendReport (&gUsbDevice, HID_Buffer);
+  //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,0,0,0 };
+  //hidSendReport (&gUsbDevice, HID_Buf);
   mLcd->debug (LCD_COLOR_GREEN, "onPress %d %d", x, y);
   }
 //}}}
@@ -252,8 +259,8 @@ void cApp::onPress (int x, int y) {
 void cApp::onMove (int x, int y, int z) {
 
   if (x || y) {
-    //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
-    //hidSendReport (&gUsbDevice, HID_Buffer);
+    //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
+    //hidSendReport (&gUsbDevice, HID_Buf);
     int focus = mCam->getFocus() + x;
     if (focus < 0)
       focus = 0;
@@ -272,8 +279,8 @@ void cApp::onScroll (int x, int y, int z) {
 //{{{
 void cApp::onRelease (int x, int y) {
 
-  //uint8_t HID_Buffer[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
-  //hidSendReport (&gUsbDevice, HID_Buffer);
+  //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
+  //hidSendReport (&gUsbDevice, HID_Buf);
   mLcd->debug (LCD_COLOR_GREEN, "onRelease %d %d", x, y);
   }
 //}}}
@@ -379,7 +386,7 @@ void cApp::reportFree() {
 //}}}
 
 //{{{
-int cApp::loadFile (uint8_t* jpegBuffer) {
+void cApp::loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf) {
 
   auto fatFs = (FATFS*)malloc (sizeof (FATFS));
   if (!f_mount (fatFs, "", 0)) {
@@ -389,7 +396,7 @@ int cApp::loadFile (uint8_t* jpegBuffer) {
     //char pathName[256] = "/";
     //readDirectory (pathName);
     FILINFO filInfo;
-    if (!f_stat ("image.jpg", &filInfo))
+    if (!f_stat (fileName, &filInfo))
       mLcd->debug (LCD_COLOR_WHITE, "%d %u/%02u/%02u %02u:%02u %c%c%c%c%c",
                    (int)(filInfo.fsize),
                    (filInfo.fdate >> 9) + 1980, filInfo.fdate >> 5 & 15, filInfo.fdate & 31,
@@ -401,46 +408,36 @@ int cApp::loadFile (uint8_t* jpegBuffer) {
                    (filInfo.fattrib & AM_ARC) ? 'A' : '-');
 
     FIL file;
-    if (!f_open (&file, "image.jpg", FA_READ)) {
+    if (!f_open (&file, fileName, FA_READ)) {
       mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
       UINT bytesRead;
-      f_read (&file, (void*)jpegBuffer, (UINT)filInfo.fsize, &bytesRead);
+      f_read (&file, (void*)fileBuf, (UINT)filInfo.fsize, &bytesRead);
       mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
       f_close (&file);
-      if (bytesRead > 0)
-        jpegDecode (kCamBuffer, bytesRead, kRgb565Buffer, 4);
-      return bytesRead;
+      if (bytesRead > 0) {
+        jpeg_mem_src (&mCinfo, fileBuf, bytesRead);
+        jpeg_read_header (&mCinfo, TRUE);
+        mLcd->debug (LCD_COLOR_WHITE, "jpegDecode in:%dx%d", mCinfo.image_width, mCinfo.image_height);
+
+        mCinfo.dct_method = JDCT_FLOAT;
+        mCinfo.out_color_space = JCS_RGB;
+        mCinfo.scale_num = 1;
+        mCinfo.scale_denom = 4;
+        jpeg_start_decompress (&mCinfo);
+        while (mCinfo.output_scanline < mCinfo.output_height) {
+          jpeg_read_scanlines (&mCinfo, mBufArray, 1);
+          mLcd->rgb888to565 (mBufArray[0], rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
+          }
+        jpeg_finish_decompress (&mCinfo);
+
+        mLcd->debug (LCD_COLOR_WHITE, "jpegDecode out:%dx%d %d", mCinfo.output_width, mCinfo.output_height, 4);
+        }
       }
     else
       mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
     }
   else
     mLcd->debug (LCD_COLOR_RED, "not mounted");
-
-  return 0;
-  }
-//}}}
-//{{{
-void cApp::jpegDecode (uint8_t* jpegBuf, int jpegLen, uint16_t* rgb565buf, int scale) {
-
-  jpeg_mem_src (&mCinfo, jpegBuf, jpegLen);
-  jpeg_read_header (&mCinfo, TRUE);
-
-  mLcd->debug (LCD_COLOR_WHITE, "jpegDecode in:%dx%d", mCinfo.image_width, mCinfo.image_height);
-
-  mCinfo.dct_method = JDCT_FLOAT;
-  mCinfo.out_color_space = JCS_RGB;
-  mCinfo.scale_num = 1;
-  mCinfo.scale_denom = scale;
-
-  jpeg_start_decompress (&mCinfo);
-  while (mCinfo.output_scanline < mCinfo.output_height) {
-    jpeg_read_scanlines (&mCinfo, mBufferArray, 1);
-    mLcd->rgb888to565 (mBufferArray[0], rgb565buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
-    }
-  jpeg_finish_decompress (&mCinfo);
-
-  mLcd->debug (LCD_COLOR_WHITE, "jpegDecode out:%dx%d %d", mCinfo.output_width, mCinfo.output_height, scale);
   }
 //}}}
 //{{{

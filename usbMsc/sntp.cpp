@@ -204,7 +204,7 @@ void sntp_initialize_request (struct sntp_msg* req) {
 //{{{
 void sntp_try_next_server (void* arg) {
 
-  u8_t old_server = sntp_current_server;
+  auto old_server = sntp_current_server;
   for (u8_t i = 0; i < SNTP_MAX_SERVERS - 1; i++) {
     sntp_current_server++;
     if (sntp_current_server >= SNTP_MAX_SERVERS) {
@@ -228,10 +228,10 @@ void sntp_try_next_server (void* arg) {
 //{{{
 void sntp_send_request (const ip_addr_t* server_addr) {
 
-  struct pbuf* p = pbuf_alloc (PBUF_TRANSPORT, SNTP_MSG_LEN, PBUF_RAM);
+  auto p = pbuf_alloc (PBUF_TRANSPORT, SNTP_MSG_LEN, PBUF_RAM);
   if (p != NULL) {
     // initialize request message
-    struct sntp_msg* sntpmsg = (struct sntp_msg*)p->payload;
+    auto sntpmsg = (struct sntp_msg*)p->payload;
     sntp_initialize_request (sntpmsg);
 
     // send request

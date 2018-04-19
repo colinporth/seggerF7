@@ -2,7 +2,7 @@ MEMORY
 {
   UNPLACED_SECTIONS (wx) : ORIGIN = 0x100000000, LENGTH = 0
   FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 0x00100000
-  SRAM (wx) : ORIGIN = 0x20000000, LENGTH = 0x0004c000
+  SRAM (wx) : ORIGIN = 0x20004000, LENGTH = 0x0004c000
 }
 
 SECTIONS
@@ -10,18 +10,18 @@ SECTIONS
   __FLASH_segment_start__ = 0x08000000;
   __FLASH_segment_end__ = 0x08100000;
   __FLASH_segment_size__ = 0x00100000;
-  __SRAM_segment_start__ = 0x20000000;
-  __SRAM_segment_end__ = 0x2004c000;
+  __SRAM_segment_start__ = 0x20004000;
+  __SRAM_segment_end__ = 0x20050000;
   __SRAM_segment_size__ = 0x0004c000;
 
-  __HEAPSIZE__ = 128000;
+  __HEAPSIZE__ = 120000;
   __STACKSIZE_ABT__ = 0;
   __STACKSIZE_FIQ__ = 0;
   __STACKSIZE_IRQ__ = 0;
-  __STACKSIZE_PROCESS__ = 0;
+  __STACKSIZE_PROCESS__ = 1024;
   __STACKSIZE_SVC__ = 0;
   __STACKSIZE_UND__ = 0;
-  __STACKSIZE__ = 1024;
+  __STACKSIZE__ = 4096;
 
   __vectors_ram_load_start__ = ALIGN(__SRAM_segment_start__ , 256);
   .vectors_ram ALIGN(__SRAM_segment_start__ , 256) (NOLOAD) : AT(ALIGN(__SRAM_segment_start__ , 256))
@@ -254,8 +254,8 @@ SECTIONS
 
   . = ASSERT(__heap_start__ == __heap_end__ || (__heap_end__ >= __SRAM_segment_start__ && __heap_end__ <= __SRAM_segment_end__) , "error: .heap is too large to fit in SRAM memory segment");
 
-  __stack_load_start__ = __SRAM_segment_end__ - 1024;
-  .stack __SRAM_segment_end__ - 1024 (NOLOAD) : AT(__SRAM_segment_end__ - 1024)
+  __stack_load_start__ = __SRAM_segment_end__ - 5120;
+  .stack __SRAM_segment_end__ - 5120 (NOLOAD) : AT(__SRAM_segment_end__ - 5120)
   {
     __stack_start__ = .;
     *(.stack .stack.*)

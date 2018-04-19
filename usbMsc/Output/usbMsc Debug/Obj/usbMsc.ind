@@ -1,6 +1,7 @@
 --start-group
 "Output/usbMsc Debug/Obj/main.o"
 "Output/usbMsc Debug/Obj/system.o"
+"Output/usbMsc Debug/Obj/sntp.o"
 "Output/usbMsc Debug/Obj/usbd_msc.o"
 "Output/usbMsc Debug/Obj/usbd.o"
 "Output/usbMsc Debug/Obj/stm32746g_discovery.o"
@@ -96,6 +97,7 @@
 "Output/usbMsc Debug/Obj/port.o"
 "Output/usbMsc Debug/Obj/cmsis_os.o"
 "Output/usbMsc Debug/Obj/heap_4.o"
+"Output/usbMsc Debug/Obj/cpuUsage.o"
 "Output/usbMsc Debug/Obj/api_lib.o"
 "Output/usbMsc Debug/Obj/api_msg.o"
 "Output/usbMsc Debug/Obj/err.o"

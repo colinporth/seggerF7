@@ -8,14 +8,11 @@
 #include "stm32746g_discovery_sdram.h"
 
 //}}}
-//#define rdSdDma
-//#define wrSdDma
+#define rdSdDma
+#define wrSdDma
 
 const bool kUsbFullSpeed = false;
 const int kMscMediaPacket = 32*1024;
-const int kSectorScale = 256;
-
-const bool kSectorDebug = false;
 
 cLcd* gLcd = nullptr;
 
@@ -30,14 +27,10 @@ extern "C" {
 
 
 bool gSdChanged = false;
-//uint32_t* gSectors = (uint32_t*)SDRAM_DEVICE_ADDR;
 
 //{{{  sd card handlers
 // BSP
-__IO uint32_t gReadstatus = 0;
-void BSP_SD_ReadCpltCallback() { gReadstatus = 1; }
-__IO uint32_t writestatus = 0;
-void BSP_SD_WriteCpltCallback() { writestatus = 1; }
+
 //{{{
 void BSP_SD_MspInit (SD_HandleTypeDef* hsd, void* Params) {
 
@@ -181,14 +174,16 @@ bool sdGetCapacity (uint8_t lun, uint32_t& block_num, uint16_t& block_size) {
   return false;
   }
 //}}}
+
+__IO uint32_t gReadstatus = 0;
+void BSP_SD_ReadCpltCallback() { gReadstatus = 1; }
 //{{{
 bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
-  if (kSectorDebug && ((uint32_t)buf & 0x3))
+  if ((uint32_t)buf & 0x3)
     gLcd->debug (LCD_COLOR_RED, "sdRead buf alignment %x", buf);
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-  #ifdef rdSdDma
     gReadstatus = 0;
     BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
     auto ticks = HAL_GetTick();
@@ -200,30 +195,23 @@ bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
     while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
     uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
     SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, ((uint32_t)buf - alignedAddr) + blk_len*512);
-  #else
-    BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
-  #endif
+    //BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
 
-    if (kSectorDebug)
-      gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
-    //gSectors[blk_addr / kSectorScale] = LCD_COLOR_GREEN;
-    //gSectors[(blk_addr / kSectorScale)+1] = LCD_COLOR_GREEN;
-    //gSectors[(blk_addr / kSectorScale)+480] = LCD_COLOR_GREEN;
-    //gSectors[(blk_addr / kSectorScale)+481] = LCD_COLOR_GREEN;
+    //gLcd->debug (LCD_COLOR_CYAN, "r %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
     return true;
     }
 
   return false;
   }
 //}}}
+
+__IO uint32_t writestatus = 0;
+void BSP_SD_WriteCpltCallback() { writestatus = 1; }
 //{{{
 bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
-
-  #ifdef wrSdDma
-
-    if (kSectorDebug && ((uint32_t)buf & 0x3))
+    if ((uint32_t)buf & 0x3)
       gLcd->debug (LCD_COLOR_RED, "sdWrite buf alignment %p", buf);
 
     uint32_t alignedAddr = (uint32_t)buf &  ~0x1F;
@@ -236,24 +224,20 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
     writestatus = 0;
     while ((HAL_GetTick() - timeout) < 2000) {
       if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
-        //gLcd->debug (LCD_COLOR_MAGENTA, "w %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+        gLcd->debug (LCD_COLOR_MAGENTA, "w %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
         gSdChanged = true;
         return true;
         }
       }
-    gLcd->debug (LCD_COLOR_RED, "wrDmaFail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+    //gLcd->debug (LCD_COLOR_RED, "wrDmaFail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
 
-  #else
-
-    BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
-    if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
-      gLcd->debug (LCD_COLOR_YELLOW, "wr ok %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
-      gSdChanged = true;
-      return true;
-      }
-    gLcd->debug (LCD_COLOR_RED, "wr fail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
-
-  #endif
+    //BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
+    //if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
+    //  gLcd->debug (LCD_COLOR_YELLOW, "wr ok %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+    //  gSdChanged = true;
+    //  return true;
+    //  }
+    //gLcd->debug (LCD_COLOR_RED, "wr fail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
     }
 
   return false;
@@ -1659,9 +1643,6 @@ void mscInit (cLcd* lcd) {
   BSP_SD_CardInfo cardInfo;
   BSP_SD_GetCardInfo (&cardInfo);
   gLcd->debug (LCD_COLOR_YELLOW, "num:%d size:%d", cardInfo.LogBlockNbr, cardInfo.LogBlockSize);
-  auto max = cardInfo.LogBlockNbr / kSectorScale;
-  //for (auto i = 0; i < 480 * 272; i++)
-  //  gSectors[i] = i > max ? 0 : 0x40404040;
   }
 //}}}
 //{{{
@@ -1671,9 +1652,4 @@ void mscStart() {
   USBD_RegisterClass (&gUsbDevice, &kMscHandlers);
   USBD_Start (&gUsbDevice);
   }
-//}}}
-//{{{
-//uint32_t* mscGetSectors() {
-  //return gSectors;
-  //}
 //}}}
