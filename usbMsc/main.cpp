@@ -83,7 +83,7 @@ private:
   void reportLabel();
 
   void loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf);
-  void saveFile (uint8_t* jpegHeadBuf, int jpegHeadLen, uint8_t* jpegBuf, int jpegLen, int num);
+  void saveFile (char* fileName, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen);
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
@@ -174,17 +174,18 @@ void cApp::init() {
 void cApp::run() {
 
   mCam = new cCamera();
+  mCam->init();
+  mCam->start (false, kCamBuf);
 
   loadFile ("image.jpg", kFileBuf, kRgb565Buf);
   mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
   mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
   mLcd->drawDebug();
   mLcd->present();
-  osDelay (3000);
+  osDelay (1000);
 
-  mCam->init();
-  mCam->start (false, kCamBuf);
-
+  int count1 = 0;
+  int count2 = 0;
   bool lastButton = false;
   while (true) {
     pollTouch();
@@ -197,28 +198,43 @@ void cApp::run() {
 
     if (!mCam->getFrame()) // no frame, clear
       mLcd->start();
-    else if (!mCam->getMode())  // rgb565
+    else if (!mCam->getMode()) {
+      // rgb565
       mLcd->start ((uint16_t*)mCam->getFrame(), mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+      //if (count1++ < 20) {
+      //  char saveName[40] = {0};
+      //  sprintf (saveName, "Save%d.bmp", count1);
+      //  saveFile (saveName, mCam->getHeader(), mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
+      //  }
+      }
     else {
-      // jpegDecode
-      auto frameLen = mCam->getFrameLen();
-      jpeg_mem_src (&mCinfo, mCam->getHeader(), mCam->getHeaderLen());
-      jpeg_read_header (&mCinfo, TRUE);
-      mCinfo.scale_num = 1;
-      mCinfo.scale_denom = BSP_PB_GetState (BUTTON_KEY) ? 1 : 2;
-      mCinfo.dct_method = JDCT_FLOAT;
-      mCinfo.out_color_space = JCS_RGB;
-
-      // jpegBody
-      jpeg_mem_src (&mCinfo, mCam->getFrame(), mCam->getFrameLen());
-      jpeg_start_decompress (&mCinfo);
-      while (mCinfo.output_scanline < mCinfo.output_height) {
-        jpeg_read_scanlines (&mCinfo, mBufArray, 1);
-        //mLcd->rgb888to565 (mBufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-        mLcd->rgb888to565cpu (mBufArray[0], kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+      if (count2++ < 1000) {
+        char saveName[40] = {0};
+        sprintf (saveName, "Save%03d.jpg", count2);
+        saveFile (saveName, mCam->getHeader(), mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
+        mLcd->start();
         }
-      jpeg_finish_decompress (&mCinfo);
-      mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
+      else {
+        // jpegDecode
+        auto frameLen = mCam->getFrameLen();
+        jpeg_mem_src (&mCinfo, mCam->getHeader(), mCam->getHeaderLen());
+        jpeg_read_header (&mCinfo, TRUE);
+        mCinfo.scale_num = 1;
+        mCinfo.scale_denom = BSP_PB_GetState (BUTTON_KEY) ? 1 : 2;
+        mCinfo.dct_method = JDCT_FLOAT;
+        mCinfo.out_color_space = JCS_RGB;
+
+        // jpegBody
+        jpeg_mem_src (&mCinfo, mCam->getFrame(), mCam->getFrameLen());
+        jpeg_start_decompress (&mCinfo);
+        while (mCinfo.output_scanline < mCinfo.output_height) {
+          jpeg_read_scanlines (&mCinfo, mBufArray, 1);
+          //mLcd->rgb888to565 (mBufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+          mLcd->rgb888to565cpu (mBufArray[0], kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+          }
+        jpeg_finish_decompress (&mCinfo);
+        mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
+        }
       }
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
@@ -442,23 +458,22 @@ void cApp::loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf
   }
 //}}}
 //{{{
-void cApp::saveFile (uint8_t* jpegHeadBuf, int jpegHeadLen, uint8_t* jpegBuf, int jpegLen, int num) {
+void cApp::saveFile (char* fileName, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen) {
 
-  char saveName[40];
-  sprintf (saveName, "saveImage%03d.jpg", num);
-  mLcd->debug (LCD_COLOR_GREEN, saveName);
+  // take copy of buf
+  memcpy (kFileBuf, headBuf, headBufLen);
+  memcpy (kFileBuf+headBufLen, bodyBuf, bodyBufLen);
 
   FIL file;
-  if (!f_open (&file, saveName, FA_WRITE | FA_CREATE_ALWAYS)) {
+  if (f_open (&file, fileName, FA_WRITE | FA_CREATE_ALWAYS))
+    mLcd->debug (LCD_COLOR_RED, "save openFailed %s", fileName);
+  else {
     UINT bytesWritten;
-    if (jpegHeadBuf && jpegHeadLen)
-      f_write (&file, jpegHeadBuf, jpegHeadLen, &bytesWritten);
-    f_write (&file, jpegBuf, jpegLen, &bytesWritten);
+    f_write (&file, kFileBuf, (headBufLen + bodyBufLen+3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&file);
+    //mLcd->debug (LCD_COLOR_YELLOW, "save %s %d:%d:%d", fileName,  headBufLen,bodyBufLen, bytesWritten);
     }
-  else
-    mLcd->debug (LCD_COLOR_RED, saveName);
-  }
+   }
 //}}}
 
 //{{{

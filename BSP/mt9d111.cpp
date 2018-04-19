@@ -588,7 +588,7 @@ void cCamera::dcmiStart (uint8_t* buf) {
   mFrame = nullptr;
   mFrameLen = 0;
   mFixedFrameLen = getWidth() * getHeight() * 2;
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%x", mXferMaxCount, mXferSize, dmaLen);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%x", mXferMaxCount, mXferSize, dmaLen);
 
   // enable dma doubleBufferMode,  config src, dst addresses, length
   DMA2_Stream1->PAR = (uint32_t)&(DCMI->DR);

@@ -215,18 +215,23 @@ void BSP_SD_ReadCpltCallback() { gReadstatus = 1; }
 bool sdRead (uint8_t lun, uint8_t* buf, uint32_t blk_addr, uint16_t blk_len) {
 
   if ((uint32_t)buf & 0x3)
-    gLcd->debug (LCD_COLOR_RED, "sdRead buf alignment %x", buf);
+    gLcd->debug (LCD_COLOR_RED, "sdRead bufAlignment %x", buf);
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
     gReadstatus = 0;
     BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
     auto ticks = HAL_GetTick();
-    while (!gReadstatus)
+    while (!gReadstatus) {
       if (HAL_GetTick() - ticks > 1000) {
         gLcd->debug (LCD_COLOR_RED, "sdRead %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
         return false;
         }
-    while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {}
+      osDelay (1);
+      }
+
+    while (BSP_SD_GetCardState() != SD_TRANSFER_OK)
+      osDelay (1);
+
     uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
     SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, ((uint32_t)buf - alignedAddr) + blk_len*512);
     //BSP_SD_ReadBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
@@ -256,24 +261,47 @@ bool sdWrite (uint8_t lun, const uint8_t* buf, uint32_t blk_addr, uint16_t blk_l
 
   if (BSP_SD_IsDetected() != SD_NOT_PRESENT) {
     if ((uint32_t)buf & 0x3)
-      gLcd->debug (LCD_COLOR_RED, "sdWrite buf alignment %p", buf);
+      gLcd->debug (LCD_COLOR_RED, "sdWrite bufAlignment %p", buf);
 
-    uint32_t alignedAddr = (uint32_t)buf &  ~0x1F;
+    uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
     SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, blk_len*512 + ((uint32_t)buf - alignedAddr));
     BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
 
     writestatus = 0;
     uint32_t timeout = HAL_GetTick();
-    while  ((writestatus == 0) && ((HAL_GetTick() - timeout) < 2000)) {}
+    while ((writestatus == 0) && ((HAL_GetTick() - timeout) < 1000))
+       osDelay (1);
     writestatus = 0;
+
     while ((HAL_GetTick() - timeout) < 2000) {
       if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
-        gLcd->debug (LCD_COLOR_MAGENTA, "w %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+        //gLcd->debug (LCD_COLOR_MAGENTA, "w %p %6d %2d %d", buf, (int)blk_addr, (int)blk_len, HAL_GetTick() - timeout);
         gSdChanged = true;
         return true;
         }
+      osDelay (1);
       }
-    //gLcd->debug (LCD_COLOR_RED, "wrDmaFail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+
+    gLcd->debug (LCD_COLOR_RED, "w dmaFail %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
+
+    BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, blk_addr, blk_len);
+
+    writestatus = 0;
+    timeout = HAL_GetTick();
+    while ((writestatus == 0) && ((HAL_GetTick() - timeout) < 1000))
+       osDelay (1);
+    writestatus = 0;
+
+    while ((HAL_GetTick() - timeout) < 2000) {
+      if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
+        gLcd->debug (LCD_COLOR_MAGENTA, "retry %p %6d %2d %d", buf, (int)blk_addr, (int)blk_len, HAL_GetTick() - timeout);
+        gSdChanged = true;
+        return true;
+        }
+      osDelay (1);
+      }
+
+    gLcd->debug (LCD_COLOR_RED, "w dmaFail2 %p %7d %2d", buf, (int)blk_addr, (int)blk_len);
 
     //BSP_SD_WriteBlocks ((uint32_t*)buf, blk_addr, blk_len, 1000);
     //if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
