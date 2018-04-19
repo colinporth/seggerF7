@@ -27,7 +27,7 @@
 //}}}
 #define freeRtos
 
-const char kVersion[] = "WebCam 18/4/18";
+const char kVersion[] = "WebCam 19/4/18";
 
 uint16_t* kRgb565Buffer = (uint16_t*)0xc0100000;
 uint8_t*  kCamBuffer    =  (uint8_t*)0xc0200000;
