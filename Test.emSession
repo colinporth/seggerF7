@@ -48,8 +48,7 @@
   <ProjectSessionItem path="usb;usbMsc"/>
   <ProjectSessionItem path="usb;usbMsc;bsp_drivers"/>
   <ProjectSessionItem path="usb;usbMsc;bsp_drivers;includes"/>
-  <ProjectSessionItem path="usb;usbMsc;hal_drivers"/>
-  <ProjectSessionItem path="usb;usbMsc;hal_drivers;includes"/>
+  <ProjectSessionItem path="usb;usbMsc;FatFs"/>
   <ProjectSessionItem path="usb;usbMsc;main"/>
   <ProjectSessionItem path="usb;usbMsc;main;includes"/>
   <ProjectSessionItem path="usb;usbMsc;system"/>
@@ -95,11 +94,14 @@
  </Watch4>
  <Files>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="583" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/mt9d111.cpp" debugPath="BSP/mt9d111.cpp" selected="0" top="577" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="55" y="738" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="1" top="729" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="133" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/usbd_msc.cpp" debugPath="usbMsc/usbd_msc.cpp" selected="0" top="111" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="50" useTextEdit="1" useBinaryEdit="0" left="0" path="common/cTouch.h" debugPath="common/ctouch.h" selected="0" top="10" codecName=""/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="20" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/cCamera.h" debugPath="BSP/cCamera.h" selected="0" top="0" codecName=""/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="159" useTextEdit="1" useBinaryEdit="0" left="0" path="system/HardFaultHandler.S" debugPath="system/HardFaultHandler.S" selected="0" top="139" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="50" useTextEdit="1" useBinaryEdit="0" left="0" path="common/cTouch.h" debugPath="common/cTouch.h" selected="0" top="10" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="20" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/cCamera.h" debugPath="BSP/cCamera.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="159" useTextEdit="1" useBinaryEdit="0" left="0" path="system/HardFaultHandler.S" debugPath="system/HardFaultHandler.S" selected="0" top="139" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="8" y="84" useTextEdit="1" useBinaryEdit="0" left="0" path="FatFs/sdDiskioDmaRtos.c" debugPath="FatFs/sdDiskioDmaRtos.c" selected="0" top="59" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="154" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="0" top="124" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="19" y="2" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/sdDiskioDmaRtos.c" debugPath="BSP/sdDiskioDmaRtos.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="38" y="15" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/cLcd.h" debugPath="BSP/cLcd.h" selected="1" top="0" codecName="Default"/>
  </Files>
  <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Release" debugSearchFileMap="" fileDialogInitialDirectory="C:/Users/colin/Desktop" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

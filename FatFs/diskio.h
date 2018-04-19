@@ -42,7 +42,7 @@ DWORD get_fattime();
 #define CTRL_EJECT        7 // Eject media
 #define CTRL_FORMAT       8 // Create physical format on the media
 
-// MMC/SDC specific ioctl command 
+// MMC/SDC specific ioctl command
 #define MMC_GET_TYPE     10  // Get card type
 #define MMC_GET_CSD      11  // Get CSD
 #define MMC_GET_CID      12  // Get CID

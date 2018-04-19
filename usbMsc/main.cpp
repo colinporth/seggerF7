@@ -7,6 +7,7 @@
 
 #include "usbd_msc.h"
 #include "../FatFs/ff.h"
+#include "../FatFs/diskio.h"
 
 #include "stm32746g_discovery_sd.h"
 #include "cCamera.h"
@@ -165,11 +166,13 @@ void cApp::init() {
   mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
   mLcd->present();
 
+  disk_initialize (0);
+
   //{{{  removed
   //mPs2 = new cPs2 (mLcd);
   //mPs2->initKeyboard();
   //}}}
-  mscInit (mLcd);
+  //mscInit (mLcd);
   //mscStart();
   }
 //}}}
@@ -180,8 +183,9 @@ void cApp::run() {
   mCam->init();
   mCam->start (false, kCamBuf);
 
+  int fileBufLen = 0;
   if (mount()) {
-    auto fileBufLen = loadFile ("image.jpg", kFileBuf1, kRgb565Buf);
+    fileBufLen = loadFile ("image.jpg", kFileBuf1, kRgb565Buf);
     mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawDebug();
@@ -200,12 +204,12 @@ void cApp::run() {
     //  }
     //}}}
 
-    if (mFatFs) {
+    if (true) {
       mLcd->start();
       if (count++ < 1000) {
         char saveName[40] = {0};
         sprintf (saveName, "Save%03d.jpg", count);
-        saveFile (saveName, kFileBuf1, 619, kFileBuf1+619, 65000-619);
+        saveFile (saveName, kFileBuf1, 619, kFileBuf1+619, fileBufLen-619);
         }
       }
     else if (!mCam->getFrame()) // no frame, clear
@@ -213,7 +217,7 @@ void cApp::run() {
     else if (!mCam->getMode())
       mLcd->start ((uint16_t*)mCam->getFrame(), mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
     else {
-      if (count++ < 1000) {
+      if (false && (count++ < 1000)) {
         char saveName[40] = {0};
         sprintf (saveName, "Save%03d.jpg", count);
         saveFile (saveName, mCam->getHeader(), mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
