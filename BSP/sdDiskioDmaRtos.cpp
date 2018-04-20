@@ -11,7 +11,7 @@
 #define READ_CPLT_MSG   1
 #define WRITE_CPLT_MSG  2
 
-#define SD_TIMEOUT      10 * 1000
+#define SD_TIMEOUT      1000
 
 static volatile DSTATUS Stat = STA_NOINIT;
 static osMessageQId sDQueueID;
@@ -101,7 +101,7 @@ DRESULT diskIoctl (uint8_t lun, BYTE cmd, void* buf) {
 //{{{
 DRESULT diskRead (uint8_t lun, BYTE* buf, uint32_t sector, uint32_t numSectors) {
 
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_read %p %d %d", buf, sector, numSectors);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_read %p %d %d", buf, sector, numSectors);
   if ((uint32_t)buf & 0x3) {
     cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_read %p align fail", buf);
     return RES_ERROR;
@@ -114,8 +114,10 @@ DRESULT diskRead (uint8_t lun, BYTE* buf, uint32_t sector, uint32_t numSectors) 
         uint32_t timer = osKernelSysTick();
         while (timer < osKernelSysTick() + SD_TIMEOUT) {
           if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
-            uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
-            SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, numSectors * 512 + ((uint32_t)buf - alignedAddr));
+            if (buf + (numSectors * 512) >= (uint8_t*)0x20010000) {
+              uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
+              SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, numSectors * 512 + ((uint32_t)buf - alignedAddr));
+              }
             return RES_OK;
             }
           osDelay (1);
@@ -150,7 +152,7 @@ DRESULT diskWrite (uint8_t lun, const BYTE* buf, uint32_t sector, uint32_t numSe
           if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
             auto writeTime = ticks2 - ticks1;
             auto okTime = osKernelSysTick() - ticks2;
-            if (writeTime > 2 || okTime > 2)
+            if ((writeTime > 200) || (okTime > 200))
               cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_write %7d:%2d %d:%d", sector, numSectors, writeTime, okTime);
             return  RES_OK;
             }
@@ -160,7 +162,7 @@ DRESULT diskWrite (uint8_t lun, const BYTE* buf, uint32_t sector, uint32_t numSe
       }
     }
 
-  cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_write %d:%d fail", sector, numSectors);
+  cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_write %d:%d retry fail", sector, numSectors);
   return RES_ERROR;
   }
 //}}}

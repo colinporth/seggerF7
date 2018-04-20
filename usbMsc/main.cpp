@@ -104,7 +104,8 @@ private:
 //}}}
 
 cApp* gApp;
-FATFS gFatFs = {0}; // forces allocation in lower DTCM SRAM
+FATFS gFatFs = { 0 }; // forces allocation in lower DTCM SRAM
+FIL gFile = { 0 };
 
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
@@ -192,7 +193,7 @@ void cApp::run() {
     f_getlabel ("", mLabel, &mVsn);
     mLcd->debug (LCD_COLOR_WHITE, "sd card mounted - %s ", mLabel);
 
-    //fileBufLen = loadFile ("image.jpg", kFileBuf1, kRgb565Buf);
+    fileBufLen = loadFile ("image.jpg", kFileBuf1, kRgb565Buf);
     mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawDebug();
@@ -430,13 +431,14 @@ int cApp::loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf)
                  (filInfo.fattrib & AM_SYS) ? 'S' : '-',
                  (filInfo.fattrib & AM_ARC) ? 'A' : '-');
 
-  FIL file;
-  if (!f_open (&file, fileName, FA_READ)) {
+  if (!f_open (&gFile, fileName, FA_READ)) {
     mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
+
     UINT bytesRead;
-    f_read (&file, (void*)fileBuf, (UINT)filInfo.fsize, &bytesRead);
+    f_read (&gFile, (void*)fileBuf, (UINT)filInfo.fsize, &bytesRead);
     mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
-    f_close (&file);
+    f_close (&gFile);
+
     if (bytesRead > 0) {
       jpeg_mem_src (&mCinfo, fileBuf, bytesRead);
       jpeg_read_header (&mCinfo, TRUE);
@@ -469,13 +471,12 @@ void cApp::saveFile (const char* name, const char* ext, int num, uint8_t* buf, i
   char fileName[40] = {0};
   sprintf (fileName, "%s%03d.%s", name, num, ext);
 
-  FIL file;
-  if (f_open (&file, fileName, FA_WRITE | FA_CREATE_ALWAYS))
+  if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
     mLcd->debug (LCD_COLOR_RED, "save %s fail", fileName);
   else {
     UINT bytesWritten;
-    f_write (&file, buf, (bufLen + 3) & 0xFFFFFFFC, &bytesWritten);
-    f_close (&file);
+    f_write (&gFile, buf, (bufLen + 3) & 0xFFFFFFFC, &bytesWritten);
+    f_close (&gFile);
     mLcd->debug (LCD_COLOR_YELLOW, "saveFile %s %d:%d", fileName, bufLen, bytesWritten);
     }
    }
@@ -490,15 +491,14 @@ void cApp::saveJpgFile (const char* name, const char* ext, int num, uint8_t* hea
   char fileName[40] = {0};
   sprintf (fileName, "%s%03d.%s", name, num, ext);
 
-  FIL file;
-  if (f_open (&file, fileName, FA_WRITE | FA_CREATE_ALWAYS))
+  if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
     mLcd->debug (LCD_COLOR_RED, "saveJpg %s fail", fileName);
   else {
     UINT bytesWritten;
     //f_write (&file, kFileBuf, (headBufLen + bodyBufLen + 2 + 3) & 0xFFFFFFFC, &bytesWritten);
-    f_write (&file, headBuf, headBufLen, &bytesWritten);
-    f_write (&file, bodyBuf, (bodyBufLen + 3) & 0xFFFFFFFC, &bytesWritten);
-    f_close (&file);
+    f_write (&gFile, headBuf, headBufLen, &bytesWritten);
+    f_write (&gFile, bodyBuf, (bodyBufLen + 3) & 0xFFFFFFFC, &bytesWritten);
+    f_close (&gFile);
 
     mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName,  headBufLen,bodyBufLen, bytesWritten);
     }
