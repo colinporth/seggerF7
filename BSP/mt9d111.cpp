@@ -197,13 +197,8 @@ void cCamera::dcmiIrqHandler() {
       mJpegStatus = mFrameCur[dmaBytes-1];
       if ((mJpegStatus & 0x0f) == 0x01) {
         mFrame = mFrameStart;
-        mFrameLen = (mFrameCur[dmaBytes-2] << 16) + (mFrameCur[dmaBytes-3] << 8) + mFrameCur[dmaBytes-4] + 2;
-        if (mFrameLen <= mFrameCur - mFrameStart + dmaBytes) {
-          // append EOI
-          mFrame[mFrameLen-2] = 0xFF;
-          mFrame[mFrameLen-1] = 0xD9;
-          }
-        else {
+        mFrameLen = (mFrameCur[dmaBytes-2] << 16) + (mFrameCur[dmaBytes-3] << 8) + mFrameCur[dmaBytes-4];
+        if (mFrameLen > mFrameCur - mFrameStart + dmaBytes) {
           cLcd::mLcd->debug (LCD_COLOR_RED, "len %d %d", mFrameLen, mFrameCur - mFrameStart + dmaBytes);
           mFrame = nullptr;
           mFrameLen = 0;
@@ -225,6 +220,12 @@ void cCamera::dcmiIrqHandler() {
     if (mFrame + mFrameLen > mBufEnd)
       // dodgy copy to deliver contiguous buffer, should manage buffer better instead
       memcpy (mBufEnd, mBufStart, mFrame + mFrameLen - mBufEnd);
+
+    if (mJpegMode && mFrame && mFrameLen) {
+      // append EOI
+      mFrame[mFrameLen++] = 0xFF;
+      mFrame[mFrameLen++] = 0xD9;
+      }
 
     mFrameStart = mFrameCur + dmaBytes;
     }
@@ -948,14 +949,17 @@ void cCamera::setJpegHeader (uint8_t qscale) {
 void cCamera::setBmpHeader() {
 // set RGB565 16bpp bmp header, minimal for pic no greater than 1600x1200
 
-  const int kHeaderLen = 14;
-  const int kDibLen = 0x28;
-  const int kMaskLen = 12;
+  const int kHeaderLen = 0x0e;
+  const int kDibLen =    0x28;
+  const int kMaskLen =   0x0c;
+  const int kPadLen =    0x02;
+  //                     0x44 - padded out from 0x42
 
   int imageSize = mWidth*mHeight*2;
   int fileSize = mHeaderLen + imageSize;
 
-  mHeaderLen = kHeaderLen + kDibLen + kMaskLen;
+  // pad out to 4 byte boundary
+  mHeaderLen = kHeaderLen + kDibLen + kMaskLen + kPadLen;
 
   memset (mHeader, 0, mHeaderLen);
 
@@ -997,6 +1001,7 @@ void cCamera::setBmpHeader() {
   mHeader[0x3E] = 0x1F;
   }
 //}}}
+
 
 //{{{
 void cCamera::preview() {

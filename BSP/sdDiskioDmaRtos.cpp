@@ -11,7 +11,7 @@
 #define READ_CPLT_MSG   1
 #define WRITE_CPLT_MSG  2
 
-#define SD_TIMEOUT      1000
+#define SD_TIMEOUT      2*1000
 
 static volatile DSTATUS Stat = STA_NOINIT;
 static osMessageQId sDQueueID;
@@ -162,7 +162,7 @@ DRESULT diskWrite (uint8_t lun, const BYTE* buf, uint32_t sector, uint32_t numSe
       }
     }
 
-  cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_write %d:%d retry fail", sector, numSectors);
+  cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_write %d:%d fail", sector, numSectors);
   return RES_ERROR;
   }
 //}}}

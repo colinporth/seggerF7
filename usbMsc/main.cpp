@@ -89,6 +89,9 @@ private:
   int loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf);
   void saveFile (const char* name, const char* ext, int num, uint8_t* buf, int bufLen);
   void saveJpgFile (const char* name, const char* ext, int num, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen);
+  void openJpgFile (const char* name, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen);
+  void appendJpgFile (uint8_t* headBuf, int num, int headBufLen, uint8_t* bodyBuf, int bodyBufLen);
+  void closeJpgFile();
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
@@ -221,8 +224,17 @@ void cApp::run() {
     else if (!mCam->getMode())
       mLcd->start ((uint16_t*)mCam->getFrame(), mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
     else {
-      if (kWriteJpg && (count < 400)) {
-        saveJpgFile ("Save", "jpg", count++, mCam->getHeader(), mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
+      count++;
+      if (kWriteJpg && count == 1) {
+        openJpgFile ("Save.mjpg", mCam->getHeader(), mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
+        mLcd->start();
+        }
+      else if (kWriteJpg && count < 500) {
+        appendJpgFile (mCam->getHeader(), count, mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
+        mLcd->start();
+        }
+      else if (kWriteJpg && count == 500) {
+        closeJpgFile();
         mLcd->start();
         }
       else {
@@ -481,12 +493,9 @@ void cApp::saveFile (const char* name, const char* ext, int num, uint8_t* buf, i
     }
    }
 //}}}
+
 //{{{
 void cApp::saveJpgFile (const char* name, const char* ext, int num, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen) {
-
-  // copy buf
-  //memcpy (kFileBuf, headBuf, headBufLen);
-  //memcpy (kFileBuf+headBufLen, bodyBuf, bodyBufLen);
 
   char fileName[40] = {0};
   sprintf (fileName, "%s%03d.%s", name, num, ext);
@@ -495,7 +504,6 @@ void cApp::saveJpgFile (const char* name, const char* ext, int num, uint8_t* hea
     mLcd->debug (LCD_COLOR_RED, "saveJpg %s fail", fileName);
   else {
     UINT bytesWritten;
-    //f_write (&file, kFileBuf, (headBufLen + bodyBufLen + 2 + 3) & 0xFFFFFFFC, &bytesWritten);
     f_write (&gFile, headBuf, headBufLen, &bytesWritten);
     f_write (&gFile, bodyBuf, (bodyBufLen + 3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&gFile);
@@ -503,6 +511,35 @@ void cApp::saveJpgFile (const char* name, const char* ext, int num, uint8_t* hea
     mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName,  headBufLen,bodyBufLen, bytesWritten);
     }
    }
+//}}}
+//{{{
+void cApp::openJpgFile (const char* name, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen) {
+
+  if (f_open (&gFile, name, FA_WRITE | FA_CREATE_ALWAYS))
+    mLcd->debug (LCD_COLOR_RED, "saveJpg %s fail", name);
+  else {
+    UINT bytesWritten;
+    f_write (&gFile, headBuf, headBufLen, &bytesWritten);
+    f_write (&gFile, bodyBuf, (bodyBufLen + 3) & 0xFFFFFFFC, &bytesWritten);
+
+    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", name, headBufLen,bodyBufLen, bytesWritten);
+    }
+   }
+//}}}
+//{{{
+void cApp::appendJpgFile (uint8_t* headBuf, int num, int headBufLen, uint8_t* bodyBuf, int bodyBufLen) {
+
+  UINT bytesWritten;
+  f_write (&gFile, headBuf, headBufLen, &bytesWritten);
+  f_write (&gFile, bodyBuf, (bodyBufLen + 3) & 0xFFFFFFFC, &bytesWritten);
+  mLcd->debug (LCD_COLOR_YELLOW, "append %d %d:%d:%d ok", num, headBufLen,bodyBufLen, bytesWritten);
+  }
+//}}}
+//{{{
+void cApp::closeJpgFile() {
+
+  f_close (&gFile);
+  }
 //}}}
 
 //{{{
