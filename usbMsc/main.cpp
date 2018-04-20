@@ -86,7 +86,6 @@ private:
   void reportFree();
   void reportLabel();
 
-  bool mount();
   int loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf);
   void saveFile (const char* name, const char* ext, int num, uint8_t* buf, int bufLen);
   void saveJpgFile (const char* name, const char* ext, int num, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen);
@@ -94,7 +93,6 @@ private:
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
 
-  FATFS mFatFs = {0};
   char mLabel[40] = {0};
   DWORD mVsn = 0;
   int mFiles = 0;
@@ -106,6 +104,7 @@ private:
 //}}}
 
 cApp* gApp;
+FATFS gFatFs = {0}; // forces allocation in lower DTCM SRAM
 
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
@@ -187,7 +186,12 @@ void cApp::run() {
   mCam->start (false, kCamBuf);
 
   int fileBufLen = 0;
-  if (mount()) {
+  if (f_mount (&gFatFs, "", 0))
+    mLcd->debug (LCD_COLOR_RED, "sd card not mounted");
+  else {
+    f_getlabel ("", mLabel, &mVsn);
+    mLcd->debug (LCD_COLOR_WHITE, "sd card mounted - %s ", mLabel);
+
     //fileBufLen = loadFile ("image.jpg", kFileBuf1, kRgb565Buf);
     mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
@@ -409,19 +413,6 @@ void cApp::reportFree() {
   }
 //}}}
 
-//{{{
-bool cApp::mount() {
-
-  if (!f_mount (&mFatFs, "", 0)) {
-    f_getlabel ("", mLabel, &mVsn);
-    mLcd->debug (LCD_COLOR_WHITE, "Mounted label:%s ", mLabel);
-    return true;
-    }
-
-  mLcd->debug (LCD_COLOR_RED, "Not mounted");
-  return false;
-  }
-//}}}
 //{{{
 int cApp::loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf) {
 
