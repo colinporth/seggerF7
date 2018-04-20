@@ -197,8 +197,13 @@ void cCamera::dcmiIrqHandler() {
       mJpegStatus = mFrameCur[dmaBytes-1];
       if ((mJpegStatus & 0x0f) == 0x01) {
         mFrame = mFrameStart;
-        mFrameLen = (mFrameCur[dmaBytes-2] << 16) + (mFrameCur[dmaBytes-3] << 8) + mFrameCur[dmaBytes-4];
-        if (mFrameLen > mFrameCur - mFrameStart + dmaBytes) {
+        mFrameLen = (mFrameCur[dmaBytes-2] << 16) + (mFrameCur[dmaBytes-3] << 8) + mFrameCur[dmaBytes-4] + 2;
+        if (mFrameLen <= mFrameCur - mFrameStart + dmaBytes) {
+          // append EOI
+          mFrame[mFrameLen-2] = 0xFF;
+          mFrame[mFrameLen-1] = 0xD9;
+          }
+        else {
           cLcd::mLcd->debug (LCD_COLOR_RED, "len %d %d", mFrameLen, mFrameCur - mFrameStart + dmaBytes);
           mFrame = nullptr;
           mFrameLen = 0;
@@ -700,13 +705,14 @@ const uint16_t kJpegStdHuffmanTbl[384] = {
   0x100, 0x101, 0x102, 0x206, 0x30e, 0x41e, 0x53e, 0x67e,
   0x7fe, 0x8fe, 0x9fe, 0xafe, 0xfff, 0xfff, 0xfff, 0xfff };
 //}}}
+
 //{{{
-int cCamera::jfifApp0Marker (uint8_t* ptr) {
+int cCamera::app0Marker (uint8_t* ptr) {
 
   *ptr++ = 0xFF; // APP0 marker
   *ptr++ = 0xE0;
 
-  int length = 16;
+  int length = 17;
   *ptr++ = length >> 8;// length field
   *ptr++ = length & 0xFF;
 
@@ -727,6 +733,8 @@ int cCamera::jfifApp0Marker (uint8_t* ptr) {
 
   *ptr++ = 0x00; // X thumbnail
   *ptr++ = 0x00; // Y thumbnail
+
+  *ptr++ = 0x00; // dummy
 
   return length+2;
   }
@@ -923,7 +931,7 @@ void cCamera::setJpegHeader (uint8_t qscale) {
   *ptr++ = 0xD8;
   mHeaderLen = 2;
 
-  mHeaderLen += jfifApp0Marker (ptr);
+  mHeaderLen += app0Marker (ptr);
   mHeaderLen += quantTableMarker (mHeader + mHeaderLen, qscale);
   mHeaderLen += sofMarker (mHeader + mHeaderLen, mWidth, mHeight);
   mHeaderLen += huffTableMarkerAC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[0], 0x10);
@@ -932,7 +940,7 @@ void cCamera::setJpegHeader (uint8_t qscale) {
   mHeaderLen += huffTableMarkerDC (mHeader + mHeaderLen, &kJpegStdHuffmanTbl[368], 0x01);
   mHeaderLen += sosMarker (mHeader + mHeaderLen);
 
-  if (mHeaderLen > 700)
+  if (mHeaderLen != 620)
     cLcd::mLcd->debug (LCD_COLOR_RED, "jpegHeader len error %d", mHeaderLen);
   }
 //}}}

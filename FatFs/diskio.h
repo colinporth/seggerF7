@@ -21,12 +21,13 @@ typedef enum {
   } DRESULT;
 
 // Prototypes for disk control functions
-DSTATUS disk_initialize (uint8_t pdrv);
-DSTATUS disk_status (uint8_t pdrv);
-DRESULT disk_read (uint8_t pdrv, BYTE* buff, uint32_t sector, uint16_t count);
-DRESULT disk_write (uint8_t pdrv, const BYTE* buff, uint32_t sector, uint16_t count);
-DRESULT disk_ioctl (uint8_t pdrv, BYTE cmd, void* buff);
-DWORD get_fattime();
+DWORD getFatTime();
+DSTATUS diskStatus (uint8_t lun);
+
+DSTATUS diskInit (uint8_t lun);
+DRESULT diskRead (uint8_t lun, BYTE* buf, uint32_t sector, uint32_t numSectors);
+DRESULT diskWrite (uint8_t lun, const BYTE* buf, uint32_t sector, uint32_t numSectors);
+DRESULT diskIoctl (uint8_t lun, BYTE cmd, void* buf);
 
 // Command code for disk_ioctrl fucntion
 // Generic command (Used by FatFs)

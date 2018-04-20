@@ -36,12 +36,13 @@ private:
 
   void dcmiStart (uint8_t* buffer);
 
-  int jfifApp0Marker (uint8_t* ptr);
+  int app0Marker (uint8_t* ptr);
   int sofMarker (uint8_t* ptr, uint16_t width, uint16_t height);
   int quantTableMarker (uint8_t* ptr, uint8_t qscale);
   int huffTableMarkerDC (uint8_t* ptr, const uint16_t* htable, int classId);
   int huffTableMarkerAC (uint8_t* ptr, const uint16_t* htable, int classId);
   int sosMarker (uint8_t* ptr);
+
   void setJpegHeader (uint8_t qscale);
   void setBmpHeader();
 
@@ -49,6 +50,9 @@ private:
   void jpeg();
 
   //{{{  vars
+  uint8_t mHeader[620];
+  int mHeaderLen = 0;
+
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;
   bool mJpegMode = false;
@@ -84,8 +88,5 @@ private:
   int mFrameLen = 0;
   int mFixedFrameLen = 0;
   uint8_t mJpegStatus = 0;
-
-  uint8_t mHeader[700];
-  int mHeaderLen = 0;
   //}}}
   };

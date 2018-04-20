@@ -7,20 +7,20 @@
 #include "cLcd.h"
 //}}}
 
-#define QUEUE_SIZE             10
-#define READ_CPLT_MSG          1
-#define WRITE_CPLT_MSG         2
-#define SD_TIMEOUT             2 * 1000
-#define SD_DEFAULT_BLOCK_SIZE  512
+#define QUEUE_SIZE      10
+#define READ_CPLT_MSG   1
+#define WRITE_CPLT_MSG  2
+
+#define SD_TIMEOUT      10 * 1000
 
 static volatile DSTATUS Stat = STA_NOINIT;
+static osMessageQId sDQueueID;
 
-static osMessageQId SDQueueID;
-void BSP_SD_WriteCpltCallback() { osMessagePut (SDQueueID, WRITE_CPLT_MSG, osWaitForever); }
-void BSP_SD_ReadCpltCallback()  { osMessagePut (SDQueueID, READ_CPLT_MSG, osWaitForever); }
+void BSP_SD_WriteCpltCallback() { osMessagePut (sDQueueID, WRITE_CPLT_MSG, osWaitForever); }
+void BSP_SD_ReadCpltCallback()  { osMessagePut (sDQueueID, READ_CPLT_MSG, osWaitForever); }
 
 //{{{
-DSTATUS SD_CheckStatus (uint8_t pdrv) {
+DSTATUS SD_CheckStatus (uint8_t lun) {
 
   Stat = STA_NOINIT;
 
@@ -31,21 +31,23 @@ DSTATUS SD_CheckStatus (uint8_t pdrv) {
   }
 //}}}
 
-DWORD get_fattime() {}
-DSTATUS disk_status (uint8_t pdrv) { return SD_CheckStatus (pdrv); }
+DWORD getFatTime() {}
+DSTATUS diskStatus (uint8_t lun) { return SD_CheckStatus (lun); }
+
 //{{{
-DSTATUS disk_initialize (uint8_t pdrv) {
+DSTATUS diskInit (uint8_t lun) {
 
   Stat = STA_NOINIT;
 
   if (osKernelRunning()) {
     if (BSP_SD_Init() == MSD_OK)
-      Stat = SD_CheckStatus(pdrv);
+      Stat = SD_CheckStatus(lun);
 
     if (Stat != STA_NOINIT) {
-      osMessageQDef(SD_Queue, QUEUE_SIZE, uint16_t);
-      SDQueueID = osMessageCreate (osMessageQ(SD_Queue), NULL);
+      osMessageQDef (SD_Queue, QUEUE_SIZE, uint16_t);
+      sDQueueID = osMessageCreate (osMessageQ (SD_Queue), NULL);
       }
+
     cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_initialize");
     }
 
@@ -53,7 +55,7 @@ DSTATUS disk_initialize (uint8_t pdrv) {
   }
 //}}}
 //{{{
-DRESULT disk_ioctl (uint8_t pdrv, BYTE cmd, void* buff) {
+DRESULT diskIoctl (uint8_t lun, BYTE cmd, void* buf) {
 
   if (Stat & STA_NOINIT)
     return RES_NOTRDY;
@@ -70,21 +72,21 @@ DRESULT disk_ioctl (uint8_t pdrv, BYTE cmd, void* buff) {
     // Get number of sectors on the disk (DWORD)
     case GET_SECTOR_COUNT :
       BSP_SD_GetCardInfo (&CardInfo);
-      *(DWORD*)buff = CardInfo.LogBlockNbr;
+      *(DWORD*)buf = CardInfo.LogBlockNbr;
       res = RES_OK;
       break;
 
     // Get R/W sector size (WORD)
     case GET_SECTOR_SIZE :
       BSP_SD_GetCardInfo (&CardInfo);
-      *(WORD*)buff = CardInfo.LogBlockSize;
+      *(WORD*)buf = CardInfo.LogBlockSize;
       res = RES_OK;
       break;
 
     // Get erase block size in unit of sector (DWORD)
     case GET_BLOCK_SIZE :
       BSP_SD_GetCardInfo (&CardInfo);
-      *(DWORD*)buff = CardInfo.LogBlockSize / SD_DEFAULT_BLOCK_SIZE;
+      *(DWORD*)buf = CardInfo.LogBlockSize / 512;
       res = RES_OK;
       break;
 
@@ -95,21 +97,25 @@ DRESULT disk_ioctl (uint8_t pdrv, BYTE cmd, void* buff) {
   return res;
   }
 //}}}
+
 //{{{
-DRESULT disk_read (uint8_t pdrv, BYTE* buff, uint32_t sector, uint16_t count) {
+DRESULT diskRead (uint8_t lun, BYTE* buf, uint32_t sector, uint32_t numSectors) {
 
-  if ((uint32_t)buff & 0x3)
-    cLcd::mLcd->debug (LCD_COLOR_RED, "disk_read bufAlignment %p", buff);
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_read %p %d %d", buf, sector, numSectors);
+  if ((uint32_t)buf & 0x3) {
+    cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_read %p align fail", buf);
+    return RES_ERROR;
+    }
 
-  if (BSP_SD_ReadBlocks_DMA ((uint32_t*)buff, sector, count) == MSD_OK) {
-    osEvent event = osMessageGet (SDQueueID, SD_TIMEOUT);
+  if (BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, sector, numSectors) == MSD_OK) {
+    osEvent event = osMessageGet (sDQueueID, SD_TIMEOUT);
     if (event.status == osEventMessage) {
       if (event.value.v == READ_CPLT_MSG) {
-        uint32_t timer = osKernelSysTick() + SD_TIMEOUT;
-        while (timer > osKernelSysTick()) {
+        uint32_t timer = osKernelSysTick();
+        while (timer < osKernelSysTick() + SD_TIMEOUT) {
           if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
-            uint32_t alignedAddr = (uint32_t)buff & ~0x1F;
-            SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, count*BLOCKSIZE + ((uint32_t)buff - alignedAddr));
+            uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
+            SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, numSectors * 512 + ((uint32_t)buf - alignedAddr));
             return RES_OK;
             }
           osDelay (1);
@@ -118,34 +124,43 @@ DRESULT disk_read (uint8_t pdrv, BYTE* buff, uint32_t sector, uint16_t count) {
       }
     }
 
+  cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_read %d:%d fail", sector, numSectors);
   return RES_ERROR;
   }
 //}}}
 //{{{
-DRESULT disk_write (uint8_t pdrv, const BYTE* buff, uint32_t sector, uint16_t count) {
+DRESULT diskWrite (uint8_t lun, const BYTE* buf, uint32_t sector, uint32_t numSectors) {
 
-  if ((uint32_t)buff & 0x3) {
-    cLcd::mLcd->debug (LCD_COLOR_RED, "disk_write bufAlignment %p", buff);
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_write %p %d %d", buf, sector, numSectors);
+  if ((uint32_t)buf & 0x3) {
+    cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_write %p align fail", buf);
     return RES_ERROR;
     }
 
-  uint32_t alignedAddr = (uint32_t)buff & ~0x1F;
-  SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, count*BLOCKSIZE + ((uint32_t)buff - alignedAddr));
+  uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
+  SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, (numSectors * 512) + ((uint32_t)buf - alignedAddr));
 
-  if (BSP_SD_WriteBlocks_DMA ((uint32_t*)buff, sector, count) == MSD_OK) {
-    osEvent event = osMessageGet (SDQueueID, SD_TIMEOUT);
+  auto ticks1 = osKernelSysTick();
+  if (BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, sector, numSectors) == MSD_OK) {
+    auto event = osMessageGet (sDQueueID, SD_TIMEOUT);
     if (event.status == osEventMessage) {
       if (event.value.v == WRITE_CPLT_MSG) {
-        uint32_t timer = osKernelSysTick() + SD_TIMEOUT;
-        while (timer > osKernelSysTick()) {
-          if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
+        auto ticks2 = osKernelSysTick();
+        while (ticks2 < osKernelSysTick() + SD_TIMEOUT) {
+          if (BSP_SD_GetCardState() == SD_TRANSFER_OK) {
+            auto writeTime = ticks2 - ticks1;
+            auto okTime = osKernelSysTick() - ticks2;
+            if (writeTime > 2 || okTime > 2)
+              cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_write %7d:%2d %d:%d", sector, numSectors, writeTime, okTime);
             return  RES_OK;
+            }
           osDelay (1);
           }
         }
       }
     }
 
+  cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_write %d:%d fail", sector, numSectors);
   return RES_ERROR;
   }
 //}}}

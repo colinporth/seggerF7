@@ -88,19 +88,20 @@ private:
 
   bool mount();
   int loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf);
-  void saveFile (char* fileName, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen);
+  void saveFile (const char* name, const char* ext, int num, uint8_t* buf, int bufLen);
+  void saveJpgFile (const char* name, const char* ext, int num, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen);
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
-  FATFS* mFatFs = nullptr;
 
-  int mFiles = 0;
+  FATFS mFatFs = {0};
+  char mLabel[40] = {0};
   DWORD mVsn = 0;
-  char mLabel[40];
-  uint8_t* mBufArray[1];
+  int mFiles = 0;
 
   struct jpeg_error_mgr jerr;
   struct jpeg_decompress_struct mCinfo;
+  uint8_t* mBufArray[1];
   };
 //}}}
 
@@ -168,7 +169,7 @@ void cApp::init() {
   mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
   mLcd->present();
 
-  disk_initialize (0);
+  diskInit (0);
 
   //{{{  removed
   //mPs2 = new cPs2 (mLcd);
@@ -187,7 +188,7 @@ void cApp::run() {
 
   int fileBufLen = 0;
   if (mount()) {
-    fileBufLen = loadFile ("image.jpg", kFileBuf1, kRgb565Buf);
+    //fileBufLen = loadFile ("image.jpg", kFileBuf1, kRgb565Buf);
     mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawDebug();
@@ -206,21 +207,17 @@ void cApp::run() {
     //  }
     //}}}
 
-    if (kWriteTest) {
+    if (kWriteTest && (count < 400)) {
       mLcd->start();
-      char saveName[40];
-      sprintf (saveName, "Save%03d.jpg", count);
-      saveFile (saveName, kFileBuf1, 619, kFileBuf1+619, fileBufLen-619);
+      saveFile ("Test", "jpg", count++, kFileBuf1, fileBufLen);
       }
     else if (!mCam->getFrame()) // no frame, clear
       mLcd->start();
     else if (!mCam->getMode())
       mLcd->start ((uint16_t*)mCam->getFrame(), mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
     else {
-      if (kWriteJpg) {
-        char saveName[40];
-        sprintf (saveName, "Save%03d.jpg", count++);
-        saveFile (saveName, mCam->getHeader(), mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
+      if (kWriteJpg && (count < 400)) {
+        saveJpgFile ("Save", "jpg", count++, mCam->getHeader(), mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
         mLcd->start();
         }
       else {
@@ -415,8 +412,7 @@ void cApp::reportFree() {
 //{{{
 bool cApp::mount() {
 
-  mFatFs = (FATFS*)malloc (sizeof (FATFS));
-  if (!f_mount (mFatFs, "", 0)) {
+  if (!f_mount (&mFatFs, "", 0)) {
     f_getlabel ("", mLabel, &mVsn);
     mLcd->debug (LCD_COLOR_WHITE, "Mounted label:%s ", mLabel);
     return true;
@@ -477,23 +473,43 @@ int cApp::loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf)
   }
 //}}}
 //{{{
-void cApp::saveFile (char* fileName, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen) {
+void cApp::saveFile (const char* name, const char* ext, int num, uint8_t* buf, int bufLen) {
 
-  // take copy of buf
-  memcpy (kFileBuf, headBuf, headBufLen);
-  memcpy (kFileBuf+headBufLen, bodyBuf, bodyBufLen);
-
-  kFileBuf[headBufLen+bodyBufLen+1] = 0xFF;  // EOI
-  kFileBuf[headBufLen+bodyBufLen+2] = 0xD9;
+  char fileName[40] = {0};
+  sprintf (fileName, "%s%03d.%s", name, num, ext);
 
   FIL file;
   if (f_open (&file, fileName, FA_WRITE | FA_CREATE_ALWAYS))
-    mLcd->debug (LCD_COLOR_RED, "save openFailed %s", fileName);
+    mLcd->debug (LCD_COLOR_RED, "save %s fail", fileName);
   else {
     UINT bytesWritten;
-    f_write (&file, kFileBuf, (headBufLen + bodyBufLen + 2 + 3) & 0xFFFFFFFC, &bytesWritten);
+    f_write (&file, buf, (bufLen + 3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&file);
-    mLcd->debug (LCD_COLOR_YELLOW, "save %s %d:%d:%d", fileName,  headBufLen,bodyBufLen, bytesWritten);
+    mLcd->debug (LCD_COLOR_YELLOW, "saveFile %s %d:%d", fileName, bufLen, bytesWritten);
+    }
+   }
+//}}}
+//{{{
+void cApp::saveJpgFile (const char* name, const char* ext, int num, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen) {
+
+  // copy buf
+  //memcpy (kFileBuf, headBuf, headBufLen);
+  //memcpy (kFileBuf+headBufLen, bodyBuf, bodyBufLen);
+
+  char fileName[40] = {0};
+  sprintf (fileName, "%s%03d.%s", name, num, ext);
+
+  FIL file;
+  if (f_open (&file, fileName, FA_WRITE | FA_CREATE_ALWAYS))
+    mLcd->debug (LCD_COLOR_RED, "saveJpg %s fail", fileName);
+  else {
+    UINT bytesWritten;
+    //f_write (&file, kFileBuf, (headBufLen + bodyBufLen + 2 + 3) & 0xFFFFFFFC, &bytesWritten);
+    f_write (&file, headBuf, headBufLen, &bytesWritten);
+    f_write (&file, bodyBuf, (bodyBufLen + 3) & 0xFFFFFFFC, &bytesWritten);
+    f_close (&file);
+
+    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName,  headBufLen,bodyBufLen, bytesWritten);
     }
    }
 //}}}

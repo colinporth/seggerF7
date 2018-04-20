@@ -101,7 +101,7 @@ typedef struct {
   DWORD dirbase;    /* Root directory base sector/cluster */
   DWORD database;   /* Data base sector */
   DWORD winsect;    /* Current sector appearing in the win[] */
-  BYTE win[_MAX_SS]; /* Disk access window for Directory, FAT (and file data at tiny cfg) */
+  BYTE win[_MAX_SS];/* Disk access window for Directory, FAT (and file data at tiny cfg) */
   } FATFS;
 //}}}
 //{{{  struct _FDID
@@ -230,43 +230,41 @@ char* f_gets (char* buff, int len, FIL* fp);            /* Get a string from the
   #define EOF (-1)
 #endif
 
-/* Additional user defined functions                            */
-/* RTC function */
-DWORD get_fattime (void);
+// RTC function */
+DWORD get_fattime();
 
 /* Sync functions */
-int ff_cre_syncobj (BYTE vol, _SYNC_t* sobj); /* Create a sync object */
-int ff_req_grant (_SYNC_t sobj);        /* Lock sync object */
-void ff_rel_grant (_SYNC_t sobj);       /* Unlock sync object */
-int ff_del_syncobj (_SYNC_t sobj);        /* Delete a sync object */
+int ff_cre_syncobj (BYTE vol, _SYNC_t* sobj); // Create a sync object
+int ff_req_grant (_SYNC_t sobj);              // Lock sync object
+void ff_rel_grant (_SYNC_t sobj);             // Unlock sync object
+int ff_del_syncobj (_SYNC_t sobj);            // Delete a sync object
 
-/* Flags and offset address                                     */
-/* File access mode and open method flags (3rd argument of f_open) */
-#define FA_READ       0x01
-#define FA_WRITE      0x02
+// File access mode and open method flags (3rd argument of f_open)
+#define FA_READ           0x01
+#define FA_WRITE          0x02
 #define FA_OPEN_EXISTING  0x00
-#define FA_CREATE_NEW   0x04
+#define FA_CREATE_NEW     0x04
 #define FA_CREATE_ALWAYS  0x08
 #define FA_OPEN_ALWAYS    0x10
 #define FA_OPEN_APPEND    0x30
 
-/* Fast seek controls (2nd argument of f_lseek) */
+// Fast seek controls (2nd argument of f_lseek)
 #define CREATE_LINKMAP  ((FSIZE_t)0 - 1)
 
-/* Format options (2nd argument of f_mkfs) */
+// Format options (2nd argument of f_mkfs)
 #define FM_FAT    0x01
 #define FM_FAT32  0x02
 #define FM_EXFAT  0x04
 #define FM_ANY    0x07
 #define FM_SFD    0x08
 
-/* Filesystem type (FATFS.fs_type) */
+// Filesystem type (FATFS.fs_type)
 #define FS_FAT12  1
 #define FS_FAT16  2
 #define FS_FAT32  3
 #define FS_EXFAT  4
 
-/* File attribute bits for directory entry (FILINFO.fattrib) */
+// File attribute bits for directory entry (FILINFO.fattrib)
 #define AM_RDO  0x01  /* Read only */
 #define AM_HID  0x02  /* Hidden */
 #define AM_SYS  0x04  /* System */
