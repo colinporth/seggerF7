@@ -267,6 +267,9 @@ void cCamera::start (bool jpegMode, uint8_t* buffer) {
 
   // start dma,dcmi with new dma
   dcmiStart (buffer);
+
+  mFrame = nullptr;
+  mFrameLen = 0;
   }
 //}}}
 
@@ -1032,9 +1035,11 @@ int cCamera::sosMarker (uint8_t* ptr) {
 void cCamera::preview() {
 
   mJpegMode = false;
+  mFrame = nullptr;
+  mFrameLen = 0;
   mWidth = 800;
   mHeight = 600;
- cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview %dx%d", mWidth, mHeight);
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview %dx%d", mWidth, mHeight);
 
   // switch to preview
   write (0xf0, 1);
@@ -1046,6 +1051,8 @@ void cCamera::preview() {
 void cCamera::jpeg() {
 
   mJpegMode = true;
+  mFrame = nullptr;
+  mFrameLen = 0;
 
 #ifdef Capture800x600
   mWidth = 800;

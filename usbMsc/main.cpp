@@ -84,8 +84,7 @@ const char kHtmlBody[] =
 //}}}
 //}}}
 const char kVersion[] = "WebCam 21/4/18";
-const bool kWriteTest = false;
-const bool kWriteJpg = false;
+const bool kWriteJpg  = false;
 const bool kWriteMjpg = true;
 
 //{{{
@@ -189,14 +188,10 @@ void cApp::init() {
 //{{{
 void cApp::run() {
 
-  mCam = new cCamera();
-  mCam->init();
-  mCam->start (false, kCamBuf);
-
   int fileLen = 0;
-  if (f_mount (&gFatFs, "", 0))
-    mLcd->debug (LCD_COLOR_RED, "sd card not mounted");
-  else {
+  bool mounted = !f_mount (&gFatFs, "", 1);
+  if (mounted) {
+    //{{{  mounted, load piccy
     f_getlabel ("", mLabel, &mVsn);
     mLcd->debug (LCD_COLOR_WHITE, "sd card mounted - %s ", mLabel);
 
@@ -207,6 +202,13 @@ void cApp::run() {
     mLcd->present();
     osDelay (1000);
     }
+    //}}}
+  else
+    mLcd->debug (LCD_COLOR_RED, "sd card not mounted");
+
+  mCam = new cCamera();
+  mCam->init();
+  mCam->start (false, kCamBuf);
 
   int fileNum = 1;
   int frameNum = 0;
@@ -219,12 +221,7 @@ void cApp::run() {
     //  onKey (ch & 0xFF, ch & 0x100);
     //  }
     //}}}
-
-    if (kWriteTest && (frameNum < 400)) {
-      saveNumFile ("test", frameNum++, "jpg", kFileBuf1, fileLen);
-      mLcd->start();
-      }
-    else if (!mCam)
+    if (!mCam)
       mLcd->start();
     else {
       int frameLen;
@@ -233,31 +230,31 @@ void cApp::run() {
         mLcd->start();
       else if (!mCam->getMode())
         mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
-      else {
+      else if (frameLen < 960000) {
         frameNum++;
         int headerLen;
-        if (kWriteJpg && frameNum < 100) {
+        if (mounted && kWriteJpg && frameNum < 100) {
           //{{{  save JFIF jpeg
           auto header = mCam->getHeader (true, 6, headerLen);
           saveNumFile ("save", frameNum, "jpg", header, headerLen, frame, frameLen);
           mLcd->start();
           }
           //}}}
-        else if (kWriteMjpg && frameNum == 1) {
+        else if (mounted && kWriteMjpg && frameNum == 1) {
           //{{{  save mjpeg first frame
           auto header = mCam->getHeader (true, 6, headerLen);
           createNumFile ("save", fileNum, header, headerLen, frame, frameLen);
           mLcd->start();
           }
           //}}}
-        else if (kWriteMjpg && frameNum < 500) {
+        else if (mounted && kWriteMjpg && frameNum < 500) {
           //{{{  add mjpeg frame
           auto header = mCam->getHeader (false, 6, headerLen);
           appendFile (frameNum, header, headerLen, frame, frameLen);
           mLcd->start();
           }
           //}}}
-        else if (kWriteMjpg && frameNum == 500) {
+        else if (mounted && kWriteMjpg && frameNum == 500) {
           //{{{  close mjpeg
           closeFile();
           mLcd->start();
@@ -265,7 +262,7 @@ void cApp::run() {
           //}}}
         else {
           //{{{  jpegDecode
-          auto header = mCam->getHeader (false, 6, headerLen);
+          auto header = mCam->getHeader (true, 6, headerLen);
           jpeg_mem_src (&mCinfo, header, headerLen);
           jpeg_read_header (&mCinfo, TRUE);
 
@@ -291,9 +288,9 @@ void cApp::run() {
         }
 
       mLcd->drawInfo (LCD_COLOR_YELLOW, 16, "%d:%d:%dfps %d:%x:%s:%d",
-                      osGetCPUUsage(), xPortGetFreeHeapSize(),
-                      mCam->getFps(), frameLen, mCam->getStatus(),
-                      mCam->getMode() ? "j":"p", mCam->getDmaCount());
+                                            osGetCPUUsage(), xPortGetFreeHeapSize(),
+                                            mCam->getFps(), frameLen, mCam->getStatus(),
+                                            mCam->getMode() ? "j":"p", mCam->getDmaCount());
       }
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);

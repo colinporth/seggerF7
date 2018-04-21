@@ -2601,31 +2601,35 @@ FRESULT f_mount (FATFS* fs, const char* path, BYTE opt) {
   if (vol < 0)
     return FR_INVALID_DRIVE;
 
-  FATFS* cfs = FatFs[vol];         /* Pointer to fs object */
+  // Pointer to fs object
+  FATFS* cfs = FatFs[vol];  
   if (cfs) {
     clear_lock(cfs);
-  #if _FS_REENTRANT           /* Discard sync object of the current volume */
+  #if _FS_REENTRANT    
+    // Discard sync object of the current volume
     if (!ff_del_syncobj (cfs->sobj))
       return FR_INT_ERR;
   #endif
-    cfs->fs_type = 0;       /* Clear old fs object */
+    // Clear old fs object
+    cfs->fs_type = 0;       
     }
 
   if (fs) {
-    fs->fs_type = 0;  /* Clear new fs object */
+    // Clear new fs object
+    fs->fs_type = 0;  
   #if _FS_REENTRANT
-    /* Create sync object for the new volume */
+    // Create sync object for the new volume
     if (!ff_cre_syncobj ((BYTE)vol, &fs->sobj))
       return FR_INT_ERR;
   #endif
     }
 
-  /* Register new fs object */
+  // Register new fs object
   FatFs[vol] = fs;
   if (!fs || opt != 1)
-    return FR_OK;  /* Do not mount now, it will be mounted later */
+    return FR_OK;  // Do not mount now, it will be mounted later
 
-  /* Force mounted the volume */
+  // Force mounted the volume
   FRESULT result = find_volume (&path, &fs, 0);
   LEAVE_FF (fs, result);
   }
