@@ -137,9 +137,11 @@ private:
   void reportLabel();
 
   int loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf);
+
   void saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen);
   void saveNumFile (const char* name, int num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
-  void createFile (const char* name, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
+
+  void createNumFile (const char* name, int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void appendFile (int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void closeFile();
 
@@ -206,7 +208,8 @@ void cApp::run() {
     osDelay (1000);
     }
 
-  int count = 0;
+  int fileNum = 1;
+  int frameNum = 0;
   bool lastButton = false;
   while (true) {
     pollTouch();
@@ -217,8 +220,8 @@ void cApp::run() {
     //  }
     //}}}
 
-    if (kWriteTest && (count < 400)) {
-      saveNumFile ("test", count++, "jpg", kFileBuf1, fileLen);
+    if (kWriteTest && (frameNum < 400)) {
+      saveNumFile ("test", frameNum++, "jpg", kFileBuf1, fileLen);
       mLcd->start();
       }
     else if (!mCam)
@@ -231,30 +234,30 @@ void cApp::run() {
       else if (!mCam->getMode())
         mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
       else {
-        count++;
+        frameNum++;
         int headerLen;
-        if (kWriteJpg && count < 100) {
+        if (kWriteJpg && frameNum < 100) {
           //{{{  save JFIF jpeg
           auto header = mCam->getHeader (true, 6, headerLen);
-          saveNumFile ("save", count, "jpg", header, headerLen, frame, frameLen);
+          saveNumFile ("save", frameNum, "jpg", header, headerLen, frame, frameLen);
           mLcd->start();
           }
           //}}}
-        else if (kWriteMjpg && count == 1) {
+        else if (kWriteMjpg && frameNum == 1) {
           //{{{  save mjpeg first frame
           auto header = mCam->getHeader (true, 6, headerLen);
-          createFile ("save.mjpg", header, headerLen, frame, frameLen);
+          createNumFile ("save", fileNum, header, headerLen, frame, frameLen);
           mLcd->start();
           }
           //}}}
-        else if (kWriteMjpg && count < 500) {
+        else if (kWriteMjpg && frameNum < 500) {
           //{{{  add mjpeg frame
           auto header = mCam->getHeader (false, 6, headerLen);
-          appendFile (count, header, headerLen, frame, frameLen);
+          appendFile (frameNum, header, headerLen, frame, frameLen);
           mLcd->start();
           }
           //}}}
-        else if (kWriteMjpg && count == 500) {
+        else if (kWriteMjpg && frameNum == 500) {
           //{{{  close mjpeg
           closeFile();
           mLcd->start();
@@ -298,8 +301,11 @@ void cApp::run() {
     mLcd->present();
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
-    if (mCam && !button && (button != lastButton))
+    if (mCam && !button && (button != lastButton)) {
       mCam->start (!mCam->getMode(), kCamBuf);
+      frameNum = 0;
+      fileNum++;
+      }
     lastButton = button;
     }
   }
@@ -547,20 +553,23 @@ void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* hea
 //}}}
 
 //{{{
-void cApp::createFile (const char* name, uint8_t* header, int headerLen, uint8_t* frame, int frameBuf) {
+void cApp::createNumFile (const char* name, int num, uint8_t* header, int headerLen, uint8_t* frame, int frameBuf) {
 
-  if (f_open (&gFile, name, FA_WRITE | FA_CREATE_ALWAYS))
+  char fileName[40] = {0};
+  sprintf (fileName, "%s%d.mjpg", name, num);
+
+  if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
     mLcd->debug (LCD_COLOR_RED, "createFile %s fail", name);
 
   else {
     if (headerLen & 0x03)
-      mLcd->debug (LCD_COLOR_RED, "createFile align %s %d", name, headerLen);
+      mLcd->debug (LCD_COLOR_RED, "createFile align %s %d", fileName, headerLen);
 
     UINT bytesWritten;
     f_write (&gFile, header, headerLen, &bytesWritten);
     f_write (&gFile, frame, (frameBuf + 3) & 0xFFFFFFFC, &bytesWritten);
 
-    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", name, headerLen,frameBuf, bytesWritten);
+    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName, headerLen,frameBuf, bytesWritten);
     }
    }
 //}}}
