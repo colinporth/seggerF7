@@ -15,10 +15,8 @@ public:
   int getFps() { return 1000/mTookTicks; }
   int getFocus() { return mFocus; }
 
-  uint8_t* getHeader() { return mHeader; }
-  int getHeaderLen() { return mHeaderLen; }
-  uint8_t* getFrame() { return mFrame; }
-  int getFrameLen() { return mFrameLen; }
+  uint8_t* getHeader (bool full, int qscale, int& headerLen);
+  uint8_t* getFrame (int& frameLen) { frameLen = mFrameLen; return mFrame; }
 
   void setFocus (int value);
 
@@ -37,21 +35,17 @@ private:
   void dcmiStart (uint8_t* buffer);
 
   int app0Marker (uint8_t* ptr);
-  int sofMarker (uint8_t* ptr, uint16_t width, uint16_t height);
   int quantTableMarker (uint8_t* ptr, uint8_t qscale);
-  int huffTableMarkerDC (uint8_t* ptr, const uint16_t* htable, int classId);
+  int sofMarker (uint8_t* ptr, uint16_t width, uint16_t height);
   int huffTableMarkerAC (uint8_t* ptr, const uint16_t* htable, int classId);
+  int huffTableMarkerDC (uint8_t* ptr, const uint16_t* htable, int classId);
   int sosMarker (uint8_t* ptr);
-
-  void setJpegHeader (uint8_t qscale);
-  void setBmpHeader();
 
   void preview();
   void jpeg();
 
   //{{{  vars
   uint8_t mHeader[620];
-  int mHeaderLen = 0;
 
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;

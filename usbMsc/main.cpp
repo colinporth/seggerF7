@@ -26,17 +26,67 @@
 
 #include "ethernetif.h"
 //}}}
-#define freeRtos
-
-const char kVersion[] = "WebCam 19/4/18";
-const bool kWriteTest = false;
-const bool kWriteJpg = true;
+//{{{  const
+const bool kFreeRtos = true;
 
 uint16_t* kRgb565Buf = (uint16_t*)0xc0100000;
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0200000;
 uint8_t*  kCamBufEnd =  (uint8_t*)0xc0600000; // plus a bit for wraparound
 uint8_t*  kFileBuf   =  (uint8_t*)0xc0700000;
 uint8_t*  kFileBuf1  =  (uint8_t*)0xc0600000;
+
+//{{{
+const char k404Response[] =
+  "HTTP/1.0 404 File not found\r\n"
+  "Server: lwIP/1.3.1\r\n"
+  "Content-type: text/html\r\n\r\n"
+
+  "<html>"
+    "<body>"
+      "<h1>404 not found heading</h1>"
+      "<p>404 not found paragraph</p>"
+    "</body>"
+  "</html>\r\n";
+//}}}
+//{{{
+const char kJpegResponseHeader[] =
+  "HTTP/1.0 200 OK\r\n"
+  "Server: lwIP/1.3.1\r\n"
+  "Content-type: image/jpeg\r\n\r\n"; // header + body follows
+//}}}
+//{{{
+const char kBmpResponseHeader[] =
+  "HTTP/1.0 200 OK\r\n"
+  "Server: lwIP/1.3.1\r\n"
+  "Content-type: image/bmp\r\n\r\n"; // header + body follows
+//}}}
+//{{{
+const char kHtmlResponseHeader[] =
+  "HTTP/1.0 200 OK\r\n"
+  "Server: lwIP/1.3.1\r\n"
+  "Content-type: text/html\r\n\r\n"; // header + body follows
+//}}}
+//{{{
+const char kHtmlBody[] =
+  "<!DOCTYPE html>"
+  "<html lang=en-GB>"
+    "<body>"
+      "<h1>Colin's webcam</h1>"
+      "<p style=color:green title=tooltip>800x600</p>"
+      "<img src=cam.jpg alt=missing width=800 height=600>"
+      "<button>Click me</button>"
+      "<a href=img1.jpg>This is a link</a>"
+      "<svg width=100 height=100>"
+        "<circle cx=50 cy=50 r=40 stroke=green stroke-width=8 fill=yellow>"
+      "</svg>"
+    "</body>"
+  "</html>\r\n";
+//}}}
+//}}}
+const char kVersion[] = "WebCam 21/4/18";
+const bool kWriteTest = false;
+const bool kWriteJpg = false;
+const bool kWriteMjpg = true;
 
 //{{{
 class cApp : public cTouch {
@@ -86,12 +136,12 @@ private:
   void reportFree();
   void reportLabel();
 
-  int loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf);
-  void saveFile (const char* name, const char* ext, int num, uint8_t* buf, int bufLen);
-  void saveJpgFile (const char* name, const char* ext, int num, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen);
-  void openJpgFile (const char* name, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen);
-  void appendJpgFile (uint8_t* headBuf, int num, int headBufLen, uint8_t* bodyBuf, int bodyBufLen);
-  void closeJpgFile();
+  int loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf);
+  void saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen);
+  void saveNumFile (const char* name, int num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
+  void createFile (const char* name, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
+  void appendFile (int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
+  void closeFile();
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
@@ -107,58 +157,10 @@ private:
 //}}}
 
 cApp* gApp;
-FATFS gFatFs = { 0 }; // forces allocation in lower DTCM SRAM
-FIL gFile = { 0 };
+FATFS gFatFs = { 0 };  // encourges allocation in lower DTCM SRAM
+FIL   gFile  = { 0 };  // encourges allocation in lower DTCM SRAM
 
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
-
-//{{{
-const char k404Response[] =
-  "HTTP/1.0 404 File not found\r\n"
-  "Server: lwIP/1.3.1\r\n"
-  "Content-type: text/html\r\n\r\n"
-
-  "<html>"
-    "<body>"
-      "<h1>404 not found heading</h1>"
-      "<p>404 not found paragraph</p>"
-    "</body>"
-  "</html>\r\n";
-//}}}
-//{{{
-const char kJpegResponseHeader[] =
-  "HTTP/1.0 200 OK\r\n"
-  "Server: lwIP/1.3.1\r\n"
-  "Content-type: image/jpeg\r\n\r\n"; // header + body follows
-//}}}
-//{{{
-const char kBmpResponseHeader[] =
-  "HTTP/1.0 200 OK\r\n"
-  "Server: lwIP/1.3.1\r\n"
-  "Content-type: image/bmp\r\n\r\n"; // header + body follows
-//}}}
-//{{{
-const char kHtmlResponseHeader[] =
-  "HTTP/1.0 200 OK\r\n"
-  "Server: lwIP/1.3.1\r\n"
-  "Content-type: text/html\r\n\r\n"; // header + body follows
-//}}}
-//{{{
-const char kHtmlBody[] =
-  "<!DOCTYPE html>"
-  "<html lang=en-GB>"
-    "<body>"
-      "<h1>Colin's webcam</h1>"
-      "<p style=color:green title=tooltip>800x600</p>"
-      "<img src=cam.jpg alt=missing width=800 height=600>"
-      "<button>Click me</button>"
-      "<a href=img1.jpg>This is a link</a>"
-      "<svg width=100 height=100>"
-        "<circle cx=50 cy=50 r=40 stroke=green stroke-width=8 fill=yellow>"
-      "</svg>"
-    "</body>"
-  "</html>\r\n";
-//}}}
 
 // public
 //{{{
@@ -189,14 +191,14 @@ void cApp::run() {
   mCam->init();
   mCam->start (false, kCamBuf);
 
-  int fileBufLen = 0;
+  int fileLen = 0;
   if (f_mount (&gFatFs, "", 0))
     mLcd->debug (LCD_COLOR_RED, "sd card not mounted");
   else {
     f_getlabel ("", mLabel, &mVsn);
     mLcd->debug (LCD_COLOR_WHITE, "sd card mounted - %s ", mLabel);
 
-    fileBufLen = loadFile ("image.jpg", kFileBuf1, kRgb565Buf);
+    fileLen = loadFile ("image.jpg", kFileBuf1, kRgb565Buf);
     mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawDebug();
@@ -215,56 +217,78 @@ void cApp::run() {
     //  }
     //}}}
 
+    int frameLen;
+    auto frame = mCam->getFrame (frameLen);
     if (kWriteTest && (count < 400)) {
       mLcd->start();
-      saveFile ("Test", "jpg", count++, kFileBuf1, fileBufLen);
+      saveNumFile ("test", count++, "jpg", kFileBuf1, fileLen);
       }
-    else if (!mCam->getFrame()) // no frame, clear
+    else if (!frame) // no frame, clear
       mLcd->start();
     else if (!mCam->getMode())
-      mLcd->start ((uint16_t*)mCam->getFrame(), mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+      mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
     else {
       count++;
-      if (kWriteJpg && count == 1) {
-        openJpgFile ("Save.mjpg", mCam->getHeader(), mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
+      int headerLen;
+      if (kWriteJpg && count < 100) {
+        //{{{  save JFIF jpeg
+        auto header = mCam->getHeader (true, 6, headerLen);
+        saveNumFile ("save", count, "jpg", header, headerLen, frame, frameLen);
         mLcd->start();
         }
-      else if (kWriteJpg && count < 500) {
-        appendJpgFile (mCam->getHeader(), count, mCam->getHeaderLen(), mCam->getFrame(), mCam->getFrameLen());
+        //}}}
+      else if (kWriteMjpg && count == 1) {
+        //{{{  save mjpeg first frame
+        auto header = mCam->getHeader (true, 6, headerLen);
+        createFile ("save.mjpg", header, headerLen, frame, frameLen);
         mLcd->start();
         }
-      else if (kWriteJpg && count == 500) {
-        closeJpgFile();
+        //}}}
+      else if (kWriteMjpg && count < 500) {
+        //{{{  add mjpeg frame
+        auto header = mCam->getHeader (false, 6, headerLen);
+        appendFile (count, header, headerLen, frame, frameLen);
         mLcd->start();
         }
+        //}}}
+      else if (kWriteMjpg && count == 500) {
+        //{{{  close mjpeg
+        closeFile();
+        mLcd->start();
+        }
+        //}}}
       else {
-        // jpegDecode
-        auto frameLen = mCam->getFrameLen();
-        jpeg_mem_src (&mCinfo, mCam->getHeader(), mCam->getHeaderLen());
+        //{{{  jpegDecode
+        auto header = mCam->getHeader (false, 6, headerLen);
+        jpeg_mem_src (&mCinfo, header, headerLen);
         jpeg_read_header (&mCinfo, TRUE);
+
+        // jpegBody
         mCinfo.scale_num = 1;
         mCinfo.scale_denom = BSP_PB_GetState (BUTTON_KEY) ? 1 : 2;
         mCinfo.dct_method = JDCT_FLOAT;
         mCinfo.out_color_space = JCS_RGB;
 
-        // jpegBody
-        jpeg_mem_src (&mCinfo, mCam->getFrame(), mCam->getFrameLen());
+        jpeg_mem_src (&mCinfo, frame, frameLen);
         jpeg_start_decompress (&mCinfo);
+
         while (mCinfo.output_scanline < mCinfo.output_height) {
           jpeg_read_scanlines (&mCinfo, mBufArray, 1);
           //mLcd->rgb888to565 (mBufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
           mLcd->rgb888to565cpu (mBufArray[0], kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
           }
         jpeg_finish_decompress (&mCinfo);
+
         mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
         }
+        //}}}
       }
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     if (mCam)
       mLcd->drawInfo (LCD_COLOR_YELLOW, 16, "%d:%d:%dfps %d:%x:%s:%d",
                       osGetCPUUsage(), xPortGetFreeHeapSize(),
-                      mCam->getFps(), mCam->getFrameLen(), mCam->getStatus(),
+                      mCam->getFps(), frameLen, mCam->getStatus(),
                       mCam->getMode() ? "j":"p", mCam->getDmaCount());
     mLcd->drawDebug();
     mLcd->present();
@@ -427,7 +451,7 @@ void cApp::reportFree() {
 //}}}
 
 //{{{
-int cApp::loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf) {
+int cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
 
   //char pathName[256] = "/";
   //readDirectory (pathName);
@@ -447,12 +471,12 @@ int cApp::loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf)
     mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
 
     UINT bytesRead;
-    f_read (&gFile, (void*)fileBuf, (UINT)filInfo.fsize, &bytesRead);
+    f_read (&gFile, (void*)buf, (UINT)filInfo.fsize, &bytesRead);
     mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
     f_close (&gFile);
 
     if (bytesRead > 0) {
-      jpeg_mem_src (&mCinfo, fileBuf, bytesRead);
+      jpeg_mem_src (&mCinfo, buf, bytesRead);
       jpeg_read_header (&mCinfo, TRUE);
       mLcd->debug (LCD_COLOR_WHITE, "jpegDecode in:%dx%d", mCinfo.image_width, mCinfo.image_height);
 
@@ -478,7 +502,7 @@ int cApp::loadFile (const char* fileName, uint8_t* fileBuf, uint16_t* rgb565Buf)
   }
 //}}}
 //{{{
-void cApp::saveFile (const char* name, const char* ext, int num, uint8_t* buf, int bufLen) {
+void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen) {
 
   char fileName[40] = {0};
   sprintf (fileName, "%s%03d.%s", name, num, ext);
@@ -493,9 +517,8 @@ void cApp::saveFile (const char* name, const char* ext, int num, uint8_t* buf, i
     }
    }
 //}}}
-
 //{{{
-void cApp::saveJpgFile (const char* name, const char* ext, int num, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen) {
+void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
   char fileName[40] = {0};
   sprintf (fileName, "%s%03d.%s", name, num, ext);
@@ -504,39 +527,39 @@ void cApp::saveJpgFile (const char* name, const char* ext, int num, uint8_t* hea
     mLcd->debug (LCD_COLOR_RED, "saveJpg %s fail", fileName);
   else {
     UINT bytesWritten;
-    f_write (&gFile, headBuf, headBufLen, &bytesWritten);
-    f_write (&gFile, bodyBuf, (bodyBufLen + 3) & 0xFFFFFFFC, &bytesWritten);
+    f_write (&gFile, header, headerLen, &bytesWritten);
+    f_write (&gFile, frame, (frameLen + 3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&gFile);
 
-    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName,  headBufLen,bodyBufLen, bytesWritten);
+    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName,  headerLen,frameLen, bytesWritten);
     }
    }
 //}}}
 //{{{
-void cApp::openJpgFile (const char* name, uint8_t* headBuf, int headBufLen, uint8_t* bodyBuf, int bodyBufLen) {
+void cApp::createFile (const char* name, uint8_t* header, int headerLen, uint8_t* frame, int frameBuf) {
 
   if (f_open (&gFile, name, FA_WRITE | FA_CREATE_ALWAYS))
     mLcd->debug (LCD_COLOR_RED, "saveJpg %s fail", name);
   else {
     UINT bytesWritten;
-    f_write (&gFile, headBuf, headBufLen, &bytesWritten);
-    f_write (&gFile, bodyBuf, (bodyBufLen + 3) & 0xFFFFFFFC, &bytesWritten);
+    f_write (&gFile, header, headerLen, &bytesWritten);
+    f_write (&gFile, frame, (frameBuf + 3) & 0xFFFFFFFC, &bytesWritten);
 
-    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", name, headBufLen,bodyBufLen, bytesWritten);
+    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", name, headerLen,frameBuf, bytesWritten);
     }
    }
 //}}}
 //{{{
-void cApp::appendJpgFile (uint8_t* headBuf, int num, int headBufLen, uint8_t* bodyBuf, int bodyBufLen) {
+void cApp::appendFile (int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
   UINT bytesWritten;
-  f_write (&gFile, headBuf, headBufLen, &bytesWritten);
-  f_write (&gFile, bodyBuf, (bodyBufLen + 3) & 0xFFFFFFFC, &bytesWritten);
-  mLcd->debug (LCD_COLOR_YELLOW, "append %d %d:%d:%d ok", num, headBufLen,bodyBufLen, bytesWritten);
+  f_write (&gFile, header, headerLen, &bytesWritten);
+  f_write (&gFile, frame, (frameLen + 3) & 0xFFFFFFFC, &bytesWritten);
+  mLcd->debug (LCD_COLOR_YELLOW, "append %d %d:%d:%d ok", num, headerLen,frameLen, bytesWritten);
   }
 //}}}
 //{{{
-void cApp::closeJpgFile() {
+void cApp::closeFile() {
 
   f_close (&gFile);
   }
@@ -594,10 +617,9 @@ void serverThread (void* arg) {
                 else if (!strncmp (buf, "GET /cam.jpg", 12)) {
                   //{{{  cam.jpg
                   if (gApp->mCam) {
-                    auto frame = gApp->mCam->getFrame();
+                    int frameLen;
+                    auto frame = gApp->mCam->getFrame (frameLen);
                     if (frame) {
-                      int frameLen = gApp->mCam->getFrameLen();
-
                       // send http response header
                       if (gApp->mCam->getMode())
                         netconn_write (request, kJpegResponseHeader, sizeof(kJpegResponseHeader)-1, NETCONN_NOCOPY);
@@ -605,7 +627,9 @@ void serverThread (void* arg) {
                         netconn_write (request, kBmpResponseHeader, sizeof(kBmpResponseHeader)-1, NETCONN_NOCOPY);
 
                       // send imageFile format header
-                      netconn_write (request, gApp->mCam->getHeader(), gApp->mCam->getHeaderLen(), NETCONN_NOCOPY);
+                      int headerLen;
+                      auto header = gApp->mCam->getHeader (true, 6, headerLen);
+                      netconn_write (request, header, headerLen, NETCONN_NOCOPY);
 
                       // send imageFile body
                       netconn_write (request, frame, frameLen, NETCONN_NOCOPY);
@@ -810,12 +834,12 @@ int main() {
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
   gApp->init();
 
-#ifdef freeRtos
-  sys_thread_new ("start", startThread, NULL, 2048, osPriorityNormal);
-  osKernelStart();
-  while (true);
-#else
-  gApp->run();
-#endif
-}
+  if (kFreeRtos) {
+    sys_thread_new ("start", startThread, NULL, 2048, osPriorityNormal);
+    osKernelStart();
+    while (true);
+    }
+  else
+    gApp->run();
+  }
 //}}}

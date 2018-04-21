@@ -13,51 +13,51 @@
 
 #define SD_TIMEOUT      2*1000
 
-static volatile DSTATUS Stat = STA_NOINIT;
-static osMessageQId sDQueueID;
+volatile DSTATUS gStat = STA_NOINIT;
+osMessageQId gSdQueueId;
 
-void BSP_SD_WriteCpltCallback() { osMessagePut (sDQueueID, WRITE_CPLT_MSG, osWaitForever); }
-void BSP_SD_ReadCpltCallback()  { osMessagePut (sDQueueID, READ_CPLT_MSG, osWaitForever); }
+void BSP_SD_WriteCpltCallback() { osMessagePut (gSdQueueId, WRITE_CPLT_MSG, osWaitForever); }
+void BSP_SD_ReadCpltCallback()  { osMessagePut (gSdQueueId, READ_CPLT_MSG, osWaitForever); }
 
 //{{{
-DSTATUS SD_CheckStatus (uint8_t lun) {
+DSTATUS checkStatus (uint8_t lun) {
 
-  Stat = STA_NOINIT;
+  gStat = STA_NOINIT;
 
   if(BSP_SD_GetCardState() == MSD_OK)
-    Stat &= ~STA_NOINIT;
+    gStat &= ~STA_NOINIT;
 
-  return Stat;
+  return gStat;
   }
 //}}}
 
 DWORD getFatTime() {}
-DSTATUS diskStatus (uint8_t lun) { return SD_CheckStatus (lun); }
+DSTATUS diskStatus (uint8_t lun) { return checkStatus (lun); }
 
 //{{{
 DSTATUS diskInit (uint8_t lun) {
 
-  Stat = STA_NOINIT;
+  gStat = STA_NOINIT;
 
   if (osKernelRunning()) {
     if (BSP_SD_Init() == MSD_OK)
-      Stat = SD_CheckStatus(lun);
+      gStat = checkStatus(lun);
 
-    if (Stat != STA_NOINIT) {
+    if (gStat != STA_NOINIT) {
       osMessageQDef (SD_Queue, QUEUE_SIZE, uint16_t);
-      sDQueueID = osMessageCreate (osMessageQ (SD_Queue), NULL);
+      gSdQueueId = osMessageCreate (osMessageQ (SD_Queue), NULL);
       }
 
     cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_initialize");
     }
 
-  return Stat;
+  return gStat;
   }
 //}}}
 //{{{
 DRESULT diskIoctl (uint8_t lun, BYTE cmd, void* buf) {
 
-  if (Stat & STA_NOINIT)
+  if (gStat & STA_NOINIT)
     return RES_NOTRDY;
 
   DRESULT res = RES_ERROR;
@@ -108,7 +108,7 @@ DRESULT diskRead (uint8_t lun, BYTE* buf, uint32_t sector, uint32_t numSectors) 
     }
 
   if (BSP_SD_ReadBlocks_DMA ((uint32_t*)buf, sector, numSectors) == MSD_OK) {
-    osEvent event = osMessageGet (sDQueueID, SD_TIMEOUT);
+    osEvent event = osMessageGet (gSdQueueId, SD_TIMEOUT);
     if (event.status == osEventMessage) {
       if (event.value.v == READ_CPLT_MSG) {
         uint32_t timer = osKernelSysTick();
@@ -144,7 +144,7 @@ DRESULT diskWrite (uint8_t lun, const BYTE* buf, uint32_t sector, uint32_t numSe
 
   auto ticks1 = osKernelSysTick();
   if (BSP_SD_WriteBlocks_DMA ((uint32_t*)buf, sector, numSectors) == MSD_OK) {
-    auto event = osMessageGet (sDQueueID, SD_TIMEOUT);
+    auto event = osMessageGet (gSdQueueId, SD_TIMEOUT);
     if (event.status == osEventMessage) {
       if (event.value.v == WRITE_CPLT_MSG) {
         auto ticks2 = osKernelSysTick();
