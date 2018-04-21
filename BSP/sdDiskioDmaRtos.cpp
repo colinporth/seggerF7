@@ -41,14 +41,14 @@ DSTATUS diskInit (uint8_t lun) {
 
   if (osKernelRunning()) {
     if (BSP_SD_Init() == MSD_OK)
-      gStat = checkStatus(lun);
+      gStat = checkStatus (lun);
 
     if (gStat != STA_NOINIT) {
-      osMessageQDef (SD_Queue, QUEUE_SIZE, uint16_t);
-      gSdQueueId = osMessageCreate (osMessageQ (SD_Queue), NULL);
+      osMessageQDef (sdQueue, QUEUE_SIZE, uint16_t);
+      gSdQueueId = osMessageCreate (osMessageQ (sdQueue), NULL);
       }
 
-    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_initialize");
+    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskInit");
     }
 
   return gStat;
