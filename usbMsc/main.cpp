@@ -588,6 +588,12 @@ void cApp::closeFile() {
 //}}}
 
 //{{{
+void appThread (void* arg) {
+
+  gApp->run();
+  }
+//}}}
+//{{{
 void serverThread (void* arg) {
 // minimal http server
 
@@ -730,12 +736,6 @@ void dhcpThread (void* arg) {
   }
 //}}}
 //{{{
-void appThread (void* arg) {
-
-  gApp->run();
-  }
-//}}}
-//{{{
 void netThread (void* arg) {
 
   //{{{  Static IP ADDRESS
@@ -785,16 +785,6 @@ void netThread (void* arg) {
     }
 
   osThreadTerminate (NULL);
-  }
-//}}}
-//{{{
-void startThread (void* arg) {
-
-  sys_thread_new ("app", appThread, NULL, 10000, osPriorityNormal);
-  sys_thread_new ("net", netThread, NULL, 2048, osPriorityNormal);
-
-  while (true)
-    osThreadTerminate (NULL);
   }
 //}}}
 
@@ -857,7 +847,8 @@ int main() {
   gApp->init();
 
   if (kFreeRtos) {
-    sys_thread_new ("start", startThread, NULL, 2048, osPriorityNormal);
+    sys_thread_new ("app", appThread, NULL, 10000, osPriorityNormal);
+    sys_thread_new ("net", netThread, NULL, 2048, osPriorityNormal);
     osKernelStart();
     while (true);
     }
