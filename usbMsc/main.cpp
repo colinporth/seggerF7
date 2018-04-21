@@ -217,79 +217,83 @@ void cApp::run() {
     //  }
     //}}}
 
-    int frameLen;
-    auto frame = mCam->getFrame (frameLen);
     if (kWriteTest && (count < 400)) {
-      mLcd->start();
       saveNumFile ("test", count++, "jpg", kFileBuf1, fileLen);
-      }
-    else if (!frame) // no frame, clear
       mLcd->start();
-    else if (!mCam->getMode())
-      mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
-    else {
-      count++;
-      int headerLen;
-      if (kWriteJpg && count < 100) {
-        //{{{  save JFIF jpeg
-        auto header = mCam->getHeader (true, 6, headerLen);
-        saveNumFile ("save", count, "jpg", header, headerLen, frame, frameLen);
-        mLcd->start();
-        }
-        //}}}
-      else if (kWriteMjpg && count == 1) {
-        //{{{  save mjpeg first frame
-        auto header = mCam->getHeader (true, 6, headerLen);
-        createFile ("save.mjpg", header, headerLen, frame, frameLen);
-        mLcd->start();
-        }
-        //}}}
-      else if (kWriteMjpg && count < 500) {
-        //{{{  add mjpeg frame
-        auto header = mCam->getHeader (false, 6, headerLen);
-        appendFile (count, header, headerLen, frame, frameLen);
-        mLcd->start();
-        }
-        //}}}
-      else if (kWriteMjpg && count == 500) {
-        //{{{  close mjpeg
-        closeFile();
-        mLcd->start();
-        }
-        //}}}
-      else {
-        //{{{  jpegDecode
-        auto header = mCam->getHeader (false, 6, headerLen);
-        jpeg_mem_src (&mCinfo, header, headerLen);
-        jpeg_read_header (&mCinfo, TRUE);
-
-        // jpegBody
-        mCinfo.scale_num = 1;
-        mCinfo.scale_denom = BSP_PB_GetState (BUTTON_KEY) ? 1 : 2;
-        mCinfo.dct_method = JDCT_FLOAT;
-        mCinfo.out_color_space = JCS_RGB;
-
-        jpeg_mem_src (&mCinfo, frame, frameLen);
-        jpeg_start_decompress (&mCinfo);
-
-        while (mCinfo.output_scanline < mCinfo.output_height) {
-          jpeg_read_scanlines (&mCinfo, mBufArray, 1);
-          //mLcd->rgb888to565 (mBufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-          mLcd->rgb888to565cpu (mBufArray[0], kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-          }
-        jpeg_finish_decompress (&mCinfo);
-
-        mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
-        }
-        //}}}
       }
+    else if (!mCam)
+      mLcd->start();
+    else {
+      int frameLen;
+      auto frame = mCam->getNextFrame (frameLen);
+      if (!frame) // no frame, clear
+        mLcd->start();
+      else if (!mCam->getMode())
+        mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+      else {
+        count++;
+        int headerLen;
+        if (kWriteJpg && count < 100) {
+          //{{{  save JFIF jpeg
+          auto header = mCam->getHeader (true, 6, headerLen);
+          saveNumFile ("save", count, "jpg", header, headerLen, frame, frameLen);
+          mLcd->start();
+          }
+          //}}}
+        else if (kWriteMjpg && count == 1) {
+          //{{{  save mjpeg first frame
+          auto header = mCam->getHeader (true, 6, headerLen);
+          createFile ("save.mjpg", header, headerLen, frame, frameLen);
+          mLcd->start();
+          }
+          //}}}
+        else if (kWriteMjpg && count < 500) {
+          //{{{  add mjpeg frame
+          auto header = mCam->getHeader (false, 6, headerLen);
+          appendFile (count, header, headerLen, frame, frameLen);
+          mLcd->start();
+          }
+          //}}}
+        else if (kWriteMjpg && count == 500) {
+          //{{{  close mjpeg
+          closeFile();
+          mLcd->start();
+          }
+          //}}}
+        else {
+          //{{{  jpegDecode
+          auto header = mCam->getHeader (false, 6, headerLen);
+          jpeg_mem_src (&mCinfo, header, headerLen);
+          jpeg_read_header (&mCinfo, TRUE);
 
-    mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
-    if (mCam)
+          // jpegBody
+          mCinfo.scale_num = 1;
+          mCinfo.scale_denom = BSP_PB_GetState (BUTTON_KEY) ? 1 : 2;
+          mCinfo.dct_method = JDCT_FLOAT;
+          mCinfo.out_color_space = JCS_RGB;
+
+          jpeg_mem_src (&mCinfo, frame, frameLen);
+          jpeg_start_decompress (&mCinfo);
+
+          while (mCinfo.output_scanline < mCinfo.output_height) {
+            jpeg_read_scanlines (&mCinfo, mBufArray, 1);
+            //mLcd->rgb888to565 (mBufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+            mLcd->rgb888to565cpu (mBufArray[0], kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+            }
+          jpeg_finish_decompress (&mCinfo);
+
+          mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
+          }
+          //}}}
+        }
+
       mLcd->drawInfo (LCD_COLOR_YELLOW, 16, "%d:%d:%dfps %d:%x:%s:%d",
                       osGetCPUUsage(), xPortGetFreeHeapSize(),
                       mCam->getFps(), frameLen, mCam->getStatus(),
                       mCam->getMode() ? "j":"p", mCam->getDmaCount());
+      }
+
+    mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawDebug();
     mLcd->present();
 
@@ -501,6 +505,7 @@ int cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
   return 0;
   }
 //}}}
+
 //{{{
 void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen) {
 
@@ -508,12 +513,13 @@ void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* buf
   sprintf (fileName, "%s%03d.%s", name, num, ext);
 
   if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
-    mLcd->debug (LCD_COLOR_RED, "save %s fail", fileName);
+    mLcd->debug (LCD_COLOR_RED, "saveNumFile %s fail", fileName);
+
   else {
     UINT bytesWritten;
     f_write (&gFile, buf, (bufLen + 3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&gFile);
-    mLcd->debug (LCD_COLOR_YELLOW, "saveFile %s %d:%d", fileName, bufLen, bytesWritten);
+    mLcd->debug (LCD_COLOR_YELLOW, "saveNumFile %s %d:%d", fileName, bufLen, bytesWritten);
     }
    }
 //}}}
@@ -524,8 +530,12 @@ void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* hea
   sprintf (fileName, "%s%03d.%s", name, num, ext);
 
   if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
-    mLcd->debug (LCD_COLOR_RED, "saveJpg %s fail", fileName);
+    mLcd->debug (LCD_COLOR_RED, "saveNumFile %s fail", fileName);
+
   else {
+    if (headerLen & 0x03)
+      mLcd->debug (LCD_COLOR_RED, "saveNumFile align %s %d", name, headerLen);
+
     UINT bytesWritten;
     f_write (&gFile, header, headerLen, &bytesWritten);
     f_write (&gFile, frame, (frameLen + 3) & 0xFFFFFFFC, &bytesWritten);
@@ -533,14 +543,19 @@ void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* hea
 
     mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName,  headerLen,frameLen, bytesWritten);
     }
-   }
+  }
 //}}}
+
 //{{{
 void cApp::createFile (const char* name, uint8_t* header, int headerLen, uint8_t* frame, int frameBuf) {
 
   if (f_open (&gFile, name, FA_WRITE | FA_CREATE_ALWAYS))
-    mLcd->debug (LCD_COLOR_RED, "saveJpg %s fail", name);
+    mLcd->debug (LCD_COLOR_RED, "createFile %s fail", name);
+
   else {
+    if (headerLen & 0x03)
+      mLcd->debug (LCD_COLOR_RED, "createFile align %s %d", name, headerLen);
+
     UINT bytesWritten;
     f_write (&gFile, header, headerLen, &bytesWritten);
     f_write (&gFile, frame, (frameBuf + 3) & 0xFFFFFFFC, &bytesWritten);
@@ -618,7 +633,7 @@ void serverThread (void* arg) {
                   //{{{  cam.jpg
                   if (gApp->mCam) {
                     int frameLen;
-                    auto frame = gApp->mCam->getFrame (frameLen);
+                    auto frame = gApp->mCam->getLastFrame (frameLen);
                     if (frame) {
                       // send http response header
                       if (gApp->mCam->getMode())

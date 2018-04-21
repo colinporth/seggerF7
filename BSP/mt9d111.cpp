@@ -84,6 +84,8 @@ const uint16_t kJpegStdHuffmanTbl[384] = {
 
 cCamera* gCamera = nullptr;
 
+SemaphoreHandle_t mFrameSem;
+
 extern "C" {
   void DMA2_Stream1_IRQHandler() { gCamera->dmaIrqHandler(); }
   void DCMI_IRQHandler() { gCamera->dcmiIrqHandler(); }
@@ -94,6 +96,7 @@ extern "C" {
 void cCamera::init() {
 
   gCamera = this;
+  vSemaphoreCreateBinary (mFrameSem);
 
   gpioInit();
 
@@ -205,6 +208,22 @@ uint8_t* cCamera::getHeader (bool full, int qscale, int& headerLen) {
     //}}}
 
   return mHeader;
+  }
+//}}}
+//{{{
+uint8_t* cCamera::getLastFrame (int& frameLen) {
+
+  frameLen = mFrameLen;
+  return mFrame;
+  }
+//}}}
+//{{{
+uint8_t* cCamera::getNextFrame (int& frameLen) {
+
+  xSemaphoreTake (mFrameSem, 500);
+
+  frameLen = mFrameLen;
+  return mFrame;
   }
 //}}}
 
@@ -384,6 +403,10 @@ void cCamera::dcmiIrqHandler() {
       }
 
     mFrameStart = mFrameCur + dmaBytes;
+
+    portBASE_TYPE taskWoken = pdFALSE;
+    if (xSemaphoreGiveFromISR (mFrameSem, &taskWoken) == pdTRUE)
+      portEND_SWITCHING_ISR (taskWoken);
     }
   }
 //}}}

@@ -16,7 +16,8 @@ public:
   int getFocus() { return mFocus; }
 
   uint8_t* getHeader (bool full, int qscale, int& headerLen);
-  uint8_t* getFrame (int& frameLen) { frameLen = mFrameLen; return mFrame; }
+  uint8_t* getLastFrame (int& frameLen);
+  uint8_t* getNextFrame (int& frameLen);
 
   void setFocus (int value);
 
