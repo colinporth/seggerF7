@@ -226,12 +226,13 @@ void cApp::run() {
     else {
       int frameLen;
       auto frame = mCam->getNextFrame (frameLen);
+      frameNum++;
+
       if (!frame) // no frame, clear
         mLcd->start();
       else if (!mCam->getMode())
         mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
       else if (frameLen < 960000) {
-        frameNum++;
         int headerLen;
         if (mounted && kWriteJpg && frameNum < 100) {
           //{{{  save JFIF jpeg
