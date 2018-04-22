@@ -9,7 +9,8 @@ public:
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
 
-  bool getMode() { return mJpegMode; }
+  bool getJpegMode() { return mJpegMode; }
+  bool getCaptureMode() { return mCaptureMode; }
   uint8_t getStatus() { return mJpegStatus; }
   int getDmaCount() { return mXferCount; }
   int getFps() { return 1000/mTookTicks; }
@@ -22,7 +23,7 @@ public:
   void setFocus (int value);
 
   void preview();
-  void jpeg();
+  void capture();
 
   void dmaIrqHandler();
   void dcmiIrqHandler();
@@ -49,6 +50,7 @@ private:
   uint32_t mWidth = 0;
   uint32_t mHeight = 0;
   bool mJpegMode = false;
+  bool mCaptureMode = false;
 
   int mFocus = 0;
 

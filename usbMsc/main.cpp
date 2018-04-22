@@ -219,87 +219,81 @@ void cApp::run() {
     //  onKey (ch & 0xFF, ch & 0x100);
     //  }
     //}}}
-    if (!mCam)
+
+    uint32_t frameLen;
+    bool jpeg;
+    auto frame = mCam->getNextFrame (frameLen, jpeg);
+    if (!frame) // no frame, clear
       mLcd->start();
-    else {
-      uint32_t frameLen;
-      bool jpeg;
-      auto frame = mCam->getNextFrame (frameLen, jpeg);
-      if (!frame) // no frame, clear
+    else if (jpeg) {
+      uint32_t headerLen;
+      if (mounted && kWriteJpg && (frameNum < 100)) {
+        //{{{  save JFIF jpeg
+        auto header = mCam->getHeader (true, 6, headerLen);
+        saveNumFile ("save", frameNum++, "jpg", header, headerLen, frame, frameLen);
         mLcd->start();
-      else if (jpeg) {
-        uint32_t headerLen;
-        if (mounted && kWriteJpg && frameNum < 100) {
-          //{{{  save JFIF jpeg
-          auto header = mCam->getHeader (true, 6, headerLen);
-          saveNumFile ("save", frameNum, "jpg", header, headerLen, frame, frameLen);
-          mLcd->start();
-          }
-          //}}}
-        else if (mounted && kWriteMjpg && (frameNum == 0)) {
-          //{{{  save mjpeg first frame
-          frameNum++;
-          auto header = mCam->getHeader (true, 6, headerLen);
-          createNumFile ("save", fileNum, header, headerLen, frame, frameLen);
-          mLcd->start();
-          }
-          //}}}
-        else if (mounted && kWriteMjpg && frameNum < 500) {
-          //{{{  add mjpeg frame
-          frameNum++;
-          auto header = mCam->getHeader (false, 6, headerLen);
-          appendFile (frameNum, header, headerLen, frame, frameLen);
-          mLcd->start();
-          }
-          //}}}
-        else if (mounted && kWriteMjpg && frameNum == 500) {
-          //{{{  close mjpeg
-          frameNum++;
-          closeFile();
-          mLcd->start();
-          }
-          //}}}
-        else {
-          //{{{  jpegDecode
-          frameNum++;
-
-          auto header = mCam->getHeader (frameNum == 1, 6, headerLen);
-          jpeg_mem_src (&mCinfo, header, headerLen);
-          jpeg_read_header (&mCinfo, TRUE);
-
-          // jpegBody
-          mCinfo.scale_num = 1;
-          mCinfo.scale_denom = BSP_PB_GetState (BUTTON_KEY) ? 1 : 2;
-          mCinfo.dct_method = JDCT_FLOAT;
-          mCinfo.out_color_space = JCS_RGB;
-
-          jpeg_mem_src (&mCinfo, frame, frameLen);
-          jpeg_start_decompress (&mCinfo);
-
-          while (mCinfo.output_scanline < mCinfo.output_height) {
-            jpeg_read_scanlines (&mCinfo, mBufArray, 1);
-            //mLcd->rgb888to565 (mBufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-            mLcd->rgb888to565cpu (mBufArray[0], kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-            }
-          jpeg_finish_decompress (&mCinfo);
-
-          mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
-          }
-          //}}}
         }
-      else
-        mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+        //}}}
+      else if (mounted && kWriteMjpg && !frameNum) {
+        //{{{  save mjpeg first frame
+        frameNum++;
+        auto header = mCam->getHeader (true, 6, headerLen);
+        createNumFile ("save", fileNum, header, headerLen, frame, frameLen);
+        mLcd->start();
+        }
+        //}}}
+      else if (mounted && kWriteMjpg && (frameNum < 500)) {
+        //{{{  add mjpeg frame
+        auto header = mCam->getHeader (false, 6, headerLen);
+        appendFile (frameNum++, header, headerLen, frame, frameLen);
+        mLcd->start();
+        }
+        //}}}
+      else if (mounted && kWriteMjpg && frameNum == 500) {
+        //{{{  close mjpeg
+        frameNum++;
+        closeFile();
+        mLcd->start();
+        }
+        //}}}
+      else {
+        //{{{  jpegDecode
+        auto header = mCam->getHeader (!frameNum++, 6, headerLen);
+        jpeg_mem_src (&mCinfo, header, headerLen);
+        jpeg_read_header (&mCinfo, TRUE);
 
-      mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%s:%d", osGetCPUUsage(), xPortGetFreeHeapSize(),
-        mCam->getFps(), frameLen, mCam->getStatus(), mCam->getMode() ? "j":"p", mCam->getDmaCount());
+        // jpegBody
+        mCinfo.scale_num = 1;
+        mCinfo.scale_denom = BSP_PB_GetState (BUTTON_KEY) ? 1 : 2;
+        mCinfo.dct_method = JDCT_FLOAT;
+        mCinfo.out_color_space = JCS_RGB;
+
+        jpeg_mem_src (&mCinfo, frame, frameLen);
+        jpeg_start_decompress (&mCinfo);
+
+        while (mCinfo.output_scanline < mCinfo.output_height) {
+          jpeg_read_scanlines (&mCinfo, mBufArray, 1);
+          //mLcd->rgb888to565 (mBufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+          mLcd->rgb888to565cpu (mBufArray[0], kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+          }
+        jpeg_finish_decompress (&mCinfo);
+
+        mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
+        }
+        //}}}
       }
+    else
+      mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
+    mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%s:%d", osGetCPUUsage(), xPortGetFreeHeapSize(),
+      mCam->getFps(), frameLen, mCam->getStatus(), mCam->getJpegMode() ? "j":"p", mCam->getDmaCount());
     mLcd->drawDebug();
     mLcd->present();
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
     if (mCam && !button && (button != lastButton)) {
-      mCam->getMode() ? mCam->preview() : mCam->jpeg();
+      mCam->getCaptureMode() ? mCam->preview() : mCam->capture();
       fileNum++;
       frameNum = 0;
       }

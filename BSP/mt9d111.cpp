@@ -272,6 +272,7 @@ void cCamera::setFocus (int value) {
 void cCamera::preview() {
 
   mJpegMode = false;
+  mCaptureMode = false;
 
   mFrame = nullptr;
   mFrameLen = 0;
@@ -288,9 +289,10 @@ void cCamera::preview() {
   }
 //}}}
 //{{{
-void cCamera::jpeg() {
+void cCamera::capture() {
 
   mJpegMode = true;
+  mCaptureMode = true;
 
   mFrame = nullptr;
   mFrameLen = 0;
@@ -305,7 +307,7 @@ void cCamera::jpeg() {
 
   mRgb565FrameLen = getWidth() * getHeight() * 2;
 
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "capture jpeg %dx%d", mWidth, mHeight);
 
   // switch sequencer to captue jpeg
   write (0xf0, 1);
