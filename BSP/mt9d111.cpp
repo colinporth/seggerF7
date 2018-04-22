@@ -83,7 +83,6 @@ const uint16_t kJpegStdHuffmanTbl[384] = {
 //}}}
 
 cCamera* gCamera = nullptr;
-
 SemaphoreHandle_t mFrameSem;
 
 extern "C" {
@@ -93,7 +92,10 @@ extern "C" {
 
 // public
 //{{{
-void cCamera::init (uint8_t* buf, uint32_t bufLen) {
+void cCamera::init (uint8_t* bufStart, uint8_t* bufEnd) {
+
+  mBufStart = bufStart;
+  mBufEnd = bufEnd;
 
   gCamera = this;
   vSemaphoreCreateBinary (mFrameSem);
@@ -128,14 +130,11 @@ void cCamera::init (uint8_t* buf, uint32_t bufLen) {
   HAL_NVIC_SetPriority (DMA2_Stream1_IRQn, 0x08, 0);
   HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
 
-  mBufStart = buf;
-  mBufEnd = buf + bufLen;
-
   // select sequencer preview
   preview();
 
   // start dma,dcmi
-  dcmiStart();
+  start();
   }
 //}}}
 
@@ -310,6 +309,7 @@ void cCamera::jpeg() {
 void cCamera::dmaIrqHandler() {
 
   uint32_t isr = mDmaBaseRegisters->ISR;
+
   if (isr & (DMA_FLAG_TCIF0_4 << mStreamIndex)) {
     // transferComplete Interrupt, doubleBufferMode handling
     if (DMA2_Stream1->CR & DMA_IT_TC) {
@@ -319,6 +319,9 @@ void cCamera::dmaIrqHandler() {
       // set up address for next double buffered dma chunk
       mXferCount++;
       auto buf = mBufStart + ((mXferCount+1) * (4 * mXferSize));
+      if (buf >= mBufEnd)
+        cLcd::mLcd->debug (LCD_COLOR_RED, "dma problem");
+
       if (mXferCount & 1)
         DMA2_Stream1->M0AR = (uint32_t)buf;
       else
@@ -358,36 +361,19 @@ void cCamera::dmaIrqHandler() {
 void cCamera::dcmiIrqHandler() {
 
   uint32_t misr = DCMI->MISR;
-  if ((misr & DCMI_RIS_ERR_RIS) == DCMI_RIS_ERR_RIS) {
-    //{{{  synchronizationError interrupt
-    DCMI->ICR = DCMI_RIS_ERR_RIS;
-    cLcd::mLcd->debug (LCD_COLOR_RED, "syncIrq");
-    }
-    //}}}
-  if ((misr & DCMI_RIS_OVR_RIS) == DCMI_RIS_OVR_RIS) {
-    //{{{  overflowError interrupt
-    DCMI->ICR = DCMI_RIS_OVR_RIS;
-    // dsiable dma
-    DMA2_Stream1->CR &= ~DMA_SxCR_EN;
-    cLcd::mLcd->debug (LCD_COLOR_RED, "overflowIrq");
-    }
-    //}}}
 
   if ((misr & DCMI_RIS_VSYNC_RIS) == DCMI_RIS_VSYNC_RIS) {
     DCMI->ICR = DCMI_RIS_VSYNC_RIS;
-
-    auto ticks = HAL_GetTick();
-    mTookTicks = ticks - mTicks;
-    mTicks = ticks;
 
     uint32_t dmaLen = (mXferSize - DMA2_Stream1->NDTR) * 4;
     uint8_t* nextFrameStart = mBufCur + dmaLen;
     uint32_t frameLen = nextFrameStart - mLastFrameStart;
 
-    if (frameLen == 0) {
-      //{{{  zeroLenFrame
+    if (!frameLen) {
+      //{{{  zero frameLen
       mFrame = nullptr;
       mFrameLen = 0;
+      //cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "zero frameLen");
       }
       //}}}
     else if (frameLen == mRgb565FrameLen) {
@@ -413,7 +399,7 @@ void cCamera::dcmiIrqHandler() {
           mFrame = nullptr;
           mFrameLen = 0;
 
-          cLcd::mLcd->debug (LCD_COLOR_RED, "jpegLen > frameLen %d %d", jpegLen, frameLen);
+          cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "jpegLen > frameLen %d %d", jpegLen, frameLen);
           }
           //}}}
         else {
@@ -437,7 +423,7 @@ void cCamera::dcmiIrqHandler() {
         mFrame = nullptr;
         mFrameLen = 0;
 
-        cLcd::mLcd->debug (LCD_COLOR_RED, "jpegStatus:%x framelen:%d", mJpegStatus, frameLen);
+        cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "jpegStatus:%x framelen:%d", mJpegStatus, frameLen);
         }
         //}}}
       }
@@ -446,22 +432,21 @@ void cCamera::dcmiIrqHandler() {
       mFrame = nullptr;
       mFrameLen = 0;
 
-      cLcd::mLcd->debug (LCD_COLOR_RED, "len %x %x %d %d", mBufCur, mLastFrameStart, dmaLen, frameLen);
+      cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "len %x %x %d %d", mBufCur, mLastFrameStart, dmaLen, frameLen);
       }
       //}}}
 
+    // enough room for largest frame
     if (nextFrameStart + mRgb565FrameLen <= mBufEnd)
       mLastFrameStart = nextFrameStart;
     else {
-      //{{{  reset dma to ensure enough room for largest frame
+      //{{{  set dma to bufStart
       // disable dma
       DMA2_Stream1->CR &= ~DMA_SxCR_EN;
 
-      cLcd::mLcd->debug (LCD_COLOR_CYAN, "dma wrap %x %d", nextFrameStart, mXferCount);
-
-      // reset doubleBuffer addresses and xferCount
-      DMA2_Stream1->M0AR = (uint32_t)mBufStart;
-      DMA2_Stream1->M1AR = (uint32_t)mBufStart + (4 * mXferSize);
+      // reset pointers
+      mLastFrameStart = mBufStart;
+      mBufCur = mBufStart;
       mXferCount = 0;
 
       // clear all dma interrupt flags
@@ -471,9 +456,9 @@ void cCamera::dcmiIrqHandler() {
       DMA2->LIFCR = DMA_FLAG_HTIF1_5;
       DMA2->LIFCR = DMA_FLAG_FEIF1_5;
 
-      // reset pointers
-      mLastFrameStart = mBufStart;
-      mBufCur = mBufStart;
+      // reset doubleBuffer addresses and xferCount
+      DMA2_Stream1->M0AR = (uint32_t)mBufStart;
+      DMA2_Stream1->M1AR = (uint32_t)mBufStart + (4 * mXferSize);
 
       // re-enable dma
       DMA2_Stream1->CR = DMA_CHANNEL_1 |
@@ -483,9 +468,31 @@ void cCamera::dcmiIrqHandler() {
                          DMA_PINC_DISABLE | DMA_MINC_ENABLE |
                          DMA_IT_TC | DMA_IT_TE | DMA_IT_DME |
                          DMA_SxCR_EN;
+
+      //cLcd::mLcd->debug (LCD_COLOR_CYAN, "dmaWrap %x", nextFrameStart);
       }
       //}}}
+
+    auto ticks = HAL_GetTick();
+    mTookTicks = ticks - mTicks;
+    mTicks = ticks;
     }
+
+  if ((misr & DCMI_RIS_ERR_RIS) == DCMI_RIS_ERR_RIS) {
+    //{{{  synchronizationError interrupt
+    DCMI->ICR = DCMI_RIS_ERR_RIS;
+    cLcd::mLcd->debug (LCD_COLOR_RED, "syncIrq");
+    }
+    //}}}
+
+  if ((misr & DCMI_RIS_OVR_RIS) == DCMI_RIS_OVR_RIS) {
+    //{{{  overflowError interrupt
+    DCMI->ICR = DCMI_RIS_OVR_RIS;
+    // dsiable dma
+    DMA2_Stream1->CR &= ~DMA_SxCR_EN;
+    cLcd::mLcd->debug (LCD_COLOR_RED, "overflowIrq");
+    }
+    //}}}
   }
 //}}}
 
@@ -824,14 +831,12 @@ void cCamera::mt9d111Init() {
   //}}}
 
   write1 (0xA103, 0x06); // Sequencer Refresh Mode
-  //HAL_Delay (100);
   write1 (0xA103, 0x05); // Sequencer Refresh
-  //HAL_Delay (100);
   }
 //}}}
 
 //{{{
-void cCamera::dcmiStart() {
+void cCamera::start() {
 
   mBufCur = mBufStart;
   mLastFrameStart = mBufStart;
@@ -854,8 +859,6 @@ void cCamera::dcmiStart() {
   DMA2->LIFCR = DMA_FLAG_DMEIF1_5;
   DMA2->LIFCR = DMA_FLAG_HTIF1_5;
   DMA2->LIFCR = DMA_FLAG_FEIF1_5;
-
-  HAL_Delay (40);
 
   // enable dma - fifo, interrupt
   DMA2_Stream1->FCR = DMA_IT_FE | DMA_FIFOMODE_ENABLE | DMA_FIFO_THRESHOLD_FULL;

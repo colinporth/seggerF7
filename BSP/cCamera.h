@@ -4,7 +4,7 @@
 
 class cCamera {
 public:
-  void init (uint8_t* buf, uint32_t bufLen);
+  void init (uint8_t* bufStart, uint8_t* bufEnd);
 
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
@@ -34,7 +34,7 @@ private:
   void write1 (uint16_t reg, uint16_t value);
   void mt9d111Init();
 
-  void dcmiStart();
+  void start();
 
   int app0Marker (uint8_t* ptr);
   int quantTableMarker (uint8_t* ptr, uint8_t qscale);

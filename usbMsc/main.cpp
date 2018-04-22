@@ -29,10 +29,9 @@
 //{{{  const
 const bool kFreeRtos = true;
 
-uint16_t* kRgb565Buf = (uint16_t*)0xc0100000;
-uint8_t*  kCamBuf    =  (uint8_t*)0xc0200000;
-uint32_t  kCamBufLen =            0x00500000;
-uint8_t*  kSplashBuf =  (uint8_t*)0xc0700000;
+uint8_t*  kCamBuf    =  (uint8_t*)0xc0080000;
+uint8_t*  kCamBufEnd =  (uint8_t*)0xc0700000;
+uint16_t* kRgb565Buf = (uint16_t*)kCamBufEnd;
 
 //{{{
 const char k404Response[] =
@@ -156,8 +155,8 @@ private:
   };
 //}}}
 
-FATFS gFatFs = { 0 };  // encourges allocation in lower DTCM SRAM
-FIL   gFile  = { 0 };
+FATFS gFatFs;  // encourges allocation in lower DTCM SRAM
+FIL   gFile;
 cApp* gApp;
 
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
@@ -194,7 +193,7 @@ void cApp::run() {
     f_getlabel ("", mLabel, &mVsn);
     mLcd->debug (LCD_COLOR_WHITE, "sdCard ok - %s ", mLabel);
 
-    fileLen = loadFile ("splash.jpg", kSplashBuf, kRgb565Buf);
+    fileLen = loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
 
     mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
@@ -204,10 +203,10 @@ void cApp::run() {
     }
     //}}}
   else
-    mLcd->debug (LCD_COLOR_RED, "sdCard not mounted");
+    mLcd->debug (LCD_COLOR_GREEN, "sdCard not mounted");
 
   mCam = new cCamera();
-  mCam->init (kCamBuf, kCamBufLen);
+  mCam->init (kCamBuf, kCamBufEnd);
 
   uint32_t fileNum = 1;
   uint32_t frameNum = 0;
