@@ -193,9 +193,10 @@ void cApp::run() {
   if (mounted) {
     //{{{  mounted, load splash piccy
     f_getlabel ("", mLabel, &mVsn);
-    mLcd->debug (LCD_COLOR_WHITE, "sd card mounted - %s ", mLabel);
+    mLcd->debug (LCD_COLOR_WHITE, "sdCard ok - %s ", mLabel);
 
     fileLen = loadFile ("splash.jpg", kFileBuf1, kRgb565Buf);
+
     mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawDebug();
@@ -204,7 +205,7 @@ void cApp::run() {
     }
     //}}}
   else
-    mLcd->debug (LCD_COLOR_RED, "sd card not mounted");
+    mLcd->debug (LCD_COLOR_RED, "sdCard not mounted");
 
   mCam = new cCamera();
   mCam->init();
@@ -224,10 +225,9 @@ void cApp::run() {
     if (!mCam)
       mLcd->start();
     else {
+      frameNum++;
       int frameLen;
       auto frame = mCam->getNextFrame (frameLen);
-      frameNum++;
-
       if (!frame) // no frame, clear
         mLcd->start();
       else if (!mCam->getMode())
@@ -288,12 +288,9 @@ void cApp::run() {
           //}}}
         }
 
-      mLcd->drawInfo (LCD_COLOR_YELLOW, 16, "%d:%d:%dfps %d:%x:%s:%d",
-                                            osGetCPUUsage(), xPortGetFreeHeapSize(),
-                                            mCam->getFps(), frameLen, mCam->getStatus(),
-                                            mCam->getMode() ? "j":"p", mCam->getDmaCount());
+      mLcd->drawInfo (LCD_COLOR_YELLOW, 16, "%d:%d:%dfps %d:%x:%s:%d", osGetCPUUsage(), xPortGetFreeHeapSize(),
+        mCam->getFps(), frameLen, mCam->getStatus(), mCam->getMode() ? "j":"p", mCam->getDmaCount());
       }
-
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawDebug();
     mLcd->present();

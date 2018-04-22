@@ -362,8 +362,13 @@ void cCamera::dcmiIrqHandler() {
     mTookTicks = ticks - mTicks;
     mTicks = ticks;
 
-    uint32_t dmaBytes = (mXferSize - DMA2_Stream1->NDTR) * 4;
-    if (mJpegMode) {
+    auto dmaLen = (mXferSize - DMA2_Stream1->NDTR) * 4;
+    auto frameLen = mFrameCur - mFrameStart + dmaLen;
+    if (frameLen == 0) {
+      mFrame = nullptr;
+      mFrameLen = 0;
+      }
+    else if ((frameLen < mFixedFrameLen) && mJpegMode) {
       //{{{  jpegStatus bits
       // b:0 = 1  transfer done
       // b:1 = 1  output fifo overflow
@@ -372,44 +377,72 @@ void cCamera::dcmiIrqHandler() {
       // b:5:4    fifo watermark
       // b:7:6    quant table 0 to 2
       //}}}
-      mJpegStatus = mFrameCur[dmaBytes-1];
+      mJpegStatus = mFrameCur[dmaLen-1];
       if ((mJpegStatus & 0x0f) == 0x01) {
-        mFrame = mFrameStart;
-        mFrameLen = (mFrameCur[dmaBytes-2] << 16) + (mFrameCur[dmaBytes-3] << 8) + mFrameCur[dmaBytes-4];
-        if (mFrameLen > mFrameCur - mFrameStart + dmaBytes) {
-          cLcd::mLcd->debug (LCD_COLOR_RED, "len %d %d", mFrameLen, mFrameCur - mFrameStart + dmaBytes);
+        auto jpegLen = (mFrameCur[dmaLen-2] << 16) + (mFrameCur[dmaLen-3] << 8) + mFrameCur[dmaLen-4];
+        if (jpegLen > frameLen) {
+          //{{{  jpegLen > len received, bad jpeg frame
           mFrame = nullptr;
           mFrameLen = 0;
+
+          cLcd::mLcd->debug (LCD_COLOR_RED, "jpegLen > frameLen %d %d", jpegLen, frameLen);
           }
-        //cLcd::mLcd->debug (LCD_COLOR_GREEN, "v%2d:%6d %x:%d", mXferCount,dmaBytes, mJpegStatus,mFrameLen);
+          //}}}
+        else {
+          //{{{  good jpeg frame
+          if (mFrameStart + jpegLen > mBufEnd)
+            // dodgy copy to deliver contiguous buffer, should manage buffer better instead
+            memcpy (mBufEnd, mBufStart, mFrameStart + jpegLen - mBufEnd);
+
+          mFrameStart[jpegLen++] = 0xFF;
+          mFrameStart[jpegLen++] = 0xD9;
+
+          mFrame = mFrameStart;
+          mFrameLen = jpegLen;
+
+          portBASE_TYPE taskWoken = pdFALSE;
+          if (xSemaphoreGiveFromISR (mFrameSem, &taskWoken) == pdTRUE)
+            portEND_SWITCHING_ISR (taskWoken);
+
+          //cLcd::mLcd->debug (LCD_COLOR_GREEN, "j%2d:%6d %x:%d", mXferCount,dmaBytes, mJpegStatus,mFrameLen);
+          }
+          //}}}
         }
       else {
+        //{{{  jpegStatus not ok, bad jpeg frame
         mFrame = nullptr;
         mFrameLen = 0;
-        cLcd::mLcd->debug (LCD_COLOR_RED, "f%d:%d %d:%x", mXferCount,dmaBytes, mFrameCur-mFrameStart+dmaBytes, mJpegStatus);
+
+        cLcd::mLcd->debug (LCD_COLOR_RED, "jpegStatus:%x framelen:%d", mJpegStatus, frameLen);
         }
+        //}}}
       }
-    else {
+    else if (frameLen == mFixedFrameLen) {
+      //{{{  good rgb565 frame
+      if (mFrameStart + frameLen > mBufEnd)
+        // dodgy copy to deliver contiguous buffer, should manage buffer better instead
+        memcpy (mBufEnd, mBufStart, mFrameStart + frameLen - mBufEnd);
+
       mFrame = mFrameStart;
       mFrameLen = mFixedFrameLen;
-      //cLcd::mLcd->debug (LCD_COLOR_CYAN, "v%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrame, mFrameLen);
+
+      portBASE_TYPE taskWoken = pdFALSE;
+      if (xSemaphoreGiveFromISR (mFrameSem, &taskWoken) == pdTRUE)
+        portEND_SWITCHING_ISR (taskWoken);
+
+      //cLcd::mLcd->debug (LCD_COLOR_GREEN, "r%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrame, mFrameLen);
       }
+      //}}}
+    else {
+      //{{{  bad frame
+      mFrame = nullptr;
+      mFrameLen = 0;
 
-    if (mFrame + mFrameLen > mBufEnd)
-      // dodgy copy to deliver contiguous buffer, should manage buffer better instead
-      memcpy (mBufEnd, mBufStart, mFrame + mFrameLen - mBufEnd);
-
-    if (mJpegMode && mFrame && mFrameLen) {
-      // append EOI
-      mFrame[mFrameLen++] = 0xFF;
-      mFrame[mFrameLen++] = 0xD9;
+      cLcd::mLcd->debug (LCD_COLOR_RED, "len %x %x %d %d", mFrameCur, mFrameStart, dmaLen, frameLen);
       }
+      //}}}
 
-    mFrameStart = mFrameCur + dmaBytes;
-
-    portBASE_TYPE taskWoken = pdFALSE;
-    if (xSemaphoreGiveFromISR (mFrameSem, &taskWoken) == pdTRUE)
-      portEND_SWITCHING_ISR (taskWoken);
+    mFrameStart = mFrameCur + dmaLen;
     }
   }
 //}}}
