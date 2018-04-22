@@ -49,6 +49,8 @@
  <Project>
   <ProjectSessionItem path="usb"/>
   <ProjectSessionItem path="usb;usbMsc"/>
+  <ProjectSessionItem path="usb;usbMsc;bsp_drivers"/>
+  <ProjectSessionItem path="usb;usbMsc;bsp_drivers;includes"/>
   <ProjectSessionItem path="usb;usbMsc;main"/>
   <ProjectSessionItem path="usb;usbMsc;system"/>
  </Project>

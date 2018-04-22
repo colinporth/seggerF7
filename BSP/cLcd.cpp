@@ -84,7 +84,7 @@ extern "C" {
   //}}}
   }
 
-cLcd::cLcd (int lines) : mDisplayLines(lines) {}
+cLcd::cLcd (uint16_t displayLines) : mDisplayLines(displayLines) {}
 //{{{
 void cLcd::init() {
 

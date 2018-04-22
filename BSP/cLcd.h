@@ -30,7 +30,7 @@ public:
     } Point, *pPoint;
   //}}}
 
-  cLcd (int lines);
+  cLcd (uint16_t displayLines);
   void init();
 
   static uint32_t getWidth() { return 480; }
@@ -124,7 +124,7 @@ private:
 
   bool mFlip = false;
 
-  int mDisplayLines;
+  uint16_t mDisplayLines;
   unsigned mDebugLine = 0;
   cDebugItem mLines[kDebugMaxLines];
   int mScroll = 0;
