@@ -77,9 +77,8 @@ private:
 
   uint8_t* mBufStart = nullptr;
   uint8_t* mBufEnd = nullptr;
-
-  uint8_t* mFrameStart = nullptr;
-  uint8_t* mFrameCur = nullptr;
+  uint8_t* mBufCur = nullptr;
+  uint8_t* mLastFrameStart = nullptr;
 
   uint8_t* mFrame = nullptr;
   uint32_t mFrameLen = 0;
