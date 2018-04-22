@@ -552,7 +552,7 @@ void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
   }
 //}}}
 //{{{
-void cLcd::DisplayStringAt (uint16_t x, uint16_t y, const char* text, Text_AlignModeTypdef mode) {
+void cLcd::DisplayStringAt (uint16_t x, uint16_t y, const char* text, eTextAlign mode) {
 
   uint16_t column = 1;
   switch (mode) {

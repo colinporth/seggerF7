@@ -19,6 +19,7 @@
 #define LCD_COLOR_MAGENTA       0xF81F
 #define LCD_COLOR_CYAN          0x07FF
 //}}}
+  enum eTextAlign { CENTER_MODE, RIGHT_MODE, LEFT_MODE };
 
 class cLcd {
 public:
@@ -28,7 +29,6 @@ public:
     int16_t Y;
     } Point, *pPoint;
   //}}}
-  typedef enum { CENTER_MODE = 0x01, RIGHT_MODE = 0x02, LEFT_MODE = 0x03 } Text_AlignModeTypdef;
 
   cLcd (int lines);
   void init();
@@ -67,7 +67,7 @@ public:
 
   void clearStringLine (uint32_t Line);
   void DisplayChar (uint16_t x, uint16_t y, uint8_t ascii);
-  void DisplayStringAt (uint16_t x, uint16_t y, const char* text, Text_AlignModeTypdef mode);
+  void DisplayStringAt (uint16_t x, uint16_t y, const char* text, eTextAlign mode);
   void DisplayStringAtLine (uint16_t line, const char* ptr);
   void DisplayStringAtLineColumn (uint16_t line, uint16_t column, const char* ptr);
 

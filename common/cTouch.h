@@ -75,15 +75,15 @@ public:
   //}}}
 
 protected:
-  virtual void onProx (int x, int y, int z) {}
-  virtual void onPress (int x, int y) {}
-  virtual void onMove (int x, int y, int z) {}
-  virtual void onScroll (int x, int y, int z) {}
-  virtual void onRelease (int x, int y) {}
+  virtual void onProx (int16_t x, int16_t y, uint8_t z) {}
+  virtual void onPress (int16_t x, int16_t y) {}
+  virtual void onMove (int16_t x, int16_t y, uint8_t z) {}
+  virtual void onScroll (int16_t x, int16_t y, uint8_t z) {}
+  virtual void onRelease (int16_t x, int16_t y) {}
   virtual void onKey (uint8_t ch, bool release) {}
 
   enum eHit { eReleased, eProx, ePressed, eScroll };
-  enum eHit mHit = eReleased;
+  eHit mHit = eReleased;
 
   int mHitX = 0;
   int mHitY = 0;

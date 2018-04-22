@@ -83,7 +83,7 @@ const char kHtmlBody[] =
   "</html>\r\n";
 //}}}
 //}}}
-const char kVersion[] = "WebCam 21/4/18";
+const char kVersion[] = "WebCam 22/4/18";
 const bool kWriteJpg  = false;
 const bool kWriteMjpg = true;
 
@@ -122,11 +122,11 @@ public:
   cCamera* mCam = nullptr;
 
 protected:
-  virtual void onProx (int x, int y, int z);
-  virtual void onPress (int x, int y);
-  virtual void onMove (int x, int y, int z);
-  virtual void onScroll (int x, int y, int z);
-  virtual void onRelease (int x, int y);
+  virtual void onProx (int16_t x, int16_t y, uint8_t z);
+  virtual void onPress (int16_t x, int16_t y);
+  virtual void onMove (int16_t x, int16_t y, uint8_t z);
+  virtual void onScroll (int16_t x, int16_t y, uint8_t z);
+  virtual void onRelease (int16_t x, int16_t y);
   virtual void onKey (uint8_t ch, bool release);
 
 private:
@@ -157,9 +157,9 @@ private:
   };
 //}}}
 
-cApp* gApp;
 FATFS gFatFs = { 0 };  // encourges allocation in lower DTCM SRAM
-FIL   gFile  = { 0 };  // encourges allocation in lower DTCM SRAM
+FIL   gFile  = { 0 };
+cApp* gApp;
 
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
@@ -191,11 +191,11 @@ void cApp::run() {
   int fileLen = 0;
   bool mounted = !f_mount (&gFatFs, "", 1);
   if (mounted) {
-    //{{{  mounted, load piccy
+    //{{{  mounted, load splash piccy
     f_getlabel ("", mLabel, &mVsn);
     mLcd->debug (LCD_COLOR_WHITE, "sd card mounted - %s ", mLabel);
 
-    fileLen = loadFile ("image.jpg", kFileBuf1, kRgb565Buf);
+    fileLen = loadFile ("splash.jpg", kFileBuf1, kRgb565Buf);
     mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawDebug();
@@ -301,8 +301,8 @@ void cApp::run() {
     bool button = BSP_PB_GetState (BUTTON_KEY);
     if (mCam && !button && (button != lastButton)) {
       mCam->start (!mCam->getMode(), kCamBuf);
-      frameNum = 0;
       fileNum++;
+      frameNum = 0;
       }
     lastButton = button;
     }
@@ -311,7 +311,7 @@ void cApp::run() {
 
 // protected
 //{{{
-void cApp::onProx (int x, int y, int z) {
+void cApp::onProx (int16_t x, int16_t y, uint8_t z) {
 
   if (x || y) {
     //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
@@ -321,7 +321,7 @@ void cApp::onProx (int x, int y, int z) {
   }
 //}}}
 //{{{
-void cApp::onPress (int x, int y) {
+void cApp::onPress (int16_t x, int16_t y) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,0,0,0 };
   //hidSendReport (&gUsbDevice, HID_Buf);
@@ -329,7 +329,7 @@ void cApp::onPress (int x, int y) {
   }
 //}}}
 //{{{
-void cApp::onMove (int x, int y, int z) {
+void cApp::onMove (int16_t x, int16_t y, uint8_t z) {
 
   if (x || y) {
     //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
@@ -345,12 +345,12 @@ void cApp::onMove (int x, int y, int z) {
   }
 //}}}
 //{{{
-void cApp::onScroll (int x, int y, int z) {
+void cApp::onScroll (int16_t x, int16_t y, uint8_t z) {
   mLcd->incScrollValue (y);
   }
 //}}}
 //{{{
-void cApp::onRelease (int x, int y) {
+void cApp::onRelease (int16_t x, int16_t y) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
   //hidSendReport (&gUsbDevice, HID_Buf);
@@ -466,14 +466,14 @@ int cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
   FILINFO filInfo;
   if (!f_stat (fileName, &filInfo))
     mLcd->debug (LCD_COLOR_WHITE, "%d %u/%02u/%02u %02u:%02u %c%c%c%c%c",
-                 (int)(filInfo.fsize),
-                 (filInfo.fdate >> 9) + 1980, filInfo.fdate >> 5 & 15, filInfo.fdate & 31,
-                  filInfo.ftime >> 11, filInfo.ftime >> 5 & 63,
-                 (filInfo.fattrib & AM_DIR) ? 'D' : '-',
-                 (filInfo.fattrib & AM_RDO) ? 'R' : '-',
-                 (filInfo.fattrib & AM_HID) ? 'H' : '-',
-                 (filInfo.fattrib & AM_SYS) ? 'S' : '-',
-                 (filInfo.fattrib & AM_ARC) ? 'A' : '-');
+                                  (int)(filInfo.fsize),
+                                  (filInfo.fdate >> 9) + 1980, filInfo.fdate >> 5 & 15, filInfo.fdate & 31,
+                                   filInfo.ftime >> 11, filInfo.ftime >> 5 & 63,
+                                  (filInfo.fattrib & AM_DIR) ? 'D' : '-',
+                                  (filInfo.fattrib & AM_RDO) ? 'R' : '-',
+                                  (filInfo.fattrib & AM_HID) ? 'H' : '-',
+                                  (filInfo.fattrib & AM_SYS) ? 'S' : '-',
+                                  (filInfo.fattrib & AM_ARC) ? 'A' : '-');
 
   if (!f_open (&gFile, fileName, FA_READ)) {
     mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
@@ -513,7 +513,7 @@ int cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
 //{{{
 void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen) {
 
-  char fileName[40] = {0};
+  char fileName[40];
   sprintf (fileName, "%s%03d.%s", name, num, ext);
 
   if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
@@ -530,7 +530,7 @@ void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* buf
 //{{{
 void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
-  char fileName[40] = {0};
+  char fileName[40];
   sprintf (fileName, "%s%03d.%s", name, num, ext);
 
   if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
@@ -551,9 +551,9 @@ void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* hea
 //}}}
 
 //{{{
-void cApp::createNumFile (const char* name, int num, uint8_t* header, int headerLen, uint8_t* frame, int frameBuf) {
+void cApp::createNumFile (const char* name, int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
-  char fileName[40] = {0};
+  char fileName[40];
   sprintf (fileName, "%s%d.mjpg", name, num);
 
   if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
@@ -565,9 +565,9 @@ void cApp::createNumFile (const char* name, int num, uint8_t* header, int header
 
     UINT bytesWritten;
     f_write (&gFile, header, headerLen, &bytesWritten);
-    f_write (&gFile, frame, (frameBuf + 3) & 0xFFFFFFFC, &bytesWritten);
+    f_write (&gFile, frame, (frameLen + 3) & 0xFFFFFFFC, &bytesWritten);
 
-    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName, headerLen,frameBuf, bytesWritten);
+    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName, headerLen,frameLen, bytesWritten);
     }
    }
 //}}}
@@ -577,6 +577,7 @@ void cApp::appendFile (int num, uint8_t* header, int headerLen, uint8_t* frame, 
   UINT bytesWritten;
   f_write (&gFile, header, headerLen, &bytesWritten);
   f_write (&gFile, frame, (frameLen + 3) & 0xFFFFFFFC, &bytesWritten);
+
   mLcd->debug (LCD_COLOR_YELLOW, "append %d %d:%d:%d ok", num, headerLen,frameLen, bytesWritten);
   }
 //}}}
@@ -684,12 +685,7 @@ void serverThread (void* arg) {
 //{{{
 void dhcpThread (void* arg) {
 
-  #define DHCP_OFF               0
-  #define DHCP_START             1
-  #define DHCP_WAIT_ADDRESS      2
-  #define DHCP_ADDRESS_ASSIGNED  3
-  #define DHCP_TIMEOUT           4
-  #define DHCP_LINK_DOWN         5
+  enum eDhcpState { DHCP_OFF, DHCP_START, DHCP_WAIT_ADDRESS, DHCP_ADDRESS_ASSIGNED, DHCP_TIMEOUT, DHCP_LINK_DOWN };
 
   auto netif = (struct netif*)arg;
 
@@ -850,7 +846,7 @@ int main() {
     sys_thread_new ("app", appThread, NULL, 10000, osPriorityNormal);
     sys_thread_new ("net", netThread, NULL, 2048, osPriorityNormal);
     osKernelStart();
-    while (true);
+    while (true) {};
     }
   else
     gApp->run();
