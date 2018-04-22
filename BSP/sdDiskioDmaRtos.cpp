@@ -48,7 +48,7 @@ DSTATUS diskInit (uint8_t lun) {
       gSdQueueId = osMessageCreate (osMessageQ (sdQueue), NULL);
       }
 
-    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskInit");
+    //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskInit");
     }
 
   return gStat;

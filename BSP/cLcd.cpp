@@ -531,30 +531,32 @@ void cLcd::clearStringLine (uint32_t Line) {
 //{{{
 void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
 
-  const uint16_t width = Font16.mWidth;
-  const uint16_t byteAlignedWidth = (width+7)/8;
-  const uint16_t offset = 8*(byteAlignedWidth) - width-1;
-  const uint8_t* fontChar = &Font16.mTable [(ascii-' ') * Font16.mHeight * byteAlignedWidth];
+  if ((ascii >= 0x20) && (ascii <= 0x7f)) {
+    const uint16_t width = Font16.mWidth;
+    const uint16_t byteAlignedWidth = (width + 7) / 8;
+    const uint16_t offset = (8 * byteAlignedWidth) - width - 1;
+    const uint8_t* fontChar = &Font16.mTable [(ascii - ' ') * Font16.mHeight * byteAlignedWidth];
 
-  auto fbPtr = ((uint16_t*)hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite) + (y * getWidth()) + x;
-  for (auto fontLine = 0u; fontLine < Font16.mHeight; fontLine++) {
-    auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
-    uint16_t fontLineBits = *fontPtr++;
-    if (byteAlignedWidth == 2)
-      fontLineBits = (fontLineBits << 8) | *fontPtr;
-    if (fontLineBits) {
-      uint16_t bit = 1 << (width + offset);
-      auto endPtr = fbPtr + width;
-      while (fbPtr != endPtr) {
-        if (fontLineBits & bit)
-          *fbPtr = mTextColor;
-        fbPtr++;
-        bit >>= 1;
+    auto fbPtr = (uint16_t*)hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (y * getWidth()) + x;
+    for (auto fontLine = 0u; fontLine < Font16.mHeight; fontLine++) {
+      auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
+      uint16_t fontLineBits = *fontPtr++;
+      if (byteAlignedWidth == 2)
+        fontLineBits = (fontLineBits << 8) | *fontPtr;
+      if (fontLineBits) {
+        uint16_t bit = 1 << (width + offset);
+        auto endPtr = fbPtr + width;
+        while (fbPtr != endPtr) {
+          if (fontLineBits & bit)
+            *fbPtr = mTextColor;
+          fbPtr++;
+          bit >>= 1;
+          }
+        fbPtr += getWidth() - width;
         }
-      fbPtr += getWidth() - width;
+      else
+        fbPtr += getWidth();
       }
-    else
-      fbPtr += getWidth();
     }
   }
 //}}}

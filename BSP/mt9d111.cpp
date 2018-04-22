@@ -104,37 +104,42 @@ void cCamera::init (uint8_t* bufStart, uint8_t* bufEnd) {
 
   // init camera i2c, readBack id
   CAMERA_IO_Init();
+
   write (0xF0, 0);
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "cameraId %x", CAMERA_IO_Read16 (I2cAddress, 0));
-  mt9d111Init();
+  auto cameraId = CAMERA_IO_Read16 (I2cAddress, 0);
+  if (cameraId == 0x1519) {
+    mt9d111Init();
 
-  // init dcmi dma
-  // - mDmaBaseRegisters, mStreamIndex
-  const uint8_t kFlagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
+    // init dcmi dma
+    // - mDmaBaseRegisters, mStreamIndex
+    const uint8_t kFlagBitshiftOffset[8U] = {0U, 6U, 16U, 22U, 0U, 6U, 16U, 22U};
 
-  auto streamNum = (((uint32_t)DMA2_Stream1 & 0xFFU) - 16U) / 24U;
-  mStreamIndex = kFlagBitshiftOffset[streamNum];
-  if (streamNum > 3U) // return pointer to HISR and HIFCR
-    mDmaBaseRegisters = (tDmaBaseRegisters*)(((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU)) + 4U);
-  else // return pointer to LISR and LIFCR
-    mDmaBaseRegisters = (tDmaBaseRegisters*)((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU));
+    auto streamNum = (((uint32_t)DMA2_Stream1 & 0xFFU) - 16U) / 24U;
+    mStreamIndex = kFlagBitshiftOffset[streamNum];
+    if (streamNum > 3U) // return pointer to HISR and HIFCR
+      mDmaBaseRegisters = (tDmaBaseRegisters*)(((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU)) + 4U);
+    else // return pointer to LISR and LIFCR
+      mDmaBaseRegisters = (tDmaBaseRegisters*)((uint32_t)DMA2_Stream1 & (uint32_t)(~0x3FFU));
 
-  // clear all dma interrupt flags
-  mDmaBaseRegisters->IFCR = 0x3FU << mStreamIndex;
+    // clear all dma interrupt flags
+    mDmaBaseRegisters->IFCR = 0x3FU << mStreamIndex;
 
-  // NVIC configuration for DCMI transfer complete interrupt
-  HAL_NVIC_SetPriority (DCMI_IRQn, 0x08, 0);
-  HAL_NVIC_EnableIRQ (DCMI_IRQn);
+    // NVIC configuration for DCMI transfer complete interrupt
+    HAL_NVIC_SetPriority (DCMI_IRQn, 0x08, 0);
+    HAL_NVIC_EnableIRQ (DCMI_IRQn);
 
-  // NVIC configuration for DMA2 transfer complete interrupt
-  HAL_NVIC_SetPriority (DMA2_Stream1_IRQn, 0x08, 0);
-  HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
+    // NVIC configuration for DMA2 transfer complete interrupt
+    HAL_NVIC_SetPriority (DMA2_Stream1_IRQn, 0x08, 0);
+    HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
 
-  // select sequencer preview
-  preview();
+    // select sequencer preview
+    preview();
 
-  // start dma,dcmi
-  start();
+    // start dma,dcmi
+    start();
+    }
+  else
+    cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "cameraId problem %x", cameraId);
   }
 //}}}
 
@@ -219,18 +224,20 @@ uint8_t* cCamera::getHeader (bool full, int qscale, uint32_t& headerLen) {
   }
 //}}}
 //{{{
-uint8_t* cCamera::getLastFrame (uint32_t& frameLen) {
+uint8_t* cCamera::getLastFrame (uint32_t& frameLen, bool& jpeg) {
 
   frameLen = mFrameLen;
+  jpeg = mJpegFrame;
   return mFrame;
   }
 //}}}
 //{{{
-uint8_t* cCamera::getNextFrame (uint32_t& frameLen) {
+uint8_t* cCamera::getNextFrame (uint32_t& frameLen, bool& jpeg) {
 
   xSemaphoreTake (mFrameSem, 500);
 
   frameLen = mFrameLen;
+  jpeg = mJpegFrame;
   return mFrame;
   }
 //}}}
@@ -274,7 +281,7 @@ void cCamera::preview() {
 
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview %dx%d", mWidth, mHeight);
 
-  // switch to preview
+  // switch sequencer to preview
   write (0xf0, 1);
   write1 (0xA120, 0x00);   // Sequencer.params.mode - none
   write1 (0xA103, 0x01);   // Sequencer transition to preview A
@@ -295,10 +302,12 @@ void cCamera::jpeg() {
   mWidth = 1600;
   mWidth = 1200;
 #endif
+
   mRgb565FrameLen = getWidth() * getHeight() * 2;
 
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
 
+  // switch sequencer to captue jpeg
   write (0xf0, 1);
   write1 (0xA120, 0x02);   // Sequencer.params.mode - capture video
   write1 (0xA103, 0x02);   // Sequencer transition to capture B
@@ -380,6 +389,7 @@ void cCamera::dcmiIrqHandler() {
       //{{{  good rgb565Frame
       mFrame = mLastFrameStart;
       mFrameLen = frameLen;
+      mJpegFrame = false;
 
       portBASE_TYPE taskWoken = pdFALSE;
       if (xSemaphoreGiveFromISR (mFrameSem, &taskWoken) == pdTRUE)
@@ -388,7 +398,7 @@ void cCamera::dcmiIrqHandler() {
       //cLcd::mLcd->debug (LCD_COLOR_GREEN, "r%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrame, mFrameLen);
       }
       //}}}
-    else if (mJpegMode & (frameLen < mRgb565FrameLen)) {
+    else if (mJpegMode && (frameLen < mRgb565FrameLen)) {
       // get jpegStatus from last byte
       mJpegStatus = mBufCur[dmaLen-1];
       if ((mJpegStatus & 0x0f) == 0x01) {
@@ -409,6 +419,7 @@ void cCamera::dcmiIrqHandler() {
 
           mFrame = mLastFrameStart;
           mFrameLen = jpegLen;
+          mJpegFrame = true;
 
           portBASE_TYPE taskWoken = pdFALSE;
           if (xSemaphoreGiveFromISR (mFrameSem, &taskWoken) == pdTRUE)
@@ -879,9 +890,6 @@ void cCamera::start() {
   }
 //}}}
 
-//line2 ("cam AE 6500");
-//writeReg111 (0xC6, 0xA102); writeReg111 (0xC8, 0x21);
-//writeReg111 (0xC6, 0xA102); writeReg111 (0xC8, 0);
 //{{{
 int cCamera::app0Marker (uint8_t* ptr) {
 
@@ -1097,3 +1105,7 @@ int cCamera::sosMarker (uint8_t* ptr) {
   return length+2;
   }
 //}}}
+
+//line2 ("cam AE 6500");
+//writeReg111 (0xC6, 0xA102); writeReg111 (0xC8, 0x21);
+//writeReg111 (0xC6, 0xA102); writeReg111 (0xC8, 0);

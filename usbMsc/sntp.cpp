@@ -262,7 +262,7 @@ void sntp_process (u32_t receive_timestamp) {
   time_t tim = t;
 
   // display local time from GMT time
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, ctime(&tim));
+  cLcd::mLcd->debug (LCD_COLOR_GREEN, "sntp %s", ctime(&tim));
   }
 //}}}
 //{{{

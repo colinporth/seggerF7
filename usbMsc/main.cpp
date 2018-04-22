@@ -223,12 +223,11 @@ void cApp::run() {
       mLcd->start();
     else {
       uint32_t frameLen;
-      auto frame = mCam->getNextFrame (frameLen);
+      bool jpeg;
+      auto frame = mCam->getNextFrame (frameLen, jpeg);
       if (!frame) // no frame, clear
         mLcd->start();
-      else if (!mCam->getMode())
-        mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
-      else if (frameLen < 960000) {
+      else if (jpeg) {
         uint32_t headerLen;
         if (mounted && kWriteJpg && frameNum < 100) {
           //{{{  save JFIF jpeg
@@ -288,6 +287,8 @@ void cApp::run() {
           }
           //}}}
         }
+      else
+        mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
 
       mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%s:%d", osGetCPUUsage(), xPortGetFreeHeapSize(),
         mCam->getFps(), frameLen, mCam->getStatus(), mCam->getMode() ? "j":"p", mCam->getDmaCount());
@@ -645,13 +646,14 @@ void serverThread (void* arg) {
                   //{{{  cam.jpg
                   if (gApp->mCam) {
                     uint32_t frameLen;
-                    auto frame = gApp->mCam->getLastFrame (frameLen);
+                    bool jpeg;
+                    auto frame = gApp->mCam->getLastFrame (frameLen, jpeg);
                     if (frame) {
                       // send http response header
-                      if (gApp->mCam->getMode())
-                        netconn_write (request, kJpegResponseHeader, sizeof(kJpegResponseHeader)-1, NETCONN_NOCOPY);
-                      else
-                        netconn_write (request, kBmpResponseHeader, sizeof(kBmpResponseHeader)-1, NETCONN_NOCOPY);
+                      netconn_write (request,
+                                     jpeg ? kJpegResponseHeader : kBmpResponseHeader,
+                                     jpeg ? sizeof(kJpegResponseHeader)-1 : sizeof(kBmpResponseHeader)-1,
+                                     NETCONN_NOCOPY);
 
                       // send imageFile format header
                       uint32_t headerLen;
@@ -701,7 +703,7 @@ void dhcpThread (void* arg) {
       case DHCP_WAIT_ADDRESS:
         if (dhcp_supplied_address (netif)) {
           dhcpState = DHCP_ADDRESS_ASSIGNED;
-          cLcd::mLcd->debug (LCD_COLOR_GREEN, "DHCP %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
+          cLcd::mLcd->debug (LCD_COLOR_GREEN, "dhcp %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
           sntpSetServerName (0, "pool.ntp.org");
           sntpInit();
           }
@@ -710,13 +712,13 @@ void dhcpThread (void* arg) {
           if (dhcp->tries > 4) {
             dhcpState = DHCP_TIMEOUT;
             dhcp_stop (netif);
-            cLcd::mLcd->debug (LCD_COLOR_RED, "DHCP timeout");
+            cLcd::mLcd->debug (LCD_COLOR_RED, "dhcp timeout");
             }
           }
         break;
 
       case DHCP_LINK_DOWN:
-        cLcd::mLcd->debug (LCD_COLOR_RED, "DHCP link down");
+        cLcd::mLcd->debug (LCD_COLOR_RED, "dhcp link down");
         dhcp_stop (netif);
         dhcpState = DHCP_OFF;
         break;
@@ -769,12 +771,12 @@ void netThread (void* arg) {
   netif_set_default (&netIf);
   if (netif_is_link_up (&netIf)) {
     netif_set_up (&netIf);
-    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethernet up");
+    cLcd::mLcd->debug (LCD_COLOR_GREEN, "ethernet ok");
     sys_thread_new ("dhcp", dhcpThread, &netIf, 2048, osPriorityBelowNormal);
     sys_thread_new ("server", serverThread, NULL, 2048, osPriorityAboveNormal);
     }
   else {
-    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ethernet down");
+    cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "ethernet not connected");
     netif_set_down (&netIf);
     }
 

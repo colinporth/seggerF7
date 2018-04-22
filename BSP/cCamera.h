@@ -16,8 +16,8 @@ public:
   int getFocus() { return mFocus; }
 
   uint8_t* getHeader (bool full, int qscale, uint32_t& headerLen);
-  uint8_t* getLastFrame (uint32_t& frameLen);
-  uint8_t* getNextFrame (uint32_t& frameLen);
+  uint8_t* getLastFrame (uint32_t& frameLen, bool& jpeg);
+  uint8_t* getNextFrame (uint32_t& frameLen, bool& jpeg);
 
   void setFocus (int value);
 
@@ -79,6 +79,7 @@ private:
 
   uint8_t* mFrame = nullptr;
   uint32_t mFrameLen = 0;
+  bool mJpegFrame = false;
 
   uint8_t mJpegStatus = 0;
   //}}}
