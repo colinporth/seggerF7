@@ -283,29 +283,15 @@ void cCamera::dmaIrqHandler() {
       // clear transferComplete interrupt flag
       mDmaBaseRegisters->IFCR = DMA_FLAG_TCIF0_4 << mStreamIndex;
 
+      // set up address for next double buffered dma chunk
       mXferCount++;
+      auto buf = mBufStart + ((mXferCount+1) * (4 * mXferSize));
+      if (mXferCount & 1)
+        DMA2_Stream1->M0AR = (uint32_t)buf;
+      else
+        DMA2_Stream1->M1AR = (uint32_t)buf;
 
-      if (mXferCount <= mXferMaxCount - 2) {
-        // next dma chunk
-        auto buf = mBufStart + ((mXferCount+1) * (4 * mXferSize));
-        if (mXferCount & 1)
-          DMA2_Stream1->M0AR = (uint32_t)buf;
-        else
-          DMA2_Stream1->M1AR = (uint32_t)buf;
-        mBufCur += 4 * mXferSize;
-        }
-      else if (mXferCount == mXferMaxCount - 1) {
-        // penultimate chunk, reset M0AR for next frame
-        DMA2_Stream1->M0AR = (uint32_t)mBufStart;
-        mBufCur += 4 * mXferSize;
-        }
-      else {
-        // last chunk, reset M1AR, mXferCount for next frame
-        DMA2_Stream1->M1AR = (uint32_t)mBufStart + (4 * mXferSize);
-        //cLcd::mLcd->debug (LCD_COLOR_GREEN, "dma %d done", mXferCount);
-        mXferCount = 0;
-        mBufCur = mBufStart;
-        }
+      mBufCur += 4 * mXferSize;
       }
     }
 
@@ -366,15 +352,15 @@ void cCamera::dcmiIrqHandler() {
     uint32_t frameLen = nextFrameStart - mLastFrameStart;
 
     if (frameLen == 0) {
-      //{{{  zero len frame, ignore
+      //{{{  zeroLenFrame
       mFrame = nullptr;
       mFrameLen = 0;
       }
       //}}}
     else if (frameLen == mRgb565FrameLen) {
-      //{{{  good rgb565 frame
+      //{{{  good rgb565Frame
       mFrame = mLastFrameStart;
-      mFrameLen = mRgb565FrameLen;
+      mFrameLen = frameLen;
 
       portBASE_TYPE taskWoken = pdFALSE;
       if (xSemaphoreGiveFromISR (mFrameSem, &taskWoken) == pdTRUE)
@@ -384,11 +370,13 @@ void cCamera::dcmiIrqHandler() {
       }
       //}}}
     else if (mJpegMode & (frameLen < mRgb565FrameLen)) {
+      // get jpegStatus from last byte
       mJpegStatus = mBufCur[dmaLen-1];
       if ((mJpegStatus & 0x0f) == 0x01) {
-        auto jpegLen = (mBufCur[dmaLen-2] << 16) + (mBufCur[dmaLen-3] << 8) + mBufCur[dmaLen-4];
+        // get jpegLen from last-4 to last-1 bytes
+        uint32_t jpegLen = (mBufCur[dmaLen-2] << 16) + (mBufCur[dmaLen-3] << 8) + mBufCur[dmaLen-4];
         if (jpegLen > frameLen) {
-          //{{{  bad jpegLen > frameLen 
+          //{{{  bad jpegLen > frameLen
           mFrame = nullptr;
           mFrameLen = 0;
 
@@ -396,7 +384,7 @@ void cCamera::dcmiIrqHandler() {
           }
           //}}}
         else {
-          //{{{  good jpeg frame
+          //{{{  good jpegFrame
           mLastFrameStart[jpegLen++] = 0xFF;
           mLastFrameStart[jpegLen++] = 0xD9;
 
@@ -421,20 +409,22 @@ void cCamera::dcmiIrqHandler() {
         //}}}
       }
     else {
-      //{{{  bad len frame
+      //{{{  bad frameLen
       mFrame = nullptr;
       mFrameLen = 0;
 
-      //cLcd::mLcd->debug (LCD_COLOR_RED, "len %x %x %d %d", mBufCur, mLastFrameStart, dmaLen, frameLen);
+      cLcd::mLcd->debug (LCD_COLOR_RED, "len %x %x %d %d", mBufCur, mLastFrameStart, dmaLen, frameLen);
       }
       //}}}
 
-    if (nextFrameStart + 150000 > mBufEnd) {
-      //{{{  reset dma buffers
+    if (nextFrameStart + mRgb565FrameLen <= mBufEnd)
+      mLastFrameStart = nextFrameStart;
+    else {
+      //{{{  reset dma to ensure enough room for largest frame
       // disable dma
       DMA2_Stream1->CR &= ~DMA_SxCR_EN;
 
-      cLcd::mLcd->debug (LCD_COLOR_CYAN, "dma %x %d", nextFrameStart, mXferCount);
+      cLcd::mLcd->debug (LCD_COLOR_CYAN, "dma wrap %x %d", nextFrameStart, mXferCount);
 
       // reset doubleBuffer addresses and xferCount
       DMA2_Stream1->M0AR = (uint32_t)mBufStart;
@@ -462,8 +452,6 @@ void cCamera::dcmiIrqHandler() {
                          DMA_SxCR_EN;
       }
       //}}}
-    else
-      mLastFrameStart = nextFrameStart;
     }
   }
 //}}}

@@ -288,7 +288,7 @@ void cApp::run() {
           //}}}
         }
 
-      mLcd->drawInfo (LCD_COLOR_YELLOW, 16, "%d:%d:%dfps %d:%x:%s:%d", osGetCPUUsage(), xPortGetFreeHeapSize(),
+      mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%s:%d", osGetCPUUsage(), xPortGetFreeHeapSize(),
         mCam->getFps(), frameLen, mCam->getStatus(), mCam->getMode() ? "j":"p", mCam->getDmaCount());
       }
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
