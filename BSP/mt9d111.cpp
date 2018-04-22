@@ -131,13 +131,11 @@ void cCamera::init (uint8_t* buf, uint32_t bufLen) {
   mBufStart = buf;
   mBufEnd = buf + bufLen;
 
+  // select sequencer preview
   preview();
 
-  // start dma,dcmi with new dma
+  // start dma,dcmi
   dcmiStart();
-
-  mFrame = nullptr;
-  mFrameLen = 0;
   }
 //}}}
 
