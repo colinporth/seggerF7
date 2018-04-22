@@ -20,7 +20,7 @@ void BSP_SD_WriteCpltCallback() { osMessagePut (gSdQueueId, WRITE_CPLT_MSG, osWa
 void BSP_SD_ReadCpltCallback()  { osMessagePut (gSdQueueId, READ_CPLT_MSG, osWaitForever); }
 
 //{{{
-DSTATUS checkStatus (uint8_t lun) {
+DSTATUS checkStatus() {
 
   gStat = STA_NOINIT;
 
@@ -32,16 +32,16 @@ DSTATUS checkStatus (uint8_t lun) {
 //}}}
 
 DWORD getFatTime() {}
-DSTATUS diskStatus (uint8_t lun) { return checkStatus (lun); }
+DSTATUS diskStatus() { return checkStatus(); }
 
 //{{{
-DSTATUS diskInit (uint8_t lun) {
+DSTATUS diskInit() {
 
   gStat = STA_NOINIT;
 
   if (osKernelRunning()) {
     if (BSP_SD_Init() == MSD_OK)
-      gStat = checkStatus (lun);
+      gStat = checkStatus();
 
     if (gStat != STA_NOINIT) {
       osMessageQDef (sdQueue, QUEUE_SIZE, uint16_t);
@@ -55,7 +55,7 @@ DSTATUS diskInit (uint8_t lun) {
   }
 //}}}
 //{{{
-DRESULT diskIoctl (uint8_t lun, BYTE cmd, void* buf) {
+DRESULT diskIoctl (BYTE cmd, void* buf) {
 
   if (gStat & STA_NOINIT)
     return RES_NOTRDY;
@@ -99,7 +99,7 @@ DRESULT diskIoctl (uint8_t lun, BYTE cmd, void* buf) {
 //}}}
 
 //{{{
-DRESULT diskRead (uint8_t lun, BYTE* buf, uint32_t sector, uint32_t numSectors) {
+DRESULT diskRead (const BYTE* buf, uint32_t sector, uint32_t numSectors) {
 
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_read %p %d %d", buf, sector, numSectors);
   if ((uint32_t)buf & 0x3) {
@@ -131,7 +131,7 @@ DRESULT diskRead (uint8_t lun, BYTE* buf, uint32_t sector, uint32_t numSectors) 
   }
 //}}}
 //{{{
-DRESULT diskWrite (uint8_t lun, const BYTE* buf, uint32_t sector, uint32_t numSectors) {
+DRESULT diskWrite (const BYTE* buf, uint32_t sector, uint32_t numSectors) {
 
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_write %p %d %d", buf, sector, numSectors);
   if ((uint32_t)buf & 0x3) {

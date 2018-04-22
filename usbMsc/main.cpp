@@ -173,7 +173,7 @@ void cApp::init() {
   mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
   mLcd->present();
 
-  diskInit (0);
+  diskInit();
 
   //{{{  removed
   //mPs2 = new cPs2 (mLcd);

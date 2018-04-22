@@ -183,36 +183,40 @@ typedef enum {
   } FRESULT;
 //}}}
 
-/* FatFs module application interface                           */
+FRESULT f_fdisk (const DWORD* szt, void* work);      /* Divide a physical drive into some partitions */
+FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len); /* Create a FAT volume */
+FRESULT f_setlabel (const char* label);              /* Set volume label */
+
+FRESULT f_mount (FATFS* fs, const char* path, BYTE opt);     /* Mount/Unmount a logical drive */
+FRESULT f_getlabel (const char* path, char* label, DWORD* vsn); /* Get volume label */
+FRESULT f_getfree (const char* path, DWORD* nclst, FATFS** fatfs); /* Get number of free clusters on the drive */
+
+FRESULT f_stat (const char* path, FILINFO* fno);         /* Get file status */
 FRESULT f_open (FIL* fp, const char* path, BYTE mode);       /* Open or create a file */
-FRESULT f_close (FIL* fp);                      /* Close an open file object */
+FRESULT f_lseek (FIL* fp, FSIZE_t ofs);               /* Move file pointer of the file object */
 FRESULT f_read (FIL* fp, void* buff, UINT btr, UINT* br);     /* Read data from the file */
 FRESULT f_write (FIL* fp, const void* buff, UINT btw, UINT* bw);  /* Write data to the file */
-FRESULT f_lseek (FIL* fp, FSIZE_t ofs);               /* Move file pointer of the file object */
-FRESULT f_truncate (FIL* fp);                   /* Truncate the file */
 FRESULT f_sync (FIL* fp);                     /* Flush cached data of the writing file */
+FRESULT f_truncate (FIL* fp);                   /* Truncate the file */
+FRESULT f_close (FIL* fp);                      /* Close an open file object */
+
+FRESULT f_chdir (const char* path);                /* Change current directory */
+FRESULT f_getcwd (char* buff, UINT len);             /* Get current directory */
 FRESULT f_opendir (DIR* dp, const char* path);           /* Open a directory */
-FRESULT f_closedir (DIR* dp);                   /* Close an open directory */
 FRESULT f_readdir (DIR* dp, FILINFO* fno);              /* Read a directory item */
 FRESULT f_findfirst (DIR* dp, FILINFO* fno, const char* path, const char* pattern); /* Find first file */
 FRESULT f_findnext (DIR* dp, FILINFO* fno);             /* Find next file */
+FRESULT f_closedir (DIR* dp);                   /* Close an open directory */
+
 FRESULT f_mkdir (const char* path);                /* Create a sub directory */
 FRESULT f_unlink (const char* path);               /* Delete an existing file or directory */
 FRESULT f_rename (const char* path_old, const char* path_new);  /* Rename/Move a file or directory */
-FRESULT f_stat (const char* path, FILINFO* fno);         /* Get file status */
 FRESULT f_chmod (const char* path, BYTE attr, BYTE mask);      /* Change attribute of a file/dir */
 FRESULT f_utime (const char* path, const FILINFO* fno);      /* Change timestamp of a file/dir */
-FRESULT f_chdir (const char* path);                /* Change current directory */
-FRESULT f_chdrive (const char* path);                /* Change current drive */
-FRESULT f_getcwd (char* buff, UINT len);             /* Get current directory */
-FRESULT f_getfree (const char* path, DWORD* nclst, FATFS** fatfs); /* Get number of free clusters on the drive */
-FRESULT f_getlabel (const char* path, char* label, DWORD* vsn); /* Get volume label */
-FRESULT f_setlabel (const char* label);              /* Set volume label */
-FRESULT f_forward (FIL* fp, UINT(*func)(const BYTE*,UINT), UINT btf, UINT* bf); /* Forward data to the stream */
+
 FRESULT f_expand (FIL* fp, FSIZE_t szf, BYTE opt);          /* Allocate a contiguous block to the file */
-FRESULT f_mount (FATFS* fs, const char* path, BYTE opt);     /* Mount/Unmount a logical drive */
-FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len); /* Create a FAT volume */
-FRESULT f_fdisk (BYTE pdrv, const DWORD* szt, void* work);      /* Divide a physical drive into some partitions */
+FRESULT f_forward (FIL* fp, UINT(*func)(const BYTE*,UINT), UINT btf, UINT* bf); /* Forward data to the stream */
+
 int f_putc (char c, FIL* fp);                    /* Put a character to the file */
 int f_puts (const char* str, FIL* cp);               /* Put a string to the file */
 int f_printf (FIL* fp, const char* str, ...);            /* Put a formatted string to the file */
