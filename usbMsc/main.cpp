@@ -137,10 +137,10 @@ private:
 
   int loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf);
 
-  void saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen);
-  void saveNumFile (const char* name, int num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
+  void saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t* buf, int bufLen);
+  void saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
 
-  void createNumFile (const char* name, int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
+  void createNumFile (const char* name, uint32_t num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void appendFile (int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void closeFile();
 
@@ -188,7 +188,7 @@ void cApp::init() {
 //{{{
 void cApp::run() {
 
-  int fileLen = 0;
+  uint32_t fileLen = 0;
   bool mounted = !f_mount (&gFatFs, "", 1);
   if (mounted) {
     //{{{  mounted, load splash piccy
@@ -211,8 +211,8 @@ void cApp::run() {
   mCam->init();
   mCam->start (false, kCamBuf);
 
-  int fileNum = 1;
-  int frameNum = 0;
+  uint32_t fileNum = 1;
+  uint32_t frameNum = 0;
   bool lastButton = false;
   while (true) {
     pollTouch();
@@ -226,14 +226,14 @@ void cApp::run() {
       mLcd->start();
     else {
       frameNum++;
-      int frameLen;
+      uint32_t frameLen;
       auto frame = mCam->getNextFrame (frameLen);
       if (!frame) // no frame, clear
         mLcd->start();
       else if (!mCam->getMode())
         mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
       else if (frameLen < 960000) {
-        int headerLen;
+        uint32_t headerLen;
         if (mounted && kWriteJpg && frameNum < 100) {
           //{{{  save JFIF jpeg
           auto header = mCam->getHeader (true, 6, headerLen);
@@ -508,7 +508,7 @@ int cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
 //}}}
 
 //{{{
-void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen) {
+void cApp::saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t* buf, int bufLen) {
 
   char fileName[40];
   sprintf (fileName, "%s%03d.%s", name, num, ext);
@@ -525,7 +525,7 @@ void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* buf
    }
 //}}}
 //{{{
-void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
+void cApp::saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
   char fileName[40];
   sprintf (fileName, "%s%03d.%s", name, num, ext);
@@ -548,7 +548,7 @@ void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* hea
 //}}}
 
 //{{{
-void cApp::createNumFile (const char* name, int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
+void cApp::createNumFile (const char* name, uint32_t num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
   char fileName[40];
   sprintf (fileName, "%s%d.mjpg", name, num);
@@ -643,7 +643,7 @@ void serverThread (void* arg) {
                 else if (!strncmp (buf, "GET /cam.jpg", 12)) {
                   //{{{  cam.jpg
                   if (gApp->mCam) {
-                    int frameLen;
+                    uint32_t frameLen;
                     auto frame = gApp->mCam->getLastFrame (frameLen);
                     if (frame) {
                       // send http response header
@@ -653,7 +653,7 @@ void serverThread (void* arg) {
                         netconn_write (request, kBmpResponseHeader, sizeof(kBmpResponseHeader)-1, NETCONN_NOCOPY);
 
                       // send imageFile format header
-                      int headerLen;
+                      uint32_t headerLen;
                       auto header = gApp->mCam->getHeader (true, 6, headerLen);
                       netconn_write (request, header, headerLen, NETCONN_NOCOPY);
 

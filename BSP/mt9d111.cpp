@@ -131,7 +131,7 @@ void cCamera::init() {
 //}}}
 
 //{{{
-uint8_t* cCamera::getHeader (bool full, int qscale, int& headerLen) {
+uint8_t* cCamera::getHeader (bool full, int qscale, uint32_t& headerLen) {
 
   if (mJpegMode) {
     // set jpegHeader
@@ -211,14 +211,14 @@ uint8_t* cCamera::getHeader (bool full, int qscale, int& headerLen) {
   }
 //}}}
 //{{{
-uint8_t* cCamera::getLastFrame (int& frameLen) {
+uint8_t* cCamera::getLastFrame (uint32_t& frameLen) {
 
   frameLen = mFrameLen;
   return mFrame;
   }
 //}}}
 //{{{
-uint8_t* cCamera::getNextFrame (int& frameLen) {
+uint8_t* cCamera::getNextFrame (uint32_t& frameLen) {
 
   xSemaphoreTake (mFrameSem, 500);
 
@@ -368,7 +368,23 @@ void cCamera::dcmiIrqHandler() {
       mFrame = nullptr;
       mFrameLen = 0;
       }
-    else if ((frameLen < mFixedFrameLen) && mJpegMode) {
+    else if (frameLen == mRgb565FrameLen) {
+      //{{{  good rgb565 frame
+      if (mFrameStart + frameLen > mBufEnd)
+        // dodgy copy to deliver contiguous buffer, should manage buffer better instead
+        memcpy (mBufEnd, mBufStart, mFrameStart + frameLen - mBufEnd);
+
+      mFrame = mFrameStart;
+      mFrameLen = mRgb565FrameLen;
+
+      portBASE_TYPE taskWoken = pdFALSE;
+      if (xSemaphoreGiveFromISR (mFrameSem, &taskWoken) == pdTRUE)
+        portEND_SWITCHING_ISR (taskWoken);
+
+      //cLcd::mLcd->debug (LCD_COLOR_GREEN, "r%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrame, mFrameLen);
+      }
+      //}}}
+    else if ((frameLen < mRgb565FrameLen) && mJpegMode) {
       //{{{  jpegStatus bits
       // b:0 = 1  transfer done
       // b:1 = 1  output fifo overflow
@@ -417,24 +433,8 @@ void cCamera::dcmiIrqHandler() {
         }
         //}}}
       }
-    else if (frameLen == mFixedFrameLen) {
-      //{{{  good rgb565 frame
-      if (mFrameStart + frameLen > mBufEnd)
-        // dodgy copy to deliver contiguous buffer, should manage buffer better instead
-        memcpy (mBufEnd, mBufStart, mFrameStart + frameLen - mBufEnd);
-
-      mFrame = mFrameStart;
-      mFrameLen = mFixedFrameLen;
-
-      portBASE_TYPE taskWoken = pdFALSE;
-      if (xSemaphoreGiveFromISR (mFrameSem, &taskWoken) == pdTRUE)
-        portEND_SWITCHING_ISR (taskWoken);
-
-      //cLcd::mLcd->debug (LCD_COLOR_GREEN, "r%2d:%6d:%8x %d", mXferCount,dmaBytes,mFrame, mFrameLen);
-      }
-      //}}}
     else {
-      //{{{  bad frame
+      //{{{  bad frame len
       mFrame = nullptr;
       mFrameLen = 0;
 
@@ -793,7 +793,8 @@ void cCamera::dcmiStart (uint8_t* buf) {
 
   mBufStart = buf;
 
-  uint32_t dmaLen = mJpegMode ? 0x00100000 : getWidth()*getHeight()*2;
+  mRgb565FrameLen = getWidth() * getHeight() * 2;
+  uint32_t dmaLen = mJpegMode ? 0x00100000 : mRgb565FrameLen;
   mBufEnd = buf + (4 * dmaLen);
 
   // calc num of xfers with xferSize <= 64k
@@ -808,7 +809,6 @@ void cCamera::dcmiStart (uint8_t* buf) {
     }
   mFrame = nullptr;
   mFrameLen = 0;
-  mFixedFrameLen = getWidth() * getHeight() * 2;
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%x", mXferMaxCount, mXferSize, dmaLen);
 
   // enable dma doubleBufferMode,  config src, dst addresses, length

@@ -15,9 +15,9 @@ public:
   int getFps() { return 1000/mTookTicks; }
   int getFocus() { return mFocus; }
 
-  uint8_t* getHeader (bool full, int qscale, int& headerLen);
-  uint8_t* getLastFrame (int& frameLen);
-  uint8_t* getNextFrame (int& frameLen);
+  uint8_t* getHeader (bool full, int qscale, uint32_t& headerLen);
+  uint8_t* getLastFrame (uint32_t& frameLen);
+  uint8_t* getNextFrame (uint32_t& frameLen);
 
   void setFocus (int value);
 
@@ -73,15 +73,17 @@ private:
   __IO uint32_t mXferSize;     // DMA transfer size
   uint32_t mXferMaxCount;      // DMA transfer number
 
+  uint32_t mRgb565FrameLen = 0;
+
   uint8_t* mBufStart = nullptr;
   uint8_t* mBufEnd = nullptr;
 
   uint8_t* mFrameStart = nullptr;
   uint8_t* mFrameCur = nullptr;
-  uint8_t* mFrame = nullptr;
 
-  int mFrameLen = 0;
-  int mFixedFrameLen = 0;
+  uint8_t* mFrame = nullptr;
+  uint32_t mFrameLen = 0;
+
   uint8_t mJpegStatus = 0;
   //}}}
   };
