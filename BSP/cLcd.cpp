@@ -303,7 +303,14 @@ void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool unit
     int xcopy = (getWidth() > srcXsize) ? srcXsize : getWidth();
     int xpad = (getWidth() > srcXsize) ? (getWidth() - srcXsize) / 2 : 0;
 
-    src += ((srcXsize-getWidth())/2) + (((srcYsize - getHeight()) / 2) * srcXsize);
+    if (srcXsize > getWidth())
+      src += (srcXsize-getWidth()) / 2;
+
+    if (srcYsize >= getHeight())
+      src += ((srcYsize - getHeight()) / 2) * srcXsize;
+    else
+      src += ((getHeight() - srcYsize) / 2) * srcXsize;
+
     for (uint16_t y = 0; y < getHeight(); y++) {
       memset (dst, 0, xpad*2);
       dst += xpad;
