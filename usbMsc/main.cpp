@@ -225,7 +225,6 @@ void cApp::run() {
     if (!mCam)
       mLcd->start();
     else {
-      frameNum++;
       uint32_t frameLen;
       auto frame = mCam->getNextFrame (frameLen);
       if (!frame) // no frame, clear
@@ -241,8 +240,9 @@ void cApp::run() {
           mLcd->start();
           }
           //}}}
-        else if (mounted && kWriteMjpg && frameNum == 1) {
+        else if (mounted && kWriteMjpg && (frameNum == 0)) {
           //{{{  save mjpeg first frame
+          frameNum++;
           auto header = mCam->getHeader (true, 6, headerLen);
           createNumFile ("save", fileNum, header, headerLen, frame, frameLen);
           mLcd->start();
@@ -250,6 +250,7 @@ void cApp::run() {
           //}}}
         else if (mounted && kWriteMjpg && frameNum < 500) {
           //{{{  add mjpeg frame
+          frameNum++;
           auto header = mCam->getHeader (false, 6, headerLen);
           appendFile (frameNum, header, headerLen, frame, frameLen);
           mLcd->start();
@@ -257,13 +258,16 @@ void cApp::run() {
           //}}}
         else if (mounted && kWriteMjpg && frameNum == 500) {
           //{{{  close mjpeg
+          frameNum++;
           closeFile();
           mLcd->start();
           }
           //}}}
         else {
           //{{{  jpegDecode
-          auto header = mCam->getHeader (true, 6, headerLen);
+          frameNum++;
+
+          auto header = mCam->getHeader (frameNum == 1, 6, headerLen);
           jpeg_mem_src (&mCinfo, header, headerLen);
           jpeg_read_header (&mCinfo, TRUE);
 
