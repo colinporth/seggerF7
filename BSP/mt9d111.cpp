@@ -513,9 +513,9 @@ void cCamera::mt9d111Init() {
 
   // page 0
 #ifdef Capture800x600
-  write (0x05, 0x01e4); // capture B HBLANK
+  write (0x05, 0x03a8); // capture B HBLANK
   write (0x06, 0x000B); // capture B VBLANK
-  write (0x07, 0x01a2); // preview A HBLANK
+  write (0x07, 0x0285); // preview A HBLANK
   write (0x08, 0x000B); // preview A VBLANK
   write (0x20, 0x8300); // capture B Read Mode
   write (0x21, 0x8400); // preview A Read Mode
@@ -528,8 +528,8 @@ void cCamera::mt9d111Init() {
   write (0x21, 0x8400); // preview A Read Mode
 #endif
 
-  // PLL M=16, N=1, P=1    (24mhz / (N+1)) * M / 2 * (P+1) = 48mhz
-  write (0x66, 0x1001); // PLLControl1 - M:N
+  // PLL M=18, N=1, P=1    (24mhz / (N+1)) * M / 2 * (P+1) = 54mhz
+  write (0x66, 0x1201); // PLLControl1 - M:N
   write (0x67, 0x0501); // PLLControl2 - 0x05:P
   write (0x65, 0xA000); // Clock(R/W)  - pllOn
   write (0x65, 0x2000); // Clock(R/W)  - usePll
@@ -552,7 +552,7 @@ void cCamera::mt9d111Init() {
   write1 (0x2711, 0x003C); // Column Start A
   write1 (0x2713, 0x04b0); // Row Height A
   write1 (0x2715, 0x0640); // Column Width A
-  write1 (0x2717, 0x0257); // Extra Delay A
+  write1 (0x2717, 0x0251); // Extra Delay A
   write1 (0x2719, 0x0011); // Row Speed A
   write1 (0x2727, 0);      // Crop_X0 A
   write1 (0x2729, 800);    // Crop_X1 A
@@ -567,7 +567,7 @@ void cCamera::mt9d111Init() {
   write1 (0x271F, 0x04b0); // Row Height B
   write1 (0x2721, 0x0640); // Column Width B
 
-  write1 (0x2723, 0x00fc); // Extra Delay B
+  write1 (0x2723, 0x01d0); // Extra Delay B
   write1 (0x2725, 0x0011); // Row Speed B
 
   write1 (0x2735, 0);      // Crop_X0 B
@@ -585,16 +585,16 @@ void cCamera::mt9d111Init() {
   write1 (0x2774, 0xE0E1); // FIFO_Conf1 B
   write1 (0xA776, 0xE1);   // FIFO_Conf2 B
 
-  write1 (0x220B, 0x0000); // Max R12 B (Shutter Delay)
-  write1 (0x2228, 0x0261); // RowTime (msclk per)/4
+  write1 (0x220B, 0x01a9); // Max R12 B (Shutter Delay)
+  write1 (0x2228, 0x02d2); // RowTime (msclk per)/4
 
-  write1 (0x222F, 0x0051); // R9 Step
-  write1 (0xA408, 0x0012); // search_f1_50
-  write1 (0xA409, 0x0014); // search_f2_50
-  write1 (0xA40A, 0x000f); // search_f1_60
-  write1 (0xA40B, 0x0011); // search_f2_60
-  write1 (0x2411, 0x0051); // R9_Step_60
-  write1 (0x2413, 0x0061); // R9_Step_50
+  write1 (0x222F, 0x004d); // R9 Step
+  write1 (0xA408, 0x0011); // search_f1_50
+  write1 (0xA409, 0x0013); // search_f2_50
+  write1 (0xA40A, 0x000e); // search_f1_60
+  write1 (0xA40B, 0x0010); // search_f2_60
+  write1 (0x2411, 0x004d); // R9_Step_60
+  write1 (0x2413, 0x005c); // R9_Step_50
   //}}}
 #else
   //{{{  register wizard
