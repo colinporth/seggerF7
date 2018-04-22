@@ -135,7 +135,7 @@ void cCamera::init (uint8_t* bufStart, uint8_t* bufEnd) {
     // select sequencer preview
     preview();
 
-    // start dma,dcmi
+    // start dma, dcmi
     start();
     }
   else
@@ -321,27 +321,6 @@ void cCamera::dmaIrqHandler() {
 
   uint32_t isr = mDmaBaseRegisters->ISR;
 
-  if (isr & (DMA_FLAG_TCIF0_4 << mStreamIndex)) {
-    // transferComplete Interrupt, doubleBufferMode handling
-    if (DMA2_Stream1->CR & DMA_IT_TC) {
-      // clear transferComplete interrupt flag
-      mDmaBaseRegisters->IFCR = DMA_FLAG_TCIF0_4 << mStreamIndex;
-
-      // set up address for next double buffered dma chunk
-      mXferCount++;
-      auto buf = mBufStart + ((mXferCount+1) * (4 * mXferSize));
-      if (buf >= mBufEnd)
-        cLcd::mLcd->debug (LCD_COLOR_RED, "dma problem");
-
-      if (mXferCount & 1)
-        DMA2_Stream1->M0AR = (uint32_t)buf;
-      else
-        DMA2_Stream1->M1AR = (uint32_t)buf;
-
-      mBufCur += 4 * mXferSize;
-      }
-    }
-
   //{{{  fifoError Interrupt
   if (isr & (DMA_FLAG_FEIF0_4 << mStreamIndex))
     if (DMA2_Stream1->FCR & DMA_IT_FE) {
@@ -366,6 +345,28 @@ void cCamera::dmaIrqHandler() {
       cLcd::mLcd->debug (LCD_COLOR_RED, "dmaDirectModeError");
       }
   //}}}
+
+  if (isr & (DMA_FLAG_TCIF0_4 << mStreamIndex)) {
+    // transferComplete Interrupt, doubleBufferMode handling
+    if (DMA2_Stream1->CR & DMA_IT_TC) {
+      // clear transferComplete interrupt flag
+      mDmaBaseRegisters->IFCR = DMA_FLAG_TCIF0_4 << mStreamIndex;
+
+      // set up address for next doubleBuffered dma chunk
+      mXferCount++;
+      auto buf = mBufStart + ((mXferCount+1) * (4 * mXferSize));
+      if (buf >= mBufEnd)
+        cLcd::mLcd->debug (LCD_COLOR_RED, "dma problem");
+
+      if (mXferCount & 1)
+        DMA2_Stream1->M0AR = (uint32_t)buf;
+      else
+        DMA2_Stream1->M1AR = (uint32_t)buf;
+
+      mBufCur += 4 * mXferSize;
+      }
+    }
+
   }
 //}}}
 //{{{
@@ -401,10 +402,10 @@ void cCamera::dcmiIrqHandler() {
       }
       //}}}
     else if (mJpegMode && (frameLen < mRgb565FrameLen)) {
-      // get jpegStatus from last byte
+      // get last byte jpegStatus
       mJpegStatus = mBufCur[dmaLen-1];
       if ((mJpegStatus & 0x0f) == 0x01) {
-        // get jpegLen from last-4 to last-1 bytes
+        // get last-1,2,3 bytes jpegLen
         uint32_t jpegLen = (mBufCur[dmaLen-2] << 16) + (mBufCur[dmaLen-3] << 8) + mBufCur[dmaLen-4];
         if (jpegLen > frameLen) {
           //{{{  bad jpegLen > frameLen
@@ -554,6 +555,7 @@ void cCamera::write (uint8_t reg, uint16_t value) {
 //}}}
 //{{{
 void cCamera::write1 (uint16_t reg, uint16_t value) {
+
   write (0xc6, reg);
   write (0xc8, value);
   }

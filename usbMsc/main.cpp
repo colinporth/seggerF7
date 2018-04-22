@@ -286,8 +286,9 @@ void cApp::run() {
       mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
-    mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%s:%d", osGetCPUUsage(), xPortGetFreeHeapSize(),
-      mCam->getFps(), frameLen, mCam->getStatus(), mCam->getJpegMode() ? "j":"p", mCam->getDmaCount());
+    mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%d",
+                                          osGetCPUUsage(), xPortGetFreeHeapSize(), mCam->getFps(), 
+                                          frameLen, mCam->getStatus(), mCam->getDmaCount());
     mLcd->drawDebug();
     mLcd->present();
 

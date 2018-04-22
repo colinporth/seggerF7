@@ -2602,21 +2602,21 @@ FRESULT f_mount (FATFS* fs, const char* path, BYTE opt) {
     return FR_INVALID_DRIVE;
 
   // Pointer to fs object
-  FATFS* cfs = FatFs[vol];  
+  FATFS* cfs = FatFs[vol];
   if (cfs) {
     clear_lock(cfs);
-  #if _FS_REENTRANT    
+  #if _FS_REENTRANT
     // Discard sync object of the current volume
     if (!ff_del_syncobj (cfs->sobj))
       return FR_INT_ERR;
   #endif
     // Clear old fs object
-    cfs->fs_type = 0;       
+    cfs->fs_type = 0;
     }
 
   if (fs) {
     // Clear new fs object
-    fs->fs_type = 0;  
+    fs->fs_type = 0;
   #if _FS_REENTRANT
     // Create sync object for the new volume
     if (!ff_cre_syncobj ((BYTE)vol, &fs->sobj))
@@ -3050,7 +3050,7 @@ FRESULT f_read (FIL* fp, void* buff, UINT btr, UINT* br) {
         //{{{  Load data sector if not in cache
         if (fp->flag & FA_DIRTY) {
           /* Write-back dirty sector cache */
-          if (diskWrite(fs->drv, fp->buf, fp->sect, 1) != RES_OK)
+          if (diskWrite (fs->drv, fp->buf, fp->sect, 1) != RES_OK)
             ABORT(fs, FR_DISK_ERR);
           fp->flag &= (BYTE)~FA_DIRTY;
           }
@@ -3178,7 +3178,7 @@ FRESULT f_sync (FIL* fp) {
   if (result == FR_OK) {
     if (fp->flag & FA_MODIFIED) { /* Is there any change to the file? */
       if (fp->flag & FA_DIRTY) {  /* Write-back cached data if needed */
-        if (diskWrite(fs->drv, fp->buf, fp->sect, 1) != RES_OK) LEAVE_FF(fs, FR_DISK_ERR);
+        if (diskWrite (fs->drv, fp->buf, fp->sect, 1) != RES_OK) LEAVE_FF(fs, FR_DISK_ERR);
         fp->flag &= (BYTE)~FA_DIRTY;
       }
       /* Update the directory entry */
@@ -4292,9 +4292,9 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     return FR_NOT_READY;
   if (stat & STA_PROTECT)
     return FR_WRITE_PROTECTED;
-  if (diskIoctl(pdrv, GET_BLOCK_SIZE, &sz_blk) != RES_OK || !sz_blk || sz_blk > 32768 || (sz_blk & (sz_blk - 1))) sz_blk = 1;  /* Erase block to align data area */
+  if (diskIoctl (pdrv, GET_BLOCK_SIZE, &sz_blk) != RES_OK || !sz_blk || sz_blk > 32768 || (sz_blk & (sz_blk - 1))) sz_blk = 1;  /* Erase block to align data area */
 #if _MAX_SS != _MIN_SS    /* Get sector size of the medium if variable sector size cfg. */
-  if (diskIoctl(pdrv, GET_SECTOR_SIZE, &ss) != RES_OK)
+  if (diskIoctl (pdrv, GET_SECTOR_SIZE, &ss) != RES_OK)
     return FR_DISK_ERR;
   if (ss > _MAX_SS || ss < _MIN_SS || (ss & (ss - 1)))
     return FR_DISK_ERR;
@@ -4315,7 +4315,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
   /* Determine where the volume to be located (b_vol, sz_vol) */
   if (_MULTI_PARTITION && part != 0) {
     /* Get partition information from partition table in the MBR */
-    if (diskRead(pdrv, buf, 0, 1) != RES_OK)
+    if (diskRead (pdrv, buf, 0, 1) != RES_OK)
       return FR_DISK_ERR; /* Load MBR */
     if (ld_word(buf + BS_55AA) != 0xAA55)
       return FR_MKFS_ABORTED; /* Check if MBR is valid */
@@ -4430,7 +4430,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
       i += 2; szb_case += 2;
       if (!si || i == szb_buf) {    /* Write buffered data when buffer full or end of process */
         n = (i + ss - 1) / ss;
-        if (diskWrite(pdrv, buf, sect, n) != RES_OK) return FR_DISK_ERR;
+        if (diskWrite (pdrv, buf, sect, n) != RES_OK) return FR_DISK_ERR;
         sect += n; i = 0;
         }
       } while (si);
@@ -4445,7 +4445,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
       for (i = 0; nb >= 8 && i < szb_buf; buf[i++] = 0xFF, nb -= 8) ;
       for (b = 1; nb && i < szb_buf; buf[i] |= b, b <<= 1, nb--) ;
       n = (nsect > sz_buf) ? sz_buf : nsect;    /* Write the buffered data */
-      if (diskWrite(pdrv, buf, sect, n) != RES_OK)
+      if (diskWrite (pdrv, buf, sect, n) != RES_OK)
         return FR_DISK_ERR;
       sect += n;
       nsect -= n;
@@ -4475,7 +4475,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
           nb = tbl[j++];  /* Next chain */
         } while (nb && i < szb_buf);
       n = (nsect > sz_buf) ? sz_buf : nsect;  /* Write the buffered data */
-      if (diskWrite(pdrv, buf, sect, n) != RES_OK)
+      if (diskWrite (pdrv, buf, sect, n) != RES_OK)
         return FR_DISK_ERR;
       sect += n; nsect -= n;
       } while (nsect);
@@ -4697,7 +4697,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     //}}}
     //{{{  Create FSINFO record if needed
     if (fmt == FS_FAT32) {
-      diskWrite(pdrv, buf, b_vol + 6, 1);    /* Write backup VBR (VBR + 6) */
+      diskWrite (pdrv, buf, b_vol + 6, 1);    /* Write backup VBR (VBR + 6) */
 
       memset (buf, 0, ss);
       st_dword (buf + FSI_LeadSig, 0x41615252);
@@ -4737,7 +4737,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     nsect = (fmt == FS_FAT32) ? pau : sz_dir; /* Number of root directory sectors */
     do {
       n = (nsect > sz_buf) ? sz_buf : nsect;
-      if (diskWrite(pdrv, buf, sect, (UINT)n) != RES_OK)
+      if (diskWrite (pdrv, buf, sect, (UINT)n) != RES_OK)
         return FR_DISK_ERR;
       sect += n;
       nsect -= n;
@@ -4759,7 +4759,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
   // Update partition information
   if (_MULTI_PARTITION && part != 0) {
     //{{{  create in the existing partition, Update system ID in the partition table
-    if (diskRead(pdrv, buf, 0, 1) != RES_OK)
+    if (diskRead (pdrv, buf, 0, 1) != RES_OK)
       return FR_DISK_ERR; /* Read the MBR */
     buf[MBR_Table + (part - 1) * SZ_PTE + PTE_System] = sys;    /* Set system ID */
     if (diskWrite (pdrv, buf, 0, 1) != RES_OK)
