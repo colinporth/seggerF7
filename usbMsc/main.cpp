@@ -31,9 +31,8 @@ const bool kFreeRtos = true;
 
 uint16_t* kRgb565Buf = (uint16_t*)0xc0100000;
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0200000;
-uint8_t*  kCamBufEnd =  (uint8_t*)0xc0600000; // plus a bit for wraparound
-uint8_t*  kFileBuf   =  (uint8_t*)0xc0700000;
-uint8_t*  kFileBuf1  =  (uint8_t*)0xc0600000;
+uint32_t  kCamBufLen =            0x00500000;
+uint8_t*  kSplashBuf =  (uint8_t*)0xc0700000;
 
 //{{{
 const char k404Response[] =
@@ -195,7 +194,7 @@ void cApp::run() {
     f_getlabel ("", mLabel, &mVsn);
     mLcd->debug (LCD_COLOR_WHITE, "sdCard ok - %s ", mLabel);
 
-    fileLen = loadFile ("splash.jpg", kFileBuf1, kRgb565Buf);
+    fileLen = loadFile ("splash.jpg", kSplashBuf, kRgb565Buf);
 
     mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
@@ -208,8 +207,7 @@ void cApp::run() {
     mLcd->debug (LCD_COLOR_RED, "sdCard not mounted");
 
   mCam = new cCamera();
-  mCam->init();
-  mCam->start (false, kCamBuf);
+  mCam->init (kCamBuf, kCamBufLen);
 
   uint32_t fileNum = 1;
   uint32_t frameNum = 0;
@@ -301,7 +299,7 @@ void cApp::run() {
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
     if (mCam && !button && (button != lastButton)) {
-      mCam->start (!mCam->getMode(), kCamBuf);
+      mCam->getMode() ? mCam->preview() : mCam->jpeg();
       fileNum++;
       frameNum = 0;
       }

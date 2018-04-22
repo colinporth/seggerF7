@@ -93,7 +93,7 @@ extern "C" {
 
 // public
 //{{{
-void cCamera::init() {
+void cCamera::init (uint8_t* buf, uint32_t bufLen) {
 
   gCamera = this;
   vSemaphoreCreateBinary (mFrameSem);
@@ -127,6 +127,17 @@ void cCamera::init() {
   // NVIC configuration for DMA2 transfer complete interrupt
   HAL_NVIC_SetPriority (DMA2_Stream1_IRQn, 0x08, 0);
   HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
+
+  mBufStart = buf;
+  mBufEnd = buf + bufLen;
+
+  preview();
+
+  // start dma,dcmi with new dma
+  dcmiStart();
+
+  mFrame = nullptr;
+  mFrameLen = 0;
   }
 //}}}
 
@@ -254,22 +265,46 @@ void cCamera::setFocus (int value) {
 //}}}
 
 //{{{
-void cCamera::start (bool jpegMode, uint8_t* buffer) {
+void cCamera::preview() {
 
-  // disable dcmi
-  DCMI->CR &= ~DCMI_CR_ENABLE;
-  // disable dma
-  DMA2_Stream1->CR &= ~DMA_SxCR_EN;
-
-  // change mode
   mJpegMode = false;
-  jpegMode ? jpeg() : preview();
-
-  // start dma,dcmi with new dma
-  dcmiStart (buffer);
 
   mFrame = nullptr;
   mFrameLen = 0;
+  mWidth = 800;
+  mHeight = 600;
+  mRgb565FrameLen = getWidth() * getHeight() * 2;
+
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview %dx%d", mWidth, mHeight);
+
+  // switch to preview
+  write (0xf0, 1);
+  write1 (0xA120, 0x00);   // Sequencer.params.mode - none
+  write1 (0xA103, 0x01);   // Sequencer transition to preview A
+  }
+//}}}
+//{{{
+void cCamera::jpeg() {
+
+  mJpegMode = true;
+
+  mFrame = nullptr;
+  mFrameLen = 0;
+
+#ifdef Capture800x600
+  mWidth = 800;
+  mHeight = 600;
+#else
+  mWidth = 1600;
+  mWidth = 1200;
+#endif
+  mRgb565FrameLen = getWidth() * getHeight() * 2;
+
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
+
+  write (0xf0, 1);
+  write1 (0xA120, 0x02);   // Sequencer.params.mode - capture video
+  write1 (0xA103, 0x02);   // Sequencer transition to capture B
   }
 //}}}
 
@@ -798,26 +833,16 @@ void cCamera::mt9d111Init() {
 //}}}
 
 //{{{
-void cCamera::dcmiStart (uint8_t* buf) {
+void cCamera::dcmiStart() {
 
-  mBufStart = buf;
-  mRgb565FrameLen = getWidth() * getHeight() * 2;
-  uint32_t dmaLen = mJpegMode ? 0x00100000 : mRgb565FrameLen;
-  mBufEnd = buf + (4 * dmaLen);
   mBufCur = mBufStart;
   mLastFrameStart = mBufStart;
 
-  // calc num of xfers with xferSize <= 64k
-  mXferCount = 0;
-  mXferMaxCount = 1;
-  mXferSize = dmaLen;
-  while (mXferSize > 0xFFFF) {
-    mXferSize = mXferSize / 2;
-    mXferMaxCount = mXferMaxCount * 2;
-    }
   mFrame = nullptr;
   mFrameLen = 0;
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "dcmiStart %d:%d:%x", mXferMaxCount, mXferSize, dmaLen);
+
+  mXferSize = 0xFFFF;  // max dmaLen in 4byte words
+  mXferCount = 0;
 
   // enable dma doubleBufferMode,  config src, dst addresses, length
   DMA2_Stream1->PAR = (uint32_t)&(DCMI->DR);
@@ -1069,44 +1094,5 @@ int cCamera::sosMarker (uint8_t* ptr) {
   *ptr++ = 0x00;// Ah | Al: successive approximation bit position
 
   return length+2;
-  }
-//}}}
-
-//{{{
-void cCamera::preview() {
-
-  mJpegMode = false;
-  mFrame = nullptr;
-  mFrameLen = 0;
-  mWidth = 800;
-  mHeight = 600;
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "preview %dx%d", mWidth, mHeight);
-
-  // switch to preview
-  write (0xf0, 1);
-  write1 (0xA120, 0x00);   // Sequencer.params.mode - none
-  write1 (0xA103, 0x01);   // Sequencer transition to preview A
-  }
-//}}}
-//{{{
-void cCamera::jpeg() {
-
-  mJpegMode = true;
-  mFrame = nullptr;
-  mFrameLen = 0;
-
-#ifdef Capture800x600
-  mWidth = 800;
-  mHeight = 600;
-#else
-  mWidth = 1600;
-  mWidth = 1200;
-#endif
-
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "jpeg %dx%d", mWidth, mHeight);
-
-  write (0xf0, 1);
-  write1 (0xA120, 0x02);   // Sequencer.params.mode - capture video
-  write1 (0xA103, 0x02);   // Sequencer transition to capture B
   }
 //}}}

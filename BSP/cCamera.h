@@ -4,7 +4,7 @@
 
 class cCamera {
 public:
-  void init();
+  void init (uint8_t* buf, uint32_t bufLen);
 
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
@@ -21,7 +21,8 @@ public:
 
   void setFocus (int value);
 
-  void start (bool jpegMode, uint8_t* buffer);
+  void preview();
+  void jpeg();
 
   void dmaIrqHandler();
   void dcmiIrqHandler();
@@ -33,7 +34,7 @@ private:
   void write1 (uint16_t reg, uint16_t value);
   void mt9d111Init();
 
-  void dcmiStart (uint8_t* buffer);
+  void dcmiStart();
 
   int app0Marker (uint8_t* ptr);
   int quantTableMarker (uint8_t* ptr, uint8_t qscale);
@@ -41,9 +42,6 @@ private:
   int huffTableMarkerAC (uint8_t* ptr, const uint16_t* htable, int classId);
   int huffTableMarkerDC (uint8_t* ptr, const uint16_t* htable, int classId);
   int sosMarker (uint8_t* ptr);
-
-  void preview();
-  void jpeg();
 
   //{{{  vars
   uint8_t mHeader[620];
@@ -71,7 +69,6 @@ private:
 
   __IO uint32_t mXferCount;    // DMA transfer counter
   __IO uint32_t mXferSize;     // DMA transfer size
-  uint32_t mXferMaxCount;      // DMA transfer number
 
   uint32_t mRgb565FrameLen = 0;
 
