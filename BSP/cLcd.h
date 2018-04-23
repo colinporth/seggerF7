@@ -6,31 +6,27 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include "../common/cPointRect.h"
 
 #include "cmsis_os.h"
 //}}}
 //{{{  colour defines
-#define LCD_COLOR_BLUE     0x001F
-#define LCD_COLOR_GREEN    0x07D0
-#define LCD_COLOR_RED      0xF800
-#define LCD_COLOR_YELLOW   0xFFD0
-#define LCD_COLOR_MAGENTA  0xF81F
-#define LCD_COLOR_CYAN     0x07FF
+#define LCD_COLOR_BLUE       0x001F
+#define LCD_COLOR_GREEN      0x07D0
+#define LCD_COLOR_RED        0xF800
+#define LCD_COLOR_YELLOW     0xFFD0
+#define LCD_COLOR_MAGENTA    0xF81F
+#define LCD_COLOR_CYAN       0x07FF
 
-#define LCD_COLOR_WHITE    0xFFFF
-#define LCD_COLOR_GREY     0x7BDF
-#define LCD_COLOR_BLACK    0x0000
+#define LCD_COLOR_WHITE      0xFFFF
+#define LCD_COLOR_GREY       0x7BEF
+#define LCD_COLOR_LIGHT_GREY 0x9512
+#define LCD_COLOR_BLACK      0x0000
 //}}}
-  enum eTextAlign { CENTER_MODE, RIGHT_MODE, LEFT_MODE };
 
 class cLcd {
 public:
-  //{{{  Point
-  typedef struct {
-    int16_t X;
-    int16_t Y;
-    } Point, *pPoint;
-  //}}}
+  enum eTextAlign { CENTER_MODE, RIGHT_MODE, LEFT_MODE };
 
   cLcd (uint16_t displayLines);
   void init();
@@ -43,7 +39,7 @@ public:
   // flipped display
   void start();
   void start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool unity);
-  void drawInfo (uint32_t color, uint16_t column, const char* format, ... );
+  void drawInfo (uint16_t color, uint16_t column, const char* format, ... );
   void drawDebug();
   void present();
 
@@ -59,26 +55,26 @@ public:
   void SetTransparency (uint32_t layerIndex, uint8_t Transparency);
   void SetAddress (uint32_t layerIndex, uint16_t* address, uint16_t* writeAddress);
 
-  uint32_t ReadPixel (uint16_t x, uint16_t y);
-  void DrawPixel (uint32_t color, uint16_t x, uint16_t y);
-  void DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t* pbmp);
+  uint32_t readPixel (uint16_t x, uint16_t y);
+  void drawPixel (uint16_t color, uint16_t x, uint16_t y);
 
-  void clearStringLine (uint32_t color, uint32_t Line);
-  void DisplayChar (uint32_t color, uint16_t x, uint16_t y, uint8_t ascii);
-  void DisplayStringAt (uint32_t color, uint16_t x, uint16_t y, const char* text, eTextAlign mode);
-  void DisplayStringAtLine (uint32_t color, uint16_t line, const char* ptr);
-  void DisplayStringAtLineColumn (uint32_t color, uint16_t line, uint16_t column, const char* ptr);
+  void clearStringLine (uint16_t color, uint32_t line);
+  void displayChar (uint16_t color, uint16_t x, uint16_t y, uint8_t ascii);
+  void displayStringAt (uint16_t color, uint16_t x, uint16_t y, const char* str, eTextAlign textAlign);
+  void displayStringAtLine (uint16_t color, uint16_t line, const char* str);
+  void displayStringAtLineColumn (uint16_t color, uint16_t line, uint16_t column, const char* str);
 
-  void clear (uint32_t color);
-  void DrawRect (uint32_t color, uint16_t x, uint16_t y, uint16_t Width, uint16_t Height);
-  void FillRect (uint32_t color, uint16_t x, uint16_t y, uint16_t Width, uint16_t Height);
-  void DrawCircle (uint32_t color, uint16_t x, uint16_t y, uint16_t Radius);
-  void FillCircle (uint32_t color, uint16_t x, uint16_t y, uint16_t Radius);
-  void DrawPolygon (uint32_t color, pPoint Points, uint16_t PointCount);
-  void FillPolygon (uint32_t color, pPoint Points, uint16_t PointCount);
-  void DrawEllipse (uint32_t color, uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius);
-  void FillEllipse (uint32_t color, uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius);
-  void DrawLine (uint32_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+  void clear (uint16_t color);
+  void drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+  void fillRect (uint16_t color, cRect& rect);
+  void fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+  void drawCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius);
+  void fillCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius);
+  void drawPolygon (uint16_t color, cPoint* points, uint16_t pointCount);
+  void fillPolygon (uint16_t color, cPoint* points, uint16_t pPointCount);
+  void drawEllipse (uint16_t color, uint16_t xCentre, uint16_t yCentre, uint16_t xRadius, uint16_t yRadius);
+  void fillEllipse (uint16_t color, uint16_t xCentre, uint16_t yCentre, uint16_t xRadius, uint16_t yRadius);
+  void drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 
   void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t size);
   void rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t size);
@@ -98,9 +94,8 @@ private:
   void setLayer (uint32_t layerIndex);
   void layerInit (uint16_t layerIndex, uint32_t FrameBuffer);
 
-  void FillBuffer (uint32_t color, uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine);
-  void FillTriangle (uint32_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
-  void ConvertLineToARGB8888 (void* src, void* dst, uint32_t xSize, uint32_t ColorMode);
+  void fillBuffer (uint16_t color, uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine);
+  void fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
 
   static const int kMaxStrSize = 40;
   static const int kDebugMaxLines = 100;
@@ -116,7 +111,7 @@ private:
     };
   //}}}
 
-  uint32_t mCurLayer = 0;
+  uint32_t mLayer = 0;
 
   bool mFlip = false;
 

@@ -5,14 +5,14 @@ class cToggleBox : public cApp::cBox {
 public:
   //{{{
   cToggleBox (float width, float height, const char* title, bool& value, bool& changed)
-      : cBox("offset", width, height), mTitle(title), mValue(value), mChanged(changed) {
+      : cBox("toggle", width, height), mTitle(title), mValue(value), mChanged(changed) {
     mChanged = false;
     }
   //}}}
   virtual ~cToggleBox() {}
 
   //{{{
-  bool onDown (bool right, cPoint pos)  {
+  bool onDown (cPoint pos)  {
     mValue = !mValue;
     mChanged = true;
     return true;
@@ -20,8 +20,8 @@ public:
   //}}}
 
   void onDraw (cLcd* lcd) {
-    lcd->FillRect (mValue ? LCD_COLOR_GREEN : LCD_COLOR_GREY, mRect.left, mRect.top, mRect.getWidth(), mRect.getHeight());
-    lcd->DisplayStringAt (LCD_COLOR_BLACK, mRect.left, mRect.top, mTitle, LEFT_MODE);
+    lcd->fillRect (mValue ? LCD_COLOR_GREEN : LCD_COLOR_LIGHT_GREY, mRect);
+    lcd->displayStringAt (LCD_COLOR_WHITE, mRect.left, mRect.top, mTitle, cLcd::LEFT_MODE);
     }
 
 private:

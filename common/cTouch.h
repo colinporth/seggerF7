@@ -30,7 +30,7 @@ public:
         }
       else if (mHit == ePressed)
         onMove (x - mLastX, y - mLastY, z);
-      else if ((mHit == eReleased) && (z > 50)) {
+      else if ((mHit == eReleased) && (z > 30)) {
         // press
         mHitX = x;
         mHitY = y;

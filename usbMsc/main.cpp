@@ -280,14 +280,11 @@ private:
   cBox* mPressedBox = nullptr;
   std::deque <cBox*> mBoxes;
 
-  bool mMouseTracking = false;
-  bool mMouseDown = false;
-  bool mRightDown = false;
-  bool mMouseMoved = false;
+  bool mDown = false;
+  bool mMoved = false;
 
-  cPoint mProxMouse;
-  cPoint mDownMouse;
-  cPoint mLastMouse;
+  cPoint mDownPos;
+  cPoint mLastPos;
 
   bool mValue = false;
   bool mValueChanged = false;
@@ -308,11 +305,11 @@ void cApp::init() {
   mLcd = new cLcd (16);
   mLcd->init();
 
-  add (new cToggleBox (80.f, 30.f, "toggle", mValue, mValueChanged));
+  add (new cToggleBox (50.f, 50.f, "jpeg", mValue, mValueChanged), 0.f, 272.f - 50.f);
 
   // show title early
   mLcd->start();
-  mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
+  mLcd->drawInfo (LCD_COLOR_GREEN, 0, kVersion);
   mLcd->present();
 
   diskInit();
@@ -352,7 +349,6 @@ void cApp::run() {
 
   uint32_t fileNum = 1;
   uint32_t frameNum = 0;
-  bool lastButton = false;
   while (true) {
     pollTouch();
     //{{{  removed
@@ -435,13 +431,12 @@ void cApp::run() {
     for (auto box : mBoxes) box->onDraw (mLcd);
     mLcd->present();
 
-    bool button = BSP_PB_GetState (BUTTON_KEY);
-    if (mCam && !button && (button != lastButton)) {
+    if (mValueChanged) {
+      mValueChanged = false;
       mCam->getCaptureMode() ? mCam->preview() : mCam->capture();
       fileNum++;
       frameNum = 0;
       }
-    lastButton = button;
     }
   }
 //}}}
@@ -505,14 +500,10 @@ void cApp::removeBox (cBox* box) {
 //{{{
 void cApp::onProx (int16_t x, int16_t y, uint8_t z) {
 
-  //if (x || y) {
-    //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
-    // hidSendReport (&gUsbDevice, HID_Buf);
-    //mLcd->debug (LCD_COLOR_MAGENTA, "onProx %d %d %d", x, y, z);
-    //}
+  //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
+  // hidSendReport (&gUsbDevice, HID_Buf);
 
   cPoint pos (x,y);
-
   bool change = false;
   auto lastProxBox = mProxBox;
 
@@ -530,7 +521,8 @@ void cApp::onProx (int16_t x, int16_t y, uint8_t z) {
       }
     }
 
-  //return change || (mProxBox != lastProxBox);
+  if (change || (mProxBox != lastProxBox)) {
+    }
   }
 //}}}
 //{{{
@@ -538,38 +530,38 @@ void cApp::onPress (int16_t x, int16_t y) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,0,0,0 };
   //hidSendReport (&gUsbDevice, HID_Buf);
-  //mLcd->debug (LCD_COLOR_GREEN, "onPress %d %d", x, y);
 
-  mMouseDown = true;
-  mMouseMoved = false;
+  mDown = true;
+  mMoved = false;
 
   cPoint pos (x,y);
-  mPressedBox = mProxBox;
-  mPressedBox->onDown (pos - mPressedBox->getTL());
+
+  mPressedBox = nullptr;
+
+  // search for pressed in reverse draw order
+  for (auto boxIt = mBoxes.rbegin(); boxIt != mBoxes.rend(); ++boxIt) {
+    bool change = false;
+    if ((*boxIt)->getEnable() && (*boxIt)->pick (pos, change)) {
+      mPressedBox = *boxIt;
+      mPressedBox->onDown (pos - mPressedBox->getTL());
+      break;
+      }
+    }
   }
 //}}}
 //{{{
 void cApp::onMove (int16_t x, int16_t y, uint8_t z) {
 
-  //if (x || y) {
-    //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
-    //hidSendReport (&gUsbDevice, HID_Buf);
-    //int focus = mCam->getFocus() + x;
-    //if (focus < 0)
-    //  focus = 0;
-    //else if (focus > 254)
-    //  focus = 254;
-    //mCam->setFocus (focus);
-    //mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d %d", x, y, z, focus);
-    //}
+  //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
+  //hidSendReport (&gUsbDevice, HID_Buf);
 
   cPoint pos (x,y);
-  mProxMouse = pos;
 
-  if (mMouseDown) {
-    mMouseMoved = true;
-    mPressedBox->onMove (pos - mPressedBox->getTL(), mProxMouse - mLastMouse);
-    mLastMouse = mProxMouse;
+  if (mDown) {
+    mMoved = true;
+    if (mPressedBox)
+      mPressedBox->onMove (pos - mPressedBox->getTL(), pos - mLastPos);
+    mLastPos = pos;
     }
   }
 //}}}
@@ -583,15 +575,14 @@ void cApp::onRelease (int16_t x, int16_t y) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
   //hidSendReport (&gUsbDevice, HID_Buf);
-  //mLcd->debug (LCD_COLOR_GREEN, "onRelease %d %d", x, y);
 
   cPoint pos (x,y);
-  mLastMouse = pos;
+  mLastPos = pos;
 
-  bool changed = mPressedBox && mPressedBox->onUp (mMouseMoved, pos - mPressedBox->getTL());
+  bool changed = mPressedBox && mPressedBox->onUp (mMoved, pos - mPressedBox->getTL());
   mPressedBox = nullptr;
 
-  mMouseDown = false;
+  mDown = false;
   }
 //}}}
 //{{{
@@ -610,7 +601,6 @@ void cApp::onKey (uint8_t ch, bool release) {
 //}}}
 
 // private
-
 //{{{
 void cApp::readDirectory (char* path) {
 

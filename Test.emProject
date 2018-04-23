@@ -156,7 +156,6 @@
       speed="0" />
     <folder Name="main">
       <file file_name="main.cpp" />
-      <file file_name="../common/system.c" />
       <folder Name="includes">
         <file file_name="jconfig.h" />
         <file file_name="jmorecfg.h" />
@@ -170,9 +169,6 @@
     <folder Name="bsp_drivers">
       <folder Name="includes">
         <file file_name="usbd_msc.h" />
-        <file file_name="../common/system.h" />
-        <file file_name="../common/cTouch.h" />
-        <file file_name="../common/cPs2.h" />
         <file file_name="../BSP/font.h" />
         <file file_name="../BSP/ft5336.h" />
         <file file_name="../BSP/stm32746g_discovery.h" />
@@ -458,6 +454,17 @@
       <folder Name="NetIf">
         <file file_name="../LwIP/src/netif/ethernet.c" />
         <file file_name="../LwIP/system/OS/sys_arch.c" />
+      </folder>
+    </folder>
+    <folder Name="common">
+      <file file_name="../common/system.c" />
+      <folder Name="includes">
+        <file file_name="../common/cPointRect.h" />
+        <file file_name="../common/cTouch.h" />
+        <file file_name="../common/cToggleBox.h" />
+        <file file_name="../common/system.h" />
+        <file file_name="../common/usbd.h" />
+        <file file_name="../common/cPs2.h" />
       </folder>
     </folder>
   </project>

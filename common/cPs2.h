@@ -153,34 +153,34 @@ public:
 
     char str[8];
     sprintf (str, "%d", mTouchX);
-    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 0, str);
+    mLcd->displayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 0, str);
 
     sprintf (str, "%d", mTouchY);
-    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 6, str);
+    mLcd->displayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 6, str);
 
     sprintf (str, "%d", mTouchZ);
-    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 12, str);
+    mLcd->displayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 12, str);
 
     sprintf (str, "%d", mStreamCode);
-    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 18, str);
+    mLcd->displayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 18, str);
 
     sprintf (str, "%x", mStreamCodes[0]);
-    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 22, str);
+    mLcd->displayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 22, str);
 
     sprintf (str, "%x", mStreamCodes[1]);
-    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 25, str);
+    mLcd->displayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 25, str);
 
     sprintf (str, "%x", mStreamCodes[2]);
-    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 28, str);
+    mLcd->displayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 28, str);
 
     sprintf (str, "%x", mStreamCodes[3]);
-    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 31, str);
+    mLcd->displayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 31, str);
 
     sprintf (str, "%x", mStreamCodes[4]);
-    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 34, str);
+    mLcd->displayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 34, str);
 
     sprintf (str, "%x", mStreamCodes[5]);
-    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 37, str);
+    mLcd->displayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 37, str);
     }
   //}}}
   //{{{
@@ -192,7 +192,7 @@ public:
         char str[2];
         str[0] = mChars[ch % kMaxChars] & 0xFF;
         str[1] = 0;
-        mLcd->DisplayStringAtLineColumn (mChars[ch % kMaxChars] & 0x100 ? LCD_COLOR_GREEN : LCD_COLOR_YELLOW, 13, i, str);
+        mLcd->displayStringAtLineColumn (mChars[ch % kMaxChars] & 0x100 ? LCD_COLOR_GREEN : LCD_COLOR_YELLOW, 13, i, str);
         }
       ch++;
       }
@@ -206,7 +206,7 @@ public:
       if (code > 0) {
         char str[4];
         sprintf (str, "%02x", mCodes[code % kMaxCodes]);
-        mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 14, i*3, str);
+        mLcd->displayStringAtLineColumn (LCD_COLOR_YELLOW, 14, i*3, str);
         }
       code++;
       }
@@ -230,18 +230,18 @@ public:
 
         if (bit != lastBit) {
           // draw edge
-          mLcd->FillRect (bitPos == -1 ? LCD_COLOR_RED : LCD_COLOR_WHITE, i*kBitWidth, waveY, 1, bitHeight);
+          mLcd->fillRect (bitPos == -1 ? LCD_COLOR_RED : LCD_COLOR_WHITE, i*kBitWidth, waveY, 1, bitHeight);
           lastBit = bit;
           }
 
         // draw bit
-        mLcd->FillRect ((bitPos == -1) || (bitPos == 9) ? LCD_COLOR_RED : LCD_COLOR_WHITE, i*kBitWidth, waveY + (bit ? 0 : bitHeight-2), kBitWidth, 2);
+        mLcd->fillRect ((bitPos == -1) || (bitPos == 9) ? LCD_COLOR_RED : LCD_COLOR_WHITE, i*kBitWidth, waveY + (bit ? 0 : bitHeight-2), kBitWidth, 2);
         }
 
-      mLcd->FillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth/4), waveY + lineHeight, 1, clockHeight);
-      mLcd->FillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth/4), waveY + lineHeight , kBitWidth/2, 1);
-      mLcd->FillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight, 1, clockHeight);
-      mLcd->FillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight + clockHeight, kBitWidth/2, 1);
+      mLcd->fillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth/4), waveY + lineHeight, 1, clockHeight);
+      mLcd->fillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth/4), waveY + lineHeight , kBitWidth/2, 1);
+      mLcd->fillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight, 1, clockHeight);
+      mLcd->fillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight + clockHeight, kBitWidth/2, 1);
       }
     }
   //}}}
