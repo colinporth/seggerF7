@@ -231,7 +231,7 @@ public:
 protected:
   virtual void onProx (cPoint pos, uint8_t z);
   virtual void onPress (cPoint pos);
-  virtual void onMove (cPoint pos, uint8_t z);
+  virtual void onMove (cPoint pos, cPoint inc, uint8_t z);
   virtual void onScroll (cPoint pos, uint8_t z);
   virtual void onRelease (cPoint pos);
   virtual void onKey (uint8_t ch, bool release);
@@ -262,7 +262,6 @@ private:
   bool mDown = false;
   bool mMoved = false;
   cPoint mDownPos;
-  cPoint mLastPos;
 
   char mLabel[40];
   DWORD mVsn = 0;
@@ -529,7 +528,7 @@ void cApp::onPress (cPoint pos) {
   }
 //}}}
 //{{{
-void cApp::onMove (cPoint pos, uint8_t z) {
+void cApp::onMove (cPoint pos, cPoint inc, uint8_t z) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
   //hidSendReport (&gUsbDevice, HID_Buf);
@@ -537,8 +536,7 @@ void cApp::onMove (cPoint pos, uint8_t z) {
   if (mDown) {
     mMoved = true;
     if (mPressedBox)
-      mPressedBox->onMove (pos - mPressedBox->getTL(), pos - mLastPos);
-    mLastPos = pos;
+      mPressedBox->onMove (pos - mPressedBox->getTL(), inc);
     }
   }
 //}}}
@@ -552,8 +550,6 @@ void cApp::onRelease (cPoint pos) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
   //hidSendReport (&gUsbDevice, HID_Buf);
-
-  mLastPos = pos;
 
   bool changed = mPressedBox && mPressedBox->onUp (mMoved, pos - mPressedBox->getTL());
   if (mPressedBox)
