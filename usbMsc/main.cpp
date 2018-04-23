@@ -3,7 +3,6 @@
 #include <deque>
 
 #include "../common/system.h"
-#include "../common/cPointRect.h"
 #include "cLcd.h"
 #include "../common/cTouch.h"
 #include "../common/cPs2.h"

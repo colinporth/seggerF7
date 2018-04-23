@@ -515,7 +515,7 @@ void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
 void cLcd::displayStringAt (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign) {
 
   switch (textAlign) {
-    case CENTER_MODE:  {
+    case eTextCentre:  {
       uint16_t size = 0;
       auto  ptr = str;
       while (*ptr++)
@@ -526,7 +526,7 @@ void cLcd::displayStringAt (uint16_t color, cPoint pos, const char* str, eTextAl
       break;
       }
 
-    case RIGHT_MODE: {
+    case eTextRight: {
       uint16_t size = 0;
       auto ptr = str;
       while (*ptr++)
@@ -538,7 +538,7 @@ void cLcd::displayStringAt (uint16_t color, cPoint pos, const char* str, eTextAl
       break;
       }
 
-    case LEFT_MODE:
+    case eTextLeft:
       break;
     }
 
@@ -553,12 +553,12 @@ void cLcd::displayStringAt (uint16_t color, cPoint pos, const char* str, eTextAl
 //}}}
 //{{{
 void cLcd::displayStringAtLine (uint16_t color, uint16_t line, const char* str) {
-  displayStringAt (color, cPoint(0, line * Font16.mHeight), str, LEFT_MODE);
+  displayStringAt (color, cPoint(0, line * Font16.mHeight), str, eTextLeft);
   }
 //}}}
 //{{{
 void cLcd::displayStringAtColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str) {
-  displayStringAt (color, cPoint(column * Font16.mWidth, line * Font16.mHeight), str, LEFT_MODE);
+  displayStringAt (color, cPoint(column * Font16.mWidth, line * Font16.mHeight), str, cLcd::eTextLeft);
   }
 //}}}
 

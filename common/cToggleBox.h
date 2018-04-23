@@ -21,7 +21,7 @@ public:
 
   void onDraw (cLcd* lcd) {
     lcd->fillRectCpu (mValue ? LCD_COLOR_GREEN : LCD_COLOR_LIGHT_GREY, mRect);
-    lcd->displayStringAt (LCD_COLOR_BLACK, mRect.getTL(), mTitle, cLcd::LEFT_MODE);
+    lcd->displayStringAt (LCD_COLOR_BLACK, mRect.getTL(), mTitle, cLcd::eTextLeft);
     }
 
 private:
