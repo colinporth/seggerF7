@@ -199,7 +199,7 @@ public:
     float mLayoutX = 0;
     float mLayoutY = 0;
 
-    cRect mRect = { 0.f };
+    cRect mRect;
     };
   //}}}
 
@@ -264,11 +264,20 @@ private:
   void appendFile (int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void closeFile();
 
+  //{{{  vars
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
   cCamera* mCam = nullptr;
 
-  char mLabel[40] = {0};
+  std::deque <cBox*> mBoxes;
+  cBox* mProxBox = nullptr;
+  cBox* mPressedBox = nullptr;
+  bool mDown = false;
+  bool mMoved = false;
+  cPoint mDownPos;
+  cPoint mLastPos;
+
+  char mLabel[40];
   DWORD mVsn = 0;
   int mFiles = 0;
 
@@ -276,18 +285,15 @@ private:
   struct jpeg_decompress_struct mCinfo;
   uint8_t* mBufArray[1];
 
-  cBox* mProxBox = nullptr;
-  cBox* mPressedBox = nullptr;
-  std::deque <cBox*> mBoxes;
-
-  bool mDown = false;
-  bool mMoved = false;
-
-  cPoint mDownPos;
-  cPoint mLastPos;
-
-  bool mValue = false;
   bool mValueChanged = false;
+  bool mValue = false;
+
+  bool mZoomChanged = false;
+  bool mZoomValue = false;
+
+  bool mDebugChanged = false;
+  bool mDebugValue = true;
+  //}}}
   };
 //}}}
 #include "../common/cToggleBox.h"
@@ -305,7 +311,9 @@ void cApp::init() {
   mLcd = new cLcd (16);
   mLcd->init();
 
-  add (new cToggleBox (50.f, 50.f, "jpeg", mValue, mValueChanged), 0.f, 272.f - 50.f);
+  add (new cToggleBox (60.f, 50.f, "jpeg", mValue, mValueChanged), 0.f, 272.f - 50.f);
+  add (new cToggleBox (60.f, 50.f, "zoom", mZoomValue, mZoomChanged), 64.f, 272.f - 50.f);
+  add (new cToggleBox (60.f, 50.f, "debug", mDebugValue, mDebugChanged), 128.f, 272.f - 50.f);
 
   // show title early
   mLcd->start();
@@ -402,7 +410,7 @@ void cApp::run() {
 
         // jpegBody
         mCinfo.scale_num = 1;
-        mCinfo.scale_denom = BSP_PB_GetState (BUTTON_KEY) ? 1 : 2;
+        mCinfo.scale_denom = mZoomValue ? 1 : 2;
         mCinfo.dct_method = JDCT_FLOAT;
         mCinfo.out_color_space = JCS_RGB;
 
@@ -421,19 +429,20 @@ void cApp::run() {
         //}}}
       }
     else
-      mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), BSP_PB_GetState (BUTTON_KEY));
+      mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), mZoomValue);
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%d",
                                           osGetCPUUsage(), xPortGetFreeHeapSize(), mCam->getFps(),
                                           frameLen, mCam->getStatus(), mCam->getDmaCount());
-    mLcd->drawDebug();
+    if (mDebugValue)
+      mLcd->drawDebug();
     for (auto box : mBoxes) box->onDraw (mLcd);
     mLcd->present();
 
     if (mValueChanged) {
       mValueChanged = false;
-      mCam->getCaptureMode() ? mCam->preview() : mCam->capture();
+      mValue ? mCam->capture() : mCam->preview();
       fileNum++;
       frameNum = 0;
       }
@@ -504,6 +513,7 @@ void cApp::onProx (int16_t x, int16_t y, uint8_t z) {
   // hidSendReport (&gUsbDevice, HID_Buf);
 
   cPoint pos (x,y);
+
   bool change = false;
   auto lastProxBox = mProxBox;
 

@@ -67,6 +67,7 @@ public:
   void clear (uint16_t color);
   void drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
   void fillRect (uint16_t color, cRect& rect);
+  void fillRectCpu (uint16_t color, cRect& rect);
   void fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
   void drawCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius);
   void fillCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius);

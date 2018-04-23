@@ -582,8 +582,23 @@ void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uin
 //{{{
 void cLcd::fillRect (uint16_t color, cRect& rect) {
 
-  fillBuffer (color, mLayer, hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + ((getWidth() * rect.top) + rect.left) * 2,
+  fillBuffer (color, mLayer,
+              hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + ((getWidth() * rect.top) + rect.left) * 2,
               rect.getWidth(), rect.getHeight(), getWidth() - rect.getWidth());
+  }
+//}}}
+//{{{
+void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
+// dma2d hogs bandwidth
+
+  auto pitch = getWidth() - rect.getWidth();
+  auto dst = (uint16_t*)hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + rect.top*getWidth() + rect.left;
+
+  for (auto y = 0; y < rect.getHeight(); y++) {
+    for (auto x = 0; x < rect.getWidth(); x++)
+      *dst++ = color;
+    dst += pitch;
+    }
   }
 //}}}
 //{{{
@@ -593,6 +608,7 @@ void cLcd::fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uin
               width, height, getWidth() - width);
   }
 //}}}
+
 //{{{
 void cLcd::drawCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius) {
 

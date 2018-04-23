@@ -20,7 +20,7 @@ public:
   //}}}
 
   void onDraw (cLcd* lcd) {
-    lcd->fillRect (mValue ? LCD_COLOR_GREEN : LCD_COLOR_LIGHT_GREY, mRect);
+    lcd->fillRectCpu (mValue ? LCD_COLOR_GREEN : LCD_COLOR_LIGHT_GREY, mRect);
     lcd->displayStringAt (LCD_COLOR_WHITE, mRect.left, mRect.top, mTitle, cLcd::LEFT_MODE);
     }
 

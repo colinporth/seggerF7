@@ -1,4 +1,4 @@
-// cPointRectView2d.h
+// cPointRect.h
 #pragma once
 #include <math.h>
 
@@ -11,33 +11,9 @@ public:
     }
   //}}}
   //{{{
-  cPoint (const float value) {
-    this->x = value;
-    this->y = value;
-    }
-  //}}}
-  //{{{
-  cPoint (const double value) {
-    this->x = (float)value;
-    this->y = (float)value;
-    }
-  //}}}
-  //{{{
-  cPoint (const float x, const float y) {
+  cPoint (uint16_t x, uint16_t y) {
     this->x = x;
     this->y = y;
-    }
-  //}}}
-  //{{{
-  cPoint (const double x, const double y) {
-    this->x = (float)x;
-    this->y = (float)y;
-    }
-  //}}}
-  //{{{
-  cPoint (const int x, const int y) {
-    this->x = (float)x;
-    this->y = (float)y;
     }
   //}}}
 
@@ -52,28 +28,8 @@ public:
     }
   //}}}
   //{{{
-  cPoint operator * (const float f) const {
-    return cPoint (x * f, y * f);
-    }
-  //}}}
-  //{{{
-  cPoint operator * (const double f) const {
-    return cPoint (float(x * f), float(y * f));
-    }
-  //}}}
-  //{{{
   cPoint operator * (const cPoint& point) const {
     return cPoint (x * point.x, y * point.y);
-    }
-  //}}}
-  //{{{
-  cPoint operator / (const float f) const {
-    return cPoint (x / f, y / f);
-    }
-  //}}}
-  //{{{
-  cPoint operator / (const double f) const {
-    return cPoint (float(x / f), float(y / f));
     }
   //}}}
 
@@ -105,8 +61,8 @@ public:
     }
   //}}}
 
-  int x;
-  int y;
+  uint16_t x;
+  uint16_t y;
   };
 
 class cRect {
@@ -120,37 +76,29 @@ public:
     }
   //}}}
   //{{{
-  cRect (const float sizeX, const float sizeY)  {
-    left = 0;
-    top = 0;
-    right = sizeX;
-    bottom = sizeY;
-    }
+  cRect (const cPoint& size)  {
+  left = 0;
+  top = 0;
+  right = size.x;
+  bottom = size.y;
+  }
   //}}}
   //{{{
-  cRect (const float l, const float t, const float r, const float b)  {
+  cRect (const cPoint& topLeft, const cPoint& bottomRight)  {
+   left = topLeft.x;
+   top = topLeft.y;
+   right = bottomRight.x;
+   bottom = bottomRight.y;
+   }
+  //}}}
+  //{{{
+  cRect (uint16_t l, uint16_t t, uint16_t r, uint16_t b) {
     left = l;
     top = t;
     right = r;
     bottom = b;
     }
   //}}}
-    //{{{
-    cRect (const cPoint& size)  {
-    left = 0;
-    top = 0;
-    right = size.x;
-    bottom = size.y;
-    }
-    //}}}
-   //{{{
-   cRect (const cPoint& topLeft, const cPoint& bottomRight)  {
-    left = topLeft.x;
-    top = topLeft.y;
-    right = bottomRight.x;
-    bottom = bottomRight.y;
-    }
-   //}}}
 
   //{{{
   cRect operator + (const cPoint& point) const {
@@ -158,21 +106,21 @@ public:
     }
   //}}}
 
-  float getWidth() const { return right - left; }
-  float getHeight() const { return bottom - top; }
+  int getWidth() const { return right - left; }
+  int getHeight() const { return bottom - top; }
   int getWidthInt() const { return int(right - left); }
   int getHeightInt() const { return int(bottom - top); }
 
   cPoint getTL() const { return cPoint(left, top); }
-  cPoint getTL (float offset) const { return cPoint(left+offset, top+offset); }
+  cPoint getTL (int offset) const { return cPoint(left+offset, top+offset); }
   cPoint getTR() const { return cPoint(right, top); }
   cPoint getBL() const { return cPoint(left, bottom); }
   cPoint getBR() const { return cPoint(right, bottom); }
 
   cPoint getSize() const { return cPoint(right-left, bottom-top); }
   cPoint getCentre() const { return cPoint(getCentreX(), getCentreY()); }
-  float getCentreX() const { return (left + right)/2.f; }
-  float getCentreY() const { return (top + bottom)/2.f; }
+  int getCentreX() const { return (left + right)/2.f; }
+  int getCentreY() const { return (top + bottom)/2.f; }
   //{{{
   bool inside (const cPoint& pos) const {
   // return pos inside rect
@@ -180,8 +128,8 @@ public:
     }
   //}}}
 
-  int left;
-  int right;
-  int top;
-  int bottom;
+  uint16_t left;
+  uint16_t right;
+  uint16_t top;
+  uint16_t bottom;
   };
