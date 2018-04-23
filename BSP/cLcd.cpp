@@ -360,7 +360,7 @@ void cLcd::drawInfo (uint16_t color, uint16_t column, const char* format, ... ) 
   vsnprintf (str, kMaxStrSize-1, format, args);
   va_end (args);
 
-  displayStringAtLineColumn (color, 0, column, str);
+  displayStringAtColumnLine (color, column, 0, str);
   }
 //}}}
 //{{{
@@ -374,9 +374,9 @@ void cLcd::drawDebug() {
       char tickStr[20];
       auto ticks = mLines[debugLine].mTicks;
       sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
-      displayStringAtLineColumn (LCD_COLOR_WHITE, 1+displayLine, 0, tickStr);
+      displayStringAtColumnLine (LCD_COLOR_WHITE, 0, 1+displayLine, tickStr);
 
-      displayStringAtLineColumn (mLines[debugLine].mColour, 1+displayLine, 7, mLines[debugLine].mStr);
+      displayStringAtColumnLine (mLines[debugLine].mColour, 7, 1+displayLine, mLines[debugLine].mStr);
       }
   }
 //}}}
@@ -461,9 +461,9 @@ void cLcd::SetAddress (uint32_t layerIndex, uint16_t* address, uint16_t* writeAd
 //}}}
 
 //{{{
-uint32_t cLcd::readPixel (uint16_t x, uint16_t y) {
+uint16_t cLcd::readPixel (uint16_t x, uint16_t y) {
 
-  return *(__IO uint16_t*)(hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + (2*(y*getWidth() + x)));
+  return *((__IO uint16_t*)hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + y*getWidth() + x);
   }
 //}}}
 //{{{
@@ -480,7 +480,7 @@ void cLcd::clearStringLine (uint16_t color, uint32_t line) {
   }
 //}}}
 //{{{
-void cLcd::displayChar (uint16_t color, uint16_t x, uint16_t y, uint8_t ascii) {
+void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
 
   if ((ascii >= 0x20) && (ascii <= 0x7f)) {
     const uint16_t width = Font16.mWidth;
@@ -488,7 +488,7 @@ void cLcd::displayChar (uint16_t color, uint16_t x, uint16_t y, uint8_t ascii) {
     const uint16_t offset = (8 * byteAlignedWidth) - width - 1;
     const uint8_t* fontChar = &Font16.mTable [(ascii - ' ') * Font16.mHeight * byteAlignedWidth];
 
-    auto fbPtr = (uint16_t*)hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + (y * getWidth()) + x;
+    auto dst = (uint16_t*)hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + (pos.y * getWidth()) + pos.x;
     for (auto fontLine = 0u; fontLine < Font16.mHeight; fontLine++) {
       auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
       uint16_t fontLineBits = *fontPtr++;
@@ -496,23 +496,23 @@ void cLcd::displayChar (uint16_t color, uint16_t x, uint16_t y, uint8_t ascii) {
         fontLineBits = (fontLineBits << 8) | *fontPtr;
       if (fontLineBits) {
         uint16_t bit = 1 << (width + offset);
-        auto endPtr = fbPtr + width;
-        while (fbPtr != endPtr) {
+        auto endPtr = dst + width;
+        while (dst != endPtr) {
           if (fontLineBits & bit)
-            *fbPtr = color;
-          fbPtr++;
+            *dst = color;
+          dst++;
           bit >>= 1;
           }
-        fbPtr += getWidth() - width;
+        dst += getWidth() - width;
         }
       else
-        fbPtr += getWidth();
+        dst += getWidth();
       }
     }
   }
 //}}}
 //{{{
-void cLcd::displayStringAt (uint16_t color, uint16_t x, uint16_t y, const char* str, eTextAlign textAlign) {
+void cLcd::displayStringAt (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign) {
 
   switch (textAlign) {
     case CENTER_MODE:  {
@@ -522,7 +522,7 @@ void cLcd::displayStringAt (uint16_t color, uint16_t x, uint16_t y, const char* 
         size++;
 
       uint16_t xSize = getWidth() / Font16.mWidth;
-      x += ((xSize - size) * Font16.mWidth) / 2;
+      pos.x += ((xSize - size) * Font16.mWidth) / 2;
       break;
       }
 
@@ -534,7 +534,7 @@ void cLcd::displayStringAt (uint16_t color, uint16_t x, uint16_t y, const char* 
 
       uint16_t xSize = getWidth() / Font16.mWidth;
       auto width = (xSize - size) * Font16.mWidth;
-      x = width > x ? 0 : x - width;
+      pos.x = width > pos.x ? 0 : pos.x - width;
       break;
       }
 
@@ -542,23 +542,23 @@ void cLcd::displayStringAt (uint16_t color, uint16_t x, uint16_t y, const char* 
       break;
     }
 
-  if (x >= getWidth())
-    x = 0;
+  if (pos.x >= getWidth())
+    pos.x = 0;
 
-  while (*str && (x + Font16.mWidth < getWidth())) {
-    displayChar (color, x, y, *str++);
-    x += Font16.mWidth;
+  while (*str && (pos.x + Font16.mWidth < getWidth())) {
+    displayChar (color, pos, *str++);
+    pos.x += Font16.mWidth;
     }
   }
 //}}}
 //{{{
 void cLcd::displayStringAtLine (uint16_t color, uint16_t line, const char* str) {
-  displayStringAt (color, 0, line * Font16.mHeight, str, LEFT_MODE);
+  displayStringAt (color, cPoint(0, line * Font16.mHeight), str, LEFT_MODE);
   }
 //}}}
 //{{{
-void cLcd::displayStringAtLineColumn (uint16_t color, uint16_t line, uint16_t column, const char* str) {
-  displayStringAt (color, column * Font16.mWidth, line * Font16.mHeight, str, LEFT_MODE);
+void cLcd::displayStringAtColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str) {
+  displayStringAt (color, cPoint(column * Font16.mWidth, line * Font16.mHeight), str, LEFT_MODE);
   }
 //}}}
 

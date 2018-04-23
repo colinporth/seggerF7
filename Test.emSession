@@ -98,10 +98,12 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="4" y="126" useTextEdit="1" useBinaryEdit="0" left="0" path="common/cPointRect.h" debugPath="common/cPointRect.h" selected="0" top="96" codecName=""/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="23" useTextEdit="1" useBinaryEdit="0" left="0" path="common/cToggleBox.h" debugPath="common/cToggleBox.h" selected="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="7" y="233" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="1" top="198" codecName=""/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="588" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/cLcd.cpp" debugPath="BSP/cLcd.cpp" selected="0" top="568" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="126" useTextEdit="1" useBinaryEdit="0" left="0" path="common/cPointRect.h" debugPath="common/cPointRect.h" selected="0" top="96" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="56" y="23" useTextEdit="1" useBinaryEdit="0" left="0" path="common/cToggleBox.h" debugPath="common/cToggleBox.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="233" useTextEdit="1" useBinaryEdit="0" left="0" path="usbMsc/main.cpp" debugPath="usbMsc/main.cpp" selected="0" top="198" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="3" y="449" useTextEdit="1" useBinaryEdit="0" left="0" path="BSP/cLcd.cpp" debugPath="BSP/cLcd.cpp" selected="1" top="430" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="39" y="208" useTextEdit="1" useBinaryEdit="0" left="0" path="common/cPs2.h" debugPath="common/cPs2.h" selected="0" top="167" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="469" useTextEdit="1" useBinaryEdit="0" left="0" path="FreeRTOS/CMSIS_RTOS/cmsis_os.h" debugPath="FreeRTOS/CMSIS_RTOS/cmsis_os.h" selected="0" top="428" codecName="Default"/>
  </Files>
  <ARMCrossStudioWindow activeProject="usbMsc" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Release" debugSearchFileMap="" fileDialogInitialDirectory="C:/Users/colin/Desktop" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

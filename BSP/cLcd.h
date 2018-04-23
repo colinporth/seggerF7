@@ -55,14 +55,14 @@ public:
   void SetTransparency (uint32_t layerIndex, uint8_t Transparency);
   void SetAddress (uint32_t layerIndex, uint16_t* address, uint16_t* writeAddress);
 
-  uint32_t readPixel (uint16_t x, uint16_t y);
+  uint16_t readPixel (uint16_t x, uint16_t y);
   void drawPixel (uint16_t color, uint16_t x, uint16_t y);
 
   void clearStringLine (uint16_t color, uint32_t line);
-  void displayChar (uint16_t color, uint16_t x, uint16_t y, uint8_t ascii);
-  void displayStringAt (uint16_t color, uint16_t x, uint16_t y, const char* str, eTextAlign textAlign);
+  void displayChar (uint16_t color, cPoint pos, uint8_t ascii);
+  void displayStringAt (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign);
   void displayStringAtLine (uint16_t color, uint16_t line, const char* str);
-  void displayStringAtLineColumn (uint16_t color, uint16_t line, uint16_t column, const char* str);
+  void displayStringAtColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str);
 
   void clear (uint16_t color);
   void drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
