@@ -85,8 +85,8 @@ public:
     }
   //}}}
 
-  uint16_t x;
-  uint16_t y;
+  int16_t x;
+  int16_t y;
   };
 //}}}
 //{{{
@@ -153,10 +153,10 @@ public:
     }
   //}}}
 
-  uint16_t left;
-  uint16_t right;
-  uint16_t top;
-  uint16_t bottom;
+  int16_t left;
+  int16_t right;
+  int16_t top;
+  int16_t bottom;
   };
 //}}}
 
@@ -201,6 +201,7 @@ public:
   void displayStringAtColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str);
 
   void clear (uint16_t color);
+  void drawRect (uint16_t color, cRect& rect);
   void drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
   void fillRect (uint16_t color, cRect& rect);
   void fillRectCpu (uint16_t color, cRect& rect);

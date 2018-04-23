@@ -94,7 +94,7 @@ public:
   class cBox {
   public:
     //{{{
-    cBox (const char* name, float width, float height)
+    cBox (const char* name, uint16_t width, uint16_t height)
         : mName(name), mLayoutWidth(width), mLayoutHeight(height) {
       //mWindow->changed();
       }
@@ -110,31 +110,21 @@ public:
     bool getTimedOn() { return mTimedOn; }
 
     cPoint getSize() { return mRect.getSize(); }
-    float getWidth() { return mRect.getWidth(); }
-    float getHeight() { return mRect.getHeight(); }
-    int getWidthInt() { return mRect.getWidthInt(); }
-    int getHeightInt() { return mRect.getHeightInt(); }
+    uint16_t getWidth() { return mRect.getWidth(); }
+    uint16_t getHeight() { return mRect.getHeight(); }
     cPoint getTL() { return mRect.getTL(); }
-    cPoint getTL (float offset) { return mRect.getTL (offset); }
+    cPoint getTL (int16_t offset) { return mRect.getTL (offset); }
     cPoint getTR() { return mRect.getTR(); }
     cPoint getBL() { return mRect.getBL(); }
     cPoint getBR() { return mRect.getBR(); }
     cPoint getCentre() { return mRect.getCentre(); }
-    float getCentreX() { return mRect.getCentreX(); }
-    float getCentreY() { return mRect.getCentreY(); }
+    uint16_t getCentreX() { return mRect.getCentreX(); }
+    uint16_t getCentreY() { return mRect.getCentreY(); }
 
     //{{{
     cBox* setPos (cPoint pos) {
       mLayoutX = pos.x;
       mLayoutY = pos.y;
-      layout();
-      return this;
-      }
-    //}}}
-    //{{{
-    cBox* setPos (float x, float y) {
-      mLayoutX = x;
-      mLayoutY = y;
       layout();
       return this;
       }
@@ -193,10 +183,10 @@ public:
     bool mPin = true;
     bool mTimedOn = false;
 
-    float mLayoutWidth;
-    float mLayoutHeight;
-    float mLayoutX = 0;
-    float mLayoutY = 0;
+    uint16_t mLayoutWidth;
+    uint16_t mLayoutHeight;
+    uint16_t mLayoutX = 0;
+    uint16_t mLayoutY = 0;
 
     cRect mRect;
     };
@@ -232,20 +222,18 @@ public:
     }
   //}}}
 
-  cBox* add (cBox* box, cPoint pos);
-  cBox* add (cBox* box, float x, float y);
+  cBox* add (cBox* box, uint16_t x, uint16_t y);
   cBox* add (cBox* box);
   cBox* addBelow (cBox* box);
   cBox* addFront (cBox* box);
-  cBox* addFront (cBox* box, float x, float y);
   void removeBox (cBox* box);
 
 protected:
-  virtual void onProx (int16_t x, int16_t y, uint8_t z);
-  virtual void onPress (int16_t x, int16_t y);
-  virtual void onMove (int16_t x, int16_t y, uint8_t z);
-  virtual void onScroll (int16_t x, int16_t y, uint8_t z);
-  virtual void onRelease (int16_t x, int16_t y);
+  virtual void onProx (cPoint pos, uint8_t z);
+  virtual void onPress (cPoint pos);
+  virtual void onMove (cPoint pos, uint8_t z);
+  virtual void onScroll (cPoint pos, uint8_t z);
+  virtual void onRelease (cPoint pos);
   virtual void onKey (uint8_t ch, bool release);
 
 private:
@@ -310,9 +298,9 @@ void cApp::init() {
   mLcd = new cLcd (16);
   mLcd->init();
 
-  add (new cToggleBox (60.f, 50.f, "jpeg", mValue, mValueChanged), 0.f, 272.f - 50.f);
-  add (new cToggleBox (60.f, 50.f, "zoom", mZoomValue, mZoomChanged), 64.f, 272.f - 50.f);
-  add (new cToggleBox (60.f, 50.f, "debug", mDebugValue, mDebugChanged), 128.f, 272.f - 50.f);
+  add (new cToggleBox (60, 50, "jpeg", mValue, mValueChanged), 0, 272 - 50);
+  add (new cToggleBox (60, 50, "zoom", mZoomValue, mZoomChanged), 64, 272 - 50);
+  add (new cToggleBox (60, 50, "debug", mDebugValue, mDebugChanged), 128, 272 - 50);
 
   // show title early
   mLcd->start();
@@ -450,21 +438,15 @@ void cApp::run() {
 //}}}
 
 //{{{
-cApp::cBox* cApp::add (cBox* box, cPoint pos) {
-
+cApp::cBox* cApp::add (cBox* box, uint16_t x, uint16_t y) {
   mBoxes.push_back (box);
-  box->setPos (pos);
+  box->setPos (cPoint(x,y));
   return box;
   }
 //}}}
 //{{{
-cApp::cBox* cApp::add (cBox* box, float x, float y) {
-  return add (box, cPoint(x,y));
-  }
-//}}}
-//{{{
 cApp::cBox* cApp::add (cBox* box) {
-  return add (box, cPoint());
+  return add (box, 0,0);
   }
 //}}}
 //{{{
@@ -485,14 +467,6 @@ cApp::cBox* cApp::addFront (cBox* box) {
   }
 //}}}
 //{{{
-cApp::cBox* cApp::addFront (cBox* box, float x, float y) {
-
-  mBoxes.push_front (box);
-  box->setPos (cPoint(x,y));
-  return box;
-  }
-//}}}
-//{{{
 void cApp::removeBox (cBox* box) {
 
   for (auto boxIt = mBoxes.begin(); boxIt != mBoxes.end(); ++boxIt)
@@ -506,12 +480,10 @@ void cApp::removeBox (cBox* box) {
 
 // protected
 //{{{
-void cApp::onProx (int16_t x, int16_t y, uint8_t z) {
+void cApp::onProx (cPoint pos, uint8_t z) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
   // hidSendReport (&gUsbDevice, HID_Buf);
-
-  cPoint pos (x,y);
 
   bool change = false;
   auto lastProxBox = mProxBox;
@@ -535,15 +507,13 @@ void cApp::onProx (int16_t x, int16_t y, uint8_t z) {
   }
 //}}}
 //{{{
-void cApp::onPress (int16_t x, int16_t y) {
+void cApp::onPress (cPoint pos) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,0,0,0 };
   //hidSendReport (&gUsbDevice, HID_Buf);
 
   mDown = true;
   mMoved = false;
-
-  cPoint pos (x,y);
 
   mPressedBox = nullptr;
 
@@ -559,12 +529,10 @@ void cApp::onPress (int16_t x, int16_t y) {
   }
 //}}}
 //{{{
-void cApp::onMove (int16_t x, int16_t y, uint8_t z) {
+void cApp::onMove (cPoint pos, uint8_t z) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
   //hidSendReport (&gUsbDevice, HID_Buf);
-
-  cPoint pos (x,y);
 
   if (mDown) {
     mMoved = true;
@@ -575,20 +543,22 @@ void cApp::onMove (int16_t x, int16_t y, uint8_t z) {
   }
 //}}}
 //{{{
-void cApp::onScroll (int16_t x, int16_t y, uint8_t z) {
-  mLcd->incScrollValue (y);
+void cApp::onScroll (cPoint pos, uint8_t z) {
+  mLcd->incScrollValue (pos.y);
   }
 //}}}
 //{{{
-void cApp::onRelease (int16_t x, int16_t y) {
+void cApp::onRelease (cPoint pos) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
   //hidSendReport (&gUsbDevice, HID_Buf);
 
-  cPoint pos (x,y);
   mLastPos = pos;
 
   bool changed = mPressedBox && mPressedBox->onUp (mMoved, pos - mPressedBox->getTL());
+  if (mPressedBox)
+    mPressedBox->setUnPick();
+
   mPressedBox = nullptr;
 
   mDown = false;

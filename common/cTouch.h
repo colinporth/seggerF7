@@ -18,7 +18,7 @@ public:
     }
   //}}}
   //{{{
-  void handleTouch (int touch, int x, int y, int z) {
+  void handleTouch (int touch, cPoint pos, int z) {
 
     BSP_TS_GetState (&mTsState);
 
@@ -26,28 +26,26 @@ public:
       // pressed
       if (touch > 1) {
         mHit = eScroll;
-        onScroll (x - mLastX, y - mLastY, z);
+        onScroll (pos - mLastPos, z);
         }
       else if (mHit == ePressed)
-        onMove (x - mLastX, y - mLastY, z);
+        onMove (pos - mLastPos, z);
       else if ((mHit == eReleased) && (z > 20)) {
         // press
-        mHitX = x;
-        mHitY = y;
-        onPress (mHitX, mHitY);
+        mHitPos = pos;
+        onPress (mHitPos);
         mHit = ePressed;
         }
       else if (mHit == eProx)
-        onProx (x - mLastX, y - mLastY, z);
+        onProx (pos - mLastPos, z);
       else
         mHit = eProx;
-      mLastX = x;
-      mLastY = y;
+      mLastPos = pos;
       }
     else {
       // release
       if (mHit == ePressed)
-        onRelease (mLastX, mLastY);
+        onRelease (mLastPos);
       mHit = eReleased;
       }
     }
@@ -60,7 +58,7 @@ public:
     //       mTsState.touchDetected, mTsState.touchX[0],mTsState.touchY[0], mTsState.touchWeight[0],
     //       mTsState.touchEventId[0], mTsState.touchArea[0], mTsState.gestureId);
 
-    handleTouch (mTsState.touchDetected, mTsState.touchX[0], mTsState.touchY[0], mTsState.touchWeight[0]);
+    handleTouch (mTsState.touchDetected, cPoint (mTsState.touchX[0], mTsState.touchY[0]), mTsState.touchWeight[0]);
     }
   //}}}
 
@@ -75,20 +73,18 @@ public:
   //}}}
 
 protected:
-  virtual void onProx (int16_t x, int16_t y, uint8_t z) {}
-  virtual void onPress (int16_t x, int16_t y) {}
-  virtual void onMove (int16_t x, int16_t y, uint8_t z) {}
-  virtual void onScroll (int16_t x, int16_t y, uint8_t z) {}
-  virtual void onRelease (int16_t x, int16_t y) {}
+  virtual void onProx (cPoint pos, uint8_t z) {}
+  virtual void onPress (cPoint pos) {}
+  virtual void onMove (cPoint pos, uint8_t z) {}
+  virtual void onScroll (cPoint pos, uint8_t z) {}
+  virtual void onRelease (cPoint pos) {}
   virtual void onKey (uint8_t ch, bool release) {}
 
   enum eHit { eReleased, eProx, ePressed, eScroll };
   eHit mHit = eReleased;
 
-  int mHitX = 0;
-  int mHitY = 0;
-  int mLastX = 0;
-  int mLastY = 0;
+  cPoint mHitPos;
+  cPoint mLastPos;
 
   TS_StateTypeDef mTsState;
   };
