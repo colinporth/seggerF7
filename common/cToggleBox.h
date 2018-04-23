@@ -20,10 +20,8 @@ public:
   //}}}
 
   void onDraw (cLcd* lcd) {
-    lcd->SetTextColor (mValue ? LCD_COLOR_GREEN : LCD_COLOR_GREY);
-    lcd->FillRect (mRect.left, mRect.top, mRect.getWidth(), mRect.getHeight());
-    lcd->SetTextColor (LCD_COLOR_BLACK);
-    lcd->DisplayStringAt (mRect.left, mRect.top, mTitle, LEFT_MODE);
+    lcd->FillRect (mValue ? LCD_COLOR_GREEN : LCD_COLOR_GREY, mRect.left, mRect.top, mRect.getWidth(), mRect.getHeight());
+    lcd->DisplayStringAt (LCD_COLOR_BLACK, mRect.left, mRect.top, mTitle, LEFT_MODE);
     }
 
 private:

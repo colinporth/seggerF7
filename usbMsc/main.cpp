@@ -219,6 +219,7 @@ public:
   //}}}
 
   cPs2* getPs2() { return mPs2; }
+  cCamera* getCam() { return mCam; }
 
   void init();
   void run();
@@ -231,8 +232,6 @@ public:
     return mFiles;
     }
   //}}}
-
-  cCamera* mCam = nullptr;
 
   cBox* add (cBox* box, cPoint pos);
   cBox* add (cBox* box, float x, float y);
@@ -267,6 +266,7 @@ private:
 
   cLcd* mLcd = nullptr;
   cPs2* mPs2 = nullptr;
+  cCamera* mCam = nullptr;
 
   char mLabel[40] = {0};
   DWORD mVsn = 0;
@@ -883,10 +883,10 @@ void serverThread (void* arg) {
                   //}}}
                 else if (!strncmp (buf, "GET /cam.jpg", 12)) {
                   //{{{  cam.jpg
-                  if (gApp->mCam) {
+                  if (gApp->getCam()) {
                     uint32_t frameLen;
                     bool jpeg;
-                    auto frame = gApp->mCam->getLastFrame (frameLen, jpeg);
+                    auto frame = gApp->getCam()->getLastFrame (frameLen, jpeg);
                     if (frame) {
                       // send http response header
                       netconn_write (request,
@@ -896,7 +896,7 @@ void serverThread (void* arg) {
 
                       // send imageFile format header
                       uint32_t headerLen;
-                      auto header = gApp->mCam->getHeader (true, 6, headerLen);
+                      auto header = gApp->getCam()->getHeader (true, 6, headerLen);
                       netconn_write (request, header, headerLen, NETCONN_NOCOPY);
 
                       // send imageFile body

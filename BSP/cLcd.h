@@ -39,10 +39,6 @@ public:
   static uint32_t getHeight() { return 272; }
 
   uint16_t GetTextHeight();
-  uint32_t GetTextColor() { return mTextColor; }
-  uint32_t GetBackColor() { return mBackColor; }
-  void SetTextColor (uint32_t color) { mTextColor = color; }
-  void SetBackColor (uint32_t color) { mBackColor = color; }
 
   // flipped display
   void start();
@@ -59,30 +55,30 @@ public:
   void debug (uint32_t colour, const char* format, ... );
 
   // drawing
-  void SelectLayer (uint32_t LayerIndex);
-  void SetTransparency (uint32_t LayerIndex, uint8_t Transparency);
-  void SetAddress (uint32_t LayerIndex, uint16_t* address, uint16_t* writeAddress);
+  void SelectLayer (uint32_t layerIndex);
+  void SetTransparency (uint32_t layerIndex, uint8_t Transparency);
+  void SetAddress (uint32_t layerIndex, uint16_t* address, uint16_t* writeAddress);
 
   uint32_t ReadPixel (uint16_t x, uint16_t y);
-  void DrawPixel (uint16_t x, uint16_t y, uint32_t color);
+  void DrawPixel (uint32_t color, uint16_t x, uint16_t y);
   void DrawBitmap (uint32_t Xpos, uint32_t Ypos, uint8_t* pbmp);
 
-  void clearStringLine (uint32_t Line);
-  void DisplayChar (uint16_t x, uint16_t y, uint8_t ascii);
-  void DisplayStringAt (uint16_t x, uint16_t y, const char* text, eTextAlign mode);
-  void DisplayStringAtLine (uint16_t line, const char* ptr);
-  void DisplayStringAtLineColumn (uint16_t line, uint16_t column, const char* ptr);
+  void clearStringLine (uint32_t color, uint32_t Line);
+  void DisplayChar (uint32_t color, uint16_t x, uint16_t y, uint8_t ascii);
+  void DisplayStringAt (uint32_t color, uint16_t x, uint16_t y, const char* text, eTextAlign mode);
+  void DisplayStringAtLine (uint32_t color, uint16_t line, const char* ptr);
+  void DisplayStringAtLineColumn (uint32_t color, uint16_t line, uint16_t column, const char* ptr);
 
-  void clear (uint32_t Color);
-  void DrawRect (uint16_t x, uint16_t y, uint16_t Width, uint16_t Height);
-  void FillRect (uint16_t x, uint16_t y, uint16_t Width, uint16_t Height);
-  void DrawCircle (uint16_t x, uint16_t y, uint16_t Radius);
-  void FillCircle (uint16_t x, uint16_t y, uint16_t Radius);
-  void DrawPolygon (pPoint Points, uint16_t PointCount);
-  void FillPolygon (pPoint Points, uint16_t PointCount);
-  void DrawEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius);
-  void FillEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius);
-  void DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+  void clear (uint32_t color);
+  void DrawRect (uint32_t color, uint16_t x, uint16_t y, uint16_t Width, uint16_t Height);
+  void FillRect (uint32_t color, uint16_t x, uint16_t y, uint16_t Width, uint16_t Height);
+  void DrawCircle (uint32_t color, uint16_t x, uint16_t y, uint16_t Radius);
+  void FillCircle (uint32_t color, uint16_t x, uint16_t y, uint16_t Radius);
+  void DrawPolygon (uint32_t color, pPoint Points, uint16_t PointCount);
+  void FillPolygon (uint32_t color, pPoint Points, uint16_t PointCount);
+  void DrawEllipse (uint32_t color, uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius);
+  void FillEllipse (uint32_t color, uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius);
+  void DrawLine (uint32_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 
   void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t size);
   void rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t size);
@@ -100,10 +96,10 @@ private:
   uint16_t* getBuffer();
 
   void setLayer (uint32_t layerIndex);
-  void layerInit (uint16_t LayerIndex, uint32_t FrameBuffer);
+  void layerInit (uint16_t layerIndex, uint32_t FrameBuffer);
 
-  void FillBuffer (uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine, uint32_t color);
-  void FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
+  void FillBuffer (uint32_t color, uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine);
+  void FillTriangle (uint32_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
   void ConvertLineToARGB8888 (void* src, void* dst, uint32_t xSize, uint32_t ColorMode);
 
   static const int kMaxStrSize = 40;
@@ -121,8 +117,6 @@ private:
   //}}}
 
   uint32_t mCurLayer = 0;
-  uint32_t mTextColor = LCD_COLOR_WHITE;
-  uint32_t mBackColor = LCD_COLOR_BLACK;
 
   bool mFlip = false;
 

@@ -360,8 +360,7 @@ void cLcd::drawInfo (uint32_t color, uint16_t column, const char* format, ... ) 
   vsnprintf (str, kMaxStrSize-1, format, args);
   va_end (args);
 
-  SetTextColor (color);
-  DisplayStringAtLineColumn (0, column, str);
+  DisplayStringAtLineColumn (color, 0, column, str);
   }
 //}}}
 //{{{
@@ -372,14 +371,12 @@ void cLcd::drawDebug() {
       int debugLine = ((int)mDebugLine < mDisplayLines) ?
         displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
 
-      SetTextColor (LCD_COLOR_WHITE);
       char tickStr[20];
       auto ticks = mLines[debugLine].mTicks;
       sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
-      DisplayStringAtLineColumn (1+displayLine, 0, tickStr);
+      DisplayStringAtLineColumn (LCD_COLOR_WHITE, 1+displayLine, 0, tickStr);
 
-      SetTextColor (mLines[debugLine].mColour);
-      DisplayStringAtLineColumn (1+displayLine, 7, mLines[debugLine].mStr);
+      DisplayStringAtLineColumn (mLines[debugLine].mColour, 1+displayLine, 7, mLines[debugLine].mStr);
       }
   }
 //}}}
@@ -439,26 +436,26 @@ void cLcd::debug (uint32_t colour, const char* format, ... ) {
 //}}}
 
 //{{{
-void cLcd::SelectLayer (uint32_t LayerIndex) {
-  mCurLayer = LayerIndex;
+void cLcd::SelectLayer (uint32_t layerIndex) {
+  mCurLayer = layerIndex;
   }
 //}}}
 //{{{
-void cLcd::SetTransparency (uint32_t LayerIndex, uint8_t Transparency) {
+void cLcd::SetTransparency (uint32_t layerIndex, uint8_t Transparency) {
 
   // change layer Alpha
-  hLtdcHandler.LayerCfg[LayerIndex].Alpha = Transparency;
-  setLayer (LayerIndex);
+  hLtdcHandler.LayerCfg[layerIndex].Alpha = Transparency;
+  setLayer (layerIndex);
   LTDC->SRCR = LTDC_SRCR_VBR;
   }
 //}}}
 //{{{
-void cLcd::SetAddress (uint32_t LayerIndex, uint16_t* address, uint16_t* writeAddress) {
+void cLcd::SetAddress (uint32_t layerIndex, uint16_t* address, uint16_t* writeAddress) {
 
   // change layer addresses
-  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = (uint32_t)address;
-  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = (uint32_t)writeAddress;
-  setLayer (LayerIndex);
+  hLtdcHandler.LayerCfg[layerIndex].FBStartAdress = (uint32_t)address;
+  hLtdcHandler.LayerCfg[layerIndex].FBStartAdressWrite = (uint32_t)writeAddress;
+  setLayer (layerIndex);
   LTDC->SRCR = LTDC_SRCR_VBR;
   }
 //}}}
@@ -470,7 +467,7 @@ uint32_t cLcd::ReadPixel (uint16_t x, uint16_t y) {
   }
 //}}}
 //{{{
-void cLcd::DrawPixel (uint16_t x, uint16_t y, uint32_t color) {
+void cLcd::DrawPixel (uint32_t color, uint16_t x, uint16_t y) {
 // Write data value to all SDRAM memory
 
   *(__IO uint16_t*) (hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + (2*(y*getWidth() + x))) = (uint16_t)color;
@@ -519,17 +516,12 @@ void cLcd::DrawBitmap (uint32_t x, uint32_t y, uint8_t *pbmp) {
 //}}}
 
 //{{{
-void cLcd::clearStringLine (uint32_t Line) {
-
-  // Draw rectangle with background color
-  uint32_t color_backup = mTextColor;
-  mTextColor = mBackColor;
-  FillRect (0, Line * Font16.mHeight, getWidth(), Font16.mHeight);
-  mTextColor = color_backup;
+void cLcd::clearStringLine (uint32_t color, uint32_t Line) {
+  FillRect (color, 0, Line * Font16.mHeight, getWidth(), Font16.mHeight);
   }
 //}}}
 //{{{
-void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
+void cLcd::DisplayChar (uint32_t color, uint16_t x, uint16_t y, uint8_t ascii) {
 
   if ((ascii >= 0x20) && (ascii <= 0x7f)) {
     const uint16_t width = Font16.mWidth;
@@ -548,7 +540,7 @@ void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
         auto endPtr = fbPtr + width;
         while (fbPtr != endPtr) {
           if (fontLineBits & bit)
-            *fbPtr = mTextColor;
+            *fbPtr = color;
           fbPtr++;
           bit >>= 1;
           }
@@ -561,7 +553,7 @@ void cLcd::DisplayChar (uint16_t x, uint16_t y, uint8_t ascii) {
   }
 //}}}
 //{{{
-void cLcd::DisplayStringAt (uint16_t x, uint16_t y, const char* text, eTextAlign mode) {
+void cLcd::DisplayStringAt (uint32_t color, uint16_t x, uint16_t y, const char* text, eTextAlign mode) {
 
   uint16_t column = 1;
   switch (mode) {
@@ -595,49 +587,49 @@ void cLcd::DisplayStringAt (uint16_t x, uint16_t y, const char* text, eTextAlign
     column = 1;
 
   while (*text && (column + Font16.mWidth < getWidth())) {
-    DisplayChar (column, y, *text++);
+    DisplayChar (color, column, y, *text++);
     column += Font16.mWidth;
     }
   }
 //}}}
 //{{{
-void cLcd::DisplayStringAtLine (uint16_t line, const char* ptr) {
-  DisplayStringAt (0, line * Font16.mHeight, ptr, LEFT_MODE);
+void cLcd::DisplayStringAtLine (uint32_t color, uint16_t line, const char* ptr) {
+  DisplayStringAt (color, 0, line * Font16.mHeight, ptr, LEFT_MODE);
   }
 //}}}
 //{{{
-void cLcd::DisplayStringAtLineColumn (uint16_t line, uint16_t column, const char* ptr) {
-  DisplayStringAt (column * Font16.mWidth, line * Font16.mHeight, ptr, LEFT_MODE);
+void cLcd::DisplayStringAtLineColumn (uint32_t color, uint16_t line, uint16_t column, const char* ptr) {
+  DisplayStringAt (color, column * Font16.mWidth, line * Font16.mHeight, ptr, LEFT_MODE);
   }
 //}}}
 
 //{{{
-void cLcd::clear (uint32_t Color) {
-  FillBuffer (mCurLayer, hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite, getWidth(), getHeight(), 0, Color);
+void cLcd::clear (uint32_t color) {
+  FillBuffer (color, mCurLayer, hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite, getWidth(), getHeight(), 0);
   }
 //}}}
 //{{{
-void cLcd::DrawRect (uint16_t x, uint16_t y, uint16_t Width, uint16_t Height) {
+void cLcd::DrawRect (uint32_t color, uint16_t x, uint16_t y, uint16_t Width, uint16_t Height) {
 
   // Draw horizontal lines
-  FillRect (x, y, Width, 1);
-  FillRect (x, (y+ Height), Width, 1);
+  FillRect (color, x, y, Width, 1);
+  FillRect (color, x, (y+ Height), Width, 1);
 
   // Draw vertical lines
-  FillRect (x, y, 1, Height);
-  FillRect ((x + Width), y, 1, Height);
+  FillRect (color, x, y, 1, Height);
+  FillRect (color, (x + Width), y, 1, Height);
   }
 //}}}
 //{{{
-void cLcd::FillRect (uint16_t x, uint16_t y, uint16_t Width, uint16_t Height) {
+void cLcd::FillRect (uint32_t color, uint16_t x, uint16_t y, uint16_t Width, uint16_t Height) {
 
-  FillBuffer (mCurLayer,
+  FillBuffer (color, mCurLayer,
               hLtdcHandler.LayerCfg[mCurLayer].FBStartAdressWrite + 4*(getWidth()*y + x),
-              Width, Height, (getWidth() - Width), mTextColor);
+              Width, Height, (getWidth() - Width));
   }
 //}}}
 //{{{
-void cLcd::DrawCircle (uint16_t x, uint16_t y, uint16_t Radius) {
+void cLcd::DrawCircle (uint32_t color, uint16_t x, uint16_t y, uint16_t Radius) {
 
   int32_t decision;    // Decision Variable
   uint32_t current_x;   // Current X Value
@@ -648,14 +640,14 @@ void cLcd::DrawCircle (uint16_t x, uint16_t y, uint16_t Radius) {
   current_y = Radius;
 
   while (current_x <= current_y) {
-    DrawPixel ((x + current_x), (y - current_y), mTextColor);
-    DrawPixel ((x - current_x), (y - current_y), mTextColor);
-    DrawPixel ((x + current_y), (y - current_x), mTextColor);
-    DrawPixel ((x - current_y), (y - current_x), mTextColor);
-    DrawPixel ((x + current_x), (y + current_y), mTextColor);
-    DrawPixel ((x - current_x), (y + current_y), mTextColor);
-    DrawPixel ((x + current_y), (y + current_x), mTextColor);
-    DrawPixel ((x - current_y), (y + current_x), mTextColor);
+    DrawPixel (color, (x + current_x), (y - current_y));
+    DrawPixel (color, (x - current_x), (y - current_y));
+    DrawPixel (color, (x + current_y), (y - current_x));
+    DrawPixel (color, (x - current_y), (y - current_x));
+    DrawPixel (color, (x + current_x), (y + current_y));
+    DrawPixel (color, (x - current_x), (y + current_y));
+    DrawPixel (color, (x + current_y), (y + current_x));
+    DrawPixel (color, (x - current_y), (y + current_x));
 
     if (decision < 0)
       decision += (current_x << 2) + 6;
@@ -668,7 +660,7 @@ void cLcd::DrawCircle (uint16_t x, uint16_t y, uint16_t Radius) {
   }
 //}}}
 //{{{
-void cLcd::FillCircle (uint16_t x, uint16_t y, uint16_t Radius) {
+void cLcd::FillCircle (uint32_t color, uint16_t x, uint16_t y, uint16_t Radius) {
 
   int32_t decision = 3 - (Radius << 1);
   uint32_t current_x = 0;
@@ -676,12 +668,12 @@ void cLcd::FillCircle (uint16_t x, uint16_t y, uint16_t Radius) {
 
   while (current_x <= current_y) {
     if (current_y > 0) {
-      FillRect (x - current_y, y + current_x, 1, 2*current_y);
-      FillRect (x - current_y, y - current_x, 1, 2*current_y);
+      FillRect (color, x - current_y, y + current_x, 1, 2*current_y);
+      FillRect (color, x - current_y, y - current_x, 1, 2*current_y);
       }
     if (current_x > 0) {
-      FillRect (x - current_x, y - current_y, 1, 2*current_x);
-      FillRect (x - current_x, y + current_y, 1, 2*current_x);
+      FillRect (color, x - current_x, y - current_y, 1, 2*current_x);
+      FillRect (color, x - current_x, y + current_y, 1, 2*current_x);
       }
     if (decision < 0)
       decision += (current_x << 2) + 6;
@@ -692,29 +684,29 @@ void cLcd::FillCircle (uint16_t x, uint16_t y, uint16_t Radius) {
     current_x++;
     }
 
-  DrawCircle (x, y, Radius);
+  DrawCircle (color, x, y, Radius);
   }
 //}}}
 //{{{
-void cLcd::DrawPolygon (pPoint Points, uint16_t PointCount) {
+void cLcd::DrawPolygon (uint32_t color, pPoint Points, uint16_t PointCount) {
 
   int16_t x = 0, y = 0;
 
   if (PointCount < 2)
     return;
 
-  DrawLine (Points->X, Points->Y, (Points+PointCount-1)->X, (Points+PointCount-1)->Y);
+  DrawLine (color, Points->X, Points->Y, (Points+PointCount-1)->X, (Points+PointCount-1)->Y);
 
   while(--PointCount) {
     x = Points->X;
     y = Points->Y;
     Points++;
-    DrawLine (x, y, Points->X, Points->Y);
+    DrawLine (color, x, y, Points->X, Points->Y);
     }
   }
 //}}}
 //{{{
-void cLcd::FillPolygon (pPoint Points, uint16_t PointCount) {
+void cLcd::FillPolygon (uint32_t color, pPoint Points, uint16_t PointCount) {
 
   int16_t X = 0, Y = 0, X2 = 0, Y2 = 0, X_center = 0, Y_center = 0, X_first = 0, Y_first = 0, pixelX = 0, pixelY = 0, counter = 0;
   uint16_t  image_left = 0, image_right = 0, image_top = 0, image_bottom = 0;
@@ -752,18 +744,18 @@ void cLcd::FillPolygon (pPoint Points, uint16_t PointCount) {
     X2 = Points->X;
     Y2 = Points->Y;
 
-    FillTriangle(X, X2, X_center, Y, Y2, Y_center);
-    FillTriangle(X, X_center, X2, Y, Y_center, Y2);
-    FillTriangle(X_center, X2, X, Y_center, Y2, Y);
+    FillTriangle (color, X, X2, X_center, Y, Y2, Y_center);
+    FillTriangle (color, X, X_center, X2, Y, Y_center, Y2);
+    FillTriangle (color, X_center, X2, X, Y_center, Y2, Y);
     }
 
-  FillTriangle(X_first, X2, X_center, Y_first, Y2, Y_center);
-  FillTriangle(X_first, X_center, X2, Y_first, Y_center, Y2);
-  FillTriangle(X_center, X2, X_first, Y_center, Y2, Y_first);
+  FillTriangle (color, X_first, X2, X_center, Y_first, Y2, Y_center);
+  FillTriangle (color, X_first, X_center, X2, Y_first, Y_center, Y2);
+  FillTriangle (color, X_center, X2, X_first, Y_center, Y2, Y_first);
   }
 //}}}
 //{{{
-void cLcd::DrawEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius) {
+void cLcd::DrawEllipse (uint32_t color, uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius) {
 
   int x = 0;
   int y = -YRadius;
@@ -776,10 +768,10 @@ void cLcd::DrawEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, ui
   k = (float)(rad2/rad1);
 
   do {
-    DrawPixel ((xCentre - (uint16_t)(x/k)), yCentre+y, mTextColor);
-    DrawPixel ((xCentre + (uint16_t)(x/k)), yCentre+y, mTextColor);
-    DrawPixel ((xCentre + (uint16_t)(x/k)), yCentre-y, mTextColor);
-    DrawPixel ((xCentre - (uint16_t)(x/k)), yCentre-y, mTextColor);
+    DrawPixel (color, (xCentre - (uint16_t)(x/k)), yCentre+y);
+    DrawPixel (color, (xCentre + (uint16_t)(x/k)), yCentre+y);
+    DrawPixel (color, (xCentre + (uint16_t)(x/k)), yCentre-y);
+    DrawPixel (color, (xCentre - (uint16_t)(x/k)), yCentre-y);
 
     e2 = err;
     if (e2 <= x) {
@@ -795,7 +787,7 @@ void cLcd::DrawEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, ui
   }
 //}}}
 //{{{
-void cLcd::FillEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius) {
+void cLcd::FillEllipse (uint32_t color, uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, uint16_t YRadius) {
 
   int x = 0, y = -YRadius, err = 2-2*XRadius, e2;
   float k = 0, rad1 = 0, rad2 = 0;
@@ -805,8 +797,8 @@ void cLcd::FillEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, ui
 
   k = (float)(rad2/rad1);
   do {
-    FillRect((xCentre-(uint16_t)(x/k)), (yCentre+y), 1, (2*(uint16_t)(x/k) + 1));
-    FillRect((xCentre-(uint16_t)(x/k)), (yCentre-y), 1, (2*(uint16_t)(x/k) + 1));
+    FillRect (color, (xCentre-(uint16_t)(x/k)), (yCentre+y), 1, (2*(uint16_t)(x/k) + 1));
+    FillRect (color, (xCentre-(uint16_t)(x/k)), (yCentre-y), 1, (2*(uint16_t)(x/k) + 1));
 
     e2 = err;
     if (e2 <= x) {
@@ -820,7 +812,7 @@ void cLcd::FillEllipse (uint16_t xCentre, uint16_t yCentre, uint16_t XRadius, ui
   }
 //}}}
 //{{{
-void cLcd::DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
+void cLcd::DrawLine (uint32_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
 
   int16_t xinc1 = 0, xinc2 = 0, yinc1 = 0, yinc2 = 0, den = 0, num = 0, num_add = 0, num_pixels = 0;
 
@@ -865,7 +857,7 @@ void cLcd::DrawLine (uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
     }
 
   for (int16_t curpixel = 0; curpixel <= num_pixels; curpixel++) {
-    DrawPixel (x, y, mTextColor);
+    DrawPixel (color, x, y);
     num += num_add;     // Increase the numerator by the top of the fraction
     if (num >= den) {   // Check if numerator >= denominator
       num -= den;       // Calculate the new numerator value
@@ -1812,45 +1804,45 @@ void cLcd::setLayer (uint32_t layerIndex) {
   }
 //}}}
 //{{{
-void cLcd::layerInit (uint16_t LayerIndex, uint32_t FB_Address) {
+void cLcd::layerInit (uint16_t layerIndex, uint32_t FB_Address) {
 
-  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdress = FB_Address;
-  hLtdcHandler.LayerCfg[LayerIndex].FBStartAdressWrite = FB_Address;
-  hLtdcHandler.LayerCfg[LayerIndex].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
+  hLtdcHandler.LayerCfg[layerIndex].FBStartAdress = FB_Address;
+  hLtdcHandler.LayerCfg[layerIndex].FBStartAdressWrite = FB_Address;
+  hLtdcHandler.LayerCfg[layerIndex].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
 
-  hLtdcHandler.LayerCfg[LayerIndex].ImageWidth = getWidth();
-  hLtdcHandler.LayerCfg[LayerIndex].ImageHeight = getHeight();
+  hLtdcHandler.LayerCfg[layerIndex].ImageWidth = getWidth();
+  hLtdcHandler.LayerCfg[layerIndex].ImageHeight = getHeight();
 
-  hLtdcHandler.LayerCfg[LayerIndex].WindowX0 = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].WindowX1 = getWidth();
-  hLtdcHandler.LayerCfg[LayerIndex].WindowY0 = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].WindowY1 = getHeight();
+  hLtdcHandler.LayerCfg[layerIndex].WindowX0 = 0;
+  hLtdcHandler.LayerCfg[layerIndex].WindowX1 = getWidth();
+  hLtdcHandler.LayerCfg[layerIndex].WindowY0 = 0;
+  hLtdcHandler.LayerCfg[layerIndex].WindowY1 = getHeight();
 
-  hLtdcHandler.LayerCfg[LayerIndex].Alpha = 255;
-  hLtdcHandler.LayerCfg[LayerIndex].Alpha0 = 0;
+  hLtdcHandler.LayerCfg[layerIndex].Alpha = 255;
+  hLtdcHandler.LayerCfg[layerIndex].Alpha0 = 0;
 
-  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Blue = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Green = 0;
-  hLtdcHandler.LayerCfg[LayerIndex].Backcolor.Red = 0;
+  hLtdcHandler.LayerCfg[layerIndex].Backcolor.Blue = 0;
+  hLtdcHandler.LayerCfg[layerIndex].Backcolor.Green = 0;
+  hLtdcHandler.LayerCfg[layerIndex].Backcolor.Red = 0;
 
-  hLtdcHandler.LayerCfg[LayerIndex].BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
-  hLtdcHandler.LayerCfg[LayerIndex].BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
+  hLtdcHandler.LayerCfg[layerIndex].BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
+  hLtdcHandler.LayerCfg[layerIndex].BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
 
   // Configure the LTDC Layer
-  setLayer (LayerIndex);
+  setLayer (layerIndex);
 
   // Sets the Reload type
   LTDC->SRCR = LTDC_SRCR_IMR;
 
-  __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, LayerIndex);
+  __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, layerIndex);
   __HAL_LTDC_RELOAD_CONFIG (&hLtdcHandler);
 
-  mCurLayer = LayerIndex;
+  mCurLayer = layerIndex;
   }
 //}}}
 
 //{{{
-void cLcd::FillBuffer (uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine, uint32_t color) {
+void cLcd::FillBuffer (uint32_t color, uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine) {
 
   hDma2dHandler.Init.Mode = DMA2D_R2M;
   hDma2dHandler.Init.ColorMode = DMA2D_RGB565;
@@ -1863,7 +1855,7 @@ void cLcd::FillBuffer (uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ys
   }
 //}}}
 //{{{
-void cLcd::FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3) {
+void cLcd::FillTriangle (uint32_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3) {
 
   int16_t deltax = ABS(x2 - x1);        // The difference between the x's
   int16_t deltay = ABS(y2 - y1);        // The difference between the y's
@@ -1915,7 +1907,7 @@ void cLcd::FillTriangle (uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uin
     }
 
   for (int16_t curpixel = 0; curpixel <= num_pixels; curpixel++) {
-    DrawLine (x, y, x3, y3);
+    DrawLine (color, x, y, x3, y3);
     num += num_add;     // Increase the numerator by the top of the fraction
     if (num >= den)  {  // Check if numerator >= denominator
       num -= den;       // Calculate the new numerator value

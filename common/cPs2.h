@@ -151,38 +151,36 @@ public:
   //{{{
   void showTouch() {
 
-    mLcd->SetTextColor (LCD_COLOR_YELLOW);
-
     char str[8];
     sprintf (str, "%d", mTouchX);
-    mLcd->DisplayStringAtLineColumn (13, 0, str);
+    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 0, str);
 
     sprintf (str, "%d", mTouchY);
-    mLcd->DisplayStringAtLineColumn (13, 6, str);
+    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 6, str);
 
     sprintf (str, "%d", mTouchZ);
-    mLcd->DisplayStringAtLineColumn (13, 12, str);
+    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 12, str);
 
     sprintf (str, "%d", mStreamCode);
-    mLcd->DisplayStringAtLineColumn (13, 18, str);
+    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 18, str);
 
     sprintf (str, "%x", mStreamCodes[0]);
-    mLcd->DisplayStringAtLineColumn (13, 22, str);
+    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 22, str);
 
     sprintf (str, "%x", mStreamCodes[1]);
-    mLcd->DisplayStringAtLineColumn (13, 25, str);
+    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 25, str);
 
     sprintf (str, "%x", mStreamCodes[2]);
-    mLcd->DisplayStringAtLineColumn (13, 28, str);
+    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 28, str);
 
     sprintf (str, "%x", mStreamCodes[3]);
-    mLcd->DisplayStringAtLineColumn (13, 31, str);
+    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 31, str);
 
     sprintf (str, "%x", mStreamCodes[4]);
-    mLcd->DisplayStringAtLineColumn (13, 34, str);
+    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 34, str);
 
     sprintf (str, "%x", mStreamCodes[5]);
-    mLcd->DisplayStringAtLineColumn (13, 37, str);
+    mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 13, 37, str);
     }
   //}}}
   //{{{
@@ -192,10 +190,9 @@ public:
     for (auto i = 0u; i < kMaxChars; i++) {
       if (ch > 0) {
         char str[2];
-        mLcd->SetTextColor (mChars[ch % kMaxChars] & 0x100 ? LCD_COLOR_GREEN : LCD_COLOR_YELLOW);
         str[0] = mChars[ch % kMaxChars] & 0xFF;
         str[1] = 0;
-        mLcd->DisplayStringAtLineColumn (13, i, str);
+        mLcd->DisplayStringAtLineColumn (mChars[ch % kMaxChars] & 0x100 ? LCD_COLOR_GREEN : LCD_COLOR_YELLOW, 13, i, str);
         }
       ch++;
       }
@@ -204,14 +201,12 @@ public:
   //{{{
   void showCodes() {
 
-    mLcd->SetTextColor (LCD_COLOR_YELLOW);
-
     auto code = mCurCode - kMaxCodes + 1;
     for (auto i = 0u; i < kMaxCodes; i++) {
       if (code > 0) {
         char str[4];
         sprintf (str, "%02x", mCodes[code % kMaxCodes]);
-        mLcd->DisplayStringAtLineColumn (14, i*3, str);
+        mLcd->DisplayStringAtLineColumn (LCD_COLOR_YELLOW, 14, i*3, str);
         }
       code++;
       }
@@ -235,21 +230,18 @@ public:
 
         if (bit != lastBit) {
           // draw edge
-          mLcd->SetTextColor (bitPos == -1 ? LCD_COLOR_RED : LCD_COLOR_WHITE);
-          mLcd->FillRect (i*kBitWidth, waveY, 1, bitHeight);
+          mLcd->FillRect (bitPos == -1 ? LCD_COLOR_RED : LCD_COLOR_WHITE, i*kBitWidth, waveY, 1, bitHeight);
           lastBit = bit;
           }
 
         // draw bit
-        mLcd->SetTextColor ((bitPos == -1) || (bitPos == 9) ? LCD_COLOR_RED : LCD_COLOR_WHITE);
-        mLcd->FillRect (i*kBitWidth, waveY + (bit ? 0 : bitHeight-2), kBitWidth, 2);
+        mLcd->FillRect ((bitPos == -1) || (bitPos == 9) ? LCD_COLOR_RED : LCD_COLOR_WHITE, i*kBitWidth, waveY + (bit ? 0 : bitHeight-2), kBitWidth, 2);
         }
 
-      mLcd->SetTextColor (LCD_COLOR_WHITE);
-      mLcd->FillRect (i*kBitWidth + (kBitWidth/4), waveY + lineHeight, 1, clockHeight);
-      mLcd->FillRect (i*kBitWidth + (kBitWidth/4), waveY + lineHeight , kBitWidth/2, 1);
-      mLcd->FillRect (i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight, 1, clockHeight);
-      mLcd->FillRect (i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight + clockHeight, kBitWidth/2, 1);
+      mLcd->FillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth/4), waveY + lineHeight, 1, clockHeight);
+      mLcd->FillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth/4), waveY + lineHeight , kBitWidth/2, 1);
+      mLcd->FillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight, 1, clockHeight);
+      mLcd->FillRect (LCD_COLOR_WHITE, i*kBitWidth + (kBitWidth*3/4), waveY + lineHeight + clockHeight, kBitWidth/2, 1);
       }
     }
   //}}}
