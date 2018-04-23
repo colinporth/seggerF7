@@ -1,6 +1,9 @@
 // main.cpp - msc class usb
 //{{{  includes
+#include <deque>
+
 #include "../common/system.h"
+#include "../common/cPointRect.h"
 #include "cLcd.h"
 #include "../common/cTouch.h"
 #include "../common/cPs2.h"
@@ -81,13 +84,125 @@ const char kHtmlBody[] =
   "</html>\r\n";
 //}}}
 //}}}
-const char kVersion[] = "WebCam 22/4/18";
+const char kVersion[] = "WebCam 23/4/18";
 const bool kWriteJpg  = false;
 const bool kWriteMjpg = true;
 
 //{{{
 class cApp : public cTouch {
 public:
+  //{{{
+  class cBox {
+  public:
+    //{{{
+    cBox (const char* name, float width, float height)
+        : mName(name), mLayoutWidth(width), mLayoutHeight(height) {
+      //mWindow->changed();
+      }
+    //}}}
+    virtual ~cBox() {}
+
+    // gets
+    const char* getName() const { return mName; }
+
+    bool getEnable() { return mEnable; }
+    bool getPick() { return mPick; }
+    bool getShow() { return mEnable && (mPick || mPin); }
+    bool getTimedOn() { return mTimedOn; }
+
+    cPoint getSize() { return mRect.getSize(); }
+    float getWidth() { return mRect.getWidth(); }
+    float getHeight() { return mRect.getHeight(); }
+    int getWidthInt() { return mRect.getWidthInt(); }
+    int getHeightInt() { return mRect.getHeightInt(); }
+    cPoint getTL() { return mRect.getTL(); }
+    cPoint getTL (float offset) { return mRect.getTL (offset); }
+    cPoint getTR() { return mRect.getTR(); }
+    cPoint getBL() { return mRect.getBL(); }
+    cPoint getBR() { return mRect.getBR(); }
+    cPoint getCentre() { return mRect.getCentre(); }
+    float getCentreX() { return mRect.getCentreX(); }
+    float getCentreY() { return mRect.getCentreY(); }
+
+    //{{{
+    cBox* setPos (cPoint pos) {
+      mLayoutX = pos.x;
+      mLayoutY = pos.y;
+      layout();
+      return this;
+      }
+    //}}}
+    //{{{
+    cBox* setPos (float x, float y) {
+      mLayoutX = x;
+      mLayoutY = y;
+      layout();
+      return this;
+      }
+    //}}}
+    cBox* setEnable (bool enable) { mEnable = enable; return this;  }
+    cBox* setUnPick() { mPick = false;  return this; }
+    cBox* setPin (bool pin) { mPin = pin; return this; }
+    cBox* togglePin() { mPin = !mPin;  return this; }
+    cBox* setTimedOn() { mTimedOn = true; return this;  }
+
+    // overrides
+    //{{{
+    virtual void layout() {
+
+      mRect.left = (mLayoutX < 0) ? cLcd::getWidth() + mLayoutX : mLayoutX;
+      if (mLayoutWidth > 0)
+        mRect.right = mRect.left + mLayoutWidth;
+      else if (mLayoutWidth == 0)
+        mRect.right = getSize().x - mLayoutX;
+      else // mLayoutWidth < 0
+        mRect.right = cLcd::getHeight() + mLayoutWidth + mLayoutX;
+
+      mRect.top = (mLayoutY < 0) ? cLcd::getHeight() + mLayoutY : mLayoutY;
+      if (mLayoutHeight > 0)
+        mRect.bottom = mRect.top + mLayoutHeight;
+      else if (mLayoutHeight == 0)
+        mRect.bottom = cLcd::getHeight() - mLayoutY;
+      else // mLayoutHeight < 0
+        mRect.bottom = cLcd::getHeight() + mLayoutHeight + mLayoutY;
+      }
+    //}}}
+    //{{{
+    virtual bool pick (cPoint pos, bool& change) {
+
+      bool lastPick = mPick;
+
+      mPick = mRect.inside (pos);
+      if (!change && (mPick != lastPick))
+        change = true;
+
+      return mPick;
+      }
+    //}}}
+    virtual bool onProx (cPoint pos) { return false; }
+    virtual bool onProxExit() { return false; }
+    virtual bool onDown (cPoint pos)  { return false; }
+    virtual bool onMove (cPoint pos, cPoint inc)  { return false; }
+    virtual bool onUp (bool mouseMoved, cPoint pos) { return false; }
+    virtual void onDraw (cLcd* lcd) = 0;
+
+  protected:
+    const char* mName;
+
+    bool mEnable = true;
+    bool mPick = false;
+    bool mPin = true;
+    bool mTimedOn = false;
+
+    float mLayoutWidth;
+    float mLayoutHeight;
+    float mLayoutX = 0;
+    float mLayoutY = 0;
+
+    cRect mRect = { 0.f };
+    };
+  //}}}
+
   //{{{
   cApp (int x, int y) : cTouch (x,y) {
 
@@ -118,6 +233,14 @@ public:
   //}}}
 
   cCamera* mCam = nullptr;
+
+  cBox* add (cBox* box, cPoint pos);
+  cBox* add (cBox* box, float x, float y);
+  cBox* add (cBox* box);
+  cBox* addBelow (cBox* box);
+  cBox* addFront (cBox* box);
+  cBox* addFront (cBox* box, float x, float y);
+  void removeBox (cBox* box);
 
 protected:
   virtual void onProx (int16_t x, int16_t y, uint8_t z);
@@ -152,8 +275,25 @@ private:
   struct jpeg_error_mgr jerr;
   struct jpeg_decompress_struct mCinfo;
   uint8_t* mBufArray[1];
+
+  cBox* mProxBox = nullptr;
+  cBox* mPressedBox = nullptr;
+  std::deque <cBox*> mBoxes;
+
+  bool mMouseTracking = false;
+  bool mMouseDown = false;
+  bool mRightDown = false;
+  bool mMouseMoved = false;
+
+  cPoint mProxMouse;
+  cPoint mDownMouse;
+  cPoint mLastMouse;
+
+  bool mValue = false;
+  bool mValueChanged = false;
   };
 //}}}
+#include "../common/cToggleBox.h"
 
 FATFS gFatFs;  // encourges allocation in lower DTCM SRAM
 FIL   gFile;
@@ -167,6 +307,8 @@ void cApp::init() {
 
   mLcd = new cLcd (16);
   mLcd->init();
+
+  add (new cToggleBox (80.f, 30.f, "toggle", mValue, mValueChanged));
 
   // show title early
   mLcd->start();
@@ -287,9 +429,10 @@ void cApp::run() {
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%d",
-                                          osGetCPUUsage(), xPortGetFreeHeapSize(), mCam->getFps(), 
+                                          osGetCPUUsage(), xPortGetFreeHeapSize(), mCam->getFps(),
                                           frameLen, mCam->getStatus(), mCam->getDmaCount());
     mLcd->drawDebug();
+    for (auto box : mBoxes) box->onDraw (mLcd);
     mLcd->present();
 
     bool button = BSP_PB_GetState (BUTTON_KEY);
@@ -303,15 +446,91 @@ void cApp::run() {
   }
 //}}}
 
+//{{{
+cApp::cBox* cApp::add (cBox* box, cPoint pos) {
+
+  mBoxes.push_back (box);
+  box->setPos (pos);
+  return box;
+  }
+//}}}
+//{{{
+cApp::cBox* cApp::add (cBox* box, float x, float y) {
+  return add (box, cPoint(x,y));
+  }
+//}}}
+//{{{
+cApp::cBox* cApp::add (cBox* box) {
+  return add (box, cPoint());
+  }
+//}}}
+//{{{
+cApp::cBox* cApp::addBelow (cBox* box) {
+
+  mBoxes.push_back (box);
+  auto lastBox = mBoxes.back();
+  box->setPos (lastBox->getBL());
+  return box;
+  }
+//}}}
+//{{{
+cApp::cBox* cApp::addFront (cBox* box) {
+
+  mBoxes.push_front (box);
+  box->setPos (cPoint());
+  return box;
+  }
+//}}}
+//{{{
+cApp::cBox* cApp::addFront (cBox* box, float x, float y) {
+
+  mBoxes.push_front (box);
+  box->setPos (cPoint(x,y));
+  return box;
+  }
+//}}}
+//{{{
+void cApp::removeBox (cBox* box) {
+
+  for (auto boxIt = mBoxes.begin(); boxIt != mBoxes.end(); ++boxIt)
+    if (*boxIt == box) {
+      mBoxes.erase (boxIt);
+      //changed();
+      return;
+      }
+  }
+//}}}
+
 // protected
 //{{{
 void cApp::onProx (int16_t x, int16_t y, uint8_t z) {
 
-  if (x || y) {
+  //if (x || y) {
     //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
     // hidSendReport (&gUsbDevice, HID_Buf);
-    mLcd->debug (LCD_COLOR_MAGENTA, "onProx %d %d %d", x, y, z);
+    //mLcd->debug (LCD_COLOR_MAGENTA, "onProx %d %d %d", x, y, z);
+    //}
+
+  cPoint pos (x,y);
+
+  bool change = false;
+  auto lastProxBox = mProxBox;
+
+  // search for prox in reverse draw order
+  mProxBox = nullptr;
+  for (auto boxIt = mBoxes.rbegin(); boxIt != mBoxes.rend(); ++boxIt) {
+    bool wasPicked = (*boxIt)->getPick();
+    if (!mProxBox && (*boxIt)->getEnable() && (*boxIt)->pick (pos, change)) {
+      mProxBox = *boxIt;
+      change |= mProxBox->onProx (pos - mProxBox->getTL());
+      }
+    else if (wasPicked) {
+      (*boxIt)->setUnPick();
+      change |= (*boxIt)->onProxExit();
+      }
     }
+
+  //return change || (mProxBox != lastProxBox);
   }
 //}}}
 //{{{
@@ -319,22 +538,38 @@ void cApp::onPress (int16_t x, int16_t y) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,0,0,0 };
   //hidSendReport (&gUsbDevice, HID_Buf);
-  mLcd->debug (LCD_COLOR_GREEN, "onPress %d %d", x, y);
+  //mLcd->debug (LCD_COLOR_GREEN, "onPress %d %d", x, y);
+
+  mMouseDown = true;
+  mMouseMoved = false;
+
+  cPoint pos (x,y);
+  mPressedBox = mProxBox;
+  mPressedBox->onDown (pos - mPressedBox->getTL());
   }
 //}}}
 //{{{
 void cApp::onMove (int16_t x, int16_t y, uint8_t z) {
 
-  if (x || y) {
+  //if (x || y) {
     //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
     //hidSendReport (&gUsbDevice, HID_Buf);
-    int focus = mCam->getFocus() + x;
-    if (focus < 0)
-      focus = 0;
-    else if (focus > 254)
-      focus = 254;
-    mCam->setFocus (focus);
-    mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d %d", x, y, z, focus);
+    //int focus = mCam->getFocus() + x;
+    //if (focus < 0)
+    //  focus = 0;
+    //else if (focus > 254)
+    //  focus = 254;
+    //mCam->setFocus (focus);
+    //mLcd->debug (LCD_COLOR_GREEN, "onMove %d %d %d %d", x, y, z, focus);
+    //}
+
+  cPoint pos (x,y);
+  mProxMouse = pos;
+
+  if (mMouseDown) {
+    mMouseMoved = true;
+    mPressedBox->onMove (pos - mPressedBox->getTL(), mProxMouse - mLastMouse);
+    mLastMouse = mProxMouse;
     }
   }
 //}}}
@@ -348,7 +583,15 @@ void cApp::onRelease (int16_t x, int16_t y) {
 
   //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
   //hidSendReport (&gUsbDevice, HID_Buf);
-  mLcd->debug (LCD_COLOR_GREEN, "onRelease %d %d", x, y);
+  //mLcd->debug (LCD_COLOR_GREEN, "onRelease %d %d", x, y);
+
+  cPoint pos (x,y);
+  mLastMouse = pos;
+
+  bool changed = mPressedBox && mPressedBox->onUp (mMouseMoved, pos - mPressedBox->getTL());
+  mPressedBox = nullptr;
+
+  mMouseDown = false;
   }
 //}}}
 //{{{
@@ -367,6 +610,7 @@ void cApp::onKey (uint8_t ch, bool release) {
 //}}}
 
 // private
+
 //{{{
 void cApp::readDirectory (char* path) {
 

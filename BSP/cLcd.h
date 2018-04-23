@@ -10,14 +10,16 @@
 #include "cmsis_os.h"
 //}}}
 //{{{  colour defines
-#define LCD_COLOR_BLUE          0x001F
-#define LCD_COLOR_GREEN         0x07D0
-#define LCD_COLOR_RED           0xF800
-#define LCD_COLOR_YELLOW        0xFFD0
-#define LCD_COLOR_WHITE         0xFFFF
-#define LCD_COLOR_BLACK         0x0000
-#define LCD_COLOR_MAGENTA       0xF81F
-#define LCD_COLOR_CYAN          0x07FF
+#define LCD_COLOR_BLUE     0x001F
+#define LCD_COLOR_GREEN    0x07D0
+#define LCD_COLOR_RED      0xF800
+#define LCD_COLOR_YELLOW   0xFFD0
+#define LCD_COLOR_MAGENTA  0xF81F
+#define LCD_COLOR_CYAN     0x07FF
+
+#define LCD_COLOR_WHITE    0xFFFF
+#define LCD_COLOR_GREY     0x7BDF
+#define LCD_COLOR_BLACK    0x0000
 //}}}
   enum eTextAlign { CENTER_MODE, RIGHT_MODE, LEFT_MODE };
 
