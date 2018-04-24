@@ -300,8 +300,7 @@ private:
   bool mValueChanged = false;
   bool mValue = false;
 
-  bool mZoomChanged = false;
-  bool mZoomValue = false;
+  int mZoomValue = 0;
 
   bool mDebugChanged = false;
   bool mDebugValue = true;
@@ -314,6 +313,34 @@ private:
   bool mTakeChanged = false;
   bool mTakeMovieChanged = false;
   //}}}
+  };
+//}}}
+//{{{
+class cBgndBox : public cApp::cBox {
+public:
+  //{{{
+  cBgndBox (float width, float height, int& value)
+      : cBox("bgnd", width, height), mValue(value) {}
+  //}}}
+  virtual ~cBgndBox() {}
+
+  bool onPress (cPoint pos, uint8_t z)  {
+    mValue = 1;
+    return true;
+    }
+
+  bool onMove (cPoint pos, cPoint inc, uint8_t z)  {
+    return true;
+    }
+  bool onRelease (cPoint pos, uint8_t z)  {
+    mValue = 0;
+    return true;
+    }
+
+  void onDraw (cLcd* lcd) {}
+
+private:
+  int& mValue;
   };
 //}}}
 //{{{
@@ -481,8 +508,8 @@ void cApp::init() {
   mLcd->init();
 
   // define menu
+  add (new cBgndBox (getWidth(), getHeight(), mZoomValue), 0,0);
   add (new cToggleBox (kBoxWidth,kBoxHeight, "jpeg", mValue, mValueChanged), 0,getHeight()-kBoxHeight);
-  addRight (new cToggleBox (kBoxWidth,kBoxHeight, "zoom", mZoomValue, mZoomChanged));
   addRight (new cToggleBox (kBoxWidth,kBoxHeight, "debug", mDebugValue, mDebugChanged));
   addRight (new cInstantBox (kBoxWidth,kBoxHeight, "clear", mClearDebugChanged));
   addRight (new cValueBox (kBoxWidth,kBoxHeight, "f", 0,254, mFocus, mFocusChanged));
