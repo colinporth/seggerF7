@@ -16,7 +16,8 @@ public:
   int getFps() { return 1000/mTookTicks; }
   int getFocus() { return mFocus; }
 
-  uint8_t* getHeader (bool full, int qscale, uint32_t& headerLen);
+  uint8_t* getBmpHeader (uint32_t& headerLen);
+  uint8_t* getJpgHeader (bool full, int qscale, uint32_t& headerLen);
   uint8_t* getLastFrame (uint32_t& frameLen, bool& jpeg);
   uint8_t* getNextFrame (uint32_t& frameLen, bool& jpeg);
 

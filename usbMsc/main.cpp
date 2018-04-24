@@ -545,6 +545,9 @@ void cApp::run() {
     mLcd->debug (LCD_COLOR_WHITE, "sdCard ok - %s ", mLabel);
 
     fileLen = loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
+    char path[40] = "/";
+    auto numFiles = getCountFiles (path);
+    mLcd->debug (LCD_COLOR_WHITE, "- files %d", numFiles);
 
     mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, 0, cPoint(0,0));
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
@@ -583,26 +586,22 @@ void cApp::run() {
       if (mounted && mTakeChanged) {
         //{{{  save JFIF jpeg
         mTakeChanged = false;
-
-        auto header = mCam->getHeader (true, 6, headerLen);
+        auto header = mCam->getJpgHeader (true, 6, headerLen);
         saveNumFile ("save", frameNum, "jpg", header, headerLen, frame, frameLen);
-
-        mLcd->debug (LCD_COLOR_WHITE, "pic %s%d.%s taken", "save", frameNum, "jpg");
-
         frameNum++;
         }
         //}}}
       else if (mounted && mTakeMovieChanged && !frameNum) {
         //{{{  save mjpeg first frame
         frameNum++;
-        auto header = mCam->getHeader (true, 6, headerLen);
+        auto header = mCam->getJpgHeader (true, 6, headerLen);
         createNumFile ("save", fileNum, header, headerLen, frame, frameLen);
         mLcd->start();
         }
         //}}}
       else if (mounted && mTakeMovieChanged && (frameNum < 500)) {
         //{{{  add mjpeg frame
-        auto header = mCam->getHeader (false, 6, headerLen);
+        auto header = mCam->getJpgHeader (false, 6, headerLen);
         appendFile (frameNum++, header, headerLen, frame, frameLen);
         mLcd->start();
         }
@@ -618,7 +617,7 @@ void cApp::run() {
         //}}}
       else {
         //{{{  jpegDecode
-        auto header = mCam->getHeader (!frameNum++, 6, headerLen);
+        auto header = mCam->getJpgHeader (!frameNum++, 6, headerLen);
         jpeg_mem_src (&mCinfo, header, headerLen);
         jpeg_read_header (&mCinfo, TRUE);
 
@@ -648,11 +647,11 @@ void cApp::run() {
         mTakeChanged = false;
 
         uint32_t headerLen;
-        auto header = mCam->getHeader (false, 6, headerLen);
+        auto header = mCam->getBmpHeader (headerLen);
         saveNumFile ("save", frameNum, "bmp", header, headerLen, frame, frameLen);
-        mLcd->debug (LCD_COLOR_WHITE, "pic %s%d.%s taken", "save", frameNum, "bmp");
         frameNum++;
         }
+
       mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), mZoom, mZoomCentre);
       }
       //}}}
@@ -814,8 +813,8 @@ void cApp::countFiles (char* path) {
   DIR dir;
   auto result = f_opendir (&dir, path);
   if (result == FR_OK) {
-    int i;
-    for (i = 0; path[i]; i++);
+    uint16_t i;
+    for (i = 0; path[i]; i++) {}
     path[i++] = '/';
 
     while (true) {
@@ -826,7 +825,7 @@ void cApp::countFiles (char* path) {
       if (fno.fname[0] == '.')
         continue;
 
-      int j = 0;
+      uint16_t j = 0;
       do {
         path[i+j] = fno.fname[j];
         } while (fno.fname[j++]);
@@ -863,49 +862,54 @@ int cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
   //char pathName[256] = "/";
   //readDirectory (pathName);
   FILINFO filInfo;
-  if (!f_stat (fileName, &filInfo))
-    mLcd->debug (LCD_COLOR_WHITE, "%d %u/%02u/%02u %02u:%02u %c%c%c%c%c",
-                                  (int)(filInfo.fsize),
-                                  (filInfo.fdate >> 9) + 1980, filInfo.fdate >> 5 & 15, filInfo.fdate & 31,
-                                   filInfo.ftime >> 11, filInfo.ftime >> 5 & 63,
-                                  (filInfo.fattrib & AM_DIR) ? 'D' : '-',
-                                  (filInfo.fattrib & AM_RDO) ? 'R' : '-',
-                                  (filInfo.fattrib & AM_HID) ? 'H' : '-',
-                                  (filInfo.fattrib & AM_SYS) ? 'S' : '-',
-                                  (filInfo.fattrib & AM_ARC) ? 'A' : '-');
-
-  if (!f_open (&gFile, fileName, FA_READ)) {
-    mLcd->debug (LCD_COLOR_WHITE, "image.jpg - found");
-
-    UINT bytesRead;
-    f_read (&gFile, (void*)buf, (UINT)filInfo.fsize, &bytesRead);
-    mLcd->debug (LCD_COLOR_WHITE, "image.jpg bytes read %d", bytesRead);
-    f_close (&gFile);
-
-    if (bytesRead > 0) {
-      jpeg_mem_src (&mCinfo, buf, bytesRead);
-      jpeg_read_header (&mCinfo, TRUE);
-      mLcd->debug (LCD_COLOR_WHITE, "jpegDecode in:%dx%d", mCinfo.image_width, mCinfo.image_height);
-
-      mCinfo.dct_method = JDCT_FLOAT;
-      mCinfo.out_color_space = JCS_RGB;
-      mCinfo.scale_num = 1;
-      mCinfo.scale_denom = 4;
-      jpeg_start_decompress (&mCinfo);
-      while (mCinfo.output_scanline < mCinfo.output_height) {
-        jpeg_read_scanlines (&mCinfo, mBufArray, 1);
-        mLcd->rgb888to565 (mBufArray[0], rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
-        }
-      jpeg_finish_decompress (&mCinfo);
-
-      mLcd->debug (LCD_COLOR_WHITE, "jpegDecode out:%dx%d %d", mCinfo.output_width, mCinfo.output_height, 4);
-      return bytesRead;
-      }
+  if (f_stat (fileName, &filInfo)) {
+    mLcd->debug (LCD_COLOR_RED, "%s not found", fileName);
+    return 0;
     }
-  else
-    mLcd->debug (LCD_COLOR_RED, "image.jpg - not found");
 
-  return 0;
+  mLcd->debug (LCD_COLOR_WHITE, "%s %d bytes", fileName, (int)(filInfo.fsize));
+  mLcd->debug (LCD_COLOR_WHITE, "- %u/%02u/%02u %02u:%02u %c%c%c%c%c",
+                                (filInfo.fdate >> 9) + 1980,
+                                (filInfo.fdate >> 5) & 15,
+                                (filInfo.fdate) & 31,
+                                (filInfo.ftime >> 11),
+                                (filInfo.ftime >> 5) & 63,
+                                (filInfo.fattrib & AM_DIR) ? 'D' : '-',
+                                (filInfo.fattrib & AM_RDO) ? 'R' : '-',
+                                (filInfo.fattrib & AM_HID) ? 'H' : '-',
+                                (filInfo.fattrib & AM_SYS) ? 'S' : '-',
+                                (filInfo.fattrib & AM_ARC) ? 'A' : '-');
+
+  if (f_open (&gFile, fileName, FA_READ)) {
+    mLcd->debug (LCD_COLOR_RED, "%s not read", fileName);
+    return 0;
+    }
+
+  UINT bytesRead;
+  f_read (&gFile, (void*)buf, (UINT)filInfo.fsize, &bytesRead);
+  mLcd->debug (LCD_COLOR_WHITE, "- read  %d bytes", bytesRead);
+  f_close (&gFile);
+
+  if (bytesRead > 0) {
+    jpeg_mem_src (&mCinfo, buf, bytesRead);
+    jpeg_read_header (&mCinfo, TRUE);
+    mLcd->debug (LCD_COLOR_WHITE, "- image %dx%d", mCinfo.image_width, mCinfo.image_height);
+
+    mCinfo.dct_method = JDCT_FLOAT;
+    mCinfo.out_color_space = JCS_RGB;
+    mCinfo.scale_num = 1;
+    mCinfo.scale_denom = 4;
+    jpeg_start_decompress (&mCinfo);
+    while (mCinfo.output_scanline < mCinfo.output_height) {
+      jpeg_read_scanlines (&mCinfo, mBufArray, 1);
+      mLcd->rgb888to565 (mBufArray[0], rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
+      }
+    jpeg_finish_decompress (&mCinfo);
+
+    mLcd->debug (LCD_COLOR_WHITE, "- load  %dx%d scale %d", mCinfo.output_width, mCinfo.output_height, 4);
+    }
+
+  return bytesRead;
   }
 //}}}
 
@@ -1066,7 +1070,7 @@ void serverThread (void* arg) {
 
                       // send imageFile format header
                       uint32_t headerLen;
-                      auto header = gApp->getCam()->getHeader (true, 6, headerLen);
+                      auto header = jpeg ? gApp->getCam()->getJpgHeader (true, 6, headerLen) : gApp->getCam()->getBmpHeader (headerLen);
                       netconn_write (request, header, headerLen, NETCONN_NOCOPY);
 
                       // send imageFile body

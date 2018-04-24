@@ -144,81 +144,83 @@ void cCamera::init (uint8_t* bufStart, uint8_t* bufEnd) {
 //}}}
 
 //{{{
-uint8_t* cCamera::getHeader (bool full, int qscale, uint32_t& headerLen) {
+uint8_t* cCamera::getBmpHeader (uint32_t& headerLen) {
+//  set RGB565 16bpp bmp header, minimal for pic no greater than 1600x1200
 
-  if (mJpegMode) {
-    // set jpegHeader
-    auto ptr = mHeader;
+  const int kHeaderLen = 0x0e;
+  const int kDibLen =    0x28;
+  const int kMaskLen =   0x0c;
+  const int kPadLen =    0x02;
+  //                     0x44 - padded out from 0x42
 
-    *ptr++ = 0xFF; // SOI marker
-    *ptr++ = 0xD8;
-    headerLen = 2;
+  int imageSize = mWidth*mHeight*2;
+  headerLen = kHeaderLen + kDibLen + kMaskLen + kPadLen;
+  int fileSize = headerLen + imageSize;
 
-    headerLen += app0Marker (ptr);
-    headerLen += quantTableMarker (mHeader + headerLen, qscale);
-    headerLen += sofMarker (mHeader + headerLen, mWidth, mHeight);
+  memset (mHeader, 0, headerLen);
 
-    if (full) {
-      headerLen += huffTableMarkerAC (mHeader + headerLen, &kJpegStdHuffmanTbl[0], 0x10);
-      headerLen += huffTableMarkerAC (mHeader + headerLen, &kJpegStdHuffmanTbl[176], 0x11);
-      headerLen += huffTableMarkerDC (mHeader + headerLen, &kJpegStdHuffmanTbl[352], 0x00);
-      headerLen += huffTableMarkerDC (mHeader + headerLen, &kJpegStdHuffmanTbl[368], 0x01);
-      }
+  mHeader[0] = 'B';  // magic
+  mHeader[1] = 'M';
 
-    headerLen += sosMarker (mHeader + headerLen);
+  mHeader[2] = fileSize;
+  mHeader[3] = fileSize >> 8;
+  mHeader[4] = fileSize >> 16;
+
+  mHeader[0x0a] = headerLen;
+  mHeader[0x0e] = kDibLen;
+
+  mHeader[0x12] = mWidth;
+  mHeader[0x13] = mWidth >> 8;
+
+  mHeader[0x16] = -mHeight;
+  mHeader[0x17] = -mHeight >> 8;
+  mHeader[0x18] = -mHeight >> 16;
+  mHeader[0x19] = -mHeight >> 24;
+
+  mHeader[0x1A] = 1;  // 0x1A number color planes
+  mHeader[0x1C] = 16; // 0x1C bits per pixel
+  mHeader[0x1E] = 3;  // 0x1E compression
+
+  mHeader[0x22] = imageSize;
+  mHeader[0x23] = imageSize >> 8;
+  mHeader[0x24] = imageSize >> 16;
+
+  mHeader[0x26] = 0x13; // 0x26 horz resolution 72 dpi
+  mHeader[0x27] = 0x0B;
+
+  mHeader[0x2a] = 0x13; // 0x2a horz resolution 72 dpi
+  mHeader[0x2b] = 0x0B;
+
+  mHeader[0x37] = 0xF8;
+  mHeader[0x3A] = 0xE0;
+  mHeader[0x3B] = 0x07;
+  mHeader[0x3E] = 0x1F;
+
+  return mHeader;
+  }
+//}}}
+//{{{
+uint8_t* cCamera::getJpgHeader (bool full, int qscale, uint32_t& headerLen) {
+
+  // set jpegHeader
+  auto ptr = mHeader;
+
+  *ptr++ = 0xFF; // SOI marker
+  *ptr++ = 0xD8;
+  headerLen = 2;
+
+  headerLen += app0Marker (ptr);
+  headerLen += quantTableMarker (mHeader + headerLen, qscale);
+  headerLen += sofMarker (mHeader + headerLen, mWidth, mHeight);
+
+  if (full) {
+    headerLen += huffTableMarkerAC (mHeader + headerLen, &kJpegStdHuffmanTbl[0], 0x10);
+    headerLen += huffTableMarkerAC (mHeader + headerLen, &kJpegStdHuffmanTbl[176], 0x11);
+    headerLen += huffTableMarkerDC (mHeader + headerLen, &kJpegStdHuffmanTbl[352], 0x00);
+    headerLen += huffTableMarkerDC (mHeader + headerLen, &kJpegStdHuffmanTbl[368], 0x01);
     }
-  else {
-    //{{{  set RGB565 16bpp bmp header, minimal for pic no greater than 1600x1200
-    const int kHeaderLen = 0x0e;
-    const int kDibLen =    0x28;
-    const int kMaskLen =   0x0c;
-    const int kPadLen =    0x02;
-    //                     0x44 - padded out from 0x42
 
-    int imageSize = mWidth*mHeight*2;
-    headerLen = kHeaderLen + kDibLen + kMaskLen + kPadLen;
-    int fileSize = headerLen + imageSize;
-
-    memset (mHeader, 0, headerLen);
-
-    mHeader[0] = 'B';  // magic
-    mHeader[1] = 'M';
-
-    mHeader[2] = fileSize;
-    mHeader[3] = fileSize >> 8;
-    mHeader[4] = fileSize >> 16;
-
-    mHeader[0x0a] = headerLen;
-    mHeader[0x0e] = kDibLen;
-
-    mHeader[0x12] = mWidth;
-    mHeader[0x13] = mWidth >> 8;
-
-    mHeader[0x16] = -mHeight;
-    mHeader[0x17] = -mHeight >> 8;
-    mHeader[0x18] = -mHeight >> 16;
-    mHeader[0x19] = -mHeight >> 24;
-
-    mHeader[0x1A] = 1;  // 0x1A number color planes
-    mHeader[0x1C] = 16; // 0x1C bits per pixel
-    mHeader[0x1E] = 3;  // 0x1E compression
-
-    mHeader[0x22] = imageSize;
-    mHeader[0x23] = imageSize >> 8;
-    mHeader[0x24] = imageSize >> 16;
-
-    mHeader[0x26] = 0x13; // 0x26 horz resolution 72 dpi
-    mHeader[0x27] = 0x0B;
-
-    mHeader[0x2a] = 0x13; // 0x2a horz resolution 72 dpi
-    mHeader[0x2b] = 0x0B;
-
-    mHeader[0x37] = 0xF8;
-    mHeader[0x3A] = 0xE0;
-    mHeader[0x3B] = 0x07;
-    mHeader[0x3E] = 0x1F;
-    }
-    //}}}
+  headerLen += sosMarker (mHeader + headerLen);
 
   return mHeader;
   }
