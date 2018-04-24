@@ -29,8 +29,6 @@
 #include "ethernetif.h"
 //}}}
 //{{{  const
-const bool kFreeRtos = true;
-
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0080000;
 uint8_t*  kCamBufEnd =  (uint8_t*)0xc0700000;
 uint16_t* kRgb565Buf = (uint16_t*)kCamBufEnd;
@@ -83,7 +81,7 @@ const char kHtmlBody[] =
   "</html>\r\n";
 //}}}
 //}}}
-const char kVersion[] = "WebCam 23/4/18";
+const char kVersion[] = "WebCam 24/4/18";
 const bool kWriteJpg  = false;
 const bool kWriteMjpg = true;
 
@@ -214,11 +212,50 @@ public:
     }
   //}}}
 
-  cBox* add (cBox* box, uint16_t x, uint16_t y);
-  cBox* add (cBox* box);
-  cBox* addBelow (cBox* box);
-  cBox* addFront (cBox* box);
-  void removeBox (cBox* box);
+  uint16_t getWidth() { return mLcd->getWidth(); }
+  uint16_t getHeight() { return mLcd->getHeight(); }
+  //{{{
+  cBox* add (cBox* box, uint16_t x, uint16_t y) {
+    mBoxes.push_back (box);
+    box->setPos (cPoint(x,y));
+    return box;
+    }
+  //}}}
+  //{{{
+  cBox* addRight (cBox* box) {
+    auto lastBox = mBoxes.back();
+    mBoxes.push_back (box);
+    box->setPos (lastBox->getTR() + cPoint(2,0));
+    return box;
+    }
+  //}}}
+  //{{{
+  cBox* addBelow (cBox* box) {
+
+    auto lastBox = mBoxes.back();
+    mBoxes.push_back (box);
+    box->setPos (lastBox->getBL());
+    return box;
+    }
+  //}}}
+  //{{{
+  cBox* addFirst (cBox* box, uint16_t x, uint16_t y) {
+
+    mBoxes.push_front (box);
+    box->setPos (cPoint(x,y));
+    return box;
+    }
+  //}}}
+  //{{{
+  void removeBox (cBox* box) {
+
+    for (auto boxIt = mBoxes.begin(); boxIt != mBoxes.end(); ++boxIt)
+      if (*boxIt == box) {
+        mBoxes.erase (boxIt);
+        return;
+        }
+    }
+  //}}}
 
   void onPs2Irq() { mPs2->onIrq(); }
 
@@ -271,6 +308,9 @@ private:
   bool mDebugValue = true;
 
   bool mClearDebugChanged = false;
+
+  bool mFocusChanged = false;
+  int mFocus = 0;
   //}}}
   };
 //}}}
@@ -296,7 +336,7 @@ public:
     return true;
     }
 
-  bool onMove (cPoint pos, uint8_t z)  {
+  bool onMove (cPoint pos, cPoint inc, uint8_t z)  {
     mThickness = z;
     return true;
     }
@@ -336,7 +376,7 @@ public:
     return true;
     }
 
-  bool onMove (cPoint pos, uint8_t z)  {
+  bool onMove (cPoint pos, cPoint inc, uint8_t z)  {
     mThickness = z;
     return true;
     }
@@ -354,6 +394,76 @@ private:
   uint16_t mThickness = 1;
   };
 //}}}
+//{{{
+class cValueBox : public cApp::cBox {
+public:
+  //{{{
+  cValueBox (float width, float height, const char* name, int min, int max, int& value, bool& changed)
+      : cBox(name, width, height), mMin(min), mMax(max), mValue(value), mChanged(changed) {
+    mChanged = false;
+    mColor = LCD_COLOR_GREEN;
+    }
+  //}}}
+  virtual ~cValueBox() {}
+
+  //{{{
+  bool onProx (cPoint pos) {
+    return true;
+    }
+  //}}}
+  //{{{
+  bool onPress (cPoint pos, uint8_t z)  {
+    mThickness = z;
+    mTextColor = LCD_COLOR_WHITE;
+    mChanged = true;
+    return true;
+    }
+  //}}}
+  //{{{
+  bool onMove (cPoint pos, cPoint inc, uint8_t z) {
+    mThickness = z;
+    setValue (mValue + inc.x - inc.y);
+    return true;
+    }
+  //}}}
+  //{{{
+  bool onRelease (cPoint pos, uint8_t z) {
+    mThickness = z;
+    mTextColor = LCD_COLOR_BLACK;
+    return true;
+    }
+  //}}}
+  //{{{
+  void onDraw (cLcd* lcd) {
+    lcd->fillRectCpu (mColor, mRect);
+
+    char str[40];
+    sprintf (str, "%s %d", mName, mValue);
+    lcd->displayString (mTextColor, mRect.getTL(), str, cLcd::eTextLeft);
+
+    if (mProxed)
+      lcd->drawRect (LCD_COLOR_WHITE, mRect, mThickness < 10 ? 1 : mThickness / 10 );
+    }
+  //}}}
+
+private:
+  //{{{
+  void setValue (float value) {
+    mValue = value;
+    mValue = std::max (mValue, mMin);
+    mValue = std::min (mValue, mMax);
+    mChanged = true;
+    }
+  //}}}
+
+  uint16_t mThickness = 1;
+  int mMin = 0;
+  int mMax = 100;
+
+  int& mValue;
+  bool& mChanged;
+  };
+//}}}
 
 FATFS gFatFs;  // encourges allocation in lower DTCM SRAM
 FIL   gFile;
@@ -368,14 +478,18 @@ void cApp::init() {
   mLcd = new cLcd (16);
   mLcd->init();
 
-  add (new cToggleBox (60, 50, "jpeg", mValue, mValueChanged), 0, 272 - 50);
-  add (new cToggleBox (60, 50, "zoom", mZoomValue, mZoomChanged), 64, 272 - 50);
-  add (new cToggleBox (60, 50, "debug", mDebugValue, mDebugChanged), 128, 272 - 50);
-  add (new cInstantBox (60, 50, "clear", mClearDebugChanged), 192, 272 - 50);
+  // define menu
+  const uint16_t kBoxWidth = 60;
+  const uint16_t kBoxHeight = 40;
+  add (new cToggleBox (kBoxWidth,kBoxHeight, "jpeg", mValue, mValueChanged), 0,getHeight()-kBoxHeight);
+  addRight (new cToggleBox (kBoxWidth,kBoxHeight, "zoom", mZoomValue, mZoomChanged));
+  addRight (new cToggleBox (kBoxWidth,kBoxHeight, "debug", mDebugValue, mDebugChanged));
+  addRight (new cInstantBox (kBoxWidth,kBoxHeight, "clear", mClearDebugChanged));
+  addRight (new cValueBox (kBoxWidth,kBoxHeight, "f", 0,254, mFocus, mFocusChanged));
 
   // show title early
   mLcd->start();
-  mLcd->drawInfo (LCD_COLOR_GREEN, 0, kVersion);
+  mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
   mLcd->present();
 
   diskInit();
@@ -500,56 +614,27 @@ void cApp::run() {
     mLcd->present();
 
     if (mValueChanged) {
+      //{{{  jpeg
       mValueChanged = false;
       mValue ? mCam->capture() : mCam->preview();
+
       fileNum++;
       frameNum = 0;
       }
+      //}}}
     if (mClearDebugChanged) {
-      mLcd->clearDebug();
+      //{{{  clearDebug
       mClearDebugChanged = false;
+      mLcd->clearDebug();
       }
+      //}}}
+    if (mFocusChanged) {
+      //{{{  changeFocus
+      mFocusChanged = false;
+      mCam->setFocus (mFocus);
+      }
+      //}}}
     }
-  }
-//}}}
-
-//{{{
-cApp::cBox* cApp::add (cBox* box, uint16_t x, uint16_t y) {
-  mBoxes.push_back (box);
-  box->setPos (cPoint(x,y));
-  return box;
-  }
-//}}}
-//{{{
-cApp::cBox* cApp::add (cBox* box) {
-  return add (box, 0,0);
-  }
-//}}}
-//{{{
-cApp::cBox* cApp::addBelow (cBox* box) {
-
-  mBoxes.push_back (box);
-  auto lastBox = mBoxes.back();
-  box->setPos (lastBox->getBL());
-  return box;
-  }
-//}}}
-//{{{
-cApp::cBox* cApp::addFront (cBox* box) {
-
-  mBoxes.push_front (box);
-  box->setPos (cPoint());
-  return box;
-  }
-//}}}
-//{{{
-void cApp::removeBox (cBox* box) {
-
-  for (auto boxIt = mBoxes.begin(); boxIt != mBoxes.end(); ++boxIt)
-    if (*boxIt == box) {
-      mBoxes.erase (boxIt);
-      return;
-      }
   }
 //}}}
 
@@ -1110,14 +1195,9 @@ int main() {
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
   gApp->init();
 
-  if (kFreeRtos) {
-    sys_thread_new ("app", appThread, NULL, 2048, osPriorityNormal);
-    sys_thread_new ("net", netThread, NULL, 1024, osPriorityNormal);
-    sys_thread_new ("touch", touchThread, NULL, 512, osPriorityNormal);
-    osKernelStart();
-    while (true) {};
-    }
-  else
-    gApp->run();
+  sys_thread_new ("app", appThread, NULL, 2048, osPriorityNormal);
+  sys_thread_new ("net", netThread, NULL, 1024, osPriorityNormal);
+  sys_thread_new ("touch", touchThread, NULL, 512, osPriorityNormal);
+  osKernelStart();
   }
 //}}}
