@@ -45,7 +45,6 @@ typedef unsigned long long QWORD;
 #define _VOLUMES          2
 #define _STR_VOLUME_ID    0
 #define _VOLUME_STRS  "RAM","NAND","CF","SD","SD2","USB","USB2","USB3"
-#define _MULTI_PARTITION  0
 
 #define _MIN_SS   512
 #define _MAX_SS   4096
@@ -65,15 +64,30 @@ extern "C" {
 #endif
 //}}}
 
-/* Definitions of volume management */
-typedef struct {
-  BYTE pd;  /* Physical drive number */
-  BYTE pt;  /* Partition: 0:Auto detect, 1-4:Forced partition) */
-  } PARTITION;
-extern PARTITION VolToPart[]; /* Volume - Partition resolution table */
-
-typedef QWORD FSIZE_t;
-
+//{{{  enum FRESULT
+typedef enum {
+  FR_OK = 0,        /* (0) Succeeded */
+  FR_DISK_ERR,      /* (1) A hard error occurred in the low level disk I/O layer */
+  FR_INT_ERR,       /* (2) Assertion failed */
+  FR_NOT_READY,     /* (3) The physical drive cannot work */
+  FR_NO_FILE,       /* (4) Could not find the file */
+  FR_NO_PATH,       /* (5) Could not find the path */
+  FR_INVALID_NAME,  /* (6) The path name format is invalid */
+  FR_DENIED,        /* (7) Access denied due to prohibited access or directory full */
+  FR_EXIST,         /* (8) Access denied due to prohibited access */
+  FR_INVALID_OBJECT,   /* (9) The file/directory object is invalid */
+  FR_WRITE_PROTECTED,  /* (10) The physical drive is write protected */
+  FR_INVALID_DRIVE,    /* (11) The logical drive number is invalid */
+  FR_NOT_ENABLED,      /* (12) The volume has no work area */
+  FR_NO_FILESYSTEM,    /* (13) There is no valid FAT volume */
+  FR_MKFS_ABORTED,     /* (14) The f_mkfs() aborted due to any problem */
+  FR_TIMEOUT,          /* (15) Could not get a grant to access the volume within defined period */
+  FR_LOCKED,           /* (16) The operation is rejected according to the file sharing policy */
+  FR_NOT_ENOUGH_CORE,  /* (17) LFN working buffer could not be allocated */
+  FR_TOO_MANY_OPEN_FILES, /* (18) Number of open files > _FS_LOCK */
+  FR_INVALID_PARAMETER    /* (19) Given parameter is invalid */
+  } FRESULT;
+//}}}
 //{{{  struct FATFS
 typedef struct {
   BYTE  fs_type;    /* File system type (0:N/A) */
@@ -111,7 +125,7 @@ typedef struct {
   BYTE  attr;      /* Object attribute */
   BYTE  stat;      /* Object chain status (b1-0: =0:not contiguous, =2:contiguous (no data on FAT), =3:flagmented in this session, b2:sub-directory stretched) */
   DWORD sclust;    /* Object start cluster (0:no cluster or root directory) */
-  FSIZE_t objsize; /* Object size (valid when sclust != 0) */
+  QWORD objsize; /* Object size (valid when sclust != 0) */
   DWORD n_cont;    /* Size of first fragment, clusters - 1 (valid when stat == 3) */
   DWORD n_frag;    /* Size of last fragment needs to be written (valid when not zero) */
   DWORD c_scl;     /* Containing directory start cluster (valid when sclust != 0) */
@@ -125,7 +139,7 @@ typedef struct {
   _FDID obj;      /* Object identifier (must be the 1st member to detect invalid object pointer) */
   BYTE  flag;     /* File status flags */
   BYTE  err;      /* Abort flag (error code) */
-  FSIZE_t fptr;   /* File read/write pointer (Zeroed on file open) */
+  QWORD fptr;   /* File read/write pointer (Zeroed on file open) */
   DWORD clust;    /* Current cluster of fpter (invalid when fptr is 0) */
   DWORD sect;     /* Sector number appearing in buf[] (0:invalid) */
   DWORD dir_sect; /* Sector number containing the directory entry */
@@ -149,38 +163,13 @@ typedef struct {
 //}}}
 //{{{  struct FILINFO
 typedef struct {
-  FSIZE_t fsize;    /* File size */
+  QWORD fsize;    /* File size */
   WORD  fdate;      /* Modified date */
   WORD  ftime;      /* Modified time */
   BYTE  fattrib;    /* File attribute */
   char altname[13];   /* Alternative file name */
   char fname[_MAX_LFN + 1];  /* Primary file name */
   } FILINFO;
-//}}}
-
-//{{{  enum FRESULT
-typedef enum {
-  FR_OK = 0,        /* (0) Succeeded */
-  FR_DISK_ERR,      /* (1) A hard error occurred in the low level disk I/O layer */
-  FR_INT_ERR,       /* (2) Assertion failed */
-  FR_NOT_READY,     /* (3) The physical drive cannot work */
-  FR_NO_FILE,       /* (4) Could not find the file */
-  FR_NO_PATH,       /* (5) Could not find the path */
-  FR_INVALID_NAME,  /* (6) The path name format is invalid */
-  FR_DENIED,        /* (7) Access denied due to prohibited access or directory full */
-  FR_EXIST,         /* (8) Access denied due to prohibited access */
-  FR_INVALID_OBJECT,   /* (9) The file/directory object is invalid */
-  FR_WRITE_PROTECTED,  /* (10) The physical drive is write protected */
-  FR_INVALID_DRIVE,    /* (11) The logical drive number is invalid */
-  FR_NOT_ENABLED,      /* (12) The volume has no work area */
-  FR_NO_FILESYSTEM,    /* (13) There is no valid FAT volume */
-  FR_MKFS_ABORTED,     /* (14) The f_mkfs() aborted due to any problem */
-  FR_TIMEOUT,          /* (15) Could not get a grant to access the volume within defined period */
-  FR_LOCKED,           /* (16) The operation is rejected according to the file sharing policy */
-  FR_NOT_ENOUGH_CORE,  /* (17) LFN working buffer could not be allocated */
-  FR_TOO_MANY_OPEN_FILES, /* (18) Number of open files > _FS_LOCK */
-  FR_INVALID_PARAMETER    /* (19) Given parameter is invalid */
-  } FRESULT;
 //}}}
 
 FRESULT f_fdisk (const DWORD* szt, void* work);      /* Divide a physical drive into some partitions */
@@ -193,7 +182,7 @@ FRESULT f_getfree (const char* path, DWORD* nclst, FATFS** fatfs); /* Get number
 
 FRESULT f_stat (const char* path, FILINFO* fno);         /* Get file status */
 FRESULT f_open (FIL* fp, const char* path, BYTE mode);       /* Open or create a file */
-FRESULT f_lseek (FIL* fp, FSIZE_t ofs);               /* Move file pointer of the file object */
+FRESULT f_lseek (FIL* fp, QWORD ofs);               /* Move file pointer of the file object */
 FRESULT f_read (FIL* fp, void* buff, UINT btr, UINT* br);     /* Read data from the file */
 FRESULT f_write (FIL* fp, const void* buff, UINT btw, UINT* bw);  /* Write data to the file */
 FRESULT f_sync (FIL* fp);                     /* Flush cached data of the writing file */
@@ -214,7 +203,7 @@ FRESULT f_rename (const char* path_old, const char* path_new);  /* Rename/Move a
 FRESULT f_chmod (const char* path, BYTE attr, BYTE mask);      /* Change attribute of a file/dir */
 FRESULT f_utime (const char* path, const FILINFO* fno);      /* Change timestamp of a file/dir */
 
-FRESULT f_expand (FIL* fp, FSIZE_t szf, BYTE opt);          /* Allocate a contiguous block to the file */
+FRESULT f_expand (FIL* fp, QWORD szf, BYTE opt);          /* Allocate a contiguous block to the file */
 FRESULT f_forward (FIL* fp, UINT(*func)(const BYTE*,UINT), UINT btf, UINT* bf); /* Forward data to the stream */
 
 int f_putc (char c, FIL* fp);                    /* Put a character to the file */
@@ -253,7 +242,7 @@ int ff_del_syncobj (_SYNC_t sobj);            // Delete a sync object
 #define FA_OPEN_APPEND    0x30
 
 // Fast seek controls (2nd argument of f_lseek)
-#define CREATE_LINKMAP  ((FSIZE_t)0 - 1)
+#define CREATE_LINKMAP  ((QWORD)0 - 1)
 
 // Format options (2nd argument of f_mkfs)
 #define FM_FAT    0x01

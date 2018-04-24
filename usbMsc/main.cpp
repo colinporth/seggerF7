@@ -301,7 +301,7 @@ private:
   bool mValueChanged = false;
   bool mValue = false;
 
-  int mZoom = 1;
+  int mZoom = 0;
   cPoint mZoomCentre = {0,0};
 
   bool mDebugChanged = false;
@@ -327,7 +327,7 @@ public:
   virtual ~cBgndBox() {}
 
   bool onPress (cPoint pos, uint8_t z)  {
-    mZoom = 2;
+    mZoom = 1;
     return true;
     }
 
@@ -337,7 +337,7 @@ public:
     }
 
   bool onRelease (cPoint pos, uint8_t z)  {
-    mZoom = 1;
+    mZoom = 0;
     return true;
     }
 
@@ -546,11 +546,11 @@ void cApp::run() {
 
     fileLen = loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
 
-    mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, 2, cPoint(0,0));
+    mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, 0, cPoint(0,0));
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawDebug();
     mLcd->present();
-    osDelay (1000);
+    osDelay (500);
     }
     //}}}
   else
@@ -638,7 +638,7 @@ void cApp::run() {
           }
         jpeg_finish_decompress (&mCinfo);
 
-        mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, 2, cPoint(0,0));
+        mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, 0, cPoint(0,0));
         }
         //}}}
       }
@@ -661,11 +661,12 @@ void cApp::run() {
     mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%d",
                                           osGetCPUUsage(), xPortGetFreeHeapSize(), mCam->getFps(),
                                           frameLen, mCam->getStatus(), mCam->getDmaCount());
-    if (mDebugValue)
+    if (!mZoom && mDebugValue)
       mLcd->drawDebug();
-    for (auto box : mBoxes)
-      if (box->getEnabled())
-        box->onDraw (mLcd);
+    if (!mZoom)
+      for (auto box : mBoxes)
+        if (box->getEnabled())
+          box->onDraw (mLcd);
     mLcd->present();
 
     if (mValueChanged) {

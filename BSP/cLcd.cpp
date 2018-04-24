@@ -299,7 +299,7 @@ void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, int zoom,
 
   uint16_t* dst = getBuffer();
 
-  if (zoom == 2) {
+  if (zoom) {
     // 1:1 pixel copy, centre of src to centre of screen
     int xcopy = (getWidth() > srcXsize) ? srcXsize : getWidth();
     int xpad = (getWidth() > srcXsize) ? (getWidth() - srcXsize) / 2 : 0;
