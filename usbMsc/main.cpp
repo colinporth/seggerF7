@@ -28,6 +28,7 @@
 
 #include "ethernetif.h"
 //}}}
+const char kVersion[] = "WebCam 24/4/18";
 //{{{  const
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0080000;
 uint8_t*  kCamBufEnd =  (uint8_t*)0xc0700000;
@@ -81,7 +82,7 @@ const char kHtmlBody[] =
   "</html>\r\n";
 //}}}
 //}}}
-const char kVersion[] = "WebCam 24/4/18";
+
 //{{{
 class cApp : public cTouch {
 public:
@@ -300,7 +301,8 @@ private:
   bool mValueChanged = false;
   bool mValue = false;
 
-  int mZoomValue = 0;
+  int mZoom = 1;
+  cPoint mZoomCentre = {0,0};
 
   bool mDebugChanged = false;
   bool mDebugValue = true;
@@ -319,28 +321,31 @@ private:
 class cBgndBox : public cApp::cBox {
 public:
   //{{{
-  cBgndBox (float width, float height, int& value)
-      : cBox("bgnd", width, height), mValue(value) {}
+  cBgndBox (float width, float height, int& zoom, cPoint& zoomCentre)
+      : cBox("bgnd", width, height), mZoom(zoom), mZoomCentre(zoomCentre) {}
   //}}}
   virtual ~cBgndBox() {}
 
   bool onPress (cPoint pos, uint8_t z)  {
-    mValue = 1;
+    mZoom = 2;
     return true;
     }
 
   bool onMove (cPoint pos, cPoint inc, uint8_t z)  {
+    mZoomCentre += inc;
     return true;
     }
+
   bool onRelease (cPoint pos, uint8_t z)  {
-    mValue = 0;
+    mZoom = 1;
     return true;
     }
 
   void onDraw (cLcd* lcd) {}
 
 private:
-  int& mValue;
+  int& mZoom;
+  cPoint& mZoomCentre;
   };
 //}}}
 //{{{
@@ -508,7 +513,7 @@ void cApp::init() {
   mLcd->init();
 
   // define menu
-  add (new cBgndBox (getWidth(), getHeight(), mZoomValue), 0,0);
+  add (new cBgndBox (getWidth(), getHeight(), mZoom, mZoomCentre), 0,0);
   add (new cToggleBox (kBoxWidth,kBoxHeight, "jpeg", mValue, mValueChanged), 0,getHeight()-kBoxHeight);
   addRight (new cToggleBox (kBoxWidth,kBoxHeight, "debug", mDebugValue, mDebugChanged));
   addRight (new cInstantBox (kBoxWidth,kBoxHeight, "clear", mClearDebugChanged));
@@ -541,7 +546,7 @@ void cApp::run() {
 
     fileLen = loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
 
-    mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
+    mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, 2, cPoint(0,0));
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawDebug();
     mLcd->present();
@@ -555,8 +560,8 @@ void cApp::run() {
   mCam->init (kCamBuf, kCamBufEnd);
 
   if (mounted && mCam) {
-    addRight (new cInstantBox (kBoxWidth,kBoxHeight, "taker", mTakeChanged));
-    addRight (new cInstantBox (kBoxWidth,kBoxHeight, "taker", mTakeMovieChanged));
+    addRight (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
+    addRight (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
     }
 
   uint32_t fileNum = 1;
@@ -568,7 +573,6 @@ void cApp::run() {
     //  onKey (ch & 0xFF, ch & 0x100);
     //  }
     //}}}
-
     uint32_t frameLen;
     bool jpeg;
     auto frame = mCam->getNextFrame (frameLen, jpeg);
@@ -620,7 +624,7 @@ void cApp::run() {
 
         // jpegBody
         mCinfo.scale_num = 1;
-        mCinfo.scale_denom = mZoomValue ? 1 : 2;
+        mCinfo.scale_denom = mZoom == 1 ? 2 : 2;
         mCinfo.dct_method = JDCT_FLOAT;
         mCinfo.out_color_space = JCS_RGB;
 
@@ -634,7 +638,7 @@ void cApp::run() {
           }
         jpeg_finish_decompress (&mCinfo);
 
-        mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, true);
+        mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, 2, cPoint(0,0));
         }
         //}}}
       }
@@ -646,13 +650,10 @@ void cApp::run() {
         uint32_t headerLen;
         auto header = mCam->getHeader (false, 6, headerLen);
         saveNumFile ("save", frameNum, "bmp", header, headerLen, frame, frameLen);
-
         mLcd->debug (LCD_COLOR_WHITE, "pic %s%d.%s taken", "save", frameNum, "bmp");
-
         frameNum++;
         }
-
-      mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), mZoomValue);
+      mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), mZoom, mZoomCentre);
       }
       //}}}
 
@@ -990,7 +991,7 @@ void touchThread (void* arg) {
 
   while (true) {
     gApp->pollTouch();
-    osDelay (50);
+    osDelay (10);
     }
   }
 //}}}

@@ -174,7 +174,7 @@ public:
 
   // flipped display
   void start();
-  void start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, bool unity);
+  void start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, int zoom, cPoint zoomCentre);
   void drawInfo (uint16_t color, uint16_t column, const char* format, ... );
   void drawDebug();
   void present();
