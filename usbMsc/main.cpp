@@ -159,7 +159,7 @@ public:
     virtual bool onProxExit() { return false; }
     //{{{
     virtual void onDraw (cLcd* lcd) {
-      lcd->fillRectCpu (mColor, mRect);
+      lcd->fillRect (mColor, mRect);
       lcd->displayString (mTextColor, mRect.getTL(), mName, cLcd::eTextLeft);
       }
     //}}}
@@ -464,7 +464,7 @@ public:
   //}}}
   //{{{
   void onDraw (cLcd* lcd) {
-    lcd->fillRectCpu (mColor, mRect);
+    lcd->fillRect (mColor, mRect);
 
     char str[40];
     sprintf (str, "%s %d", mName, mValue);
