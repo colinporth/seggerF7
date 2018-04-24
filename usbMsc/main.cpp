@@ -82,12 +82,11 @@ const char kHtmlBody[] =
 //}}}
 //}}}
 const char kVersion[] = "WebCam 24/4/18";
-const bool kWriteJpg  = false;
-const bool kWriteMjpg = true;
-
 //{{{
 class cApp : public cTouch {
 public:
+  const uint16_t kBoxWidth = 60;
+  const uint16_t kBoxHeight = 30;
   //{{{
   class cBox {
   public:
@@ -311,6 +310,9 @@ private:
 
   bool mFocusChanged = false;
   int mFocus = 0;
+
+  bool mTakeChanged = false;
+  bool mTakeMovieChanged = false;
   //}}}
   };
 //}}}
@@ -479,8 +481,6 @@ void cApp::init() {
   mLcd->init();
 
   // define menu
-  const uint16_t kBoxWidth = 60;
-  const uint16_t kBoxHeight = 40;
   add (new cToggleBox (kBoxWidth,kBoxHeight, "jpeg", mValue, mValueChanged), 0,getHeight()-kBoxHeight);
   addRight (new cToggleBox (kBoxWidth,kBoxHeight, "zoom", mZoomValue, mZoomChanged));
   addRight (new cToggleBox (kBoxWidth,kBoxHeight, "debug", mDebugValue, mDebugChanged));
@@ -527,6 +527,11 @@ void cApp::run() {
   mCam = new cCamera();
   mCam->init (kCamBuf, kCamBufEnd);
 
+  if (mounted && mCam) {
+    addRight (new cInstantBox (kBoxWidth,kBoxHeight, "taker", mTakeChanged));
+    addRight (new cInstantBox (kBoxWidth,kBoxHeight, "taker", mTakeMovieChanged));
+    }
+
   uint32_t fileNum = 1;
   uint32_t frameNum = 0;
   while (true) {
@@ -544,14 +549,19 @@ void cApp::run() {
       mLcd->start();
     else if (jpeg) {
       uint32_t headerLen;
-      if (mounted && kWriteJpg && (frameNum < 100)) {
+      if (mounted && mTakeChanged) {
         //{{{  save JFIF jpeg
+        mTakeChanged = false;
+
         auto header = mCam->getHeader (true, 6, headerLen);
-        saveNumFile ("save", frameNum++, "jpg", header, headerLen, frame, frameLen);
-        mLcd->start();
+        saveNumFile ("save", frameNum, "jpg", header, headerLen, frame, frameLen);
+
+        mLcd->debug (LCD_COLOR_WHITE, "pic %s%d.%s taken", "save", frameNum, "jpg");
+
+        frameNum++;
         }
         //}}}
-      else if (mounted && kWriteMjpg && !frameNum) {
+      else if (mounted && mTakeMovieChanged && !frameNum) {
         //{{{  save mjpeg first frame
         frameNum++;
         auto header = mCam->getHeader (true, 6, headerLen);
@@ -559,18 +569,20 @@ void cApp::run() {
         mLcd->start();
         }
         //}}}
-      else if (mounted && kWriteMjpg && (frameNum < 500)) {
+      else if (mounted && mTakeMovieChanged && (frameNum < 500)) {
         //{{{  add mjpeg frame
         auto header = mCam->getHeader (false, 6, headerLen);
         appendFile (frameNum++, header, headerLen, frame, frameLen);
         mLcd->start();
         }
         //}}}
-      else if (mounted && kWriteMjpg && frameNum == 500) {
+      else if (mounted && mTakeMovieChanged && frameNum == 500) {
         //{{{  close mjpeg
         frameNum++;
         closeFile();
         mLcd->start();
+
+        mTakeMovieChanged = false;
         }
         //}}}
       else {
@@ -599,8 +611,23 @@ void cApp::run() {
         }
         //}}}
       }
-    else
+    else {
+      //{{{  rgb565
+      if (mounted && mTakeChanged) {
+        mTakeChanged = false;
+
+        uint32_t headerLen;
+        auto header = mCam->getHeader (false, 6, headerLen);
+        saveNumFile ("save", frameNum, "bmp", header, headerLen, frame, frameLen);
+
+        mLcd->debug (LCD_COLOR_WHITE, "pic %s%d.%s taken", "save", frameNum, "bmp");
+
+        frameNum++;
+        }
+
       mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), mZoomValue);
+      }
+      //}}}
 
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%d",
