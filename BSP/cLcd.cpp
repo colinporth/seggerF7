@@ -261,10 +261,11 @@ void cLcd::init() {
 
   hDma2dHandler.Instance = DMA2D;
   __HAL_RCC_DMA2D_CLK_ENABLE();
-  HAL_DMA2D_ConfigDeadTime (&hDma2dHandler, 10);
-  HAL_DMA2D_EnableDeadTime (&hDma2dHandler);
 
-  layerInit (0, SDRAM_DEVICE_ADDR);
+  const int kDeadTime = 10;
+  DMA2D->AMTCR = (DMA2D->AMTCR & ~DMA2D_AMTCR_DT) | (kDeadTime << DMA2D_AMTCR_DT_Pos) | DMA2D_AMTCR_EN;
+
+  layerInit (SDRAM_DEVICE_ADDR);
   clear (LCD_COLOR_BLACK);
 
   displayOn();
@@ -456,7 +457,7 @@ void cLcd::SetAddress (uint16_t* address, uint16_t* writeAddress) {
   // change layer addresses
   hLtdcHandler.LayerCfg[0].FBStartAdress = (uint32_t)address;
   hLtdcHandler.LayerCfg[0].FBStartAdressWrite = (uint32_t)writeAddress;
-  setLayer (0);
+  setLayer();
   LTDC->SRCR = LTDC_SRCR_VBR;
   }
 //}}}
@@ -860,20 +861,29 @@ void cLcd::drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint
 //{{{
 void cLcd::rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t size) {
 
-  hDma2dHandler.Init.Mode = DMA2D_M2M_PFC;
-  hDma2dHandler.Init.ColorMode = DMA2D_OUTPUT_RGB565;
-  hDma2dHandler.Init.OutputOffset = 0;
+  DMA2D->CR = (DMA2D->CR & ~DMA2D_CR_MODE) | DMA2D_M2M_PFC;
+  DMA2D->OPFCCR = (DMA2D->OPFCCR & ~DMA2D_OPFCCR_CM) | DMA2D_OUTPUT_RGB565;
+  //DMA2D->OOR = (DMA2D->OOR & ~DMA2D_OPFCCR_CM) | 0;
 
-  // Foreground Configuration
-  hDma2dHandler.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
-  hDma2dHandler.LayerCfg[1].InputAlpha = 0xFF;
-  hDma2dHandler.LayerCfg[1].InputColorMode = DMA2D_INPUT_RGB888;
-  hDma2dHandler.LayerCfg[1].InputOffset = 0;
+  DMA2D->FGPFCCR = (DMA2D->BGPFCCR & ~(DMA2D_BGPFCCR_CM | DMA2D_BGPFCCR_AM | DMA2D_BGPFCCR_ALPHA)) |
+                   DMA2D_INPUT_RGB888 | (DMA2D_NO_MODIF_ALPHA << DMA2D_BGPFCCR_AM_Pos) | (0xFF << DMA2D_BGPFCCR_ALPHA_Pos);
+  DMA2D->FGOR = 0;
 
-  HAL_DMA2D_Init (&hDma2dHandler);
-  HAL_DMA2D_ConfigLayer (&hDma2dHandler, 1);
-  HAL_DMA2D_Start (&hDma2dHandler, (uint32_t)src, (uint32_t)dst, size, 1);
-  HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
+  DMA2D->BGPFCCR = (DMA2D->BGPFCCR & ~(DMA2D_BGPFCCR_CM | DMA2D_BGPFCCR_AM | DMA2D_BGPFCCR_ALPHA)) |
+                   DMA2D_OUTPUT_RGB565 | (DMA2D_NO_MODIF_ALPHA << DMA2D_BGPFCCR_AM_Pos) | (0xFF << DMA2D_BGPFCCR_ALPHA_Pos);
+  DMA2D->BGOR = 0;
+
+  // Configure DMA2D data size, src, dst, start
+  DMA2D->NLR = (DMA2D->NLR & ~(DMA2D_NLR_NL | DMA2D_NLR_PL)) | (size << DMA2D_NLR_PL_Pos) | 1;
+  DMA2D->FGMAR = (uint32_t)src;
+  DMA2D->OMAR = (uint32_t)dst;
+  DMA2D->CR |= DMA2D_CR_START;
+
+  // wait for transferComplete
+  while (!(DMA2D->ISR & DMA2D_FLAG_TC))
+    if (!(DMA2D->ISR & (DMA2D_FLAG_CE | DMA2D_FLAG_TE))) // clear any error
+      DMA2D->IFCR = DMA2D_FLAG_CE | DMA2D_FLAG_TE;
+  DMA2D->IFCR = DMA2D_FLAG_TC;
   }
 //}}}
 //{{{
@@ -1739,89 +1749,89 @@ uint16_t* cLcd::getBuffer() {
   }
 //}}}
 //{{{
-void cLcd::setLayer (uint32_t layerIndex) {
+void cLcd::setLayer() {
 
-  auto layerConfig = &hLtdcHandler.LayerCfg[layerIndex];
+  auto layerConfig = &hLtdcHandler.LayerCfg[0];
 
   // Config horizontal start and stop position
   uint32_t tmp = (layerConfig->WindowX1 + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16)) << 16;
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->WHPCR &= ~(LTDC_LxWHPCR_WHSTPOS | LTDC_LxWHPCR_WHSPPOS);
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->WHPCR = ((layerConfig->WindowX0 + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16) + 1) | tmp);
+  LTDC_LAYER (&hLtdcHandler, 0)->WHPCR &= ~(LTDC_LxWHPCR_WHSTPOS | LTDC_LxWHPCR_WHSPPOS);
+  LTDC_LAYER (&hLtdcHandler, 0)->WHPCR = ((layerConfig->WindowX0 + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16) + 1) | tmp);
 
   // config vertical start and stop position
   tmp = (layerConfig->WindowY1 + (LTDC->BPCR & LTDC_BPCR_AVBP)) << 16;
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->WVPCR &= ~(LTDC_LxWVPCR_WVSTPOS | LTDC_LxWVPCR_WVSPPOS);
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->WVPCR  = ((layerConfig->WindowY0 + (LTDC->BPCR & LTDC_BPCR_AVBP) + 1) | tmp);
+  LTDC_LAYER (&hLtdcHandler, 0)->WVPCR &= ~(LTDC_LxWVPCR_WVSTPOS | LTDC_LxWVPCR_WVSPPOS);
+  LTDC_LAYER (&hLtdcHandler, 0)->WVPCR  = ((layerConfig->WindowY0 + (LTDC->BPCR & LTDC_BPCR_AVBP) + 1) | tmp);
 
   // pixel format
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->PFCR &= ~(LTDC_LxPFCR_PF);
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->PFCR = (layerConfig->PixelFormat);
+  LTDC_LAYER (&hLtdcHandler, 0)->PFCR &= ~(LTDC_LxPFCR_PF);
+  LTDC_LAYER (&hLtdcHandler, 0)->PFCR = (layerConfig->PixelFormat);
 
   // config default color values
   tmp = ((uint32_t)(layerConfig->Backcolor.Green) << 8);
   uint32_t tmp1 = ((uint32_t)(layerConfig->Backcolor.Red) << 16);
   uint32_t tmp2 = (layerConfig->Alpha0 << 24);
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->DCCR &= ~(LTDC_LxDCCR_DCBLUE | LTDC_LxDCCR_DCGREEN | LTDC_LxDCCR_DCRED | LTDC_LxDCCR_DCALPHA);
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->DCCR = (layerConfig->Backcolor.Blue | tmp | tmp1 | tmp2);
+  LTDC_LAYER (&hLtdcHandler, 0)->DCCR &= ~(LTDC_LxDCCR_DCBLUE | LTDC_LxDCCR_DCGREEN | LTDC_LxDCCR_DCRED | LTDC_LxDCCR_DCALPHA);
+  LTDC_LAYER (&hLtdcHandler, 0)->DCCR = (layerConfig->Backcolor.Blue | tmp | tmp1 | tmp2);
 
   // constant alpha value
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->CACR &= ~(LTDC_LxCACR_CONSTA);
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->CACR = (layerConfig->Alpha);
+  LTDC_LAYER (&hLtdcHandler, 0)->CACR &= ~(LTDC_LxCACR_CONSTA);
+  LTDC_LAYER (&hLtdcHandler, 0)->CACR = (layerConfig->Alpha);
 
   // Sblending factors
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->BFCR &= ~(LTDC_LxBFCR_BF2 | LTDC_LxBFCR_BF1);
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->BFCR = (layerConfig->BlendingFactor1 | layerConfig->BlendingFactor2);
+  LTDC_LAYER (&hLtdcHandler, 0)->BFCR &= ~(LTDC_LxBFCR_BF2 | LTDC_LxBFCR_BF1);
+  LTDC_LAYER (&hLtdcHandler, 0)->BFCR = (layerConfig->BlendingFactor1 | layerConfig->BlendingFactor2);
 
   // config  color frame buffer start address
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBAR &= ~(LTDC_LxCFBAR_CFBADD);
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBAR = (layerConfig->FBStartAdress);
+  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR &= ~(LTDC_LxCFBAR_CFBADD);
+  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR = (layerConfig->FBStartAdress);
 
   // config  color frame buffer pitch in byte
   tmp = (layerConfig->PixelFormat == LTDC_PIXEL_FORMAT_ARGB8888) ? 4 : 2;
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBLR &= ~(LTDC_LxCFBLR_CFBLL | LTDC_LxCFBLR_CFBP);
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBLR = ((layerConfig->ImageWidth * tmp) << 16) |
+  LTDC_LAYER (&hLtdcHandler, 0)->CFBLR &= ~(LTDC_LxCFBLR_CFBLL | LTDC_LxCFBLR_CFBP);
+  LTDC_LAYER (&hLtdcHandler, 0)->CFBLR = ((layerConfig->ImageWidth * tmp) << 16) |
                                                    (((layerConfig->WindowX1 - layerConfig->WindowX0) * tmp)  + 3);
 
   // config  frame buffer line number
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBLNR &= ~(LTDC_LxCFBLNR_CFBLNBR);
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->CFBLNR = (layerConfig->ImageHeight);
+  LTDC_LAYER (&hLtdcHandler, 0)->CFBLNR &= ~(LTDC_LxCFBLNR_CFBLNBR);
+  LTDC_LAYER (&hLtdcHandler, 0)->CFBLNR = (layerConfig->ImageHeight);
 
   // Enable LTDC_Layer by setting LEN bit
-  LTDC_LAYER (&hLtdcHandler, layerIndex)->CR |= (uint32_t)LTDC_LxCR_LEN;
+  LTDC_LAYER (&hLtdcHandler, 0)->CR |= (uint32_t)LTDC_LxCR_LEN;
   }
 //}}}
 //{{{
-void cLcd::layerInit (uint16_t layerIndex, uint32_t FB_Address) {
+void cLcd::layerInit (uint32_t FB_Address) {
 
-  hLtdcHandler.LayerCfg[layerIndex].FBStartAdress = FB_Address;
-  hLtdcHandler.LayerCfg[layerIndex].FBStartAdressWrite = FB_Address;
-  hLtdcHandler.LayerCfg[layerIndex].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
+  hLtdcHandler.LayerCfg[0].FBStartAdress = FB_Address;
+  hLtdcHandler.LayerCfg[0].FBStartAdressWrite = FB_Address;
+  hLtdcHandler.LayerCfg[0].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
 
-  hLtdcHandler.LayerCfg[layerIndex].ImageWidth = getWidth();
-  hLtdcHandler.LayerCfg[layerIndex].ImageHeight = getHeight();
+  hLtdcHandler.LayerCfg[0].ImageWidth = getWidth();
+  hLtdcHandler.LayerCfg[0].ImageHeight = getHeight();
 
-  hLtdcHandler.LayerCfg[layerIndex].WindowX0 = 0;
-  hLtdcHandler.LayerCfg[layerIndex].WindowX1 = getWidth();
-  hLtdcHandler.LayerCfg[layerIndex].WindowY0 = 0;
-  hLtdcHandler.LayerCfg[layerIndex].WindowY1 = getHeight();
+  hLtdcHandler.LayerCfg[0].WindowX0 = 0;
+  hLtdcHandler.LayerCfg[0].WindowX1 = getWidth();
+  hLtdcHandler.LayerCfg[0].WindowY0 = 0;
+  hLtdcHandler.LayerCfg[0].WindowY1 = getHeight();
 
-  hLtdcHandler.LayerCfg[layerIndex].Alpha = 255;
-  hLtdcHandler.LayerCfg[layerIndex].Alpha0 = 0;
+  hLtdcHandler.LayerCfg[0].Alpha = 255;
+  hLtdcHandler.LayerCfg[0].Alpha0 = 0;
 
-  hLtdcHandler.LayerCfg[layerIndex].Backcolor.Blue = 0;
-  hLtdcHandler.LayerCfg[layerIndex].Backcolor.Green = 0;
-  hLtdcHandler.LayerCfg[layerIndex].Backcolor.Red = 0;
+  hLtdcHandler.LayerCfg[0].Backcolor.Blue = 0;
+  hLtdcHandler.LayerCfg[0].Backcolor.Green = 0;
+  hLtdcHandler.LayerCfg[0].Backcolor.Red = 0;
 
-  hLtdcHandler.LayerCfg[layerIndex].BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
-  hLtdcHandler.LayerCfg[layerIndex].BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
+  hLtdcHandler.LayerCfg[0].BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
+  hLtdcHandler.LayerCfg[0].BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
 
   // Configure the LTDC Layer
-  setLayer (layerIndex);
+  setLayer();
 
   // Sets the Reload type
   LTDC->SRCR = LTDC_SRCR_IMR;
 
-  __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, layerIndex);
+  __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, 0);
   __HAL_LTDC_RELOAD_CONFIG (&hLtdcHandler);
   }
 //}}}
@@ -1856,30 +1866,30 @@ void cLcd::fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, 
   int16_t xinc1 = 0, xinc2 = 0;
   int16_t yinc1 = 0, yinc2 = 0;
   if (x2 >= x1) {
-    // The x-values are increasing
+    // x-values are increasing
     xinc1 = 1;
     xinc2 = 1;
     }
   else {
-    // The x-values are decreasing
+    // x-values are decreasing
     xinc1 = -1;
     xinc2 = -1;
     }
 
   if (y2 >= y1) {
-    // The y-values are increasing
+    // y-values are increasing
     yinc1 = 1;
     yinc2 = 1;
     }
   else {
-    // The y-values are decreasing
+    // y-values are decreasing
     yinc1 = -1;
     yinc2 = -1;
     }
 
   int16_t den = 0, num = 0, num_add = 0, num_pixels = 0;
   if (deltax >= deltay) {
-    // There is at least one x-value for every y-value
+    // at least one x-value for every y-value
     xinc1 = 0;           // Don't change the x when numerator >= denominator
     yinc2 = 0;           // Don't change the y for every iteration
     den = deltax;
@@ -1894,7 +1904,7 @@ void cLcd::fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, 
     den = deltay;
     num = deltay / 2;
     num_add = deltax;
-    num_pixels = deltay;         // There are more y-values than x-values
+    num_pixels = deltay; // There are more y-values than x-values
     }
 
   for (int16_t curpixel = 0; curpixel <= num_pixels; curpixel++) {

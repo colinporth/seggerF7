@@ -189,8 +189,6 @@ public:
 
     mCinfo.err = jpeg_std_error (&jerr);
     jpeg_create_decompress (&mCinfo);
-
-    mBufArray[0] = (uint8_t*)malloc (1600 * 3);
     }
   //}}}
   //{{{
@@ -272,11 +270,9 @@ private:
   void reportFree();
   void reportLabel();
 
-  int loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf);
-
+  void loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf);
   void saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t* buf, int bufLen);
   void saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
-
   void createNumFile (const char* name, uint32_t num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void appendFile (int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void closeFile();
@@ -295,7 +291,6 @@ private:
 
   struct jpeg_error_mgr jerr;
   struct jpeg_decompress_struct mCinfo;
-  uint8_t* mBufArray[1];
 
   bool mValueChanged = false;
   bool mValue = false;
@@ -509,7 +504,7 @@ extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 //{{{
 void cApp::init() {
 
-  mLcd = new cLcd (16);
+  mLcd = new cLcd (14);
   mLcd->init();
 
   // define menu
@@ -537,14 +532,13 @@ void cApp::init() {
 //{{{
 void cApp::run() {
 
-  uint32_t fileLen = 0;
   bool mounted = !f_mount (&gFatFs, "", 1);
   if (mounted) {
     //{{{  mounted, load splash piccy
     f_getlabel ("", mLabel, &mVsn);
     mLcd->debug (LCD_COLOR_WHITE, "sdCard ok - %s ", mLabel);
 
-    fileLen = loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
+    loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
     char path[40] = "/";
     auto numFiles = getCountFiles (path);
     mLcd->debug (LCD_COLOR_WHITE, "- files %d", numFiles);
@@ -629,11 +623,12 @@ void cApp::run() {
 
         jpeg_mem_src (&mCinfo, frame, frameLen);
         jpeg_start_decompress (&mCinfo);
-
+        uint8_t buf[mCinfo.output_width * 3];
+        uint8_t* bufArray = buf;
         while (mCinfo.output_scanline < mCinfo.output_height) {
-          jpeg_read_scanlines (&mCinfo, mBufArray, 1);
-          //mLcd->rgb888to565 (mBufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-          mLcd->rgb888to565cpu (mBufArray[0], kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+          jpeg_read_scanlines (&mCinfo, &bufArray, 1);
+          //mLcd->rgb888to565 (bufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+          mLcd->rgb888to565 (bufArray, kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
           }
         jpeg_finish_decompress (&mCinfo);
 
@@ -852,14 +847,12 @@ void cApp::reportFree() {
 //}}}
 
 //{{{
-int cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
+void cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
 
-  //char pathName[256] = "/";
-  //readDirectory (pathName);
   FILINFO filInfo;
   if (f_stat (fileName, &filInfo)) {
     mLcd->debug (LCD_COLOR_RED, "%s not found", fileName);
-    return 0;
+    return;
     }
 
   mLcd->debug (LCD_COLOR_WHITE, "%s %d bytes", fileName, (int)(filInfo.fsize));
@@ -877,7 +870,7 @@ int cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
 
   if (f_open (&gFile, fileName, FA_READ)) {
     mLcd->debug (LCD_COLOR_RED, "%s not read", fileName);
-    return 0;
+    return;
     }
 
   UINT bytesRead;
@@ -894,20 +887,19 @@ int cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
     mCinfo.out_color_space = JCS_RGB;
     mCinfo.scale_num = 1;
     mCinfo.scale_denom = 4;
+    uint8_t buf[mCinfo.output_width * 3];
+    uint8_t* bufArray = buf;
     jpeg_start_decompress (&mCinfo);
     while (mCinfo.output_scanline < mCinfo.output_height) {
-      jpeg_read_scanlines (&mCinfo, mBufArray, 1);
-      mLcd->rgb888to565 (mBufArray[0], rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
+      jpeg_read_scanlines (&mCinfo, &bufArray, 1);
+      mLcd->rgb888to565 (bufArray, rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width);
       }
     jpeg_finish_decompress (&mCinfo);
 
     mLcd->debug (LCD_COLOR_WHITE, "- load  %dx%d scale %d", mCinfo.output_width, mCinfo.output_height, 4);
     }
-
-  return bytesRead;
   }
 //}}}
-
 //{{{
 void cApp::saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t* buf, int bufLen) {
 
@@ -947,7 +939,6 @@ void cApp::saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t
     }
   }
 //}}}
-
 //{{{
 void cApp::createNumFile (const char* name, uint32_t num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
@@ -1250,7 +1241,7 @@ int main() {
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
   gApp->init();
 
-  sys_thread_new ("app", appThread, NULL, 2048, osPriorityNormal);
+  sys_thread_new ("app", appThread, NULL, 8192, osPriorityNormal);
   sys_thread_new ("net", netThread, NULL, 1024, osPriorityNormal);
   sys_thread_new ("touch", touchThread, NULL, 512, osPriorityNormal);
   osKernelStart();

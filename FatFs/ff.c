@@ -758,7 +758,7 @@ static DWORD get_fat (_FDID* obj, DWORD clst) {
 
   UINT wc, bc;
 
-  FATFS *fs = obj->fs;
+  FATFS* fs = obj->fs;
   DWORD val;
   if (clst < 2 || clst >= fs->n_fatent)  /* Check if in valid range */
     val = 1;  /* Internal error */
@@ -889,14 +889,14 @@ static DWORD find_bitmap (FATFS* fs, DWORD clst, DWORD ncl) {
 
   BYTE bm, bv;
   UINT i;
-  DWORD val, scl, ctr;
+  DWORD val;
 
   clst -= 2;  /* The first bit in the bitmap corresponds to cluster #2 */
   if (clst >= fs->n_fatent - 2)
     clst = 0;
 
-  scl = val = clst;
-  ctr = 0;
+  DWORD scl = val = clst;
+  DWORD ctr = 0;
   for (;;) {
     if (move_window (fs, fs->database + val / 8 / SS(fs)) != FR_OK)
       return 0xFFFFFFFF; /* (assuming bitmap is located top of the cluster heap) */
@@ -2659,34 +2659,32 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
   static const WORD cst[] = {1, 4, 16, 64, 256, 512, 0};  // Cluster size boundary for FAT12/16 volume (4Ks unit) */
   static const WORD cst32[] = {1, 2, 4, 8, 16, 32, 0};    // Cluster size boundary for FAT32 volume (128Ks unit) */
 
-  BYTE fmt, sys, *buf, *pte, pdrv, part;
+  BYTE fmt, sys, *buf, *pte;
   WORD ss;
   DWORD szb_buf, sz_buf, sz_blk, n_clst, pau, sect, nsect, n;
   DWORD b_vol, b_fat, b_data;       // Base LBA for volume, fat, data */
   DWORD sz_vol, sz_rsv, sz_fat, sz_dir; // Size for volume, fat, dir, data */
   UINT i;
-  int vol;
-  DSTATUS stat;
   DWORD tbl[3];
 
   // Check mounted drive and clear work area
-  vol = get_ldnumber (&path); 
+  int vol = get_ldnumber (&path);
   if (vol < 0)
     return FR_INVALID_DRIVE;
   if (FatFs[vol])
     FatFs[vol]->fs_type = 0;  // Clear the volume
-  pdrv = LD2PD(vol);  // Physical drive
-  part = LD2PT(vol);  // Partition (0:create as new, 1-4:get from partition table) /
+  BYTE pdrv = LD2PD(vol);  // Physical drive
+  BYTE part = LD2PT(vol);  // Partition (0:create as new, 1-4:get from partition table) /
 
   // Check physical drive status
-  stat = diskInit();
+  DSTATUS stat = diskInit();
   if (stat & STA_NOINIT)
     return FR_NOT_READY;
   if (stat & STA_PROTECT)
     return FR_WRITE_PROTECTED;
 
   // Erase block to align data area
-  if (diskIoctl (GET_BLOCK_SIZE, &sz_blk) != RES_OK || !sz_blk || sz_blk > 32768 || (sz_blk & (sz_blk - 1))) 
+  if (diskIoctl (GET_BLOCK_SIZE, &sz_blk) != RES_OK || !sz_blk || sz_blk > 32768 || (sz_blk & (sz_blk - 1)))
     sz_blk = 1;
 #if _MAX_SS != _MIN_SS    // Get sector size of the medium if variable sector size cfg
   if (diskIoctl (GET_SECTOR_SIZE, &ss) != RES_OK)
@@ -2699,34 +2697,35 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
 
   if ((au != 0 && au < ss) || au > 0x1000000 || (au & (au - 1)))
     return FR_INVALID_PARAMETER; // Check if au is valid
-  au /= ss; // Cluster size in unit of sector 
+  au /= ss; // Cluster size in unit of sector
 
   // Get working buffer
-  buf = (BYTE*)work;    
+  buf = (BYTE*)work;
   sz_buf = len / ss;      // Size of working buffer (sector)
   szb_buf = sz_buf * ss;  // Size of working buffer (byte)
   if (!szb_buf)
     return FR_MKFS_ABORTED;
 
   // Determine where the volume to be located (b_vol, sz_vol) */
-  // Create a single-partition in this function */
+  // Create a single-partition in this function
   if (diskIoctl (GET_SECTOR_COUNT, &sz_vol) != RES_OK)
     return FR_DISK_ERR;
+
   b_vol = (opt & FM_SFD) ? 0 : 63; // Volume start sector
   if (sz_vol < b_vol)
     return FR_MKFS_ABORTED;
   // Volume size
-  sz_vol -= b_vol; 
+  sz_vol -= b_vol;
 
   // Check if volume size is >=128s
   if (sz_vol < 128)
-    return FR_MKFS_ABORTED; 
+    return FR_MKFS_ABORTED;
 
   // Pre-determine the FAT type
   do {
     if (opt & FM_EXFAT) {
       // exFAT possible? */
-      if ((opt & FM_ANY) == FM_EXFAT || sz_vol >= 0x4000000 || au > 128) {  
+      if ((opt & FM_ANY) == FM_EXFAT || sz_vol >= 0x4000000 || au > 128) {
         // exFAT only, vol >= 64Ms or au > 128s ?
         fmt = FS_EXFAT;
         break;
@@ -2737,7 +2736,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
       return FR_INVALID_PARAMETER;  // Too large au for FAT/FAT32
     if (opt & FM_FAT32) {
       // FAT32 possible? */
-      if ((opt & FM_ANY) == FM_FAT32 || !(opt & FM_FAT)) {  
+      if ((opt & FM_ANY) == FM_FAT32 || !(opt & FM_FAT)) {
         // FAT32 only or no-FAT?
         fmt = FS_FAT32;
         break;
@@ -2750,7 +2749,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     } while (0);
 
   if (fmt == FS_EXFAT) {
-    //{{{  create an exFAT volume */
+    //{{{  create an exFAT volume
     DWORD szb_bit, szb_case, sum, nb, cl;
     WCHAR ch, si;
     UINT j, st;
@@ -2948,7 +2947,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     }
     //}}}
   else {
-    //{{{  create an FAT12/16/32 volume */
+    //{{{  create an FAT12/16/32 volume
     do {
       pau = au;
       /* Pre-determine number of clusters and FAT sub-type */
@@ -3149,12 +3148,12 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     memset (buf, 0, ss);
     st_word (buf + BS_55AA, 0xAA55);   // MBR signature
 
-    pte = buf + MBR_Table;   // Create partition table for single partition in the drive
-    pte[PTE_Boot] = 0;       // Boot indicator
-    pte[PTE_StHead] = 1;     // Start head
-    pte[PTE_StSec] = 1;      // Start sector
-    pte[PTE_StCyl] = 0;      // Start cylinder
-    pte[PTE_System] = sys;   // System type
+    pte = buf + MBR_Table; // Create partition table for single partition in the drive
+    pte[PTE_Boot] = 0;     // Boot indicator
+    pte[PTE_StHead] = 1;   // Start head
+    pte[PTE_StSec] = 1;    // Start sector
+    pte[PTE_StCyl] = 0;    // Start cylinder
+    pte[PTE_System] = sys; // System type
 
     n = (b_vol + sz_vol) / (63 * 255);    // (End CHS may be invalid)
     pte[PTE_EdHead] = 254;                // End head
@@ -3166,7 +3165,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
 
     // Write it to the MBR
     if (diskWrite (buf, 0, 1) != RES_OK)
-      return FR_DISK_ERR;  
+      return FR_DISK_ERR;
     }
     //}}}
 
@@ -3886,17 +3885,17 @@ FRESULT f_read (FIL* fp, void* buff, UINT btr, UINT* br) {
   BYTE *rbuff = (BYTE*)buff;
 
   // Clear read byte counter
-  *br = 0;  
+  *br = 0;
 
   // Check validity of the file object
   FATFS* fs;
-  FRESULT result = validate (&fp->obj, &fs);        
+  FRESULT result = validate (&fp->obj, &fs);
   if (result != FR_OK || (result = (FRESULT)fp->err) != FR_OK)
-    LEAVE_FF (fs, result); 
+    LEAVE_FF (fs, result);
 
   // Check access mode
   if (!(fp->flag & FA_READ))
-    LEAVE_FF (fs, FR_DENIED); 
+    LEAVE_FF (fs, FR_DENIED);
 
   remain = fp->obj.objsize - fp->fptr;
   if (btr > remain)
@@ -3904,7 +3903,7 @@ FRESULT f_read (FIL* fp, void* buff, UINT btr, UINT* br) {
 
   for ( ;  btr; rbuff += rcnt, fp->fptr += rcnt, *br += rcnt, btr -= rcnt) {
     // Repeat until all data read
-    if (fp->fptr % SS (fs) == 0) { 
+    if (fp->fptr % SS (fs) == 0) {
       // On the sector boundary?
       csect = (UINT)(fp->fptr / SS(fs) & (fs->csize - 1));  /* Sector offset in the cluster */
       if (csect == 0) {

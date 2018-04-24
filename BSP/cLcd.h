@@ -230,8 +230,8 @@ public:
 private:
   uint16_t* getBuffer();
 
-  void setLayer (uint32_t layerIndex);
-  void layerInit (uint16_t layerIndex, uint32_t FrameBuffer);
+  void setLayer();
+  void layerInit (uint32_t FrameBuffer);
 
   void fillBuffer (uint16_t color, uint16_t* dst, uint16_t xsize, uint16_t ysize, uint32_t OffLine);
   void fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
