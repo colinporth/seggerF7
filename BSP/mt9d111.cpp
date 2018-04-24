@@ -200,7 +200,7 @@ uint8_t* cCamera::getBmpHeader (uint32_t& headerLen) {
   }
 //}}}
 //{{{
-uint8_t* cCamera::getJpgHeader (bool full, int qscale, uint32_t& headerLen) {
+uint8_t* cCamera::getFullJpgHeader (int qscale, uint32_t& headerLen) {
 
   // set jpegHeader
   auto ptr = mHeader;
@@ -213,13 +213,29 @@ uint8_t* cCamera::getJpgHeader (bool full, int qscale, uint32_t& headerLen) {
   headerLen += quantTableMarker (mHeader + headerLen, qscale);
   headerLen += sofMarker (mHeader + headerLen, mWidth, mHeight);
 
-  if (full) {
-    headerLen += huffTableMarkerAC (mHeader + headerLen, &kJpegStdHuffmanTbl[0], 0x10);
-    headerLen += huffTableMarkerAC (mHeader + headerLen, &kJpegStdHuffmanTbl[176], 0x11);
-    headerLen += huffTableMarkerDC (mHeader + headerLen, &kJpegStdHuffmanTbl[352], 0x00);
-    headerLen += huffTableMarkerDC (mHeader + headerLen, &kJpegStdHuffmanTbl[368], 0x01);
-    }
+  headerLen += huffTableMarkerAC (mHeader + headerLen, &kJpegStdHuffmanTbl[0], 0x10);
+  headerLen += huffTableMarkerAC (mHeader + headerLen, &kJpegStdHuffmanTbl[176], 0x11);
+  headerLen += huffTableMarkerDC (mHeader + headerLen, &kJpegStdHuffmanTbl[352], 0x00);
+  headerLen += huffTableMarkerDC (mHeader + headerLen, &kJpegStdHuffmanTbl[368], 0x01);
 
+  headerLen += sosMarker (mHeader + headerLen);
+
+  return mHeader;
+  }
+//}}}
+//{{{
+uint8_t* cCamera::getSmallJpgHeader (int qscale, uint32_t& headerLen) {
+
+  // set jpegHeader
+  auto ptr = mHeader;
+
+  *ptr++ = 0xFF; // SOI marker
+  *ptr++ = 0xD8;
+  headerLen = 2;
+
+  headerLen += app0Marker (ptr);
+  headerLen += quantTableMarker (mHeader + headerLen, qscale);
+  headerLen += sofMarker (mHeader + headerLen, mWidth, mHeight);
   headerLen += sosMarker (mHeader + headerLen);
 
   return mHeader;

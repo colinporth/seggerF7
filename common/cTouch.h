@@ -24,14 +24,13 @@ public:
 
     if (touch) {
       // pressed
-      if (touch > 1) {
-        mHit = eScroll;
-        onScroll (pos - mLastPos, z);
-        }
-
-      else if (mHit == eProx)
+      //if (touch > 1) {
+      //  mHit = eScroll;
+      //  onScroll (pos - mLastPos, z);
+      //  }
+      //else 
+      if (mHit == eProx)
         onTouchProx (pos - mLastPos, z);
-
       else if ((mHit == eReleased) && (z > 20)) {
         // press
         onTouchPress (pos, z);
@@ -39,7 +38,6 @@ public:
         }
       else if (mHit == ePressed)
         onTouchMove (pos, pos - mLastPos, z);
-
       else
         mHit = eProx;
 

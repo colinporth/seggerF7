@@ -164,11 +164,11 @@ class cLcd {
 public:
   enum eTextAlign { eTextLeft, eTextCentre, eTextRight };
 
-  cLcd (uint16_t displayLines);
-  void init();
-
   static uint32_t getWidth() { return 480; }
   static uint32_t getHeight() { return 272; }
+
+  cLcd (uint16_t displayLines);
+  void init();
 
   uint16_t GetTextHeight();
 
@@ -188,9 +188,8 @@ public:
   void debug (uint32_t colour, const char* format, ... );
 
   // drawing
-  void SelectLayer (uint32_t layerIndex);
-  void SetTransparency (uint32_t layerIndex, uint8_t Transparency);
-  void SetAddress (uint32_t layerIndex, uint16_t* address, uint16_t* writeAddress);
+  void SetTransparency (uint8_t Transparency);
+  void SetAddress (uint16_t* address, uint16_t* writeAddress);
 
   uint16_t readPix (uint16_t x, uint16_t y);
   void drawPix (uint16_t color, uint16_t x, uint16_t y);
@@ -234,7 +233,7 @@ private:
   void setLayer (uint32_t layerIndex);
   void layerInit (uint16_t layerIndex, uint32_t FrameBuffer);
 
-  void fillBuffer (uint16_t color, uint32_t layer, uint32_t dst, uint16_t xsize, uint16_t ysize, uint32_t OffLine);
+  void fillBuffer (uint16_t color, uint16_t* dst, uint16_t xsize, uint16_t ysize, uint32_t OffLine);
   void fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
 
   static const int kMaxStrSize = 40;
@@ -250,8 +249,6 @@ private:
     uint32_t mColour = 0;
     };
   //}}}
-
-  uint32_t mLayer = 0;
 
   bool mFlip = false;
 

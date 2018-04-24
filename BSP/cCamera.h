@@ -1,6 +1,8 @@
 // cCamera.h
+//{{{  includes
 #pragma once
 #include "stm32746g_discovery.h"
+//}}}
 
 class cCamera {
 public:
@@ -17,7 +19,8 @@ public:
   int getFocus() { return mFocus; }
 
   uint8_t* getBmpHeader (uint32_t& headerLen);
-  uint8_t* getJpgHeader (bool full, int qscale, uint32_t& headerLen);
+  uint8_t* getFullJpgHeader (int qscale, uint32_t& headerLen);
+  uint8_t* getSmallJpgHeader (int qscale, uint32_t& headerLen);
   uint8_t* getLastFrame (uint32_t& frameLen, bool& jpeg);
   uint8_t* getNextFrame (uint32_t& frameLen, bool& jpeg);
 

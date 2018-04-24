@@ -264,7 +264,6 @@ protected:
   virtual void onTouchPress (cPoint pos, uint8_t z);
   virtual void onTouchMove (cPoint pos, cPoint inc, uint8_t z);
   virtual void onTouchRelease (cPoint pos, uint8_t z);
-  virtual void onScroll (cPoint pos, uint8_t z);
   virtual void onKey (uint8_t ch, bool release);
 
 private:
@@ -317,6 +316,7 @@ private:
   //}}}
   };
 //}}}
+
 //{{{
 class cBgndBox : public cApp::cBox {
 public:
@@ -586,7 +586,7 @@ void cApp::run() {
       if (mounted && mTakeChanged) {
         //{{{  save JFIF jpeg
         mTakeChanged = false;
-        auto header = mCam->getJpgHeader (true, 6, headerLen);
+        auto header = mCam->getFullJpgHeader (6, headerLen);
         saveNumFile ("save", frameNum, "jpg", header, headerLen, frame, frameLen);
         frameNum++;
         }
@@ -594,14 +594,14 @@ void cApp::run() {
       else if (mounted && mTakeMovieChanged && !frameNum) {
         //{{{  save mjpeg first frame
         frameNum++;
-        auto header = mCam->getJpgHeader (true, 6, headerLen);
+        auto header = mCam->getFullJpgHeader (6, headerLen);
         createNumFile ("save", fileNum, header, headerLen, frame, frameLen);
         mLcd->start();
         }
         //}}}
       else if (mounted && mTakeMovieChanged && (frameNum < 500)) {
         //{{{  add mjpeg frame
-        auto header = mCam->getJpgHeader (false, 6, headerLen);
+        auto header = mCam->getSmallJpgHeader (6, headerLen);
         appendFile (frameNum++, header, headerLen, frame, frameLen);
         mLcd->start();
         }
@@ -617,7 +617,7 @@ void cApp::run() {
         //}}}
       else {
         //{{{  jpegDecode
-        auto header = mCam->getJpgHeader (!frameNum++, 6, headerLen);
+        auto header = !frameNum++ ? mCam->getFullJpgHeader (6, headerLen) : mCam->getSmallJpgHeader (6, headerLen);
         jpeg_mem_src (&mCinfo, header, headerLen);
         jpeg_read_header (&mCinfo, TRUE);
 
@@ -748,11 +748,6 @@ void cApp::onTouchRelease (cPoint pos, uint8_t z) {
     mPressedBox->onRelease (pos - mPressedBox->getTL(), z);
     }
   mPressedBox = nullptr;
-  }
-//}}}
-//{{{
-void cApp::onScroll (cPoint pos, uint8_t z) {
-  mLcd->incScrollValue (pos.y);
   }
 //}}}
 //{{{
@@ -1070,7 +1065,7 @@ void serverThread (void* arg) {
 
                       // send imageFile format header
                       uint32_t headerLen;
-                      auto header = jpeg ? gApp->getCam()->getJpgHeader (true, 6, headerLen) : gApp->getCam()->getBmpHeader (headerLen);
+                      auto header = jpeg ? gApp->getCam()->getFullJpgHeader (6, headerLen) : gApp->getCam()->getBmpHeader (headerLen);
                       netconn_write (request, header, headerLen, NETCONN_NOCOPY);
 
                       // send imageFile body

@@ -15,7 +15,7 @@
 
 #define SDRAM_MEMORY_WIDTH  FMC_SDRAM_MEM_BUS_WIDTH_16
 #define SDCLOCK_PERIOD      FMC_SDRAM_CLOCK_PERIOD_2
-#define REFRESH_COUNT       ((uint32_t)0x0603)   /* SDRAM refresh counter (100Mhz SD clock) */
+#define REFRESH_COUNT       ((uint32_t)0x0603)     // SDRAM refresh counter (100Mhz SD clock)
 #define SDRAM_TIMEOUT       ((uint32_t)0xFFFF)
 
 #define SDRAM_MODEREG_BURST_LENGTH_1             ((uint16_t)0x0000)
@@ -31,11 +31,6 @@
 #define SDRAM_MODEREG_WRITEBURST_MODE_SINGLE     ((uint16_t)0x0200)
 
 uint8_t BSP_SDRAM_Init();
-uint8_t BSP_SDRAM_DeInit();
-void    BSP_SDRAM_Initialization_sequence (uint32_t RefreshCount);
-
-void    BSP_SDRAM_MspInit (SDRAM_HandleTypeDef* hsdram, void* Params);
-void    BSP_SDRAM_MspDeInit (SDRAM_HandleTypeDef* hsdram, void* Params);
 
 //{{{
 #ifdef __cplusplus

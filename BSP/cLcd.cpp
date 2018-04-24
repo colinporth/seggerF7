@@ -387,7 +387,7 @@ void cLcd::present() {
   auto buffer = getBuffer();
   mFlip = !mFlip;
 
-  SetAddress (0, buffer, getBuffer());
+  SetAddress (buffer, getBuffer());
   }
 //}}}
 
@@ -443,26 +443,20 @@ void cLcd::clearDebug() {
 //}}}
 
 //{{{
-void cLcd::SelectLayer (uint32_t layerIndex) {
-  mLayer = layerIndex;
-  }
-//}}}
-//{{{
-void cLcd::SetTransparency (uint32_t layerIndex, uint8_t Transparency) {
+void cLcd::SetTransparency (uint8_t Transparency) {
 
   // change layer Alpha
-  hLtdcHandler.LayerCfg[layerIndex].Alpha = Transparency;
-  setLayer (layerIndex);
+  hLtdcHandler.LayerCfg[0].Alpha = Transparency;
   LTDC->SRCR = LTDC_SRCR_VBR;
   }
 //}}}
 //{{{
-void cLcd::SetAddress (uint32_t layerIndex, uint16_t* address, uint16_t* writeAddress) {
+void cLcd::SetAddress (uint16_t* address, uint16_t* writeAddress) {
 
   // change layer addresses
-  hLtdcHandler.LayerCfg[layerIndex].FBStartAdress = (uint32_t)address;
-  hLtdcHandler.LayerCfg[layerIndex].FBStartAdressWrite = (uint32_t)writeAddress;
-  setLayer (layerIndex);
+  hLtdcHandler.LayerCfg[0].FBStartAdress = (uint32_t)address;
+  hLtdcHandler.LayerCfg[0].FBStartAdressWrite = (uint32_t)writeAddress;
+  setLayer (0);
   LTDC->SRCR = LTDC_SRCR_VBR;
   }
 //}}}
@@ -470,14 +464,14 @@ void cLcd::SetAddress (uint32_t layerIndex, uint16_t* address, uint16_t* writeAd
 //{{{
 uint16_t cLcd::readPix (uint16_t x, uint16_t y) {
 
-  return *((__IO uint16_t*)hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + y*getWidth() + x);
+  return *(getBuffer() + y*getWidth() + x);
   }
 //}}}
 //{{{
 void cLcd::drawPix (uint16_t color, uint16_t x, uint16_t y) {
 // Write data value to all SDRAM memory
 
-  *(__IO uint16_t*) (hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + (2*(y*getWidth() + x))) = (uint16_t)color;
+  *(getBuffer() + y*getWidth() + x) = (uint16_t)color;
   }
 //}}}
 
@@ -490,7 +484,7 @@ void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
     const uint16_t offset = (8 * byteAlignedWidth) - width - 1;
     const uint8_t* fontChar = &gFont16.mTable [(ascii - ' ') * gFont16.mHeight * byteAlignedWidth];
 
-    auto dst = (uint16_t*)hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + (pos.y * getWidth()) + pos.x;
+    auto dst = getBuffer() + (pos.y * getWidth()) + pos.x;
     for (auto fontLine = 0u; fontLine < gFont16.mHeight; fontLine++) {
       auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
       uint16_t fontLineBits = *fontPtr++;
@@ -571,7 +565,7 @@ void cLcd::clearStringLine (uint16_t color, uint16_t line) {
 
 //{{{
 void cLcd::clear (uint16_t color) {
-  fillBuffer (color, mLayer, hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite, getWidth(), getHeight(), 0);
+  fillBuffer (color, getBuffer(), getWidth(), getHeight(), 0);
   }
 //}}}
 //{{{
@@ -595,8 +589,7 @@ void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uin
 //{{{
 void cLcd::fillRect (uint16_t color, cRect& rect) {
 
-  fillBuffer (color, mLayer,
-              hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + ((getWidth() * rect.top) + rect.left) * 2,
+  fillBuffer (color, getBuffer() + rect.top*getWidth() + rect.left,
               rect.getWidth(), rect.getHeight(), getWidth() - rect.getWidth());
   }
 //}}}
@@ -605,7 +598,7 @@ void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
 // dma2d hogs bandwidth
 
   auto pitch = getWidth() - rect.getWidth();
-  auto dst = (uint16_t*)hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + rect.top*getWidth() + rect.left;
+  auto dst = getBuffer() + rect.top*getWidth() + rect.left;
 
   for (auto y = 0; y < rect.getHeight(); y++) {
     for (auto x = 0; x < rect.getWidth(); x++)
@@ -617,8 +610,7 @@ void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
 //{{{
 void cLcd::fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
 
-  fillBuffer (color, mLayer, hLtdcHandler.LayerCfg[mLayer].FBStartAdressWrite + ((getWidth() * y) + x) * 2,
-              width, height, getWidth() - width);
+  fillBuffer (color, getBuffer() + y*getWidth() + x, width, height, getWidth() - width);
   }
 //}}}
 
@@ -1831,13 +1823,11 @@ void cLcd::layerInit (uint16_t layerIndex, uint32_t FB_Address) {
 
   __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, layerIndex);
   __HAL_LTDC_RELOAD_CONFIG (&hLtdcHandler);
-
-  mLayer = layerIndex;
   }
 //}}}
 
 //{{{
-void cLcd::fillBuffer (uint16_t color, uint32_t layer, uint32_t dst, uint16_t xsize, uint16_t ysize, uint32_t OffLine) {
+void cLcd::fillBuffer (uint16_t color, uint16_t* dst, uint16_t xsize, uint16_t ysize, uint32_t OffLine) {
 
   // uncontort this later
   uint8_t r = (color & 0xF800) >> 8;
@@ -1850,8 +1840,8 @@ void cLcd::fillBuffer (uint16_t color, uint32_t layer, uint32_t dst, uint16_t xs
   hDma2dHandler.Init.OutputOffset = OffLine;
 
   HAL_DMA2D_Init (&hDma2dHandler);
-  HAL_DMA2D_ConfigLayer (&hDma2dHandler, layer);
-  HAL_DMA2D_Start (&hDma2dHandler, rgb888, dst, xsize, ysize);
+  HAL_DMA2D_ConfigLayer (&hDma2dHandler, 0);
+  HAL_DMA2D_Start (&hDma2dHandler, rgb888, (uint32_t)dst, xsize, ysize);
   HAL_DMA2D_PollForTransfer (&hDma2dHandler, 10);
   }
 //}}}
