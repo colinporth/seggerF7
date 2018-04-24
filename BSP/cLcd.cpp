@@ -861,7 +861,6 @@ void cLcd::drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint
 //{{{
 void cLcd::rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t size) {
 
-  DMA2D->CR = (DMA2D->CR & ~DMA2D_CR_MODE) | DMA2D_M2M_PFC;
   DMA2D->OPFCCR = (DMA2D->OPFCCR & ~DMA2D_OPFCCR_CM) | DMA2D_OUTPUT_RGB565;
   //DMA2D->OOR = (DMA2D->OOR & ~DMA2D_OPFCCR_CM) | 0;
 
@@ -873,11 +872,13 @@ void cLcd::rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t size) {
                    DMA2D_OUTPUT_RGB565 | (DMA2D_NO_MODIF_ALPHA << DMA2D_BGPFCCR_AM_Pos) | (0xFF << DMA2D_BGPFCCR_ALPHA_Pos);
   DMA2D->BGOR = 0;
 
-  // Configure DMA2D data size, src, dst, start
+  // Configure DMA2D data size, src, dst
   DMA2D->NLR = (DMA2D->NLR & ~(DMA2D_NLR_NL | DMA2D_NLR_PL)) | (size << DMA2D_NLR_PL_Pos) | 1;
   DMA2D->FGMAR = (uint32_t)src;
   DMA2D->OMAR = (uint32_t)dst;
-  DMA2D->CR |= DMA2D_CR_START;
+
+  // start transfer
+  DMA2D->CR |= DMA2D_CR_START | DMA2D_M2M_PFC;
 
   // wait for transferComplete
   while (!(DMA2D->ISR & DMA2D_FLAG_TC))
