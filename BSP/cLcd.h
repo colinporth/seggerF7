@@ -215,7 +215,7 @@ public:
   void fillPolygon (uint16_t color, cPoint* points, uint16_t pPointCount);
   void drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 
-  void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t size);
+  void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ysize);
   void rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t size);
   void convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                         uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
@@ -226,9 +226,13 @@ public:
   static cLcd* mLcd;
   static bool mFrameWait;
   static SemaphoreHandle_t mFrameSem;
+  static bool mDma2dWait;
+  static int mDma2dIrq;
+  static SemaphoreHandle_t mDma2dSem;
 
 private:
   uint16_t* getBuffer();
+  void ready();
 
   void setLayer();
   void layerInit (uint32_t FrameBuffer);
