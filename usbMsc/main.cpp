@@ -269,10 +269,91 @@ private:
 
   bool mDebugChanged = false;
   bool mDebugValue = true;
+
+  bool mClearDebugChanged = false;
   //}}}
   };
 //}}}
-#include "../common/cToggleBox.h"
+//{{{
+class cToggleBox : public cApp::cBox {
+public:
+  //{{{
+  cToggleBox (float width, float height, const char* name, bool& value, bool& changed)
+      : cBox(name, width, height), mValue(value), mChanged(changed) {
+    mChanged = false;
+    }
+  //}}}
+  virtual ~cToggleBox() {}
+
+  bool onProx (cPoint pos) {
+    return true;
+    }
+
+  bool onPress (cPoint pos, uint8_t z)  {
+    mValue = !mValue;
+    mThickness = z;
+    mChanged = true;
+    return true;
+    }
+
+  bool onMove (cPoint pos, uint8_t z)  {
+    mThickness = z;
+    return true;
+    }
+
+  void onDraw (cLcd* lcd) {
+    mColor = mValue ? LCD_COLOR_YELLOW : LCD_COLOR_LIGHT_GREY;
+    mTextColor = mValue ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+    cBox::onDraw (lcd);
+    if (mProxed)
+      lcd->drawRect (LCD_COLOR_WHITE, mRect, mThickness < 10 ? 1 : mThickness / 10 );
+    }
+
+private:
+  bool& mChanged;
+  bool& mValue;
+  uint16_t mThickness = 1;
+  };
+//}}}
+//{{{
+class cInstantBox : public cApp::cBox {
+public:
+  //{{{
+  cInstantBox (float width, float height, const char* name, bool& changed)
+      : cBox(name, width, height), mChanged(changed) {
+    mChanged = false;
+    }
+  //}}}
+  virtual ~cInstantBox() {}
+
+  bool onProx (cPoint pos) {
+    return true;
+    }
+
+  bool onPress (cPoint pos, uint8_t z)  {
+    mThickness = z;
+    mChanged = true;
+    return true;
+    }
+
+  bool onMove (cPoint pos, uint8_t z)  {
+    mThickness = z;
+    return true;
+    }
+
+  void onDraw (cLcd* lcd) {
+    mColor = mPressed ? LCD_COLOR_YELLOW : LCD_COLOR_LIGHT_GREY;
+    mTextColor = mPressed ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+    cBox::onDraw (lcd);
+    if (mProxed)
+      lcd->drawRect (LCD_COLOR_WHITE, mRect, mThickness < 10 ? 1 : mThickness / 10 );
+    }
+
+private:
+  bool& mChanged;
+  uint16_t mThickness = 1;
+  };
+//}}}
 
 FATFS gFatFs;  // encourges allocation in lower DTCM SRAM
 FIL   gFile;
@@ -290,6 +371,7 @@ void cApp::init() {
   add (new cToggleBox (60, 50, "jpeg", mValue, mValueChanged), 0, 272 - 50);
   add (new cToggleBox (60, 50, "zoom", mZoomValue, mZoomChanged), 64, 272 - 50);
   add (new cToggleBox (60, 50, "debug", mDebugValue, mDebugChanged), 128, 272 - 50);
+  add (new cInstantBox (60, 50, "clear", mClearDebugChanged), 192, 272 - 50);
 
   // show title early
   mLcd->start();
@@ -422,6 +504,10 @@ void cApp::run() {
       mValue ? mCam->capture() : mCam->preview();
       fileNum++;
       frameNum = 0;
+      }
+    if (mClearDebugChanged) {
+      mLcd->clearDebug();
+      mClearDebugChanged = false;
       }
     }
   }

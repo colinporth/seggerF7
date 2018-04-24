@@ -59,10 +59,11 @@ public:
   void pollTouch() {
 
     BSP_TS_GetState (&mTsState);
+    handleTouch (mTsState.touchDetected, cPoint (mTsState.touchX[0], mTsState.touchY[0]), mTsState.touchWeight[0]);
+
     //lcd->debug (LCD_COLOR_YELLOW, "%d x:%d y:%d w:%d e:%d a:%d g:%d",
     //       mTsState.touchDetected, mTsState.touchX[0],mTsState.touchY[0], mTsState.touchWeight[0],
     //       mTsState.touchEventId[0], mTsState.touchArea[0], mTsState.gestureId);
-    handleTouch (mTsState.touchDetected, cPoint (mTsState.touchX[0], mTsState.touchY[0]), mTsState.touchWeight[0]);
     }
   //}}}
 

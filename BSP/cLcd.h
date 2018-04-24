@@ -184,6 +184,7 @@ public:
   void incScrollValue (int inc);
   void incScrollIndex (int inc);
 
+  void clearDebug();
   void debug (uint32_t colour, const char* format, ... );
 
   // drawing

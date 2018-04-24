@@ -435,6 +435,12 @@ void cLcd::debug (uint32_t colour, const char* format, ... ) {
   mDebugLine++;
   }
 //}}}
+//{{{
+void cLcd::clearDebug() {
+
+  mDebugLine = 0;
+  }
+//}}}
 
 //{{{
 void cLcd::SelectLayer (uint32_t layerIndex) {

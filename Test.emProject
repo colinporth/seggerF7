@@ -460,7 +460,6 @@
       <file file_name="../common/system.c" />
       <folder Name="includes">
         <file file_name="../common/cTouch.h" />
-        <file file_name="../common/cToggleBox.h" />
         <file file_name="../common/system.h" />
         <file file_name="../common/usbd.h" />
         <file file_name="../common/cPs2.h" />
