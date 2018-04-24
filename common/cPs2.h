@@ -153,34 +153,34 @@ public:
 
     char str[8];
     sprintf (str, "%d", mTouchX);
-    mLcd->displayStringAtColumnLine (LCD_COLOR_YELLOW, 0, 13, str);
+    mLcd->displayStringColumnLine (LCD_COLOR_YELLOW, 0, 13, str);
 
     sprintf (str, "%d", mTouchY);
-    mLcd->displayStringAtColumnLine (LCD_COLOR_YELLOW, 6, 13, str);
+    mLcd->displayStringColumnLine (LCD_COLOR_YELLOW, 6, 13, str);
 
     sprintf (str, "%d", mTouchZ);
-    mLcd->displayStringAtColumnLine (LCD_COLOR_YELLOW, 12, 13, str);
+    mLcd->displayStringColumnLine (LCD_COLOR_YELLOW, 12, 13, str);
 
     sprintf (str, "%d", mStreamCode);
-    mLcd->displayStringAtColumnLine (LCD_COLOR_YELLOW, 18, 13, str);
+    mLcd->displayStringColumnLine (LCD_COLOR_YELLOW, 18, 13, str);
 
     sprintf (str, "%x", mStreamCodes[0]);
-    mLcd->displayStringAtColumnLine (LCD_COLOR_YELLOW, 22, 13, str);
+    mLcd->displayStringColumnLine (LCD_COLOR_YELLOW, 22, 13, str);
 
     sprintf (str, "%x", mStreamCodes[1]);
-    mLcd->displayStringAtColumnLine (LCD_COLOR_YELLOW, 25, 13, str);
+    mLcd->displayStringColumnLine (LCD_COLOR_YELLOW, 25, 13, str);
 
     sprintf (str, "%x", mStreamCodes[2]);
-    mLcd->displayStringAtColumnLine (LCD_COLOR_YELLOW, 28, 13, str);
+    mLcd->displayStringColumnLine (LCD_COLOR_YELLOW, 28, 13, str);
 
     sprintf (str, "%x", mStreamCodes[3]);
-    mLcd->displayStringAtColumnLine (LCD_COLOR_YELLOW, 31, 13, str);
+    mLcd->displayStringColumnLine (LCD_COLOR_YELLOW, 31, 13, str);
 
     sprintf (str, "%x", mStreamCodes[4]);
-    mLcd->displayStringAtColumnLine (LCD_COLOR_YELLOW, 34, 13, str);
+    mLcd->displayStringColumnLine (LCD_COLOR_YELLOW, 34, 13, str);
 
     sprintf (str, "%x", mStreamCodes[5]);
-    mLcd->displayStringAtColumnLine (LCD_COLOR_YELLOW, 37, 13, str);
+    mLcd->displayStringColumnLine (LCD_COLOR_YELLOW, 37, 13, str);
     }
   //}}}
   //{{{
@@ -192,7 +192,7 @@ public:
         char str[2];
         str[0] = mChars[ch % kMaxChars] & 0xFF;
         str[1] = 0;
-        mLcd->displayStringAtColumnLine (mChars[ch % kMaxChars] & 0x100 ? LCD_COLOR_GREEN : LCD_COLOR_YELLOW, i, 13, str);
+        mLcd->displayStringColumnLine (mChars[ch % kMaxChars] & 0x100 ? LCD_COLOR_GREEN : LCD_COLOR_YELLOW, i, 13, str);
         }
       ch++;
       }
@@ -206,7 +206,7 @@ public:
       if (code > 0) {
         char str[4];
         sprintf (str, "%02x", mCodes[code % kMaxCodes]);
-        mLcd->displayStringAtColumnLine (LCD_COLOR_YELLOW, i*3, 14, str);
+        mLcd->displayStringColumnLine (LCD_COLOR_YELLOW, i*3, 14, str);
         }
       code++;
       }

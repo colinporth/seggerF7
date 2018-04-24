@@ -4,34 +4,39 @@
 class cToggleBox : public cApp::cBox {
 public:
   //{{{
-  cToggleBox (float width, float height, const char* title, bool& value, bool& changed)
-      : cBox("toggle", width, height), mTitle(title), mValue(value), mChanged(changed) {
+  cToggleBox (float width, float height, const char* name, bool& value, bool& changed)
+      : cBox(name, width, height), mValue(value), mChanged(changed) {
     mChanged = false;
     }
   //}}}
   virtual ~cToggleBox() {}
 
   bool onProx (cPoint pos) {
-    return false;
+    return true;
     }
 
-  //{{{
-  bool onDown (cPoint pos)  {
+  bool onPress (cPoint pos, uint8_t z)  {
     mValue = !mValue;
+    mThickness = z;
     mChanged = true;
     return true;
     }
-  //}}}
+
+  bool onMove (cPoint pos, uint8_t z)  {
+    mThickness = z;
+    return true;
+    }
 
   void onDraw (cLcd* lcd) {
-    lcd->fillRectCpu (mValue ? LCD_COLOR_YELLOW : LCD_COLOR_LIGHT_GREY, mRect);
+    mColor = mValue ? LCD_COLOR_YELLOW : LCD_COLOR_LIGHT_GREY;
+    mTextColor = LCD_COLOR_BLACK;
+    cBox::onDraw (lcd);
     if (mProxed)
-      lcd->drawRect (LCD_COLOR_WHITE, mRect);
-    lcd->displayStringAt (LCD_COLOR_BLACK, mRect.getTL(), mTitle, cLcd::eTextLeft);
+      lcd->drawRect (LCD_COLOR_WHITE, mRect, mThickness < 10 ? 1 : mThickness / 10 );
     }
 
 private:
-  const char* mTitle;
   bool& mChanged;
   bool& mValue;
+  uint16_t mThickness = 1;
   };

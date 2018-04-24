@@ -154,12 +154,17 @@ public:
       }
     //}}}
     virtual bool pick (cPoint pos) { return mRect.inside (pos); }
-    virtual bool onProx (cPoint pos) { return false; }
+    virtual bool onProx (cPoint pos, uint8_t z) { return false; }
+    virtual bool onPress (cPoint pos, uint8_t z)  { return false; }
+    virtual bool onMove (cPoint pos, cPoint inc, uint8_t z)  { return false; }
+    virtual bool onRelease (cPoint pos, uint8_t z) { return false; }
     virtual bool onProxExit() { return false; }
-    virtual bool onDown (cPoint pos)  { return false; }
-    virtual bool onMove (cPoint pos, cPoint inc)  { return false; }
-    virtual bool onUp (cPoint pos) { return false; }
-    virtual void onDraw (cLcd* lcd) = 0;
+    //{{{
+    virtual void onDraw (cLcd* lcd) {
+      lcd->fillRectCpu (mColor, mRect);
+      lcd->displayString (mTextColor, mRect.getTL(), mName, cLcd::eTextLeft);
+      }
+    //}}}
 
   protected:
     const char* mName;
@@ -168,6 +173,9 @@ public:
     bool mProxed = false;
     bool mPressed = false;
     bool mMoved = false;
+
+    uint16_t mColor = LCD_COLOR_LIGHT_GREY;
+    uint16_t mTextColor = LCD_COLOR_BLACK;
 
     uint16_t mLayoutWidth;
     uint16_t mLayoutHeight;
@@ -215,11 +223,11 @@ public:
   void onPs2Irq() { mPs2->onIrq(); }
 
 protected:
-  virtual void onProx (cPoint pos, uint8_t z);
-  virtual void onPress (cPoint pos);
-  virtual void onMove (cPoint pos, cPoint inc, uint8_t z);
+  virtual void onTouchProx (cPoint pos, uint8_t z);
+  virtual void onTouchPress (cPoint pos, uint8_t z);
+  virtual void onTouchMove (cPoint pos, cPoint inc, uint8_t z);
+  virtual void onTouchRelease (cPoint pos, uint8_t z);
   virtual void onScroll (cPoint pos, uint8_t z);
-  virtual void onRelease (cPoint pos);
   virtual void onKey (uint8_t ch, bool release);
 
 private:
@@ -461,7 +469,7 @@ void cApp::removeBox (cBox* box) {
 
 // protected
 //{{{
-void cApp::onProx (cPoint pos, uint8_t z) {
+void cApp::onTouchProx (cPoint pos, uint8_t z) {
 
   // search for prox in reverse draw order
   cBox* proxBox = nullptr;
@@ -471,7 +479,7 @@ void cApp::onProx (cPoint pos, uint8_t z) {
     if (!proxBox && !wasProxed && (*boxIt)->getProxed()) {
       // transition box to prox
       proxBox = *boxIt;
-      proxBox->onProx (pos - proxBox->getTL());
+      proxBox->onProx (pos - proxBox->getTL(), z);
       }
     else if (wasProxed && !(*boxIt)->getProxed())
       // transition box to notProxed
@@ -480,7 +488,7 @@ void cApp::onProx (cPoint pos, uint8_t z) {
   }
 //}}}
 //{{{
-void cApp::onPress (cPoint pos) {
+void cApp::onTouchPress (cPoint pos, uint8_t z) {
 
   // search for pressed in reverse draw order
   mPressedBox = nullptr;
@@ -491,34 +499,34 @@ void cApp::onPress (cPoint pos) {
       mPressedBox = *boxIt;
       mPressedBox->setPressed (true);
       mPressedBox->setMoved (false);
-      mPressedBox->onDown (pos - mPressedBox->getTL());
+      mPressedBox->onPress (pos - mPressedBox->getTL(), z);
       }
     }
   }
 //}}}
 //{{{
-void cApp::onMove (cPoint pos, cPoint inc, uint8_t z) {
+void cApp::onTouchMove (cPoint pos, cPoint inc, uint8_t z) {
 
   if (mPressedBox && mPressedBox->getPressed()) {
     mPressedBox->setMoved (true);
-    mPressedBox->onMove (pos - mPressedBox->getTL(), inc);
+    mPressedBox->onMove (pos - mPressedBox->getTL(), inc, z);
     }
+  }
+//}}}
+//{{{
+void cApp::onTouchRelease (cPoint pos, uint8_t z) {
+
+  if (mPressedBox) {
+    mPressedBox->setProxed (false);
+    mPressedBox->setPressed (false);
+    mPressedBox->onRelease (pos - mPressedBox->getTL(), z);
+    }
+  mPressedBox = nullptr;
   }
 //}}}
 //{{{
 void cApp::onScroll (cPoint pos, uint8_t z) {
   mLcd->incScrollValue (pos.y);
-  }
-//}}}
-//{{{
-void cApp::onRelease (cPoint pos) {
-
-  if (mPressedBox) {
-    mPressedBox->setProxed (false);
-    mPressedBox->setPressed (false);
-    mPressedBox->onUp (pos - mPressedBox->getTL());
-    }
-  mPressedBox = nullptr;
   }
 //}}}
 //{{{

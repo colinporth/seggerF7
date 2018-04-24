@@ -30,15 +30,15 @@ public:
         }
 
       else if (mHit == eProx)
-        onProx (pos - mLastPos, z);
+        onTouchProx (pos - mLastPos, z);
 
       else if ((mHit == eReleased) && (z > 20)) {
         // press
-        onPress (pos);
+        onTouchPress (pos, z);
         mHit = ePressed;
         }
       else if (mHit == ePressed)
-        onMove (pos, pos - mLastPos, z);
+        onTouchMove (pos, pos - mLastPos, z);
 
       else
         mHit = eProx;
@@ -49,7 +49,7 @@ public:
     else {
       // release
       if (mHit == ePressed)
-        onRelease (mLastPos);
+        onTouchRelease (mLastPos, z);
       mHit = eReleased;
       }
 
@@ -77,11 +77,11 @@ public:
   //}}}
 
 protected:
-  virtual void onProx (cPoint pos, uint8_t z) {}
-  virtual void onPress (cPoint pos) {}
-  virtual void onMove (cPoint pos, cPoint inc, uint8_t z) {}
+  virtual void onTouchProx (cPoint pos, uint8_t z) {}
+  virtual void onTouchPress (cPoint pos, uint8_t z) {}
+  virtual void onTouchMove (cPoint pos, cPoint inc, uint8_t z) {}
+  virtual void onTouchRelease (cPoint pos, uint8_t z) {}
   virtual void onScroll (cPoint pos, uint8_t z) {}
-  virtual void onRelease (cPoint pos) {}
   virtual void onKey (uint8_t ch, bool release) {}
 
   enum eHit { eReleased, eProx, ePressed, eScroll };

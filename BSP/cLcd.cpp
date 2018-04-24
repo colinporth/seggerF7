@@ -361,7 +361,7 @@ void cLcd::drawInfo (uint16_t color, uint16_t column, const char* format, ... ) 
   vsnprintf (str, kMaxStrSize-1, format, args);
   va_end (args);
 
-  displayStringAtColumnLine (color, column, 0, str);
+  displayStringColumnLine (color, column, 0, str);
   }
 //}}}
 //{{{
@@ -375,9 +375,9 @@ void cLcd::drawDebug() {
       char tickStr[20];
       auto ticks = mLines[debugLine].mTicks;
       sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
-      displayStringAtColumnLine (LCD_COLOR_WHITE, 0, 1+displayLine, tickStr);
+      displayStringColumnLine (LCD_COLOR_WHITE, 0, 1+displayLine, tickStr);
 
-      displayStringAtColumnLine (mLines[debugLine].mColour, 7, 1+displayLine, mLines[debugLine].mStr);
+      displayStringColumnLine (mLines[debugLine].mColour, 7, 1+displayLine, mLines[debugLine].mStr);
       }
   }
 //}}}
@@ -508,12 +508,15 @@ void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
   }
 //}}}
 //{{{
-void cLcd::displayStringAt (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign) {
+void cLcd::displayString (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign) {
 
   switch (textAlign) {
+    case eTextLeft:
+      break;
+
     case eTextCentre:  {
       uint16_t size = 0;
-      auto  ptr = str;
+      auto ptr = str;
       while (*ptr++)
         size++;
 
@@ -533,9 +536,6 @@ void cLcd::displayStringAt (uint16_t color, cPoint pos, const char* str, eTextAl
       pos.x = width > pos.x ? 0 : pos.x - width;
       break;
       }
-
-    case eTextLeft:
-      break;
     }
 
   if (pos.x >= getWidth())
@@ -548,13 +548,13 @@ void cLcd::displayStringAt (uint16_t color, cPoint pos, const char* str, eTextAl
   }
 //}}}
 //{{{
-void cLcd::displayStringAtLine (uint16_t color, uint16_t line, const char* str) {
-  displayStringAt (color, cPoint(0, line * gFont16.mHeight), str, eTextLeft);
+void cLcd::displayStringLine (uint16_t color, uint16_t line, const char* str) {
+  displayString (color, cPoint(0, line * gFont16.mHeight), str, eTextLeft);
   }
 //}}}
 //{{{
-void cLcd::displayStringAtColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str) {
-  displayStringAt (color, cPoint(column * gFont16.mWidth, line * gFont16.mHeight), str, cLcd::eTextLeft);
+void cLcd::displayStringColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str) {
+  displayString (color, cPoint(column * gFont16.mWidth, line * gFont16.mHeight), str, cLcd::eTextLeft);
   }
 //}}}
 //{{{
@@ -569,21 +569,21 @@ void cLcd::clear (uint16_t color) {
   }
 //}}}
 //{{{
-void cLcd::drawRect (uint16_t color, cRect& rect) {
+void cLcd::drawRect (uint16_t color, cRect& rect, uint16_t thickness) {
 
-  drawRect (color, rect.left, rect.top, rect.getWidth(), rect.getHeight());
+  drawRect (color, rect.left, rect.top, rect.getWidth(), rect.getHeight(), thickness);
   }
 //}}}
 //{{{
-void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t thickness) {
 
   // draw horizontal lines
-  fillRect (color, x, y, width, 1);
-  fillRect (color, x, (y+ height), width, 1);
+  fillRect (color, x, y, width, thickness);
+  fillRect (color, x, (y + height)-thickness, width, thickness);
 
   // draw vertical lines
-  fillRect (color, x, y, 1, height);
-  fillRect (color, (x + width), y, 1, height);
+  fillRect (color, x, y, thickness, height);
+  fillRect (color, (x + width)-thickness, y, thickness, height);
   }
 //}}}
 //{{{

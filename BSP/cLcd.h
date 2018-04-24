@@ -195,14 +195,14 @@ public:
   void drawPix (uint16_t color, uint16_t x, uint16_t y);
 
   void displayChar (uint16_t color, cPoint pos, uint8_t ascii);
-  void displayStringAt (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign);
-  void displayStringAtLine (uint16_t color, uint16_t line, const char* str);
-  void displayStringAtColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str);
+  void displayString (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign);
+  void displayStringLine (uint16_t color, uint16_t line, const char* str);
+  void displayStringColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str);
   void clearStringLine (uint16_t color, uint16_t line);
 
   void clear (uint16_t color);
-  void drawRect (uint16_t color, cRect& rect);
-  void drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+  void drawRect (uint16_t color, cRect& rect, uint16_t thickness);
+  void drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t thickness);
   void fillRect (uint16_t color, cRect& rect);
   void fillRectCpu (uint16_t color, cRect& rect);
   void fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
