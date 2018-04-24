@@ -11,8 +11,8 @@ public:
   //}}}
   virtual ~cToggleBox() {}
 
-  bool onProx (cPoint pos) { 
-    return false; 
+  bool onProx (cPoint pos) {
+    return false;
     }
 
   //{{{
@@ -25,7 +25,7 @@ public:
 
   void onDraw (cLcd* lcd) {
     lcd->fillRectCpu (mValue ? LCD_COLOR_YELLOW : LCD_COLOR_LIGHT_GREY, mRect);
-    if (mPick)
+    if (mProxed)
       lcd->drawRect (LCD_COLOR_WHITE, mRect);
     lcd->displayStringAt (LCD_COLOR_BLACK, mRect.getTL(), mTitle, cLcd::eTextLeft);
     }

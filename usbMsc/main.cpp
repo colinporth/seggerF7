@@ -95,19 +95,17 @@ public:
   public:
     //{{{
     cBox (const char* name, uint16_t width, uint16_t height)
-        : mName(name), mLayoutWidth(width), mLayoutHeight(height) {
-      //mWindow->changed();
-      }
+        : mName(name), mLayoutWidth(width), mLayoutHeight(height) {}
     //}}}
     virtual ~cBox() {}
 
     // gets
     const char* getName() const { return mName; }
 
-    bool getEnable() { return mEnable; }
-    bool getPick() { return mPick; }
-    bool getShow() { return mEnable && (mPick || mPin); }
-    bool getTimedOn() { return mTimedOn; }
+    bool getEnabled() { return mEnabled; }
+    bool getProxed() { return mProxed; }
+    bool getPressed() { return mPressed; }
+    bool getMoved() { return mMoved; }
 
     cPoint getSize() { return mRect.getSize(); }
     uint16_t getWidth() { return mRect.getWidth(); }
@@ -129,11 +127,10 @@ public:
       return this;
       }
     //}}}
-    cBox* setEnable (bool enable) { mEnable = enable; return this;  }
-    cBox* setUnPick() { mPick = false;  return this; }
-    cBox* setPin (bool pin) { mPin = pin; return this; }
-    cBox* togglePin() { mPin = !mPin;  return this; }
-    cBox* setTimedOn() { mTimedOn = true; return this;  }
+    cBox* setEnable (bool enabled) { mEnabled = enabled; return this;  }
+    cBox* setProxed (bool proxed) { mProxed = proxed; return this;  }
+    cBox* setPressed (bool pressed) { mPressed = pressed; return this;  }
+    cBox* setMoved (bool moved) { mMoved = moved; return this;  }
 
     // overrides
     //{{{
@@ -156,32 +153,21 @@ public:
         mRect.bottom = cLcd::getHeight() + mLayoutHeight + mLayoutY;
       }
     //}}}
-    //{{{
-    virtual bool pick (cPoint pos, bool& change) {
-
-      bool lastPick = mPick;
-
-      mPick = mRect.inside (pos);
-      if (!change && (mPick != lastPick))
-        change = true;
-
-      return mPick;
-      }
-    //}}}
+    virtual bool pick (cPoint pos) { return mRect.inside (pos); }
     virtual bool onProx (cPoint pos) { return false; }
     virtual bool onProxExit() { return false; }
     virtual bool onDown (cPoint pos)  { return false; }
     virtual bool onMove (cPoint pos, cPoint inc)  { return false; }
-    virtual bool onUp (bool mouseMoved, cPoint pos) { return false; }
+    virtual bool onUp (cPoint pos) { return false; }
     virtual void onDraw (cLcd* lcd) = 0;
 
   protected:
     const char* mName;
 
-    bool mEnable = true;
-    bool mPick = false;
-    bool mPin = true;
-    bool mTimedOn = false;
+    bool mEnabled = true;
+    bool mProxed = false;
+    bool mPressed = false;
+    bool mMoved = false;
 
     uint16_t mLayoutWidth;
     uint16_t mLayoutHeight;
@@ -207,13 +193,11 @@ public:
     }
   //}}}
 
-  cPs2* getPs2() { return mPs2; }
-  cCamera* getCam() { return mCam; }
-
   void init();
   void run();
-  void onPs2Irq() { mPs2->onIrq(); }
 
+  cPs2* getPs2() { return mPs2; }
+  cCamera* getCam() { return mCam; }
   //{{{
   int getCountFiles (char* path) {
     mFiles = 0;
@@ -227,6 +211,8 @@ public:
   cBox* addBelow (cBox* box);
   cBox* addFront (cBox* box);
   void removeBox (cBox* box);
+
+  void onPs2Irq() { mPs2->onIrq(); }
 
 protected:
   virtual void onProx (cPoint pos, uint8_t z);
@@ -257,11 +243,7 @@ private:
   cCamera* mCam = nullptr;
 
   std::deque <cBox*> mBoxes;
-  cBox* mProxBox = nullptr;
   cBox* mPressedBox = nullptr;
-  bool mDown = false;
-  bool mMoved = false;
-  cPoint mDownPos;
 
   char mLabel[40];
   DWORD mVsn = 0;
@@ -344,7 +326,6 @@ void cApp::run() {
   uint32_t fileNum = 1;
   uint32_t frameNum = 0;
   while (true) {
-    pollTouch();
     //{{{  removed
     //while (mPs2->hasChar()) {
     //  auto ch = mPs2->getChar();
@@ -423,7 +404,9 @@ void cApp::run() {
                                           frameLen, mCam->getStatus(), mCam->getDmaCount());
     if (mDebugValue)
       mLcd->drawDebug();
-    for (auto box : mBoxes) box->onDraw (mLcd);
+    for (auto box : mBoxes)
+      if (box->getEnabled())
+        box->onDraw (mLcd);
     mLcd->present();
 
     if (mValueChanged) {
@@ -471,7 +454,6 @@ void cApp::removeBox (cBox* box) {
   for (auto boxIt = mBoxes.begin(); boxIt != mBoxes.end(); ++boxIt)
     if (*boxIt == box) {
       mBoxes.erase (boxIt);
-      //changed();
       return;
       }
   }
@@ -481,48 +463,35 @@ void cApp::removeBox (cBox* box) {
 //{{{
 void cApp::onProx (cPoint pos, uint8_t z) {
 
-  //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,(uint8_t)x,(uint8_t)y,0 };
-  // hidSendReport (&gUsbDevice, HID_Buf);
-
-  bool change = false;
-  auto lastProxBox = mProxBox;
-
   // search for prox in reverse draw order
-  mProxBox = nullptr;
+  cBox* proxBox = nullptr;
   for (auto boxIt = mBoxes.rbegin(); boxIt != mBoxes.rend(); ++boxIt) {
-    bool wasPicked = (*boxIt)->getPick();
-    if (!mProxBox && (*boxIt)->getEnable() && (*boxIt)->pick (pos, change)) {
-      mProxBox = *boxIt;
-      change |= mProxBox->onProx (pos - mProxBox->getTL());
+    bool wasProxed = (*boxIt)->getProxed();
+    (*boxIt)->setProxed ((*boxIt)->getEnabled() && (*boxIt)->pick (pos));
+    if (!proxBox && !wasProxed && (*boxIt)->getProxed()) {
+      // transition box to prox
+      proxBox = *boxIt;
+      proxBox->onProx (pos - proxBox->getTL());
       }
-    else if (wasPicked) {
-      (*boxIt)->setUnPick();
-      change |= (*boxIt)->onProxExit();
-      }
-    }
-
-  if (change || (mProxBox != lastProxBox)) {
+    else if (wasProxed && !(*boxIt)->getProxed())
+      // transition box to notProxed
+      (*boxIt)->onProxExit();
     }
   }
 //}}}
 //{{{
 void cApp::onPress (cPoint pos) {
 
-  //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,0,0,0 };
-  //hidSendReport (&gUsbDevice, HID_Buf);
-
-  mDown = true;
-  mMoved = false;
-
-  mPressedBox = nullptr;
-
   // search for pressed in reverse draw order
+  mPressedBox = nullptr;
   for (auto boxIt = mBoxes.rbegin(); boxIt != mBoxes.rend(); ++boxIt) {
-    bool change = false;
-    if ((*boxIt)->getEnable() && (*boxIt)->pick (pos, change)) {
+    (*boxIt)->setProxed ((*boxIt)->getEnabled() && (*boxIt)->pick (pos));
+    if (!mPressedBox && (*boxIt)->getProxed()) {
+      // transition to press
       mPressedBox = *boxIt;
+      mPressedBox->setPressed (true);
+      mPressedBox->setMoved (false);
       mPressedBox->onDown (pos - mPressedBox->getTL());
-      break;
       }
     }
   }
@@ -530,13 +499,9 @@ void cApp::onPress (cPoint pos) {
 //{{{
 void cApp::onMove (cPoint pos, cPoint inc, uint8_t z) {
 
-  //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 1,(uint8_t)x,(uint8_t)y,0 };
-  //hidSendReport (&gUsbDevice, HID_Buf);
-
-  if (mDown) {
-    mMoved = true;
-    if (mPressedBox)
-      mPressedBox->onMove (pos - mPressedBox->getTL(), inc);
+  if (mPressedBox && mPressedBox->getPressed()) {
+    mPressedBox->setMoved (true);
+    mPressedBox->onMove (pos - mPressedBox->getTL(), inc);
     }
   }
 //}}}
@@ -548,16 +513,12 @@ void cApp::onScroll (cPoint pos, uint8_t z) {
 //{{{
 void cApp::onRelease (cPoint pos) {
 
-  //uint8_t HID_Buf[HID_IN_ENDPOINT_SIZE] = { 0,0,0,0 };
-  //hidSendReport (&gUsbDevice, HID_Buf);
-
-  bool changed = mPressedBox && mPressedBox->onUp (mMoved, pos - mPressedBox->getTL());
-  if (mPressedBox)
-    mPressedBox->setUnPick();
-
+  if (mPressedBox) {
+    mPressedBox->setProxed (false);
+    mPressedBox->setPressed (false);
+    mPressedBox->onUp (pos - mPressedBox->getTL());
+    }
   mPressedBox = nullptr;
-
-  mDown = false;
   }
 //}}}
 //{{{
@@ -791,6 +752,15 @@ void cApp::closeFile() {
   }
 //}}}
 
+//{{{
+void touchThread (void* arg) {
+
+  while (true) {
+    gApp->pollTouch();
+    osDelay (50);
+    }
+  }
+//}}}
 //{{{
 void appThread (void* arg) {
 
@@ -1047,8 +1017,9 @@ int main() {
   gApp->init();
 
   if (kFreeRtos) {
-    sys_thread_new ("app", appThread, NULL, 10000, osPriorityNormal);
-    sys_thread_new ("net", netThread, NULL, 2048, osPriorityNormal);
+    sys_thread_new ("app", appThread, NULL, 2048, osPriorityNormal);
+    sys_thread_new ("net", netThread, NULL, 1024, osPriorityNormal);
+    sys_thread_new ("touch", touchThread, NULL, 512, osPriorityNormal);
     osKernelStart();
     while (true) {};
     }

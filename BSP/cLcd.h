@@ -191,14 +191,14 @@ public:
   void SetTransparency (uint32_t layerIndex, uint8_t Transparency);
   void SetAddress (uint32_t layerIndex, uint16_t* address, uint16_t* writeAddress);
 
-  uint16_t readPixel (uint16_t x, uint16_t y);
-  void drawPixel (uint16_t color, uint16_t x, uint16_t y);
+  uint16_t readPix (uint16_t x, uint16_t y);
+  void drawPix (uint16_t color, uint16_t x, uint16_t y);
 
-  void clearStringLine (uint16_t color, uint32_t line);
   void displayChar (uint16_t color, cPoint pos, uint8_t ascii);
   void displayStringAt (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign);
   void displayStringAtLine (uint16_t color, uint16_t line, const char* str);
   void displayStringAtColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str);
+  void clearStringLine (uint16_t color, uint16_t line);
 
   void clear (uint16_t color);
   void drawRect (uint16_t color, cRect& rect);
@@ -206,12 +206,13 @@ public:
   void fillRect (uint16_t color, cRect& rect);
   void fillRectCpu (uint16_t color, cRect& rect);
   void fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+
   void drawCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius);
   void fillCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius);
-  void drawPolygon (uint16_t color, cPoint* points, uint16_t pointCount);
-  void fillPolygon (uint16_t color, cPoint* points, uint16_t pPointCount);
   void drawEllipse (uint16_t color, uint16_t xCentre, uint16_t yCentre, uint16_t xRadius, uint16_t yRadius);
   void fillEllipse (uint16_t color, uint16_t xCentre, uint16_t yCentre, uint16_t xRadius, uint16_t yRadius);
+  void drawPolygon (uint16_t color, cPoint* points, uint16_t pointCount);
+  void fillPolygon (uint16_t color, cPoint* points, uint16_t pPointCount);
   void drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 
   void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t size);
@@ -232,7 +233,7 @@ private:
   void setLayer (uint32_t layerIndex);
   void layerInit (uint16_t layerIndex, uint32_t FrameBuffer);
 
-  void fillBuffer (uint16_t color, uint32_t layer, uint32_t dst, uint32_t xsize, uint32_t ysize, uint32_t OffLine);
+  void fillBuffer (uint16_t color, uint32_t layer, uint32_t dst, uint16_t xsize, uint16_t ysize, uint32_t OffLine);
   void fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
 
   static const int kMaxStrSize = 40;
