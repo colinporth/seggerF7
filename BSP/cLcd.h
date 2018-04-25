@@ -31,24 +31,42 @@ public:
   cLcd (uint16_t displayLines);
   void init();
 
-  uint16_t GetTextHeight();
+  uint16_t getCharWidth();
+  uint16_t getTextHeight();
 
   // flipped display
   void drawInfo (uint16_t color, uint16_t column, const char* format, ... );
   void drawDebug();
   void present();
 
-  int getScrollScale();
-  unsigned getScrollLines();
-  void incScrollValue (int inc);
-  void incScrollIndex (int inc);
 
-  void clearDebug();
+  //{{{
+  int getScrollScale() {
+    return 4;
+    }
+  //}}}
+  //{{{
+  unsigned getScrollLines() {
+    return mScroll / getScrollScale();
+    }
+  //}}}
+  //{{{
+  void incScrollIndex (int inc) {
+    incScrollValue (inc * getTextHeight() / getScrollScale());
+    }
+  //}}}
+  void incScrollValue (int inc);
+
+  //{{{
+  void clearDebug() {
+
+    mDebugLine = 0;
+    }
+  //}}}
   void debug (uint32_t colour, const char* format, ... );
 
   // drawing
   uint16_t readPix (uint16_t x, uint16_t y);
-  void drawPix (uint16_t color, uint16_t x, uint16_t y);
 
   void zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect, float zoomx, float zoomy);
   void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ysize);
@@ -58,16 +76,38 @@ public:
 
   void displayChar (uint16_t color, cPoint pos, uint8_t ascii);
   void displayString (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign);
-  void displayStringLine (uint16_t color, uint16_t line, const char* str);
-  void displayStringColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str);
-  void clearStringLine (uint16_t color, uint16_t line);
+  //{{{
+  void displayStringLine (uint16_t color, uint16_t line, const char* str) {
+    displayString (color, cPoint(0, line * getTextHeight()), str, eTextLeft);
+    }
+  //}}}
+  //{{{
+  void displayStringColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str) {
+    displayString (color, cPoint(column * getCharWidth(), line * getTextHeight()), str, cLcd::eTextLeft);
+    }
+  //}}}
 
-  void clear (uint16_t color);
+  //{{{
+  void clearStringLine (uint16_t color, uint16_t line) {
+    fillRect (color, cRect (0, line * getTextHeight(), getWidth(), (line + 1) * getTextHeight()));
+    }
+  //}}}
+
+  void fillRectCpu (uint16_t color, const cRect& rect);
+  void fillRect (uint16_t color, const cRect& rect);
+  //{{{
+  void fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+    fillRect (color, cRect (x, y, x+width, y+height));
+    }
+  //}}}
+  //{{{
+  void clear (uint16_t color) {
+    fillRect (color, cRect (getSize()));
+    }
+  //}}}
+
   void drawRect (uint16_t color, cRect& rect, uint16_t thickness);
   void drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t thickness);
-  void fillRect (uint16_t color, cRect& rect);
-  void fillRectCpu (uint16_t color, cRect& rect);
-  void fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 
   void drawCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius);
   void fillCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius);
@@ -85,6 +125,7 @@ public:
   static bool mFrameWait;
   static SemaphoreHandle_t mFrameSem;
   static SemaphoreHandle_t mDma2dSem;
+  static uint16_t* gFrameBuf;
 
 private:
   void layerInit();
@@ -92,6 +133,7 @@ private:
   uint16_t* getWriteBuffer();
 
   void ready();
+  void drawPix (uint16_t color, uint16_t x, uint16_t y) { *(gFrameBuf + y*getWidth() + x) = color; }
   void fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
 
   static const int kMaxStrSize = 40;

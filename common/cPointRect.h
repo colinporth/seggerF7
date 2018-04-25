@@ -39,8 +39,18 @@ public:
     }
   //}}}
   //{{{
+  cPoint operator * (const float s) const {
+    return cPoint (int16_t(x * s), int16_t(y * s));
+    }
+  //}}}
+  //{{{
   cPoint operator / (const int16_t s) const {
     return cPoint (x / s, y / s);
+    }
+  //}}}
+  //{{{
+  cPoint operator / (const float s) const {
+    return cPoint (int16_t(x / s), int16_t(y / s));
     }
   //}}}
 

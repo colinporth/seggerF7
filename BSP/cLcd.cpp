@@ -35,7 +35,7 @@ SemaphoreHandle_t cLcd::mFrameSem;
 SemaphoreHandle_t cLcd::mDma2dSem;
 
 bool mDma2dWait = false;
-uint16_t* gFrameBuf = (uint16_t*)SDRAM_DEVICE_ADDR;
+uint16_t* cLcd::gFrameBuf = (uint16_t*)SDRAM_DEVICE_ADDR;
 
 extern "C" {
   //{{{
@@ -221,7 +221,7 @@ void cLcd::init() {
   // config the HS, VS, DE and PC polarity
   LTDC->GCR &= ~(LTDC_GCR_HSPOL | LTDC_GCR_VSPOL | LTDC_GCR_DEPOL | LTDC_GCR_PCPOL);
   LTDC->GCR |=  (uint32_t)(hLtdcHandler.Init.HSPolarity | hLtdcHandler.Init.VSPolarity |
-                                            hLtdcHandler.Init.DEPolarity | hLtdcHandler.Init.PCPolarity);
+                           hLtdcHandler.Init.DEPolarity | hLtdcHandler.Init.PCPolarity);
   // set Synchronization size
   LTDC->SSCR &= ~(LTDC_SSCR_VSH | LTDC_SSCR_HSW);
   uint32_t tmp = (hLtdcHandler.Init.HorizontalSync << 16);
@@ -263,6 +263,41 @@ void cLcd::init() {
   HAL_NVIC_SetPriority (LTDC_IRQn, 0xE, 0);
   HAL_NVIC_EnableIRQ (LTDC_IRQn);
   //}}}
+  //{{{  layer 1 init
+  // config color frame buffer start address
+  LTDC_Layer1->CFBAR = (uint32_t)gFrameBuf;
+
+  // pixel format
+  LTDC_Layer1->PFCR = LTDC_PIXEL_FORMAT_RGB565;
+
+  // Config horizontal start and stop position
+  LTDC_Layer1->WHPCR = (((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16) + 1) |
+                       ((getWidth() + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16)) << 16);
+
+  // config vertical start and stop position
+  LTDC_Layer1->WVPCR  = ((LTDC->BPCR & LTDC_BPCR_AVBP) + 1) | ((getHeight() + (LTDC->BPCR & LTDC_BPCR_AVBP)) << 16);
+
+  // config default color values
+  LTDC_Layer1->DCCR = 0;
+
+  // constant alpha value
+  LTDC_Layer1->CACR = 255;
+
+  // Sblending factors
+  LTDC_Layer1->BFCR = LTDC_BLENDING_FACTOR1_PAxCA | LTDC_BLENDING_FACTOR2_PAxCA;
+
+  // config color frame buffer pitch in byte
+  LTDC_Layer1->CFBLR = ((getWidth() * 2) << 16) | ((getWidth() * 2) + 3);
+
+  // config frame buffer line number
+  LTDC_Layer1->CFBLNR = getHeight();
+
+  // Enable LTDC_Layer by setting LEN bit
+  LTDC_Layer1->CR |= (uint32_t)LTDC_LxCR_LEN;
+
+  // Sets the Reload type
+  LTDC->SRCR = LTDC_SRCR_IMR;
+  //}}}
 
   // turn on display,backlight pins
   HAL_GPIO_WritePin (LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_SET);
@@ -282,13 +317,12 @@ void cLcd::init() {
   HAL_NVIC_SetPriority (DMA2D_IRQn, 0x0F, 0);
   HAL_NVIC_EnableIRQ (DMA2D_IRQn);
 
-  layerInit();
-
   displayOn();
   }
 //}}}
 
-uint16_t cLcd::GetTextHeight() { return gFont16.mHeight; }
+uint16_t cLcd::getCharWidth() { return gFont16.mWidth; }
+uint16_t cLcd::getTextHeight() { return gFont16.mHeight; }
 
 //{{{
 void cLcd::drawInfo (uint16_t color, uint16_t column, const char* format, ... ) {
@@ -325,23 +359,14 @@ void cLcd::present() {
 
   LTDC_Layer1->CFBAR = (uint32_t)gFrameBuf;
   LTDC->SRCR = LTDC_SRCR_VBR;
-  gFrameBuf = (uint16_t*)(((uint32_t)gFrameBuf == SDRAM_DEVICE_ADDR) ? SDRAM_DEVICE_ADDR + 0x40000 : SDRAM_DEVICE_ADDR);
 
   mFrameWait = true;
   xSemaphoreTake (mFrameSem, 100);
+
+  gFrameBuf = (uint16_t*)(((uint32_t)gFrameBuf == SDRAM_DEVICE_ADDR) ? SDRAM_DEVICE_ADDR + 0x40000 : SDRAM_DEVICE_ADDR);
   }
 //}}}
 
-//{{{
-int cLcd::getScrollScale() {
-  return 4;
-  }
-//}}}
-//{{{
-unsigned cLcd::getScrollLines() {
-  return mScroll / getScrollScale();
-  }
-//}}}
 //{{{
 void cLcd::incScrollValue (int inc) {
 
@@ -351,11 +376,6 @@ void cLcd::incScrollValue (int inc) {
     mScroll = 0;
   else if (getScrollLines() >  mDebugLine - mDisplayLines)
     mScroll = (mDebugLine - mDisplayLines) * getScrollScale();
-  }
-//}}}
-//{{{
-void cLcd::incScrollIndex (int inc) {
-  incScrollValue (inc * GetTextHeight() / getScrollScale());
   }
 //}}}
 //{{{
@@ -376,12 +396,6 @@ void cLcd::debug (uint32_t colour, const char* format, ... ) {
   mDebugLine++;
   }
 //}}}
-//{{{
-void cLcd::clearDebug() {
-
-  mDebugLine = 0;
-  }
-//}}}
 
 //{{{
 uint16_t cLcd::readPix (uint16_t x, uint16_t y) {
@@ -390,28 +404,20 @@ uint16_t cLcd::readPix (uint16_t x, uint16_t y) {
   return *(gFrameBuf + y*getWidth() + x);
   }
 //}}}
-//{{{
-void cLcd::drawPix (uint16_t color, uint16_t x, uint16_t y) {
-// Write data value to all SDRAM memory
-
-  ready();
-  *(gFrameBuf + y*getWidth() + x) = (uint16_t)color;
-  }
-//}}}
 
 //{{{
 void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect, float zoomx, float zoomy) {
 // srcCentre is offset from srcCentre to dstCentre
 
   uint32_t srcPitch = srcSize.x;
-  uint32_t srcSize16x = srcSize.x * 0x10000;
-  uint32_t srcSize16y = srcSize.y * 0x10000;
+  uint32_t srcSize16x = srcSize.x << 16;
+  uint32_t srcSize16y = srcSize.y << 16;
 
   int32_t inc16x = int32_t (0x10000 / zoomx);
-  int32_t src16x = -(srcPos.x * 0x10000) + (srcSize.x * 0x8000) - ((dstRect.getWidth() * inc16x) / 2);
+  int32_t src16x = -(srcPos.x << 16) + (srcSize.x << 15) - ((dstRect.getWidth() * inc16x) >> 1);
 
   int32_t inc16y = int32_t (0x10000 / zoomy);
-  int32_t src16y = -(srcPos.y * 0x10000) + (srcSize.y * 0x8000) - ((dstRect.getHeight() * inc16y) / 2);
+  int32_t src16y = -(srcPos.y << 16) + (srcSize.y << 15) - ((dstRect.getHeight() * inc16y) >> 1);
 
   uint16_t* dst = gFrameBuf + (dstRect.top * getWidth()) + dstRect.left;
   for (uint16_t dsty = 0; dsty < dstRect.getHeight(); dsty++) {
@@ -1359,24 +1365,9 @@ void cLcd::displayString (uint16_t color, cPoint pos, const char* str, eTextAlig
     }
   }
 //}}}
-//{{{
-void cLcd::displayStringLine (uint16_t color, uint16_t line, const char* str) {
-  displayString (color, cPoint(0, line * gFont16.mHeight), str, eTextLeft);
-  }
-//}}}
-//{{{
-void cLcd::displayStringColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str) {
-  displayString (color, cPoint(column * gFont16.mWidth, line * gFont16.mHeight), str, cLcd::eTextLeft);
-  }
-//}}}
-//{{{
-void cLcd::clearStringLine (uint16_t color, uint16_t line) {
-  fillRect (color, 0, line * gFont16.mHeight, getWidth(), gFont16.mHeight);
-  }
-//}}}
 
 //{{{
-void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
+void cLcd::fillRectCpu (uint16_t color, const cRect& rect) {
 // dma2d hogs bandwidth
 
   ready();
@@ -1392,7 +1383,7 @@ void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
   }
 //}}}
 //{{{
-void cLcd::fillRect (uint16_t color, cRect& rect) {
+void cLcd::fillRect (uint16_t color, const cRect& rect) {
 
   ready();
 
@@ -1407,17 +1398,6 @@ void cLcd::fillRect (uint16_t color, cRect& rect) {
   }
 //}}}
 //{{{
-void cLcd::fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
-
-  cRect rect (x, y, x+width, y+height);
-  fillRect (color, rect);
-  }
-//}}}
-//{{{
-void cLcd::clear (uint16_t color) {
-  cRect rect (getSize());
-  fillRect (color, rect);
-  }
 //}}}
 //{{{
 void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t thickness) {
@@ -1449,6 +1429,7 @@ void cLcd::drawCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius) 
   current_x = 0;
   current_y = radius;
 
+  ready();
   while (current_x <= current_y) {
     drawPix (color, (x + current_x), (y - current_y));
     drawPix (color, (x - current_x), (y - current_y));
@@ -1510,6 +1491,7 @@ void cLcd::drawEllipse (uint16_t color, uint16_t xCentre, uint16_t yCentre, uint
 
   k = (float)(rad2/rad1);
 
+  ready();
   do {
     drawPix (color, (xCentre - (uint16_t)(x/k)), yCentre+y);
     drawPix (color, (xCentre + (uint16_t)(x/k)), yCentre+y);
@@ -1604,6 +1586,7 @@ void cLcd::fillPolygon (uint16_t color, cPoint* points, uint16_t pointCount) {
   X_first = points->x;
   Y_first = points->y;
 
+  ready();
   while (--pointCount) {
     X = points->x;
     Y = points->y;
@@ -1666,6 +1649,7 @@ void cLcd::drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint
     num_pixels = deltay;         // There are more y-values than x-values
     }
 
+  ready();
   for (int16_t curpixel = 0; curpixel <= num_pixels; curpixel++) {
     drawPix (color, x, y);
     num += num_add;     // Increase the numerator by the top of the fraction
@@ -1700,54 +1684,6 @@ void cLcd::displayOff() {
 
 // private
 uint16_t* cLcd::getWriteBuffer() { return gFrameBuf; }
-//{{{
-void cLcd::layerInit() {
-
-  // config color frame buffer start address
-  LTDC_Layer1->CFBAR = (uint32_t)gFrameBuf;
-
-  // pixel format
-  LTDC_Layer1->PFCR &= ~(LTDC_LxPFCR_PF);
-  LTDC_Layer1->PFCR = LTDC_PIXEL_FORMAT_RGB565;
-
-  // Config horizontal start and stop position
-  uint32_t tmp = (getWidth() + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16)) << 16;
-  LTDC_Layer1->WHPCR &= ~(LTDC_LxWHPCR_WHSTPOS | LTDC_LxWHPCR_WHSPPOS);
-  LTDC_Layer1->WHPCR = ((0 + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16) + 1) | tmp);
-
-  // config vertical start and stop position
-  tmp = (getHeight() + (LTDC->BPCR & LTDC_BPCR_AVBP)) << 16;
-  LTDC_Layer1->WVPCR &= ~(LTDC_LxWVPCR_WVSTPOS | LTDC_LxWVPCR_WVSPPOS);
-  LTDC_Layer1->WVPCR  = ((0 + (LTDC->BPCR & LTDC_BPCR_AVBP) + 1) | tmp);
-
-  // config default color values
-  LTDC_Layer1->DCCR &= ~(LTDC_LxDCCR_DCBLUE | LTDC_LxDCCR_DCGREEN | LTDC_LxDCCR_DCRED | LTDC_LxDCCR_DCALPHA);
-  LTDC_Layer1->DCCR = 0;
-
-  // constant alpha value
-  LTDC_Layer1->CACR &= ~(LTDC_LxCACR_CONSTA);
-  LTDC_Layer1->CACR = 255;
-
-  // Sblending factors
-  LTDC_Layer1->BFCR &= ~(LTDC_LxBFCR_BF2 | LTDC_LxBFCR_BF1);
-  LTDC_Layer1->BFCR = LTDC_BLENDING_FACTOR1_PAxCA | LTDC_BLENDING_FACTOR2_PAxCA;
-
-  // config  color frame buffer pitch in byte
-  tmp = 2;
-  LTDC_Layer1->CFBLR &= ~(LTDC_LxCFBLR_CFBLL | LTDC_LxCFBLR_CFBP);
-  LTDC_Layer1->CFBLR = ((getWidth() * tmp) << 16) | (((getWidth() - 0) * tmp)  + 3);
-
-  // config frame buffer line number
-  LTDC_Layer1->CFBLNR &= ~(LTDC_LxCFBLNR_CFBLNBR);
-  LTDC_Layer1->CFBLNR = getHeight();
-
-  // Enable LTDC_Layer by setting LEN bit
-  LTDC_Layer1->CR |= (uint32_t)LTDC_LxCR_LEN;
-
-  // Sets the Reload type
-  LTDC->SRCR = LTDC_SRCR_IMR;
-  }
-//}}}
 
 //{{{
 void cLcd::ready() {

@@ -333,8 +333,9 @@ public:
     }
 
   bool onPress (cPoint pos, uint8_t z)  {
-    mZoomCentre = pos - getCentre();
-    mZoom = 2.f;
+    //cLcd:: mLcd->debug (LCD_COLOR_WHITE, "press %d %d %f", pos.x, pos.y, mZoom);
+    mZoomCentre = (getCentre() - pos);
+    mZoom = 1.f;
     return true;
     }
 
