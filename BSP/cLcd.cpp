@@ -405,10 +405,9 @@ void cLcd::drawDebug() {
 //{{{
 void cLcd::present() {
 
-  auto buffer = getWriteBuffer();
+  LTDC_Layer1->CFBAR = (uint32_t)getWriteBuffer();
+  LTDC->SRCR = LTDC_SRCR_VBR;
   mFlip = !mFlip;
-
-  setAddress (buffer, getWriteBuffer());
   }
 //}}}
 
@@ -1782,52 +1781,48 @@ uint16_t* cLcd::getWriteBuffer() {
 void cLcd::layerInit (uint32_t buffer) {
 
   // config  color frame buffer start address
-  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR &= ~(LTDC_LxCFBAR_CFBADD);
-  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR = buffer;
+  LTDC_Layer1->CFBAR = buffer;
 
   // pixel format
-  LTDC_LAYER (&hLtdcHandler, 0)->PFCR &= ~(LTDC_LxPFCR_PF);
-  LTDC_LAYER (&hLtdcHandler, 0)->PFCR = LTDC_PIXEL_FORMAT_RGB565;
+  LTDC_Layer1->PFCR &= ~(LTDC_LxPFCR_PF);
+  LTDC_Layer1->PFCR = LTDC_PIXEL_FORMAT_RGB565;
 
   // Config horizontal start and stop position
   uint32_t tmp = (getWidth() + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16)) << 16;
-  LTDC_LAYER (&hLtdcHandler, 0)->WHPCR &= ~(LTDC_LxWHPCR_WHSTPOS | LTDC_LxWHPCR_WHSPPOS);
-  LTDC_LAYER (&hLtdcHandler, 0)->WHPCR = ((0 + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16) + 1) | tmp);
+  LTDC_Layer1->WHPCR &= ~(LTDC_LxWHPCR_WHSTPOS | LTDC_LxWHPCR_WHSPPOS);
+  LTDC_Layer1->WHPCR = ((0 + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16) + 1) | tmp);
 
   // config vertical start and stop position
   tmp = (getHeight() + (LTDC->BPCR & LTDC_BPCR_AVBP)) << 16;
-  LTDC_LAYER (&hLtdcHandler, 0)->WVPCR &= ~(LTDC_LxWVPCR_WVSTPOS | LTDC_LxWVPCR_WVSPPOS);
-  LTDC_LAYER (&hLtdcHandler, 0)->WVPCR  = ((0 + (LTDC->BPCR & LTDC_BPCR_AVBP) + 1) | tmp);
+  LTDC_Layer1->WVPCR &= ~(LTDC_LxWVPCR_WVSTPOS | LTDC_LxWVPCR_WVSPPOS);
+  LTDC_Layer1->WVPCR  = ((0 + (LTDC->BPCR & LTDC_BPCR_AVBP) + 1) | tmp);
 
   // config default color values
-  LTDC_LAYER (&hLtdcHandler, 0)->DCCR &= ~(LTDC_LxDCCR_DCBLUE | LTDC_LxDCCR_DCGREEN | LTDC_LxDCCR_DCRED | LTDC_LxDCCR_DCALPHA);
-  LTDC_LAYER (&hLtdcHandler, 0)->DCCR = 0;
+  LTDC_Layer1->DCCR &= ~(LTDC_LxDCCR_DCBLUE | LTDC_LxDCCR_DCGREEN | LTDC_LxDCCR_DCRED | LTDC_LxDCCR_DCALPHA);
+  LTDC_Layer1->DCCR = 0;
 
   // constant alpha value
-  LTDC_LAYER (&hLtdcHandler, 0)->CACR &= ~(LTDC_LxCACR_CONSTA);
-  LTDC_LAYER (&hLtdcHandler, 0)->CACR = 255;
+  LTDC_Layer1->CACR &= ~(LTDC_LxCACR_CONSTA);
+  LTDC_Layer1->CACR = 255;
 
   // Sblending factors
-  LTDC_LAYER (&hLtdcHandler, 0)->BFCR &= ~(LTDC_LxBFCR_BF2 | LTDC_LxBFCR_BF1);
-  LTDC_LAYER (&hLtdcHandler, 0)->BFCR = LTDC_BLENDING_FACTOR1_PAxCA | LTDC_BLENDING_FACTOR2_PAxCA;
+  LTDC_Layer1->BFCR &= ~(LTDC_LxBFCR_BF2 | LTDC_LxBFCR_BF1);
+  LTDC_Layer1->BFCR = LTDC_BLENDING_FACTOR1_PAxCA | LTDC_BLENDING_FACTOR2_PAxCA;
 
   // config  color frame buffer pitch in byte
   tmp = 2;
-  LTDC_LAYER (&hLtdcHandler, 0)->CFBLR &= ~(LTDC_LxCFBLR_CFBLL | LTDC_LxCFBLR_CFBP);
-  LTDC_LAYER (&hLtdcHandler, 0)->CFBLR = ((getWidth() * tmp) << 16) | (((getWidth() - 0) * tmp)  + 3);
+  LTDC_Layer1->CFBLR &= ~(LTDC_LxCFBLR_CFBLL | LTDC_LxCFBLR_CFBP);
+  LTDC_Layer1->CFBLR = ((getWidth() * tmp) << 16) | (((getWidth() - 0) * tmp)  + 3);
 
-  // config  frame buffer line number
-  LTDC_LAYER (&hLtdcHandler, 0)->CFBLNR &= ~(LTDC_LxCFBLNR_CFBLNBR);
-  LTDC_LAYER (&hLtdcHandler, 0)->CFBLNR = getHeight();
+  // config frame buffer line number
+  LTDC_Layer1->CFBLNR &= ~(LTDC_LxCFBLNR_CFBLNBR);
+  LTDC_Layer1->CFBLNR = getHeight();
 
   // Enable LTDC_Layer by setting LEN bit
-  LTDC_LAYER (&hLtdcHandler, 0)->CR |= (uint32_t)LTDC_LxCR_LEN;
+  LTDC_Layer1->CR |= (uint32_t)LTDC_LxCR_LEN;
 
   // Sets the Reload type
   LTDC->SRCR = LTDC_SRCR_IMR;
-
-  __HAL_LTDC_LAYER_ENABLE (&hLtdcHandler, 0);
-  __HAL_LTDC_RELOAD_CONFIG (&hLtdcHandler);
   }
 //}}}
 
@@ -1841,21 +1836,6 @@ void cLcd::ready() {
   }
 //}}}
 
-//{{{
-void cLcd::setAddress (uint16_t* address, uint16_t* writeAddress) {
-
-  // change layer addresses
-  hLtdcHandler.LayerCfg[0].FBStartAdress = (uint32_t)address;
-  hLtdcHandler.LayerCfg[0].FBStartAdressWrite = (uint32_t)writeAddress;
-
-  // Configure the LTDC Layer
-  auto layerConfig = &hLtdcHandler.LayerCfg[0];
-  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR &= ~(LTDC_LxCFBAR_CFBADD);
-  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR = (layerConfig->FBStartAdress);
-
-  LTDC->SRCR = LTDC_SRCR_VBR;
-  }
-//}}}
 //{{{
 void cLcd::fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3) {
 

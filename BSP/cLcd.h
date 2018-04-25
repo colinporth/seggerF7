@@ -94,7 +94,6 @@ private:
   uint16_t* getWriteBuffer();
 
   void ready();
-  void setAddress (uint16_t* address, uint16_t* writeAddress);
   void fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
 
   static const int kMaxStrSize = 40;
