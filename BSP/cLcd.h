@@ -50,6 +50,12 @@ public:
   uint16_t readPix (uint16_t x, uint16_t y);
   void drawPix (uint16_t color, uint16_t x, uint16_t y);
 
+  void zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRect, float zoomx, float zoomy);
+  void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ysize);
+  void rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t size);
+  void convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
+                        uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
+
   void displayChar (uint16_t color, cPoint pos, uint8_t ascii);
   void displayString (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign);
   void displayStringLine (uint16_t color, uint16_t line, const char* str);
@@ -70,12 +76,6 @@ public:
   void drawPolygon (uint16_t color, cPoint* points, uint16_t pointCount);
   void fillPolygon (uint16_t color, cPoint* points, uint16_t pPointCount);
   void drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
-
-  void zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRect, float zoomx, float zoomy);
-  void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ysize);
-  void rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t size);
-  void convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                        uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
 
   void displayOff();
   void displayOn();

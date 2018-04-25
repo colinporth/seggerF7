@@ -400,421 +400,24 @@ void cLcd::drawPix (uint16_t color, uint16_t x, uint16_t y) {
 //}}}
 
 //{{{
-void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
-
-  if ((ascii >= 0x20) && (ascii <= 0x7f)) {
-    auto width = gFont16.mWidth;
-    auto byteAlignedWidth = (width + 7) / 8;
-    auto offset = (8 * byteAlignedWidth) - width - 1;
-    auto fontChar = &gFont16.mTable [(ascii - ' ') * gFont16.mHeight * byteAlignedWidth];
-
-    auto dst = gFrameBuf + (pos.y * getWidth()) + pos.x;
-
-    ready();
-    for (auto fontLine = 0u; fontLine < gFont16.mHeight; fontLine++) {
-      auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
-      uint16_t fontLineBits = *fontPtr++;
-      if (byteAlignedWidth == 2)
-        fontLineBits = (fontLineBits << 8) | *fontPtr;
-      if (fontLineBits) {
-        uint16_t bit = 1 << (width + offset);
-        auto endPtr = dst + width;
-        while (dst != endPtr) {
-          if (fontLineBits & bit)
-            *dst = color;
-          dst++;
-          bit >>= 1;
-          }
-        dst += getWidth() - width;
-        }
-      else
-        dst += getWidth();
-      }
-    }
-  }
-//}}}
-//{{{
-void cLcd::displayString (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign) {
-
-  switch (textAlign) {
-    case eTextLeft:
-      break;
-
-    case eTextCentre:  {
-      uint16_t size = 0;
-      auto ptr = str;
-      while (*ptr++)
-        size++;
-
-      uint16_t xSize = getWidth() / gFont16.mWidth;
-      pos.x += ((xSize - size) * gFont16.mWidth) / 2;
-      break;
-      }
-
-    case eTextRight: {
-      uint16_t size = 0;
-      auto ptr = str;
-      while (*ptr++)
-        size++;
-
-      uint16_t xSize = getWidth() / gFont16.mWidth;
-      auto width = (xSize - size) * gFont16.mWidth;
-      pos.x = width > pos.x ? 0 : pos.x - width;
-      break;
-      }
-    }
-
-  if (pos.x >= getWidth())
-    pos.x = 0;
-
-  while (*str && (pos.x + gFont16.mWidth < getWidth())) {
-    displayChar (color, pos, *str++);
-    pos.x += gFont16.mWidth;
-    }
-  }
-//}}}
-//{{{
-void cLcd::displayStringLine (uint16_t color, uint16_t line, const char* str) {
-  displayString (color, cPoint(0, line * gFont16.mHeight), str, eTextLeft);
-  }
-//}}}
-//{{{
-void cLcd::displayStringColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str) {
-  displayString (color, cPoint(column * gFont16.mWidth, line * gFont16.mHeight), str, cLcd::eTextLeft);
-  }
-//}}}
-//{{{
-void cLcd::clearStringLine (uint16_t color, uint16_t line) {
-  fillRect (color, 0, line * gFont16.mHeight, getWidth(), gFont16.mHeight);
-  }
-//}}}
-
-//{{{
-void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
-// dma2d hogs bandwidth
-
-  ready();
-
-  auto pitch = getWidth() - rect.getWidth();
-  auto dst = gFrameBuf + rect.top*getWidth() + rect.left;
-
-  for (auto y = 0; y < rect.getHeight(); y++) {
-    for (auto x = 0; x < rect.getWidth(); x++)
-      *dst++ = color;
-    dst += pitch;
-    }
-  }
-//}}}
-//{{{
-void cLcd::fillRect (uint16_t color, cRect& rect) {
-
-  ready();
-
-  DMA2D->OCOLR = color;
-  DMA2D->OOR = getWidth() - rect.getWidth();
-  DMA2D->OMAR = (uint32_t)(gFrameBuf + rect.top*getWidth() + rect.left);
-  DMA2D->NLR = (rect.getWidth() << 16) |  rect.getHeight();
-
-  // start transfer
-  DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE;
-  mDma2dWait = true;
-  }
-//}}}
-//{{{
-void cLcd::fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
-
-  cRect rect (x, y, x+width, y+height);
-  fillRect (color, rect);
-  }
-//}}}
-//{{{
-void cLcd::clear (uint16_t color) {
-  cRect rect (getSize());
-  fillRect (color, rect);
-  }
-//}}}
-//{{{
-void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t thickness) {
-
-  // draw horizontal lines
-  fillRect (color, x, y, width, thickness);
-  fillRect (color, x, (y + height)-thickness, width, thickness);
-
-  // draw vertical lines
-  fillRect (color, x, y, thickness, height);
-  fillRect (color, (x + width)-thickness, y, thickness, height);
-  }
-//}}}
-//{{{
-void cLcd::drawRect (uint16_t color, cRect& rect, uint16_t thickness) {
-
-  drawRect (color, rect.left, rect.top, rect.getWidth(), rect.getHeight(), thickness);
-  }
-//}}}
-
-//{{{
-void cLcd::drawCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius) {
-
-  int32_t decision;    // Decision Variable
-  uint32_t current_x;   // Current X Value
-  uint32_t current_y;   // Current Y Value
-
-  decision = 3 - (radius << 1);
-  current_x = 0;
-  current_y = radius;
-
-  while (current_x <= current_y) {
-    drawPix (color, (x + current_x), (y - current_y));
-    drawPix (color, (x - current_x), (y - current_y));
-    drawPix (color, (x + current_y), (y - current_x));
-    drawPix (color, (x - current_y), (y - current_x));
-    drawPix (color, (x + current_x), (y + current_y));
-    drawPix (color, (x - current_x), (y + current_y));
-    drawPix (color, (x + current_y), (y + current_x));
-    drawPix (color, (x - current_y), (y + current_x));
-
-    if (decision < 0)
-      decision += (current_x << 2) + 6;
-    else {
-      decision += ((current_x - current_y) << 2) + 10;
-      current_y--;
-      }
-    current_x++;
-    }
-  }
-//}}}
-//{{{
-void cLcd::fillCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius) {
-
-  int32_t decision = 3 - (radius << 1);
-  uint32_t current_x = 0;
-  uint32_t current_y = radius;
-
-  while (current_x <= current_y) {
-    if (current_y > 0) {
-      fillRect (color, x - current_y, y + current_x, 1, 2*current_y);
-      fillRect (color, x - current_y, y - current_x, 1, 2*current_y);
-      }
-    if (current_x > 0) {
-      fillRect (color, x - current_x, y - current_y, 1, 2*current_x);
-      fillRect (color, x - current_x, y + current_y, 1, 2*current_x);
-      }
-    if (decision < 0)
-      decision += (current_x << 2) + 6;
-    else {
-      decision += ((current_x - current_y) << 2) + 10;
-      current_y--;
-      }
-    current_x++;
-    }
-
-  drawCircle (color, x, y, radius);
-  }
-//}}}
-//{{{
-void cLcd::drawEllipse (uint16_t color, uint16_t xCentre, uint16_t yCentre, uint16_t xRadius, uint16_t yRadius) {
-
-  int x = 0;
-  int y = -yRadius;
-  int err = 2-2*xRadius, e2;
-  float k = 0, rad1 = 0, rad2 = 0;
-
-  rad1 = xRadius;
-  rad2 = yRadius;
-
-  k = (float)(rad2/rad1);
-
-  do {
-    drawPix (color, (xCentre - (uint16_t)(x/k)), yCentre+y);
-    drawPix (color, (xCentre + (uint16_t)(x/k)), yCentre+y);
-    drawPix (color, (xCentre + (uint16_t)(x/k)), yCentre-y);
-    drawPix (color, (xCentre - (uint16_t)(x/k)), yCentre-y);
-
-    e2 = err;
-    if (e2 <= x) {
-      err += ++x*2+1;
-      if (-y == x && e2 <= y)
-        e2 = 0;
-      }
-    if (e2 > y)
-      err += ++y*2+1;
-    }
-
-  while (y <= 0);
-  }
-//}}}
-//{{{
-void cLcd::fillEllipse (uint16_t color, uint16_t xCentre, uint16_t yCentre, uint16_t xRadius, uint16_t yRadius) {
-
-  int x = 0, y = -yRadius, err = 2-2*xRadius, e2;
-  float k = 0, rad1 = 0, rad2 = 0;
-
-  rad1 = xRadius;
-  rad2 = yRadius;
-
-  k = (float)(rad2/rad1);
-  do {
-    fillRect (color, (xCentre-(uint16_t)(x/k)), (yCentre+y), 1, (2*(uint16_t)(x/k) + 1));
-    fillRect (color, (xCentre-(uint16_t)(x/k)), (yCentre-y), 1, (2*(uint16_t)(x/k) + 1));
-
-    e2 = err;
-    if (e2 <= x) {
-      err += ++x*2+1;
-      if (-y == x && e2 <= y) e2 = 0;
-      }
-    if (e2 > y) err += ++y*2+1;
-    }
-
-  while (y <= 0);
-  }
-//}}}
-//{{{
-void cLcd::drawPolygon (uint16_t color, cPoint* points, uint16_t pointCount) {
-
-  int16_t x = 0, y = 0;
-
-  if (pointCount < 2)
-    return;
-
-  drawLine (color, points->x, points->y, (points + pointCount-1)->x, (points + pointCount-1)->y);
-
-  while (--pointCount) {
-    x = points->x;
-    y = points->y;
-    points++;
-    drawLine (color, x, y, points->x, points->y);
-    }
-  }
-//}}}
-//{{{
-void cLcd::fillPolygon (uint16_t color, cPoint* points, uint16_t pointCount) {
-
-  int16_t X = 0, Y = 0, X2 = 0, Y2 = 0, X_center = 0, Y_center = 0, X_first = 0, Y_first = 0, pixelX = 0, pixelY = 0, counter = 0;
-  uint16_t  image_left = 0, image_right = 0, image_top = 0, image_bottom = 0;
-
-  image_left = image_right = points->x;
-  image_top= image_bottom = points->y;
-
-  for (counter = 1; counter < pointCount; counter++) {
-    pixelX = POLY_X(counter);
-    if(pixelX < image_left)
-      image_left = pixelX;
-    if(pixelX > image_right)
-      image_right = pixelX;
-
-    pixelY = POLY_Y(counter);
-    if(pixelY < image_top)
-      image_top = pixelY;
-    if(pixelY > image_bottom)
-      image_bottom = pixelY;
-    }
-
-  if (pointCount < 2)
-    return;
-
-  X_center = (image_left + image_right)/2;
-  Y_center = (image_bottom + image_top)/2;
-
-  X_first = points->x;
-  Y_first = points->y;
-
-  while (--pointCount) {
-    X = points->x;
-    Y = points->y;
-    points++;
-    X2 = points->x;
-    Y2 = points->y;
-
-    fillTriangle (color, X, X2, X_center, Y, Y2, Y_center);
-    fillTriangle (color, X, X_center, X2, Y, Y_center, Y2);
-    fillTriangle (color, X_center, X2, X, Y_center, Y2, Y);
-    }
-
-  fillTriangle (color, X_first, X2, X_center, Y_first, Y2, Y_center);
-  fillTriangle (color, X_first, X_center, X2, Y_first, Y_center, Y2);
-  fillTriangle (color, X_center, X2, X_first, Y_center, Y2, Y_first);
-  }
-//}}}
-//{{{
-void cLcd::drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
-
-  int16_t xinc1 = 0, xinc2 = 0, yinc1 = 0, yinc2 = 0, den = 0, num = 0, num_add = 0, num_pixels = 0;
-
-  int16_t deltax = ABS(x2 - x1);        // The difference between the x's
-  int16_t deltay = ABS(y2 - y1);        // The difference between the y's
-  int16_t x = x1;                       // Start x off at the first pixel
-  int16_t y = y1;                       // Start y off at the first pixel
-
-  if (x2 >= x1) { // The x-values are increasing
-    xinc1 = 1;
-    xinc2 = 1;
-    }
-  else {          // The x-values are decreasing
-    xinc1 = -1;
-    xinc2 = -1;
-    }
-
-  if (y2 >= y1) { // The y-values are increasing
-    yinc1 = 1;
-    yinc2 = 1;
-    }
-  else {          // The y-values are decreasing
-    yinc1 = -1;
-    yinc2 = -1;
-    }
-
-  if (deltax >= deltay) {        // There is at least one x-value for every y-value
-    xinc1 = 0;                  // Don't change the x when numerator >= denominator
-    yinc2 = 0;                  // Don't change the y for every iteration
-    den = deltax;
-    num = deltax / 2;
-    num_add = deltay;
-    num_pixels = deltax;         // There are more x-values than y-values
-    }
-  else {                         // There is at least one y-value for every x-value
-    xinc2 = 0;                  // Don't change the x for every iteration
-    yinc1 = 0;                  // Don't change the y when numerator >= denominator
-    den = deltay;
-    num = deltay / 2;
-    num_add = deltax;
-    num_pixels = deltay;         // There are more y-values than x-values
-    }
-
-  for (int16_t curpixel = 0; curpixel <= num_pixels; curpixel++) {
-    drawPix (color, x, y);
-    num += num_add;     // Increase the numerator by the top of the fraction
-    if (num >= den) {   // Check if numerator >= denominator
-      num -= den;       // Calculate the new numerator value
-      x += xinc1;       // Change the x as appropriate
-      y += yinc1;       // Change the y as appropriate
-      }
-
-    x += xinc2;         // Change the x as appropriate
-    y += yinc2;         // Change the y as appropriate
-    }
-  }
-//}}}
-
-//{{{
 void cLcd::zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRect, float zoomx, float zoomy) {
 // srcCentre is offset from srcCentre to dstCentre
 
-  int32_t srcX = int((((srcSize.x * zoomx) - dstRect.getWidth()) / 2.f) * zoomx);
-  int32_t srcY = int((((srcSize.y * zoomy) - dstRect.getHeight()) / 2.f) * zoomy);
   int srcPitch = srcSize.x;
 
-  int32_t inc16x = uint32_t(0x10000 / zoomx);
-  int32_t srcInc16y = uint32_t(0x10000 / zoomy);
+  int32_t inc16x = int32_t (0x10000 / zoomx);
+  int32_t src16X = (srcSize.x * 0x8000) - ((dstRect.getWidth() * inc16x) / 2);
 
-  uint16_t* dst = gFrameBuf + (dstRect.top * getWidth()) + dstRect.left;
+  int32_t inc16y = int32_t (0x10000 / zoomy);
+  int32_t src16y = (srcSize.y * 0x8000) - ((dstRect.getHeight() * inc16y) / 2);
 
   // frame
-  int32_t src16y = srcY * 0x10000;
-  while (src16y < (srcY + dstRect.getHeight()) * srcInc16y) {
+  uint16_t* dst = gFrameBuf + (dstRect.top * getWidth()) + dstRect.left;
+  for (uint16_t dsty = 0; dsty < dstRect.getHeight(); dsty++) {
     // line
     uint16_t* srcBasey = src + ((src16y / 0x10000) * srcPitch);
 
-    int32_t x16 = srcX * 0x10000;
+    int32_t x16 = src16X;
     for (uint16_t dstx = 0; dstx < dstRect.getWidth(); dstx++) {
       int32_t x = x16 / 0x10000;
       *dst++ = ((x < 0) || (x >= srcSize.x)) ? 0 : *(srcBasey + x);
@@ -822,7 +425,7 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRe
       }
 
     dst += getWidth() - dstRect.getWidth();
-    src16y += srcInc16y;
+    src16y += inc16y;
     }
   }
 //}}}
@@ -1679,6 +1282,402 @@ void cLcd::convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
       *dst++ = 0xFF;
       }
     dst += (xsize - srcXsize) * 4;
+    }
+  }
+//}}}
+
+//{{{
+void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
+
+  if ((ascii >= 0x20) && (ascii <= 0x7f)) {
+    auto width = gFont16.mWidth;
+    auto byteAlignedWidth = (width + 7) / 8;
+    auto offset = (8 * byteAlignedWidth) - width - 1;
+    auto fontChar = &gFont16.mTable [(ascii - ' ') * gFont16.mHeight * byteAlignedWidth];
+
+    auto dst = gFrameBuf + (pos.y * getWidth()) + pos.x;
+
+    ready();
+    for (auto fontLine = 0u; fontLine < gFont16.mHeight; fontLine++) {
+      auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
+      uint16_t fontLineBits = *fontPtr++;
+      if (byteAlignedWidth == 2)
+        fontLineBits = (fontLineBits << 8) | *fontPtr;
+      if (fontLineBits) {
+        uint16_t bit = 1 << (width + offset);
+        auto endPtr = dst + width;
+        while (dst != endPtr) {
+          if (fontLineBits & bit)
+            *dst = color;
+          dst++;
+          bit >>= 1;
+          }
+        dst += getWidth() - width;
+        }
+      else
+        dst += getWidth();
+      }
+    }
+  }
+//}}}
+//{{{
+void cLcd::displayString (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign) {
+
+  switch (textAlign) {
+    case eTextLeft:
+      break;
+
+    case eTextCentre:  {
+      uint16_t size = 0;
+      auto ptr = str;
+      while (*ptr++)
+        size++;
+
+      uint16_t xSize = getWidth() / gFont16.mWidth;
+      pos.x += ((xSize - size) * gFont16.mWidth) / 2;
+      break;
+      }
+
+    case eTextRight: {
+      uint16_t size = 0;
+      auto ptr = str;
+      while (*ptr++)
+        size++;
+
+      uint16_t xSize = getWidth() / gFont16.mWidth;
+      auto width = (xSize - size) * gFont16.mWidth;
+      pos.x = width > pos.x ? 0 : pos.x - width;
+      break;
+      }
+    }
+
+  if (pos.x >= getWidth())
+    pos.x = 0;
+
+  while (*str && (pos.x + gFont16.mWidth < getWidth())) {
+    displayChar (color, pos, *str++);
+    pos.x += gFont16.mWidth;
+    }
+  }
+//}}}
+//{{{
+void cLcd::displayStringLine (uint16_t color, uint16_t line, const char* str) {
+  displayString (color, cPoint(0, line * gFont16.mHeight), str, eTextLeft);
+  }
+//}}}
+//{{{
+void cLcd::displayStringColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str) {
+  displayString (color, cPoint(column * gFont16.mWidth, line * gFont16.mHeight), str, cLcd::eTextLeft);
+  }
+//}}}
+//{{{
+void cLcd::clearStringLine (uint16_t color, uint16_t line) {
+  fillRect (color, 0, line * gFont16.mHeight, getWidth(), gFont16.mHeight);
+  }
+//}}}
+
+//{{{
+void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
+// dma2d hogs bandwidth
+
+  ready();
+
+  auto pitch = getWidth() - rect.getWidth();
+  auto dst = gFrameBuf + rect.top*getWidth() + rect.left;
+
+  for (auto y = 0; y < rect.getHeight(); y++) {
+    for (auto x = 0; x < rect.getWidth(); x++)
+      *dst++ = color;
+    dst += pitch;
+    }
+  }
+//}}}
+//{{{
+void cLcd::fillRect (uint16_t color, cRect& rect) {
+
+  ready();
+
+  DMA2D->OCOLR = color;
+  DMA2D->OOR = getWidth() - rect.getWidth();
+  DMA2D->OMAR = (uint32_t)(gFrameBuf + rect.top*getWidth() + rect.left);
+  DMA2D->NLR = (rect.getWidth() << 16) |  rect.getHeight();
+
+  // start transfer
+  DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE;
+  mDma2dWait = true;
+  }
+//}}}
+//{{{
+void cLcd::fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+
+  cRect rect (x, y, x+width, y+height);
+  fillRect (color, rect);
+  }
+//}}}
+//{{{
+void cLcd::clear (uint16_t color) {
+  cRect rect (getSize());
+  fillRect (color, rect);
+  }
+//}}}
+//{{{
+void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t thickness) {
+
+  // draw horizontal lines
+  fillRect (color, x, y, width, thickness);
+  fillRect (color, x, (y + height)-thickness, width, thickness);
+
+  // draw vertical lines
+  fillRect (color, x, y, thickness, height);
+  fillRect (color, (x + width)-thickness, y, thickness, height);
+  }
+//}}}
+//{{{
+void cLcd::drawRect (uint16_t color, cRect& rect, uint16_t thickness) {
+
+  drawRect (color, rect.left, rect.top, rect.getWidth(), rect.getHeight(), thickness);
+  }
+//}}}
+
+//{{{
+void cLcd::drawCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius) {
+
+  int32_t decision;    // Decision Variable
+  uint32_t current_x;   // Current X Value
+  uint32_t current_y;   // Current Y Value
+
+  decision = 3 - (radius << 1);
+  current_x = 0;
+  current_y = radius;
+
+  while (current_x <= current_y) {
+    drawPix (color, (x + current_x), (y - current_y));
+    drawPix (color, (x - current_x), (y - current_y));
+    drawPix (color, (x + current_y), (y - current_x));
+    drawPix (color, (x - current_y), (y - current_x));
+    drawPix (color, (x + current_x), (y + current_y));
+    drawPix (color, (x - current_x), (y + current_y));
+    drawPix (color, (x + current_y), (y + current_x));
+    drawPix (color, (x - current_y), (y + current_x));
+
+    if (decision < 0)
+      decision += (current_x << 2) + 6;
+    else {
+      decision += ((current_x - current_y) << 2) + 10;
+      current_y--;
+      }
+    current_x++;
+    }
+  }
+//}}}
+//{{{
+void cLcd::fillCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius) {
+
+  int32_t decision = 3 - (radius << 1);
+  uint32_t current_x = 0;
+  uint32_t current_y = radius;
+
+  while (current_x <= current_y) {
+    if (current_y > 0) {
+      fillRect (color, x - current_y, y + current_x, 1, 2*current_y);
+      fillRect (color, x - current_y, y - current_x, 1, 2*current_y);
+      }
+    if (current_x > 0) {
+      fillRect (color, x - current_x, y - current_y, 1, 2*current_x);
+      fillRect (color, x - current_x, y + current_y, 1, 2*current_x);
+      }
+    if (decision < 0)
+      decision += (current_x << 2) + 6;
+    else {
+      decision += ((current_x - current_y) << 2) + 10;
+      current_y--;
+      }
+    current_x++;
+    }
+
+  drawCircle (color, x, y, radius);
+  }
+//}}}
+//{{{
+void cLcd::drawEllipse (uint16_t color, uint16_t xCentre, uint16_t yCentre, uint16_t xRadius, uint16_t yRadius) {
+
+  int x = 0;
+  int y = -yRadius;
+  int err = 2-2*xRadius, e2;
+  float k = 0, rad1 = 0, rad2 = 0;
+
+  rad1 = xRadius;
+  rad2 = yRadius;
+
+  k = (float)(rad2/rad1);
+
+  do {
+    drawPix (color, (xCentre - (uint16_t)(x/k)), yCentre+y);
+    drawPix (color, (xCentre + (uint16_t)(x/k)), yCentre+y);
+    drawPix (color, (xCentre + (uint16_t)(x/k)), yCentre-y);
+    drawPix (color, (xCentre - (uint16_t)(x/k)), yCentre-y);
+
+    e2 = err;
+    if (e2 <= x) {
+      err += ++x*2+1;
+      if (-y == x && e2 <= y)
+        e2 = 0;
+      }
+    if (e2 > y)
+      err += ++y*2+1;
+    }
+
+  while (y <= 0);
+  }
+//}}}
+//{{{
+void cLcd::fillEllipse (uint16_t color, uint16_t xCentre, uint16_t yCentre, uint16_t xRadius, uint16_t yRadius) {
+
+  int x = 0, y = -yRadius, err = 2-2*xRadius, e2;
+  float k = 0, rad1 = 0, rad2 = 0;
+
+  rad1 = xRadius;
+  rad2 = yRadius;
+
+  k = (float)(rad2/rad1);
+  do {
+    fillRect (color, (xCentre-(uint16_t)(x/k)), (yCentre+y), 1, (2*(uint16_t)(x/k) + 1));
+    fillRect (color, (xCentre-(uint16_t)(x/k)), (yCentre-y), 1, (2*(uint16_t)(x/k) + 1));
+
+    e2 = err;
+    if (e2 <= x) {
+      err += ++x*2+1;
+      if (-y == x && e2 <= y) e2 = 0;
+      }
+    if (e2 > y) err += ++y*2+1;
+    }
+
+  while (y <= 0);
+  }
+//}}}
+//{{{
+void cLcd::drawPolygon (uint16_t color, cPoint* points, uint16_t pointCount) {
+
+  int16_t x = 0, y = 0;
+
+  if (pointCount < 2)
+    return;
+
+  drawLine (color, points->x, points->y, (points + pointCount-1)->x, (points + pointCount-1)->y);
+
+  while (--pointCount) {
+    x = points->x;
+    y = points->y;
+    points++;
+    drawLine (color, x, y, points->x, points->y);
+    }
+  }
+//}}}
+//{{{
+void cLcd::fillPolygon (uint16_t color, cPoint* points, uint16_t pointCount) {
+
+  int16_t X = 0, Y = 0, X2 = 0, Y2 = 0, X_center = 0, Y_center = 0, X_first = 0, Y_first = 0, pixelX = 0, pixelY = 0, counter = 0;
+  uint16_t  image_left = 0, image_right = 0, image_top = 0, image_bottom = 0;
+
+  image_left = image_right = points->x;
+  image_top= image_bottom = points->y;
+
+  for (counter = 1; counter < pointCount; counter++) {
+    pixelX = POLY_X(counter);
+    if(pixelX < image_left)
+      image_left = pixelX;
+    if(pixelX > image_right)
+      image_right = pixelX;
+
+    pixelY = POLY_Y(counter);
+    if(pixelY < image_top)
+      image_top = pixelY;
+    if(pixelY > image_bottom)
+      image_bottom = pixelY;
+    }
+
+  if (pointCount < 2)
+    return;
+
+  X_center = (image_left + image_right)/2;
+  Y_center = (image_bottom + image_top)/2;
+
+  X_first = points->x;
+  Y_first = points->y;
+
+  while (--pointCount) {
+    X = points->x;
+    Y = points->y;
+    points++;
+    X2 = points->x;
+    Y2 = points->y;
+
+    fillTriangle (color, X, X2, X_center, Y, Y2, Y_center);
+    fillTriangle (color, X, X_center, X2, Y, Y_center, Y2);
+    fillTriangle (color, X_center, X2, X, Y_center, Y2, Y);
+    }
+
+  fillTriangle (color, X_first, X2, X_center, Y_first, Y2, Y_center);
+  fillTriangle (color, X_first, X_center, X2, Y_first, Y_center, Y2);
+  fillTriangle (color, X_center, X2, X_first, Y_center, Y2, Y_first);
+  }
+//}}}
+//{{{
+void cLcd::drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
+
+  int16_t xinc1 = 0, xinc2 = 0, yinc1 = 0, yinc2 = 0, den = 0, num = 0, num_add = 0, num_pixels = 0;
+
+  int16_t deltax = ABS(x2 - x1);        // The difference between the x's
+  int16_t deltay = ABS(y2 - y1);        // The difference between the y's
+  int16_t x = x1;                       // Start x off at the first pixel
+  int16_t y = y1;                       // Start y off at the first pixel
+
+  if (x2 >= x1) { // The x-values are increasing
+    xinc1 = 1;
+    xinc2 = 1;
+    }
+  else {          // The x-values are decreasing
+    xinc1 = -1;
+    xinc2 = -1;
+    }
+
+  if (y2 >= y1) { // The y-values are increasing
+    yinc1 = 1;
+    yinc2 = 1;
+    }
+  else {          // The y-values are decreasing
+    yinc1 = -1;
+    yinc2 = -1;
+    }
+
+  if (deltax >= deltay) {        // There is at least one x-value for every y-value
+    xinc1 = 0;                  // Don't change the x when numerator >= denominator
+    yinc2 = 0;                  // Don't change the y for every iteration
+    den = deltax;
+    num = deltax / 2;
+    num_add = deltay;
+    num_pixels = deltax;         // There are more x-values than y-values
+    }
+  else {                         // There is at least one y-value for every x-value
+    xinc2 = 0;                  // Don't change the x for every iteration
+    yinc1 = 0;                  // Don't change the y when numerator >= denominator
+    den = deltay;
+    num = deltay / 2;
+    num_add = deltax;
+    num_pixels = deltay;         // There are more y-values than x-values
+    }
+
+  for (int16_t curpixel = 0; curpixel <= num_pixels; curpixel++) {
+    drawPix (color, x, y);
+    num += num_add;     // Increase the numerator by the top of the fraction
+    if (num >= den) {   // Check if numerator >= denominator
+      num -= den;       // Calculate the new numerator value
+      x += xinc1;       // Change the x as appropriate
+      y += yinc1;       // Change the y as appropriate
+      }
+
+    x += xinc2;         // Change the x as appropriate
+    y += yinc2;         // Change the y as appropriate
     }
   }
 //}}}
