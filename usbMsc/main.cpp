@@ -295,9 +295,6 @@ private:
   bool mValueChanged = false;
   bool mValue = false;
 
-  int mZoom = 0;
-  cPoint mZoomCentre = {0,0};
-
   bool mDebugChanged = false;
   bool mDebugValue = true;
 
@@ -313,16 +310,21 @@ private:
 //}}}
 
 //{{{
-class cBgndBox : public cApp::cBox {
+class cCameraBox : public cApp::cBox {
 public:
   //{{{
-  cBgndBox (float width, float height, int& zoom, cPoint& zoomCentre)
-      : cBox("bgnd", width, height), mZoom(zoom), mZoomCentre(zoomCentre) {}
+  cCameraBox (float width, float height, cCamera* cam)
+      : cBox("bgnd", width, height), mCam(cam) {
+
+    mCinfo.err = jpeg_std_error (&jerr);
+    jpeg_create_decompress (&mCinfo);
+    }
   //}}}
-  virtual ~cBgndBox() {}
+  virtual ~cCameraBox() {}
 
   bool onPress (cPoint pos, uint8_t z)  {
-    mZoom = 1;
+    mZoom = 1.0f;
+    mZoomCentre = {0,0};
     return true;
     }
 
@@ -332,15 +334,65 @@ public:
     }
 
   bool onRelease (cPoint pos, uint8_t z)  {
-    mZoom = 0;
+    mZoom = 0.5f;
     return true;
     }
 
-  void onDraw (cLcd* lcd) {}
+  void onDraw (cLcd* lcd) {
+    uint32_t frameLen;
+    bool jpeg;
+    uint32_t frameId;
+    auto frame = mCam->getLastFrame (frameLen, jpeg, frameId);
+    if (frame) {
+      if (!jpeg) // simple rgb565 from cam
+        mLastFrameSize =  mCam->getSize();
+      else if (frameId != mLastFrameId) {
+        //{{{  new jpeg frame, jpegDecode it
+        //auto header = !frameNum++ ? mCam->getFullJpgHeader (6, headerLen) : mCam->getSmallJpgHeader (6, headerLen);
+        uint32_t headerLen;
+        auto header = mCam->getFullJpgHeader (6, headerLen);
+        jpeg_mem_src (&mCinfo, header, headerLen);
+        jpeg_read_header (&mCinfo, TRUE);
+
+        // jpegBody
+        mCinfo.scale_num = 1;
+        mCinfo.scale_denom = 2;
+        mCinfo.dct_method = JDCT_FLOAT;
+        mCinfo.out_color_space = JCS_RGB;
+
+        jpeg_mem_src (&mCinfo, frame, frameLen);
+        jpeg_start_decompress (&mCinfo);
+        uint8_t buf[mCinfo.output_width * 3];
+        uint8_t* bufArray = buf;
+        while (mCinfo.output_scanline < mCinfo.output_height) {
+          jpeg_read_scanlines (&mCinfo, &bufArray, 1);
+          //mLcd->rgb888to565 (bufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
+          lcd->rgb888to565 (bufArray, kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width, 1);
+          }
+        jpeg_finish_decompress (&mCinfo);
+
+        frame = (uint8_t*)kRgb565Buf;
+        mLastFrameSize = cPoint (mCinfo.output_width, mCinfo.output_height);
+        mLastFrameId = frameId;
+        }
+        //}}}
+      lcd->zoom565 ((uint16_t*)frame, mZoomCentre, mLastFrameSize, cRect(lcd->getSize()), mZoom, mZoom);
+      }
+    else
+      lcd->clear (LCD_COLOR_BLACK);
+    }
 
 private:
-  int& mZoom;
-  cPoint& mZoomCentre;
+  cCamera* mCam;
+
+  uint32_t mLastFrameId = 0;
+  cPoint mLastFrameSize = {0,0};
+
+  float mZoom = 0.5f;
+  cPoint mZoomCentre = {0,0};
+
+  struct jpeg_error_mgr jerr;
+  struct jpeg_decompress_struct mCinfo;
   };
 //}}}
 //{{{
@@ -507,13 +559,6 @@ void cApp::init() {
   mLcd = new cLcd (14);
   mLcd->init();
 
-  // define menu
-  add (new cBgndBox (getWidth(), getHeight(), mZoom, mZoomCentre), 0,0);
-  add (new cToggleBox (kBoxWidth,kBoxHeight, "jpeg", mValue, mValueChanged), 0,getHeight()-kBoxHeight);
-  addRight (new cToggleBox (kBoxWidth,kBoxHeight, "debug", mDebugValue, mDebugChanged));
-  addRight (new cInstantBox (kBoxWidth,kBoxHeight, "clear", mClearDebugChanged));
-  addRight (new cValueBox (kBoxWidth,kBoxHeight, "f", 0,254, mFocus, mFocusChanged));
-
   diskInit();
 
   //{{{  removed
@@ -526,6 +571,16 @@ void cApp::init() {
 //}}}
 //{{{
 void cApp::run() {
+
+  mCam = new cCamera();
+  mCam->init (kCamBuf, kCamBufEnd);
+
+  // define menu
+  add (new cCameraBox (getWidth(), getHeight(), mCam), 0,0);
+  add (new cToggleBox (kBoxWidth,kBoxHeight, "jpeg", mValue, mValueChanged), 0,getHeight()-kBoxHeight);
+  addRight (new cToggleBox (kBoxWidth,kBoxHeight, "debug", mDebugValue, mDebugChanged));
+  addRight (new cInstantBox (kBoxWidth,kBoxHeight, "clear", mClearDebugChanged));
+  addRight (new cValueBox (kBoxWidth,kBoxHeight, "f", 0,254, mFocus, mFocusChanged));
 
   bool mounted = !f_mount (&gFatFs, "", 1);
   if (mounted) {
@@ -548,9 +603,6 @@ void cApp::run() {
   else
     mLcd->debug (LCD_COLOR_GREEN, "sdCard not mounted");
 
-  mCam = new cCamera();
-  mCam->init (kCamBuf, kCamBufEnd);
-
   if (mounted && mCam) {
     addRight (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
     addRight (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
@@ -565,97 +617,72 @@ void cApp::run() {
     //  onKey (ch & 0xFF, ch & 0x100);
     //  }
     //}}}
+
     uint32_t frameLen;
     bool jpeg;
     auto frame = mCam->getNextFrame (frameLen, jpeg);
-    if (!frame) // no frame, clear
-      mLcd->start();
-    else if (jpeg) {
-      uint32_t headerLen;
-      if (mounted && mTakeChanged) {
-        //{{{  save JFIF jpeg
-        mTakeChanged = false;
-        auto header = mCam->getFullJpgHeader (6, headerLen);
-        saveNumFile ("save", frameNum, "jpg", header, headerLen, frame, frameLen);
-        frameNum++;
-        }
-        //}}}
-      else if (mounted && mTakeMovieChanged && !frameNum) {
-        //{{{  save mjpeg first frame
-        frameNum++;
-        auto header = mCam->getFullJpgHeader (6, headerLen);
-        createNumFile ("save", fileNum, header, headerLen, frame, frameLen);
-        mLcd->start();
-        }
-        //}}}
-      else if (mounted && mTakeMovieChanged && (frameNum < 500)) {
-        //{{{  add mjpeg frame
-        auto header = mCam->getSmallJpgHeader (6, headerLen);
-        appendFile (frameNum++, header, headerLen, frame, frameLen);
-        mLcd->start();
-        }
-        //}}}
-      else if (mounted && mTakeMovieChanged && frameNum == 500) {
-        //{{{  close mjpeg
-        frameNum++;
-        closeFile();
-        mLcd->start();
 
-        mTakeMovieChanged = false;
-        }
-        //}}}
-      else {
-        //{{{  jpegDecode
-        auto header = !frameNum++ ? mCam->getFullJpgHeader (6, headerLen) : mCam->getSmallJpgHeader (6, headerLen);
-        jpeg_mem_src (&mCinfo, header, headerLen);
-        jpeg_read_header (&mCinfo, TRUE);
+    if (mounted) {
+      if (frame) {
+        if (jpeg) {
+          if (mTakeChanged) {
+            //{{{  save JFIF jpeg
+            mTakeChanged = false;
 
-        // jpegBody
-        mCinfo.scale_num = 1;
-        mCinfo.scale_denom = mZoom == 1 ? 2 : 2;
-        mCinfo.dct_method = JDCT_FLOAT;
-        mCinfo.out_color_space = JCS_RGB;
+            uint32_t headerLen;
+            auto header = mCam->getFullJpgHeader (6, headerLen);
+            saveNumFile ("save", frameNum, "jpg", header, headerLen, frame, frameLen);
 
-        jpeg_mem_src (&mCinfo, frame, frameLen);
-        jpeg_start_decompress (&mCinfo);
-        uint8_t buf[mCinfo.output_width * 3];
-        uint8_t* bufArray = buf;
-        while (mCinfo.output_scanline < mCinfo.output_height) {
-          jpeg_read_scanlines (&mCinfo, &bufArray, 1);
-          //mLcd->rgb888to565 (bufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-          mLcd->rgb888to565 (bufArray, kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width, 1);
+            frameNum++;
+            }
+            //}}}
+          else if (mTakeMovieChanged && !frameNum) {
+            //{{{  save mjpeg first frame
+            frameNum++;
+
+            uint32_t headerLen;
+            auto header = mCam->getFullJpgHeader (6, headerLen);
+            createNumFile ("save", fileNum, header, headerLen, frame, frameLen);
+            }
+            //}}}
+          else if (mTakeMovieChanged && (frameNum < 500)) {
+            //{{{  add mjpeg frame
+            uint32_t headerLen;
+            auto header = mCam->getSmallJpgHeader (6, headerLen);
+            appendFile (frameNum++, header, headerLen, frame, frameLen);
+            }
+            //}}}
+          else if (mTakeMovieChanged && frameNum == 500) {
+            //{{{  close mjpeg
+            mTakeMovieChanged = false;
+            frameNum++;
+            closeFile();
+            }
+            //}}}
           }
-        jpeg_finish_decompress (&mCinfo);
+        else if (mTakeChanged) {
+          //{{{  save rgb565 bmp
+          mTakeChanged = false;
 
-        mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, 0, cPoint(0,0));
+          uint32_t headerLen;
+          auto header = mCam->getBmpHeader (headerLen);
+          saveNumFile ("save", frameNum, "bmp", header, headerLen, frame, frameLen);
+
+          frameNum++;
+          }
+          //}}}
         }
-        //}}}
       }
-    else {
-      //{{{  rgb565
-      if (mounted && mTakeChanged) {
-        mTakeChanged = false;
 
-        uint32_t headerLen;
-        auto header = mCam->getBmpHeader (headerLen);
-        saveNumFile ("save", frameNum, "bmp", header, headerLen, frame, frameLen);
-        frameNum++;
-        }
-
-      mLcd->start ((uint16_t*)frame, mCam->getWidth(), mCam->getHeight(), mZoom, mZoomCentre);
-      }
-      //}}}
-
+    for (auto box : mBoxes)
+      if (box->getEnabled())
+        box->onDraw (mLcd);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%d",
                                           osGetCPUUsage(), xPortGetFreeHeapSize(), mCam->getFps(),
                                           frameLen, mCam->getStatus(), mCam->getDmaCount());
-    if (!mZoom && mDebugValue)
+    if (mDebugValue)
       mLcd->drawDebug();
-    if (!mZoom)
-      for (auto box : mBoxes)
-        if (box->getEnabled())
-          box->onDraw (mLcd);
     mLcd->present();
 
     if (mValueChanged) {
@@ -1041,7 +1068,8 @@ void serverThread (void* arg) {
                   if (gApp->getCam()) {
                     uint32_t frameLen;
                     bool jpeg;
-                    auto frame = gApp->getCam()->getLastFrame (frameLen, jpeg);
+                    uint32_t frameId;
+                    auto frame = gApp->getCam()->getLastFrame (frameLen, jpeg, frameId);
                     if (frame) {
                       // send http response header
                       netconn_write (request,

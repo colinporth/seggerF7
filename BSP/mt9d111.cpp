@@ -242,10 +242,11 @@ uint8_t* cCamera::getSmallJpgHeader (int qscale, uint32_t& headerLen) {
   }
 //}}}
 //{{{
-uint8_t* cCamera::getLastFrame (uint32_t& frameLen, bool& jpeg) {
+uint8_t* cCamera::getLastFrame (uint32_t& frameLen, bool& jpeg, uint32_t& frameId) {
 
   frameLen = mFrameLen;
   jpeg = mJpegFrame;
+  frameId = mFrameId;
   return mFrame;
   }
 //}}}
@@ -411,6 +412,7 @@ void cCamera::dcmiIrqHandler() {
       mFrame = mLastFrameStart;
       mFrameLen = frameLen;
       mJpegFrame = false;
+      mFrameId++;
 
       portBASE_TYPE taskWoken = pdFALSE;
       if (xSemaphoreGiveFromISR (mFrameSem, &taskWoken) == pdTRUE)
@@ -441,6 +443,7 @@ void cCamera::dcmiIrqHandler() {
           mFrame = mLastFrameStart;
           mFrameLen = jpegLen;
           mJpegFrame = true;
+          mFrameId++;
 
           portBASE_TYPE taskWoken = pdFALSE;
           if (xSemaphoreGiveFromISR (mFrameSem, &taskWoken) == pdTRUE)

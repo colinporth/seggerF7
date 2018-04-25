@@ -889,6 +889,31 @@ void cLcd::drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint
 //}}}
 
 //{{{
+void cLcd::zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRect, float zoomx, float zoomy) {
+
+  int srcX = -srcCentre.x;
+  int srcY = -srcCentre.y;
+  int srcPitch = srcSize.x;
+
+  uint32_t xStep16 = uint32_t(0x10000 / zoomx);
+  uint32_t yStep16 = uint32_t(0x10000 / zoomy);
+
+  uint16_t* srcBase = src + (srcY * srcPitch) + srcX;
+  uint16_t* dst = getWriteBuffer() + (dstRect.top * getWidth()) + dstRect.left;
+
+  // frame
+  for (uint32_t y16 = (srcY << 16); y16 < ((srcY + dstRect.getHeight()) * yStep16); y16 += yStep16) {
+    // line
+    uint16_t* srcy1x1 = srcBase + (y16 >> 16) * srcPitch;
+    for (uint32_t x16 = srcX << 16; x16 < (srcX + dstRect.getWidth()) * xStep16; x16 += xStep16) {
+      // pixel
+      *dst++ = *(srcy1x1 + (x16 >> 16));
+      }
+    dst += getWidth() - dstRect.getWidth();
+    }
+  }
+//}}}
+//{{{
 void cLcd::rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ysize) {
 
   ready();

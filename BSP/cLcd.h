@@ -2,16 +2,10 @@
 //{{{  includes
 #pragma once
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <math.h>
+#include "../common/cPointRect.h"
 
 #include "cmsis_os.h"
 //}}}
-
 //{{{  color
 #define LCD_COLOR_BLUE       0x001F
 #define LCD_COLOR_GREEN      0x07D0
@@ -25,140 +19,6 @@
 #define LCD_COLOR_LIGHT_GREY 0x9512
 #define LCD_COLOR_BLACK      0x0000
 //}}}
-//{{{
-class cPoint {
-public:
-  //{{{
-  cPoint()  {
-    x = 0;
-    y = 0;
-    }
-  //}}}
-  //{{{
-  cPoint (uint16_t x, uint16_t y) {
-    this->x = x;
-    this->y = y;
-    }
-  //}}}
-
-  //{{{
-  cPoint operator - (const cPoint& point) const {
-    return cPoint (x - point.x, y - point.y);
-    }
-  //}}}
-  //{{{
-  cPoint operator + (const cPoint& point) const {
-    return cPoint (x + point.x, y + point.y);
-    }
-  //}}}
-  //{{{
-  cPoint operator * (const cPoint& point) const {
-    return cPoint (x * point.x, y * point.y);
-    }
-  //}}}
-
-  //{{{
-  const cPoint& operator += (const cPoint& point)  {
-    x += point.x;
-    y += point.y;
-    return *this;
-    }
-  //}}}
-  //{{{
-  const cPoint& operator -= (const cPoint& point)  {
-    x -= point.x;
-    y -= point.y;
-    return *this;
-    }
-  //}}}
-
-  //{{{
-  bool inside (const cPoint& pos) const {
-  // return pos inside rect formed by us as size
-    return pos.x >= 0 && pos.x < x && pos.y >= 0 && pos.y < y;
-    }
-  //}}}
-  //{{{
-  float magnitude() const {
-  // return magnitude of point as vector
-    return sqrt (float(x*x) + float(y*y));
-    }
-  //}}}
-
-  int16_t x;
-  int16_t y;
-  };
-//}}}
-//{{{
-class cRect {
-public:
-  //{{{
-  cRect()  {
-    left = 0;
-    bottom = 0;
-    right = 0;
-    bottom = 0;
-    }
-  //}}}
-  //{{{
-  cRect (const cPoint& size)  {
-  left = 0;
-  top = 0;
-  right = size.x;
-  bottom = size.y;
-  }
-  //}}}
-  //{{{
-  cRect (const cPoint& topLeft, const cPoint& bottomRight)  {
-   left = topLeft.x;
-   top = topLeft.y;
-   right = bottomRight.x;
-   bottom = bottomRight.y;
-   }
-  //}}}
-  //{{{
-  cRect (uint16_t l, uint16_t t, uint16_t r, uint16_t b) {
-    left = l;
-    top = t;
-    right = r;
-    bottom = b;
-    }
-  //}}}
-
-  //{{{
-  cRect operator + (const cPoint& point) const {
-    return cRect (left + point.x, top + point.y, right + point.x, bottom + point.y);
-    }
-  //}}}
-
-  int getWidth() const { return right - left; }
-  int getHeight() const { return bottom - top; }
-  int getWidthInt() const { return int(right - left); }
-  int getHeightInt() const { return int(bottom - top); }
-
-  cPoint getTL() const { return cPoint(left, top); }
-  cPoint getTL (int offset) const { return cPoint(left+offset, top+offset); }
-  cPoint getTR() const { return cPoint(right, top); }
-  cPoint getBL() const { return cPoint(left, bottom); }
-  cPoint getBR() const { return cPoint(right, bottom); }
-
-  cPoint getSize() const { return cPoint(right-left, bottom-top); }
-  cPoint getCentre() const { return cPoint(getCentreX(), getCentreY()); }
-  int getCentreX() const { return (left + right)/2.f; }
-  int getCentreY() const { return (top + bottom)/2.f; }
-  //{{{
-  bool inside (const cPoint& pos) const {
-  // return pos inside rect
-    return (pos.x >= left) && (pos.x < right) && (pos.y >= top) && (pos.y < bottom);
-    }
-  //}}}
-
-  int16_t left;
-  int16_t right;
-  int16_t top;
-  int16_t bottom;
-  };
-//}}}
 
 class cLcd {
 public:
@@ -166,6 +26,7 @@ public:
 
   static uint32_t getWidth() { return 480; }
   static uint32_t getHeight() { return 272; }
+  static cPoint getSize() { return cPoint(480,272); }
 
   cLcd (uint16_t displayLines);
   void init();
@@ -215,6 +76,7 @@ public:
   void fillPolygon (uint16_t color, cPoint* points, uint16_t pPointCount);
   void drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 
+  void zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRect, float zoomx, float zoomy);
   void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ysize);
   void rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t size);
   void convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,

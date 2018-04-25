@@ -1,6 +1,7 @@
 // cCamera.h
 //{{{  includes
 #pragma once
+#include "../common/cPointRect.h"
 #include "stm32746g_discovery.h"
 //}}}
 
@@ -8,6 +9,7 @@ class cCamera {
 public:
   void init (uint8_t* bufStart, uint8_t* bufEnd);
 
+  cPoint getSize() { return cPoint (mWidth, mHeight); }
   uint32_t getWidth() { return mWidth; }
   uint32_t getHeight() { return mHeight; }
 
@@ -21,7 +23,7 @@ public:
   uint8_t* getBmpHeader (uint32_t& headerLen);
   uint8_t* getFullJpgHeader (int qscale, uint32_t& headerLen);
   uint8_t* getSmallJpgHeader (int qscale, uint32_t& headerLen);
-  uint8_t* getLastFrame (uint32_t& frameLen, bool& jpeg);
+  uint8_t* getLastFrame (uint32_t& frameLen, bool& jpeg, uint32_t& frameId);
   uint8_t* getNextFrame (uint32_t& frameLen, bool& jpeg);
 
   void setFocus (int value);
@@ -86,6 +88,7 @@ private:
   uint8_t* mFrame = nullptr;
   uint32_t mFrameLen = 0;
   bool mJpegFrame = false;
+  uint32_t mFrameId = 0;
 
   uint8_t mJpegStatus = 0;
   //}}}
