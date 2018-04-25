@@ -224,19 +224,17 @@ public:
   void displayOn();
 
   static cLcd* mLcd;
+
   static bool mFrameWait;
   static SemaphoreHandle_t mFrameSem;
-  static bool mDma2dWait;
-  static int mDma2dIrq;
   static SemaphoreHandle_t mDma2dSem;
 
 private:
-  uint16_t* getBuffer();
+  void layerInit (uint32_t buffer);
+
+  uint16_t* getWriteBuffer();
+
   void ready();
-
-  void setLayer();
-  void layerInit (uint32_t FrameBuffer);
-
   void fillBuffer (uint16_t color, uint16_t* dst, uint16_t xsize, uint16_t ysize);
   void fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
 

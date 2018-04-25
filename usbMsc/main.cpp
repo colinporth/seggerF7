@@ -514,11 +514,6 @@ void cApp::init() {
   addRight (new cInstantBox (kBoxWidth,kBoxHeight, "clear", mClearDebugChanged));
   addRight (new cValueBox (kBoxWidth,kBoxHeight, "f", 0,254, mFocus, mFocusChanged));
 
-  // show title early
-  mLcd->start();
-  mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
-  mLcd->present();
-
   diskInit();
 
   //{{{  removed

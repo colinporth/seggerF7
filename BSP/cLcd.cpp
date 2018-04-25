@@ -32,11 +32,12 @@ extern const sFONT gFont16;
 LTDC_HandleTypeDef hLtdcHandler;
 
 cLcd* cLcd::mLcd = nullptr;
+
 bool cLcd::mFrameWait = false;
 SemaphoreHandle_t cLcd::mFrameSem;
-bool cLcd::mDma2dWait = false;
-int cLcd::mDma2dIrq = 0;
 SemaphoreHandle_t cLcd::mDma2dSem;
+
+bool mDma2dWait = false;
 
 extern "C" {
   //{{{
@@ -88,15 +89,13 @@ extern "C" {
   //{{{
   void DMA2D_IRQHandler() {
 
-    DMA2D->IFCR |= DMA2D_ISR_TCIF | DMA2D_ISR_TEIF | DMA2D_ISR_CEIF;
+    if (DMA2D->ISR & DMA2D_FLAG_TC) {
+      DMA2D->IFCR = DMA2D_FLAG_TC;
 
-    //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "DMA2D_IRQHandler");
-
-    //portBASE_TYPE taskWoken = pdFALSE;
-    //if (xSemaphoreGiveFromISR (cLcd::mDma2dSem, &taskWoken) == pdTRUE)
-    //  portEND_SWITCHING_ISR (taskWoken);
-
-    cLcd::mDma2dIrq++;
+      portBASE_TYPE taskWoken = pdFALSE;
+      if (xSemaphoreGiveFromISR (cLcd::mDma2dSem, &taskWoken) == pdTRUE)
+        portEND_SWITCHING_ISR (taskWoken);
+      }
     }
   //}}}
   }
@@ -285,12 +284,12 @@ void cLcd::init() {
   DMA2D->BGOR = 0;
   DMA2D->OPFCCR = DMA2D_OUTPUT_RGB565;
 
-  //vSemaphoreCreateBinary (mDma2dSem);
-  //HAL_NVIC_SetPriority (DMA2D_IRQn, 0x0F, 0);
-  //HAL_NVIC_EnableIRQ (DMA2D_IRQn);
+  vSemaphoreCreateBinary (mDma2dSem);
+  HAL_NVIC_SetPriority (DMA2D_IRQn, 0x0F, 0);
+  HAL_NVIC_EnableIRQ (DMA2D_IRQn);
 
   layerInit (SDRAM_DEVICE_ADDR);
-  clear (LCD_COLOR_BLACK);
+  //clear (LCD_COLOR_BLACK);
 
   displayOn();
   }
@@ -322,7 +321,7 @@ void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, int zoom,
   while (mFrameWait) { HAL_Delay(1); }
 #endif
 
-  uint16_t* dst = getBuffer();
+  uint16_t* dst = getWriteBuffer();
 
   if (zoom) {
     // 1:1 pixel copy, centre of src to centre of screen
@@ -409,10 +408,10 @@ void cLcd::drawDebug() {
 //{{{
 void cLcd::present() {
 
-  auto buffer = getBuffer();
+  auto buffer = getWriteBuffer();
   mFlip = !mFlip;
 
-  SetAddress (buffer, getBuffer());
+  SetAddress (buffer, getWriteBuffer());
   }
 //}}}
 
@@ -495,7 +494,7 @@ void cLcd::SetAddress (uint16_t* address, uint16_t* writeAddress) {
 uint16_t cLcd::readPix (uint16_t x, uint16_t y) {
 
   ready();
-  return *(getBuffer() + y*getWidth() + x);
+  return *(getWriteBuffer() + y*getWidth() + x);
   }
 //}}}
 //{{{
@@ -503,7 +502,7 @@ void cLcd::drawPix (uint16_t color, uint16_t x, uint16_t y) {
 // Write data value to all SDRAM memory
 
   ready();
-  *(getBuffer() + y*getWidth() + x) = (uint16_t)color;
+  *(getWriteBuffer() + y*getWidth() + x) = (uint16_t)color;
   }
 //}}}
 
@@ -517,7 +516,7 @@ void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
     const uint8_t* fontChar = &gFont16.mTable [(ascii - ' ') * gFont16.mHeight * byteAlignedWidth];
 
     ready();
-    auto dst = getBuffer() + (pos.y * getWidth()) + pos.x;
+    auto dst = getWriteBuffer() + (pos.y * getWidth()) + pos.x;
     for (auto fontLine = 0u; fontLine < gFont16.mHeight; fontLine++) {
       auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
       uint16_t fontLineBits = *fontPtr++;
@@ -598,7 +597,7 @@ void cLcd::clearStringLine (uint16_t color, uint16_t line) {
 
 //{{{
 void cLcd::clear (uint16_t color) {
-  fillBuffer (color, getBuffer(), getWidth(), getHeight());
+  fillBuffer (color, getWriteBuffer(), getWidth(), getHeight());
   }
 //}}}
 //{{{
@@ -622,7 +621,7 @@ void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uin
 //{{{
 void cLcd::fillRect (uint16_t color, cRect& rect) {
 
-  fillBuffer (color, getBuffer() + rect.top*getWidth() + rect.left, rect.getWidth(), rect.getHeight());
+  fillBuffer (color, getWriteBuffer() + rect.top*getWidth() + rect.left, rect.getWidth(), rect.getHeight());
   }
 //}}}
 //{{{
@@ -630,7 +629,7 @@ void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
 // dma2d hogs bandwidth
 
   auto pitch = getWidth() - rect.getWidth();
-  auto dst = getBuffer() + rect.top*getWidth() + rect.left;
+  auto dst = getWriteBuffer() + rect.top*getWidth() + rect.left;
 
   for (auto y = 0; y < rect.getHeight(); y++) {
     for (auto x = 0; x < rect.getWidth(); x++)
@@ -642,7 +641,7 @@ void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
 //{{{
 void cLcd::fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
 
-  fillBuffer (color, getBuffer() + y*getWidth() + x, width, height);
+  fillBuffer (color, getWriteBuffer() + y*getWidth() + x, width, height);
   }
 //}}}
 
@@ -895,15 +894,13 @@ void cLcd::rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ys
   ready();
   DMA2D->FGPFCCR = DMA2D_INPUT_RGB888;
   DMA2D->FGOR = 0;
-
   DMA2D->FGMAR = (uint32_t)src;
   DMA2D->OMAR = (uint32_t)dst;
   DMA2D->NLR = (xsize << 16) | ysize;
-
   DMA2D->OOR = getWidth() - xsize;
 
   // start transfer
-  DMA2D->CR = DMA2D_CR_START | DMA2D_M2M_PFC | DMA2D_CR_TCIE | DMA2D_CR_TEIE | DMA2D_CR_CEIE;
+  DMA2D->CR = DMA2D_CR_START | DMA2D_M2M_PFC | DMA2D_CR_TCIE;
   mDma2dWait = true;
   }
 //}}}
@@ -1767,16 +1764,16 @@ void cLcd::displayOff() {
 
 // private
 //{{{
-uint16_t* cLcd::getBuffer() {
+uint16_t* cLcd::getWriteBuffer() {
   return (uint16_t*)(mFlip ? SDRAM_DEVICE_ADDR + 0x40000 : SDRAM_DEVICE_ADDR);
   }
 //}}}
 //{{{
-void cLcd::layerInit (uint32_t FB_Address) {
+void cLcd::layerInit (uint32_t buffer) {
 
   // config  color frame buffer start address
   LTDC_LAYER (&hLtdcHandler, 0)->CFBAR &= ~(LTDC_LxCFBAR_CFBADD);
-  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR = FB_Address;
+  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR = buffer;
 
   // pixel format
   LTDC_LAYER (&hLtdcHandler, 0)->PFCR &= ~(LTDC_LxPFCR_PF);
@@ -1827,14 +1824,8 @@ void cLcd::layerInit (uint32_t FB_Address) {
 //{{{
 void cLcd::ready() {
 
-  //while (mDma2dWait) { osDelay(1);}
   if (mDma2dWait) {
-  //  mWait = false;
-  //  xSemaphoreTake (mDma2dSem, 100);
-    uint32_t took = 0;
-    while (!(DMA2D->ISR & DMA2D_FLAG_TC)) { took++; }
-    DMA2D->IFCR |= DMA2D_IFSR_CTEIF | DMA2D_IFSR_CTCIF | DMA2D_IFSR_CTWIF|
-                   DMA2D_IFSR_CCAEIF | DMA2D_IFSR_CCTCIF | DMA2D_IFSR_CCEIF;
+    xSemaphoreTake (mDma2dSem, 100);
     mDma2dWait = false;
     }
   }
@@ -1850,7 +1841,7 @@ void cLcd::fillBuffer (uint16_t color, uint16_t* dst, uint16_t xsize, uint16_t y
   DMA2D->NLR = (xsize << 16) | ysize;
 
   // start transfer
-  DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE | DMA2D_CR_TEIE | DMA2D_CR_CEIE;
+  DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE;
   mDma2dWait = true;
   }
 //}}}
