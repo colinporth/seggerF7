@@ -797,28 +797,32 @@ void cLcd::drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint
 
 //{{{
 void cLcd::zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRect, float zoomx, float zoomy) {
+// srcCentre is offset from srcCentre to dstCentre
 
-  //int srcX = -srcCentre.x + srcSize.x/2;
-  //int srcY = -srcCentre.y + srcSize.y/2;;
-  int srcX = 0;
-  int srcY = 0;
+  int32_t srcX = int((((srcSize.x * zoomx) - dstRect.getWidth()) / 2.f) * zoomx);
+  int32_t srcY = int((((srcSize.y * zoomy) - dstRect.getHeight()) / 2.f) * zoomy);
   int srcPitch = srcSize.x;
 
-  uint32_t xStep16 = uint32_t(0x10000 / zoomx);
-  uint32_t yStep16 = uint32_t(0x10000 / zoomy);
+  int32_t inc16x = uint32_t(0x10000 / zoomx);
+  int32_t srcInc16y = uint32_t(0x10000 / zoomy);
 
-  uint16_t* srcBase = src + (srcY * srcPitch) + srcX;
   uint16_t* dst = gFrameBuf + (dstRect.top * getWidth()) + dstRect.left;
 
   // frame
-  for (uint32_t y16 = (srcY<<16); y16 < ((srcY + dstRect.getHeight()) * yStep16); y16 += yStep16) {
+  int32_t src16y = srcY * 0x10000;
+  while (src16y < (srcY + dstRect.getHeight()) * srcInc16y) {
     // line
-    uint16_t* srcy1x1 = srcBase + (y16>>16) * srcPitch;
-    for (uint32_t x16 = srcX<<16; x16 < (srcX + dstRect.getWidth()) * xStep16; x16 += xStep16) {
-      // pixel
-      *dst++ = *(srcy1x1 + (x16>>16));
+    uint16_t* srcBasey = src + ((src16y / 0x10000) * srcPitch);
+
+    int32_t x16 = srcX * 0x10000;
+    for (uint16_t dstx = 0; dstx < dstRect.getWidth(); dstx++) {
+      int32_t x = x16 / 0x10000;
+      *dst++ = ((x < 0) || (x >= srcSize.x)) ? 0 : *(srcBasey + x);
+      x16 += inc16x;
       }
+
     dst += getWidth() - dstRect.getWidth();
+    src16y += srcInc16y;
     }
   }
 //}}}

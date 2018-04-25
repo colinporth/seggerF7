@@ -332,7 +332,7 @@ public:
 
   bool onPress (cPoint pos, uint8_t z)  {
     mZoom = 1.f;
-    mZoomCentre = mCam->getSize() / 2;
+    mZoomCentre = {0,0};
     return true;
     }
 
