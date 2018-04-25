@@ -184,7 +184,6 @@ public:
 
   //{{{
   cApp (int x, int y) : cTouch (x,y) {
-
     mCinfo.err = jpeg_std_error (&jerr);
     jpeg_create_decompress (&mCinfo);
     }
@@ -287,9 +286,6 @@ private:
   DWORD mVsn = 0;
   int mFiles = 0;
 
-  struct jpeg_error_mgr jerr;
-  struct jpeg_decompress_struct mCinfo;
-
   bool mValueChanged = false;
   bool mValue = false;
 
@@ -303,6 +299,9 @@ private:
 
   bool mTakeChanged = false;
   bool mTakeMovieChanged = false;
+
+  struct jpeg_error_mgr jerr;
+  struct jpeg_decompress_struct mCinfo;
   //}}}
   };
 //}}}
@@ -318,7 +317,9 @@ public:
     jpeg_create_decompress (&mCinfo);
     }
   //}}}
-  virtual ~cCameraBox() {}
+  virtual ~cCameraBox() {
+    jpeg_destroy_decompress (&mCinfo);
+    }
 
   bool onPress (cPoint pos, uint8_t z)  {
     mZoom = 1.f;
@@ -591,12 +592,6 @@ void cApp::run() {
     char path[40] = "/";
     auto numFiles = getCountFiles (path);
     mLcd->debug (LCD_COLOR_WHITE, "- files %d", numFiles);
-
-    mLcd->start (kRgb565Buf, mCinfo.output_width, mCinfo.output_height, 0, cPoint(0,0));
-    mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
-    mLcd->drawDebug();
-    mLcd->present();
-    osDelay (500);
     }
     //}}}
   else
@@ -904,20 +899,22 @@ void cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
     jpeg_read_header (&mCinfo, TRUE);
     mLcd->debug (LCD_COLOR_WHITE, "- image %dx%d", mCinfo.image_width, mCinfo.image_height);
 
-    mCinfo.dct_method = JDCT_FLOAT;
-    mCinfo.out_color_space = JCS_RGB;
-    mCinfo.scale_num = 1;
-    mCinfo.scale_denom = 4;
-    uint8_t buf[mCinfo.output_width * 3];
-    uint8_t* bufArray = buf;
-    jpeg_start_decompress (&mCinfo);
-    while (mCinfo.output_scanline < mCinfo.output_height) {
-      jpeg_read_scanlines (&mCinfo, &bufArray, 1);
-      mLcd->rgb888to565 (bufArray, rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width,1);
-      }
-    jpeg_finish_decompress (&mCinfo);
+    if (false) {
+      mCinfo.dct_method = JDCT_FLOAT;
+      mCinfo.out_color_space = JCS_RGB;
+      mCinfo.scale_num = 1;
+      mCinfo.scale_denom = 4;
+      uint8_t* bufArray = (uint8_t*)malloc (mCinfo.output_width * 3);
+      jpeg_start_decompress (&mCinfo);
+      while (mCinfo.output_scanline < mCinfo.output_height) {
+        jpeg_read_scanlines (&mCinfo, &bufArray, 1);
+        mLcd->rgb888to565 (bufArray, rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width,1);
+        }
+      free (bufArray);
+      jpeg_finish_decompress (&mCinfo);
 
-    mLcd->debug (LCD_COLOR_WHITE, "- load  %dx%d scale %d", mCinfo.output_width, mCinfo.output_height, 4);
+      mLcd->debug (LCD_COLOR_WHITE, "- load  %dx%d scale %d", mCinfo.output_width, mCinfo.output_height, 4);
+      }
     }
   }
 //}}}
@@ -1263,7 +1260,7 @@ int main() {
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
   gApp->init();
 
-  sys_thread_new ("app", appThread, NULL, 8192, osPriorityNormal);
+  sys_thread_new ("app", appThread, NULL, 10000, osPriorityNormal);
   sys_thread_new ("net", netThread, NULL, 1024, osPriorityNormal);
   sys_thread_new ("touch", touchThread, NULL, 512, osPriorityNormal);
   osKernelStart();
