@@ -2380,9 +2380,9 @@ static FRESULT find_volume (const char** path, FATFS** rfs, BYTE mode) {
       }
     }
 
-  /* The file system object is not valid. */
-  /* Following code attempts to mount the volume. (analyze BPB and initialize the fs object) */
-  fs->fs_type = 0;          /* Clear the file system object */
+  // file system object is not valid. 
+  // - mount the volume. (analyze BPB and initialize the fs object) */
+  fs->fs_type = 0;            /* Clear the file system object */
   fs->drv = LD2PD(vol);       /* Bind the logical drive and a physical drive */
   DSTATUS stat = diskInit();  /* Initialize the physical drive */
   if (stat & STA_NOINIT)
@@ -2516,11 +2516,11 @@ static FRESULT find_volume (const char** path, FATFS** rfs, BYTE mode) {
     if (nclst <= MAX_FAT12)
       fmt = FS_FAT12;
 
-    /* Boundaries and Limits */
-    fs->n_fatent = nclst + 2;           /* Number of FAT entries */
-    fs->volbase = bsect;              /* Volume start sector */
-    fs->fatbase = bsect + nrsv;           /* FAT start sector */
-    fs->database = bsect + sysect;          /* Data start sector */
+    // Boundaries and Limits
+    fs->n_fatent = nclst + 2;       // Number of FAT entries
+    fs->volbase = bsect;            // Volume start sector
+    fs->fatbase = bsect + nrsv;     // FAT start sector
+    fs->database = bsect + sysect;  // Data start sector
     if (fmt == FS_FAT32) {
       if (ld_word (fs->win + BPB_FSVer32) != 0)
         return FR_NO_FILESYSTEM; /* (Must be FAT32 revision 0.0) */
@@ -2531,34 +2531,38 @@ static FRESULT find_volume (const char** path, FATFS** rfs, BYTE mode) {
       }
     else {
       if (fs->n_rootdir == 0)
-        return FR_NO_FILESYSTEM;/* (BPB_RootEntCnt must not be 0) */
-      fs->dirbase = fs->fatbase + fasize;     /* Root directory start sector */
-      szbfat = (fmt == FS_FAT16) ?        /* (Needed FAT size) */
-        fs->n_fatent * 2 : fs->n_fatent * 3 / 2 + (fs->n_fatent & 1);
+        return FR_NO_FILESYSTEM; // (BPB_RootEntCnt must not be 0) */
+      fs->dirbase = fs->fatbase + fasize;     // Root directory start sector */
+
+      // Needed FAT size)
+      szbfat = (fmt == FS_FAT16) ? fs->n_fatent * 2 : fs->n_fatent * 3 / 2 + (fs->n_fatent & 1);
       }
     if (fs->fsize < (szbfat + (SS(fs) - 1)) / SS(fs))
       return FR_NO_FILESYSTEM;  /* (BPB_FATSz must not be less than the size needed) */
 
-    /* Get FSINFO if available */
+    // Get FSINFO if available
     fs->last_clst = fs->free_clst = 0xFFFFFFFF;   /* Initialize cluster allocation information */
     fs->fsi_flag = 0x80;
-#if (_FS_NOFSINFO & 3) != 3
-    if (fmt == FS_FAT32       /* Enable FSINFO only if FAT32 and BPB_FSInfo32 == 1 */
-        && ld_word (fs->win + BPB_FSInfo32) == 1
-        && move_window (fs, bsect + 1) == FR_OK) {
-      fs->fsi_flag = 0;
-      if (ld_word (fs->win + BS_55AA) == 0xAA55  /* Load FSINFO data if available */
-          && ld_dword (fs->win + FSI_LeadSig) == 0x41615252
-          && ld_dword (fs->win + FSI_StrucSig) == 0x61417272) {
-#if (_FS_NOFSINFO & 1) == 0
-        fs->free_clst = ld_dword (fs->win + FSI_Free_Count);
-#endif
-#if (_FS_NOFSINFO & 2) == 0
-        fs->last_clst = ld_dword (fs->win + FSI_Nxt_Free);
-#endif
+
+    #if (_FS_NOFSINFO & 3) != 3
+      if (fmt == FS_FAT32       /* Enable FSINFO only if FAT32 and BPB_FSInfo32 == 1 */
+          && ld_word (fs->win + BPB_FSInfo32) == 1
+          && move_window (fs, bsect + 1) == FR_OK) {
+        fs->fsi_flag = 0;
+        if (ld_word (fs->win + BS_55AA) == 0xAA55  /* Load FSINFO data if available */
+            && ld_dword (fs->win + FSI_LeadSig) == 0x41615252
+            && ld_dword (fs->win + FSI_StrucSig) == 0x61417272) {
+
+          #if (_FS_NOFSINFO & 1) == 0
+            fs->free_clst = ld_dword (fs->win + FSI_Free_Count);
+          #endif
+
+          #if (_FS_NOFSINFO & 2) == 0
+            fs->last_clst = ld_dword (fs->win + FSI_Nxt_Free);
+          #endif
+          }
         }
-      }
-#endif  /* (_FS_NOFSINFO & 3) != 3 */
+    #endif
     }
 
   fs->fs_type = fmt; /* FAT sub-type */

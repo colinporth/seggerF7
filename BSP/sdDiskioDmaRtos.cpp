@@ -25,7 +25,7 @@ DSTATUS checkStatus() {
 
   gStat = STA_NOINIT;
 
-  if(BSP_SD_GetCardState() == MSD_OK)
+  if (BSP_SD_GetCardState() == MSD_OK)
     gStat &= ~STA_NOINIT;
 
   return gStat;
@@ -41,15 +41,18 @@ DSTATUS diskInit() {
   gStat = STA_NOINIT;
 
   if (osKernelRunning()) {
-    if (BSP_SD_Init() == MSD_OK)
+    auto result = BSP_SD_Init();
+    if (result == MSD_OK) {
       gStat = checkStatus();
+      cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskInit %d", gStat);
+      }
+    else
+      cLcd::mLcd->debug (LCD_COLOR_RED, "diskInit bspSdInit failed %d", result);
 
     if (gStat != STA_NOINIT) {
       osMessageQDef (sdQueue, QUEUE_SIZE, uint16_t);
       gSdQueueId = osMessageCreate (osMessageQ (sdQueue), NULL);
       }
-
-    //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskInit");
     }
 
   return gStat;
@@ -61,41 +64,35 @@ DRESULT diskIoctl (BYTE cmd, void* buf) {
   if (gStat & STA_NOINIT)
     return RES_NOTRDY;
 
-  DRESULT res = RES_ERROR;
-  BSP_SD_CardInfo CardInfo;
+  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskIoctl");
 
+  BSP_SD_CardInfo CardInfo;
   switch (cmd) {
     // Make sure that no pending write process
     case CTRL_SYNC :
-      res = RES_OK;
-      break;
+      return RES_OK;
 
     // Get number of sectors on the disk (DWORD)
     case GET_SECTOR_COUNT :
       BSP_SD_GetCardInfo (&CardInfo);
       *(DWORD*)buf = CardInfo.LogBlockNbr;
-      res = RES_OK;
-      break;
+      return RES_OK;
 
     // Get R/W sector size (WORD)
     case GET_SECTOR_SIZE :
       BSP_SD_GetCardInfo (&CardInfo);
       *(WORD*)buf = CardInfo.LogBlockSize;
-      res = RES_OK;
-      break;
+      return RES_OK;
 
     // Get erase block size in unit of sector (DWORD)
     case GET_BLOCK_SIZE :
       BSP_SD_GetCardInfo (&CardInfo);
       *(DWORD*)buf = CardInfo.LogBlockSize / 512;
-      res = RES_OK;
-      break;
+      return RES_OK;
 
     default:
-      res = RES_PARERR;
+      return RES_PARERR;
     }
-
-  return res;
   }
 //}}}
 
@@ -103,6 +100,7 @@ DRESULT diskIoctl (BYTE cmd, void* buf) {
 DRESULT diskRead (const BYTE* buf, uint32_t sector, uint32_t numSectors) {
 
   //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_read %p %d %d", buf, sector, numSectors);
+
   if ((uint32_t)buf & 0x3) {
     cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_read %p align fail", buf);
     return RES_ERROR;

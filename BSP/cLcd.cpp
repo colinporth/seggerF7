@@ -482,13 +482,14 @@ void cLcd::drawPix (uint16_t color, uint16_t x, uint16_t y) {
 void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
 
   if ((ascii >= 0x20) && (ascii <= 0x7f)) {
-    const uint16_t width = gFont16.mWidth;
-    const uint16_t byteAlignedWidth = (width + 7) / 8;
-    const uint16_t offset = (8 * byteAlignedWidth) - width - 1;
-    const uint8_t* fontChar = &gFont16.mTable [(ascii - ' ') * gFont16.mHeight * byteAlignedWidth];
+    auto width = gFont16.mWidth;
+    auto byteAlignedWidth = (width + 7) / 8;
+    auto offset = (8 * byteAlignedWidth) - width - 1;
+    auto fontChar = &gFont16.mTable [(ascii - ' ') * gFont16.mHeight * byteAlignedWidth];
+
+    auto dst = getWriteBuffer() + (pos.y * getWidth()) + pos.x;
 
     ready();
-    auto dst = getWriteBuffer() + (pos.y * getWidth()) + pos.x;
     for (auto fontLine = 0u; fontLine < gFont16.mHeight; fontLine++) {
       auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
       uint16_t fontLineBits = *fontPtr++;

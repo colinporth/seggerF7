@@ -23,8 +23,10 @@ public:
   uint8_t* getBmpHeader (uint32_t& headerLen);
   uint8_t* getFullJpgHeader (int qscale, uint32_t& headerLen);
   uint8_t* getSmallJpgHeader (int qscale, uint32_t& headerLen);
+
   uint8_t* getLastFrame (uint32_t& frameLen, bool& jpeg, uint32_t& frameId);
   uint8_t* getNextFrame (uint32_t& frameLen, bool& jpeg);
+  uint32_t getFrameLen() { return mFrameLen; }
 
   void setFocus (int value);
 

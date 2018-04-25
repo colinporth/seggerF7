@@ -85,11 +85,9 @@ void BSP_SDMMC_DMA_Tx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmatx); }
 void BSP_SDMMC_DMA_Rx_IRQHandler() { HAL_DMA_IRQHandler (uSdHandle.hdmarx); }
 
 //{{{
-uint8_t BSP_SD_Init()
-{
-  uint8_t sd_state = MSD_OK;
+uint8_t BSP_SD_Init() {
 
-  /* uSD device interface configuration */
+  // uSD device interface configuration */
   uSdHandle.Instance = SDMMC1;
   uSdHandle.Init.ClockEdge           = SDMMC_CLOCK_EDGE_RISING;
   uSdHandle.Init.ClockBypass         = SDMMC_CLOCK_BYPASS_DISABLE;
@@ -97,28 +95,19 @@ uint8_t BSP_SD_Init()
   uSdHandle.Init.BusWide             = SDMMC_BUS_WIDE_1B;
   uSdHandle.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
   uSdHandle.Init.ClockDiv            = SDMMC_TRANSFER_CLK_DIV;
-  BSP_SD_Detect_MspInit (&uSdHandle, NULL);
 
+  // card inserted
+  BSP_SD_Detect_MspInit (&uSdHandle, NULL);
   if (BSP_SD_IsDetected() != SD_PRESENT)
     return MSD_ERROR_SD_NOT_PRESENT;
 
-  /* Msp SD initialization */
+  // card talking
   BSP_SD_MspInit (&uSdHandle, NULL);
-
-  /* HAL SD initialization */
   if (HAL_SD_Init (&uSdHandle) != HAL_OK)
-    sd_state = MSD_ERROR;
+    return MSD_ERROR;
 
-  /* Configure SD Bus width */
-  if (sd_state == MSD_OK) {
-    /* Enable wide operation */
-    if (HAL_SD_ConfigWideBusOperation (&uSdHandle, SDMMC_BUS_WIDE_4B) != HAL_OK)
-      sd_state = MSD_ERROR;
-    else
-      sd_state = MSD_OK;
-    }
-
-  return  sd_state;
+  // Enable wide operation
+  return (HAL_SD_ConfigWideBusOperation (&uSdHandle, SDMMC_BUS_WIDE_4B) == HAL_OK) ? MSD_OK : MSD_ERROR;
   }
 //}}}
 //{{{

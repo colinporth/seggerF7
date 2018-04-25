@@ -84,8 +84,8 @@ const char kHtmlBody[] =
 //{{{
 class cApp : public cTouch {
 public:
-  const uint16_t kBoxWidth = 60;
-  const uint16_t kBoxHeight = 30;
+  const uint16_t kBoxWidth = 80;
+  const uint16_t kBoxHeight = 36;
   //{{{
   class cBox {
   public:
@@ -184,6 +184,15 @@ public:
 
   //{{{
   cApp (int x, int y) : cTouch (x,y) {
+
+    mLcd = new cLcd (14);
+    mLcd->init();
+
+    //mPs2 = new cPs2 (mLcd);
+    //mPs2->initKeyboard();
+    //mscInit (mLcd);
+    //mscStart();
+
     mCinfo.err = jpeg_std_error (&jerr);
     jpeg_create_decompress (&mCinfo);
     }
@@ -194,7 +203,6 @@ public:
     }
   //}}}
 
-  void init();
   void run();
 
   cPs2* getPs2() { return mPs2; }
@@ -286,8 +294,8 @@ private:
   DWORD mVsn = 0;
   int mFiles = 0;
 
-  bool mValueChanged = false;
-  bool mValue = false;
+  bool mJpegChanged = false;
+  bool mJpeg = false;
 
   bool mDebugChanged = false;
   bool mDebugValue = true;
@@ -547,60 +555,46 @@ private:
 //}}}
 
 FATFS gFatFs;  // encourges allocation in lower DTCM SRAM
-FIL   gFile;
-cApp* gApp;
+FIL   gFile = { 0 };
+cApp* gApp = { 0 };
 
 extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 
 // public
 //{{{
-void cApp::init() {
-
-  mLcd = new cLcd (14);
-  mLcd->init();
-
-  diskInit();
-
-  //{{{  removed
-  //mPs2 = new cPs2 (mLcd);
-  //mPs2->initKeyboard();
-  //}}}
-  //mscInit (mLcd);
-  //mscStart();
-  }
-//}}}
-//{{{
 void cApp::run() {
+
+  bool mounted = !f_mount (&gFatFs, "", 1);
+  if (!mounted)
+    mLcd->debug (LCD_COLOR_GREEN, "sdCard not mounted");
 
   mCam = new cCamera();
   mCam->init (kCamBuf, kCamBufEnd);
 
   // define menu
   add (new cCameraBox (getWidth(), getHeight(), mCam), 0,0);
-  add (new cToggleBox (kBoxWidth,kBoxHeight, "jpeg", mValue, mValueChanged), 0,getHeight()-kBoxHeight);
+  add (new cToggleBox (kBoxWidth,kBoxHeight, "jpeg", mJpeg, mJpegChanged), 0,getHeight()-kBoxHeight);
   addRight (new cToggleBox (kBoxWidth,kBoxHeight, "debug", mDebugValue, mDebugChanged));
   addRight (new cInstantBox (kBoxWidth,kBoxHeight, "clear", mClearDebugChanged));
   addRight (new cValueBox (kBoxWidth,kBoxHeight, "f", 0,254, mFocus, mFocusChanged));
 
-  bool mounted = !f_mount (&gFatFs, "", 1);
   if (mounted) {
-    //{{{  mounted, load splash piccy
+    //{{{  mounted, load splash piccy, make buttons
     f_getlabel ("", mLabel, &mVsn);
     mLcd->debug (LCD_COLOR_WHITE, "sdCard ok - %s ", mLabel);
 
     loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
     char path[40] = "/";
+
     auto numFiles = getCountFiles (path);
     mLcd->debug (LCD_COLOR_WHITE, "- files %d", numFiles);
+
+    if (mCam) {
+      addRight (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
+      addRight (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
+      }
     }
     //}}}
-  else
-    mLcd->debug (LCD_COLOR_GREEN, "sdCard not mounted");
-
-  if (mounted && mCam) {
-    addRight (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
-    addRight (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
-    }
 
   uint32_t fileNum = 1;
   uint32_t frameNum = 0;
@@ -612,11 +606,10 @@ void cApp::run() {
     //  }
     //}}}
 
-    uint32_t frameLen;
-    bool jpeg;
-    auto frame = mCam->getNextFrame (frameLen, jpeg);
-
     if (mounted) {
+      uint32_t frameLen;
+      bool jpeg;
+      auto frame = mCam->getNextFrame (frameLen, jpeg);
       if (frame) {
         if (jpeg) {
           if (mTakeChanged) {
@@ -668,21 +661,10 @@ void cApp::run() {
         }
       }
 
-    for (auto box : mBoxes)
-      if (box->getEnabled())
-        box->onDraw (mLcd);
-    mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
-    mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%d",
-                                          osGetCPUUsage(), xPortGetFreeHeapSize(), mCam->getFps(),
-                                          frameLen, mCam->getStatus(), mCam->getDmaCount());
-    if (mDebugValue)
-      mLcd->drawDebug();
-    mLcd->present();
-
-    if (mValueChanged) {
+    if (mJpegChanged) {
       //{{{  jpeg
-      mValueChanged = false;
-      mValue ? mCam->capture() : mCam->preview();
+      mJpegChanged = false;
+      mJpeg ? mCam->capture() : mCam->preview();
 
       fileNum++;
       frameNum = 0;
@@ -700,6 +682,18 @@ void cApp::run() {
       mCam->setFocus (mFocus);
       }
       //}}}
+
+    // draw
+    for (auto box : mBoxes)
+      if (box->getEnabled())
+        box->onDraw (mLcd);
+    mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
+    mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%d",
+                                          osGetCPUUsage(), xPortGetFreeHeapSize(), mCam->getFps(),
+                                          mCam->getFrameLen(), mCam->getStatus(), mCam->getDmaCount());
+    if (mDebugValue)
+      mLcd->drawDebug();
+    mLcd->present();
     }
   }
 //}}}
@@ -1258,7 +1252,6 @@ int main() {
   BSP_PB_Init (BUTTON_KEY, BUTTON_MODE_GPIO);
 
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
-  gApp->init();
 
   sys_thread_new ("app", appThread, NULL, 10000, osPriorityNormal);
   sys_thread_new ("net", netThread, NULL, 1024, osPriorityNormal);
