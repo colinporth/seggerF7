@@ -200,6 +200,7 @@ public:
   //{{{
   ~cApp() {
     jpeg_destroy_decompress (&mCinfo);
+    delete mLcd;
     }
   //}}}
 
@@ -684,9 +685,8 @@ void cApp::run() {
       //}}}
 
     // draw
-    for (auto box : mBoxes)
-      if (box->getEnabled())
-        box->onDraw (mLcd);
+    mLcd->start();
+    for (auto box : mBoxes) box->onDraw (mLcd);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%d",
                                           osGetCPUUsage(), xPortGetFreeHeapSize(), mCam->getFps(),
@@ -1256,6 +1256,7 @@ int main() {
   sys_thread_new ("app", appThread, NULL, 10000, osPriorityNormal);
   sys_thread_new ("net", netThread, NULL, 1024, osPriorityNormal);
   sys_thread_new ("touch", touchThread, NULL, 512, osPriorityNormal);
+
   osKernelStart();
   }
 //}}}

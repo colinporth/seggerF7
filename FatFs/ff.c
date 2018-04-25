@@ -2380,7 +2380,7 @@ static FRESULT find_volume (const char** path, FATFS** rfs, BYTE mode) {
       }
     }
 
-  // file system object is not valid. 
+  // file system object is not valid.
   // - mount the volume. (analyze BPB and initialize the fs object) */
   fs->fs_type = 0;            /* Clear the file system object */
   fs->drv = LD2PD(vol);       /* Bind the logical drive and a physical drive */
@@ -2660,6 +2660,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
 
   const UINT n_fats = 1;      // Number of FATs for FAT12/16/32 volume (1 or 2) */
   const UINT n_rootdir = 512; // Number of root directory entries for FAT12/16 volume */
+
   static const WORD cst[] = {1, 4, 16, 64, 256, 512, 0};  // Cluster size boundary for FAT12/16 volume (4Ks unit) */
   static const WORD cst32[] = {1, 2, 4, 8, 16, 32, 0};    // Cluster size boundary for FAT32 volume (128Ks unit) */
 
@@ -2671,7 +2672,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
   UINT i;
   DWORD tbl[3];
 
-  // Check mounted drive and clear work area
+  //{{{  Check mounted drive and clear work area
   int vol = get_ldnumber (&path);
   if (vol < 0)
     return FR_INVALID_DRIVE;
@@ -2679,38 +2680,38 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     FatFs[vol]->fs_type = 0;  // Clear the volume
   BYTE pdrv = LD2PD(vol);  // Physical drive
   BYTE part = LD2PT(vol);  // Partition (0:create as new, 1-4:get from partition table) /
-
-  // Check physical drive status
+  //}}}
+  //{{{  Check physical drive status
   DSTATUS stat = diskInit();
   if (stat & STA_NOINIT)
     return FR_NOT_READY;
   if (stat & STA_PROTECT)
     return FR_WRITE_PROTECTED;
-
-  // Erase block to align data area
+  //}}}
+  //{{{  Erase block to align data area
   if (diskIoctl (GET_BLOCK_SIZE, &sz_blk) != RES_OK || !sz_blk || sz_blk > 32768 || (sz_blk & (sz_blk - 1)))
     sz_blk = 1;
-#if _MAX_SS != _MIN_SS    // Get sector size of the medium if variable sector size cfg
-  if (diskIoctl (GET_SECTOR_SIZE, &ss) != RES_OK)
-    return FR_DISK_ERR;
-  if (ss > _MAX_SS || ss < _MIN_SS || (ss & (ss - 1)))
-    return FR_DISK_ERR;
-#else
-  ss = _MAX_SS;
-#endif
+  #if _MAX_SS != _MIN_SS    // Get sector size of the medium if variable sector size cfg
+    if (diskIoctl (GET_SECTOR_SIZE, &ss) != RES_OK)
+      return FR_DISK_ERR;
+    if (ss > _MAX_SS || ss < _MIN_SS || (ss & (ss - 1)))
+      return FR_DISK_ERR;
+  #else
+    ss = _MAX_SS;
+  #endif
 
   if ((au != 0 && au < ss) || au > 0x1000000 || (au & (au - 1)))
     return FR_INVALID_PARAMETER; // Check if au is valid
   au /= ss; // Cluster size in unit of sector
-
-  // Get working buffer
+  //}}}
+  //{{{  Get working buffer
   buf = (BYTE*)work;
   sz_buf = len / ss;      // Size of working buffer (sector)
   szb_buf = sz_buf * ss;  // Size of working buffer (byte)
   if (!szb_buf)
     return FR_MKFS_ABORTED;
-
-  // Determine where the volume to be located (b_vol, sz_vol) */
+  //}}}
+  //{{{  Determine where the volume to be located (b_vol, sz_vol) */
   // Create a single-partition in this function
   if (diskIoctl (GET_SECTOR_COUNT, &sz_vol) != RES_OK)
     return FR_DISK_ERR;
@@ -2724,8 +2725,8 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
   // Check if volume size is >=128s
   if (sz_vol < 128)
     return FR_MKFS_ABORTED;
-
-  // Pre-determine the FAT type
+  //}}}
+  //{{{  Pre-determine the FAT type
   do {
     if (opt & FM_EXFAT) {
       // exFAT possible? */
@@ -2751,6 +2752,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
       return FR_INVALID_PARAMETER; // no-FAT?
     fmt = FS_FAT16;
     } while (0);
+  //}}}
 
   if (fmt == FS_EXFAT) {
     //{{{  create an exFAT volume
@@ -2764,7 +2766,8 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     tbl[0] = b_vol;
     tbl[1] = b_vol + sz_vol - 1;  /* Inform the device the volume area may be erased */
     diskIoctl (CTRL_TRIM, tbl);
-    /* Determine FAT location, data location and number of clusters */
+
+    //{{{  Determine FAT location, data location and number of clusters */
     if (!au) {  /* au auto-selection */
       au = 8;
       if (sz_vol >= 0x80000)
@@ -2786,8 +2789,8 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
 
     szb_bit = (n_clst + 7) / 8;           /* Size of allocation bitmap */
     tbl[0] = (szb_bit + au * ss - 1) / (au * ss); /* Number of allocation bitmap clusters */
-
-    /* Create a compressed up-case table */
+    //}}}
+    //{{{  Create a compressed up-case table */
     sect = b_data + au * tbl[0];  /* Table start sector */
     sum = 0;            /* Table checksum to be stored in the 82 entry */
     st = si = i = j = szb_case = 0;
@@ -2826,8 +2829,8 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
       } while (si);
     tbl[1] = (szb_case + au * ss - 1) / (au * ss);  /* Number of up-case table clusters */
     tbl[2] = 1;                   /* Number of root dir clusters */
-
-    /* Initialize the allocation bitmap */
+    //}}}
+    //{{{  Initialize the allocation bitmap */
     sect = b_data; nsect = (szb_bit + ss - 1) / ss; /* Start of bitmap and number of sectors */
     nb = tbl[0] + tbl[1] + tbl[2];          /* Number of clusters in-use by system */
     do {
@@ -2840,8 +2843,8 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
       sect += n;
       nsect -= n;
       } while (nsect);
-
-    /* Initialize the FAT */
+    //}}}
+    //{{{  Initialize the FAT */
     sect = b_fat; nsect = sz_fat; /* Start of FAT and number of FAT sectors */
     j = nb = cl = 0;
     do {
@@ -2854,7 +2857,8 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
         i += 4;
         cl++;
         }
-      do {      /* Create chains of bitmap, up-case and root dir */
+      do {   
+        // Create chains of bitmap, up-case and root dir */
         while (nb && i < szb_buf) {     /* Create a chain */
           st_dword(buf + i, (nb > 1) ? cl + 1 : 0xFFFFFFFF);
           i += 4;
@@ -2869,8 +2873,8 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
         return FR_DISK_ERR;
       sect += n; nsect -= n;
       } while (nsect);
-
-    /* Initialize the root directory */
+    //}}}
+    //{{{  Initialize the root directory */
     memset (buf, 0, szb_buf);
     buf[SZDIRE * 0 + 0] = 0x83;   /* 83 entry (volume label) */
     buf[SZDIRE * 1 + 0] = 0x81;   /* 81 entry (allocation bitmap) */
@@ -2881,7 +2885,8 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     st_dword (buf + SZDIRE * 2 + 20, 2 + tbl[0]);
     st_dword (buf + SZDIRE * 2 + 24, szb_case);
     sect = b_data + au * (tbl[0] + tbl[1]); nsect = au; /* Start of the root directory and number of sectors */
-    do {  /* Fill root directory sectors */
+    do {  
+      // Fill root directory sectors */
       n = (nsect > sz_buf) ? sz_buf : nsect;
       if (diskWrite (buf, sect, n) != RES_OK)
         return FR_DISK_ERR;
@@ -2889,11 +2894,11 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
       sect += n;
       nsect -= n;
       } while (nsect);
-
-    /* Create two set of the exFAT VBR blocks */
+    //}}}
+    //{{{  Create two set of the exFAT VBR blocks */
     sect = b_vol;
     for (n = 0; n < 2; n++) {
-      //{{{  Main record (+0) */
+      //  Main record (+0) */
       memset (buf, 0, ss);
       memcpy (buf + BS_JmpBoot, "\xEB\x76\x90" "EXFAT   ", 11); /* Boot jump code (x86), OEM name */
       st_dword (buf + BPB_VolOfsEx, b_vol);          /* Volume offset in the physical drive [sector] */
@@ -2947,7 +2952,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
         return FR_DISK_ERR;
       //}}}
       }
-      //}}}
+    //}}}
     }
     //}}}
   else {
@@ -3136,7 +3141,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     }
     //}}}
 
-  // Determine system ID in the partition table
+  //{{{  Determine system ID in the partition table
   if (fmt == FS_EXFAT)
     sys = 0x07;
   else if (fmt == FS_FAT32)
@@ -3145,10 +3150,10 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     sys = 0x06;
   else
     sys = (fmt == FS_FAT16) ? 0x04 : 0x01;
-
-  // Update partition information
+  //}}}
+  //{{{  Update partition information
   if (!(opt & FM_SFD)) {
-    //{{{  create partition table if in FDISK format
+    // create partition table if in FDISK format
     memset (buf, 0, ss);
     st_word (buf + BS_55AA, 0xAA55);   // MBR signature
 
@@ -3171,7 +3176,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     if (diskWrite (buf, 0, 1) != RES_OK)
       return FR_DISK_ERR;
     }
-    //}}}
+  //}}}
 
   if (diskIoctl (CTRL_SYNC, 0) != RES_OK)
     return FR_DISK_ERR;

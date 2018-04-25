@@ -35,7 +35,6 @@ public:
 
   // flipped display
   void start();
-  void start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, int zoom, cPoint zoomCentre);
   void drawInfo (uint16_t color, uint16_t column, const char* format, ... );
   void drawDebug();
   void present();
@@ -89,7 +88,7 @@ public:
   static SemaphoreHandle_t mDma2dSem;
 
 private:
-  void layerInit (uint32_t buffer);
+  void layerInit();
 
   uint16_t* getWriteBuffer();
 
@@ -109,8 +108,6 @@ private:
     uint32_t mColour = 0;
     };
   //}}}
-
-  bool mFlip = false;
 
   uint16_t mDisplayLines;
   unsigned mDebugLine = 0;

@@ -27,15 +27,15 @@ extern const sFONT gFont16;
 #define LCD_BL_CTRL_GPIO_CLK_ENABLE()    __HAL_RCC_GPIOK_CLK_ENABLE()
 #define LCD_BL_CTRL_GPIO_CLK_DISABLE()   __HAL_RCC_GPIOK_CLK_DISABLE()
 //}}}
-#define freeRtos
-
 LTDC_HandleTypeDef hLtdcHandler;
 
 cLcd* cLcd::mLcd = nullptr;
 bool cLcd::mFrameWait = false;
 SemaphoreHandle_t cLcd::mFrameSem;
 SemaphoreHandle_t cLcd::mDma2dSem;
+
 bool mDma2dWait = false;
+uint16_t* gFrameBuf = (uint16_t*)SDRAM_DEVICE_ADDR;
 
 extern "C" {
   //{{{
@@ -46,13 +46,11 @@ extern "C" {
       if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_LI) != RESET) {
         __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_LI);
 
-        #ifdef freeRtos
         if (cLcd::mFrameWait) {
           portBASE_TYPE taskWoken = pdFALSE;
           if (xSemaphoreGiveFromISR (cLcd::mFrameSem, &taskWoken) == pdTRUE)
             portEND_SWITCHING_ISR (taskWoken);
           }
-        #endif
         cLcd::mFrameWait = false;
         }
       }
@@ -254,9 +252,7 @@ void cLcd::init() {
   LTDC->LIPCR = 0;
   mFrameWait = false;
 
-  #ifdef freeRtos
-    vSemaphoreCreateBinary (mFrameSem);
-  #endif
+  vSemaphoreCreateBinary (mFrameSem);
 
   // enable transferError,fifoUnderrun interrupt
   __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_TE);
@@ -286,7 +282,7 @@ void cLcd::init() {
   HAL_NVIC_SetPriority (DMA2D_IRQn, 0x0F, 0);
   HAL_NVIC_EnableIRQ (DMA2D_IRQn);
 
-  layerInit (SDRAM_DEVICE_ADDR);
+  layerInit();
 
   displayOn();
   }
@@ -296,80 +292,8 @@ uint16_t cLcd::GetTextHeight() { return gFont16.mHeight; }
 
 //{{{
 void cLcd::start() {
-
   mFrameWait = true;
-#ifdef freeRtos
   xSemaphoreTake (mFrameSem, 100);
-#else
-  while (mFrameWait) { HAL_Delay(1); }
-#endif
-
-  clear (LCD_COLOR_BLACK);
-  }
-//}}}
-//{{{
-void cLcd::start (uint16_t* src, uint16_t srcXsize, uint16_t srcYsize, int zoom, cPoint zoomCentre) {
-// copy src to screen
-
-  mFrameWait = true;
-#ifdef freeRtos
-  xSemaphoreTake (mFrameSem, 100);
-#else
-  while (mFrameWait) { HAL_Delay(1); }
-#endif
-
-  uint16_t* dst = getWriteBuffer();
-
-  if (zoom) {
-    // 1:1 pixel copy, centre of src to centre of screen
-    int xcopy = (getWidth() > srcXsize) ? srcXsize : getWidth();
-    int xpad = (getWidth() > srcXsize) ? (getWidth() - srcXsize) / 2 : 0;
-
-    if (srcXsize > getWidth())
-      src += -zoomCentre.x + (srcXsize-getWidth()) / 2;
-
-    if (srcYsize >= getHeight())
-      src += (-zoomCentre.y + (srcYsize - getHeight()) / 2) * srcXsize;
-    else
-      src += (-zoomCentre.y + (getHeight() - srcYsize) / 2) * srcXsize;
-
-    for (uint16_t y = 0; y < getHeight(); y++) {
-      memset (dst, 0, xpad*2);
-      dst += xpad;
-
-      memcpy (dst, src, xcopy*2);
-      src += srcXsize;
-      dst += xcopy;
-
-      memset (dst, 0, xpad*2);
-      dst += xpad;
-      }
-    }
-
-  else {
-    // scaled copy to fit all of xsize on screen
-    int srcScale = ((srcXsize-1) / getWidth()) + 1;
-    int xpad = (getWidth() - (srcXsize/srcScale)) / 2;
-
-    if (srcYsize >= getHeight())
-      src += (((srcYsize/srcScale) - getHeight()) / 2) * srcXsize;
-    else
-      src += ((getHeight() - srcYsize) / 2) * srcXsize;
-
-    for (uint16_t y = 0; y < getHeight(); y++) {
-      memset (dst, 0, xpad*2);
-      dst += xpad;
-
-      for (uint16_t x = 0; x < getWidth() - xpad - xpad; x++) {
-        *dst++ = *src;
-        src += srcScale;
-        }
-      src += (srcScale - 1) * srcXsize;
-
-      memset (dst, 0, xpad*2);
-      dst += xpad;
-      }
-    }
   }
 //}}}
 //{{{
@@ -405,9 +329,9 @@ void cLcd::drawDebug() {
 //{{{
 void cLcd::present() {
 
-  LTDC_Layer1->CFBAR = (uint32_t)getWriteBuffer();
+  LTDC_Layer1->CFBAR = (uint32_t)gFrameBuf;
   LTDC->SRCR = LTDC_SRCR_VBR;
-  mFlip = !mFlip;
+  gFrameBuf = (uint16_t*)(((uint32_t)gFrameBuf == SDRAM_DEVICE_ADDR) ? SDRAM_DEVICE_ADDR + 0x40000 : SDRAM_DEVICE_ADDR);
   }
 //}}}
 
@@ -466,7 +390,7 @@ void cLcd::clearDebug() {
 uint16_t cLcd::readPix (uint16_t x, uint16_t y) {
 
   ready();
-  return *(getWriteBuffer() + y*getWidth() + x);
+  return *(gFrameBuf + y*getWidth() + x);
   }
 //}}}
 //{{{
@@ -474,7 +398,7 @@ void cLcd::drawPix (uint16_t color, uint16_t x, uint16_t y) {
 // Write data value to all SDRAM memory
 
   ready();
-  *(getWriteBuffer() + y*getWidth() + x) = (uint16_t)color;
+  *(gFrameBuf + y*getWidth() + x) = (uint16_t)color;
   }
 //}}}
 
@@ -487,7 +411,7 @@ void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
     auto offset = (8 * byteAlignedWidth) - width - 1;
     auto fontChar = &gFont16.mTable [(ascii - ' ') * gFont16.mHeight * byteAlignedWidth];
 
-    auto dst = getWriteBuffer() + (pos.y * getWidth()) + pos.x;
+    auto dst = gFrameBuf + (pos.y * getWidth()) + pos.x;
 
     ready();
     for (auto fontLine = 0u; fontLine < gFont16.mHeight; fontLine++) {
@@ -569,36 +493,29 @@ void cLcd::clearStringLine (uint16_t color, uint16_t line) {
 //}}}
 
 //{{{
-void cLcd::clear (uint16_t color) {
-  cRect rect (getSize());
-  fillRect (color, rect);
-  }
-//}}}
-//{{{
-void cLcd::drawRect (uint16_t color, cRect& rect, uint16_t thickness) {
+void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
+// dma2d hogs bandwidth
 
-  drawRect (color, rect.left, rect.top, rect.getWidth(), rect.getHeight(), thickness);
-  }
-//}}}
-//{{{
-void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t thickness) {
+  ready();
 
-  // draw horizontal lines
-  fillRect (color, x, y, width, thickness);
-  fillRect (color, x, (y + height)-thickness, width, thickness);
+  auto pitch = getWidth() - rect.getWidth();
+  auto dst = gFrameBuf + rect.top*getWidth() + rect.left;
 
-  // draw vertical lines
-  fillRect (color, x, y, thickness, height);
-  fillRect (color, (x + width)-thickness, y, thickness, height);
+  for (auto y = 0; y < rect.getHeight(); y++) {
+    for (auto x = 0; x < rect.getWidth(); x++)
+      *dst++ = color;
+    dst += pitch;
+    }
   }
 //}}}
 //{{{
 void cLcd::fillRect (uint16_t color, cRect& rect) {
 
   ready();
+
   DMA2D->OCOLR = color;
   DMA2D->OOR = getWidth() - rect.getWidth();
-  DMA2D->OMAR = (uint32_t)(getWriteBuffer() + rect.top*getWidth() + rect.left);
+  DMA2D->OMAR = (uint32_t)(gFrameBuf + rect.top*getWidth() + rect.left);
   DMA2D->NLR = (rect.getWidth() << 16) |  rect.getHeight();
 
   // start transfer
@@ -614,17 +531,27 @@ void cLcd::fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uin
   }
 //}}}
 //{{{
-void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
-// dma2d hogs bandwidth
+void cLcd::clear (uint16_t color) {
+  cRect rect (getSize());
+  fillRect (color, rect);
+  }
+//}}}
+//{{{
+void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t thickness) {
 
-  auto pitch = getWidth() - rect.getWidth();
-  auto dst = getWriteBuffer() + rect.top*getWidth() + rect.left;
+  // draw horizontal lines
+  fillRect (color, x, y, width, thickness);
+  fillRect (color, x, (y + height)-thickness, width, thickness);
 
-  for (auto y = 0; y < rect.getHeight(); y++) {
-    for (auto x = 0; x < rect.getWidth(); x++)
-      *dst++ = color;
-    dst += pitch;
-    }
+  // draw vertical lines
+  fillRect (color, x, y, thickness, height);
+  fillRect (color, (x + width)-thickness, y, thickness, height);
+  }
+//}}}
+//{{{
+void cLcd::drawRect (uint16_t color, cRect& rect, uint16_t thickness) {
+
+  drawRect (color, rect.left, rect.top, rect.getWidth(), rect.getHeight(), thickness);
   }
 //}}}
 
@@ -884,7 +811,7 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRe
   uint32_t yStep16 = uint32_t(0x10000 / zoomy);
 
   uint16_t* srcBase = src + (srcY * srcPitch) + srcX;
-  uint16_t* dst = getWriteBuffer() + (dstRect.top * getWidth()) + dstRect.left;
+  uint16_t* dst = gFrameBuf + (dstRect.top * getWidth()) + dstRect.left;
 
   // frame
   for (uint32_t y16 = (srcY<<16); y16 < ((srcY + dstRect.getHeight()) * yStep16); y16 += yStep16) {
@@ -1773,16 +1700,12 @@ void cLcd::displayOff() {
 //}}}
 
 // private
+uint16_t* cLcd::getWriteBuffer() { return gFrameBuf; }
 //{{{
-uint16_t* cLcd::getWriteBuffer() {
-  return (uint16_t*)(mFlip ? SDRAM_DEVICE_ADDR + 0x40000 : SDRAM_DEVICE_ADDR);
-  }
-//}}}
-//{{{
-void cLcd::layerInit (uint32_t buffer) {
+void cLcd::layerInit() {
 
-  // config  color frame buffer start address
-  LTDC_Layer1->CFBAR = buffer;
+  // config color frame buffer start address
+  LTDC_Layer1->CFBAR = (uint32_t)gFrameBuf;
 
   // pixel format
   LTDC_Layer1->PFCR &= ~(LTDC_LxPFCR_PF);
