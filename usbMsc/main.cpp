@@ -324,6 +324,8 @@ public:
 
     mCinfo.err = jpeg_std_error (&jerr);
     jpeg_create_decompress (&mCinfo);
+
+    mZoom = height / (float)mCam->getHeight();
     }
   //}}}
   virtual ~cCameraBox() {
@@ -331,19 +333,19 @@ public:
     }
 
   bool onPress (cPoint pos, uint8_t z)  {
-    mZoom = 1.f;
-    mZoomCentre = {0,0};
+    mZoomCentre = pos - getCentre();
+    mZoom = 2.f;
     return true;
     }
 
   bool onMove (cPoint pos, cPoint inc, uint8_t z)  {
-    //mZoom +=  inc.x / 8.f;
     mZoomCentre += inc;
     return true;
     }
 
   bool onRelease (cPoint pos, uint8_t z)  {
-    mZoom = 0.5f;
+    mZoomCentre = {0,0};
+    mZoom = getHeight() / (float)mCam->getHeight();
     return true;
     }
 

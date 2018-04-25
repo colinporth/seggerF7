@@ -400,27 +400,26 @@ void cLcd::drawPix (uint16_t color, uint16_t x, uint16_t y) {
 //}}}
 
 //{{{
-void cLcd::zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRect, float zoomx, float zoomy) {
+void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect, float zoomx, float zoomy) {
 // srcCentre is offset from srcCentre to dstCentre
 
-  int srcPitch = srcSize.x;
+  uint32_t srcPitch = srcSize.x;
+  uint32_t srcSize16x = srcSize.x * 0x10000;
+  uint32_t srcSize16y = srcSize.y * 0x10000;
 
   int32_t inc16x = int32_t (0x10000 / zoomx);
-  int32_t src16x = (srcSize.x * 0x8000) - ((dstRect.getWidth() * inc16x) / 2);
+  int32_t src16x = -(srcPos.x * 0x10000) + (srcSize.x * 0x8000) - ((dstRect.getWidth() * inc16x) / 2);
 
   int32_t inc16y = int32_t (0x10000 / zoomy);
-  int32_t src16y = (srcSize.y * 0x8000) - ((dstRect.getHeight() * inc16y) / 2);
+  int32_t src16y = -(srcPos.y * 0x10000) + (srcSize.y * 0x8000) - ((dstRect.getHeight() * inc16y) / 2);
 
   uint16_t* dst = gFrameBuf + (dstRect.top * getWidth()) + dstRect.left;
   for (uint16_t dsty = 0; dsty < dstRect.getHeight(); dsty++) {
-    // line
-    int32_t srcy = src16y / 0x10000;
-    uint16_t* srcPtr = src + (srcy * srcPitch);
+    uint16_t* srcPtr = src + ((src16y >> 16) * srcPitch);
 
     int32_t x16 = src16x;
     for (uint16_t dstx = 0; dstx < dstRect.getWidth(); dstx++) {
-      int32_t srcx = x16 / 0x10000;
-      *dst++ = ((srcx < 0) || (srcx >= srcSize.x)) ? 0 : *(srcPtr + srcx);
+      *dst++ = ((x16 < 0) || (x16 >= srcSize16x)) ? 0 : *(srcPtr + (x16 >> 16));
       x16 += inc16x;
       }
 
