@@ -27,8 +27,6 @@ extern const sFONT gFont16;
 #define LCD_BL_CTRL_GPIO_CLK_ENABLE()    __HAL_RCC_GPIOK_CLK_ENABLE()
 #define LCD_BL_CTRL_GPIO_CLK_DISABLE()   __HAL_RCC_GPIOK_CLK_DISABLE()
 //}}}
-LTDC_HandleTypeDef hLtdcHandler;
-
 cLcd* cLcd::mLcd = nullptr;
 bool cLcd::mFrameWait = false;
 SemaphoreHandle_t cLcd::mFrameSem;
@@ -42,25 +40,21 @@ extern "C" {
   void LTDC_IRQHandler() {
 
     // line Interrupt
-    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_LI) != RESET) {
-      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_LI) != RESET) {
-        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_LI);
+    if ((LTDC->ISR & LTDC_FLAG_LI) != RESET) {
+      LTDC->ICR = LTDC_FLAG_LI;
 
-        if (cLcd::mFrameWait) {
-          portBASE_TYPE taskWoken = pdFALSE;
-          if (xSemaphoreGiveFromISR (cLcd::mFrameSem, &taskWoken) == pdTRUE)
-            portEND_SWITCHING_ISR (taskWoken);
-          }
-        cLcd::mFrameWait = false;
+      if (cLcd::mFrameWait) {
+        portBASE_TYPE taskWoken = pdFALSE;
+        if (xSemaphoreGiveFromISR (cLcd::mFrameSem, &taskWoken) == pdTRUE)
+          portEND_SWITCHING_ISR (taskWoken);
         }
+      cLcd::mFrameWait = false;
       }
 
     // register reload Interrupt
-    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_RR) != RESET) {
-      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_RR) != RESET) {
-        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_RR);
-        cLcd::mLcd->debug (LCD_COLOR_YELLOW, "cLcd reload IRQ");
-        }
+    if ((LTDC->ISR & LTDC_FLAG_RR) != RESET) {
+      LTDC->ICR = LTDC_FLAG_RR;
+      cLcd::mLcd->debug (LCD_COLOR_YELLOW, "cLcd reload IRQ");
       }
     }
   //}}}
@@ -68,18 +62,12 @@ extern "C" {
   void LTDC_ER_IRQHandler() {
 
     // transfer Error Interrupt
-    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_TE) != RESET)
-      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_TE) != RESET) {
-        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_TE);
-        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_TE);
-        }
+    if ((LTDC->ISR &  LTDC_FLAG_TE) != RESET)
+      LTDC->ICR = LTDC_IT_TE;
 
     // FIFO underrun Interrupt
-    if (__HAL_LTDC_GET_FLAG (&hLtdcHandler, LTDC_FLAG_FU) != RESET)
-      if (__HAL_LTDC_GET_IT_SOURCE (&hLtdcHandler, LTDC_IT_FU) != RESET) {
-        __HAL_LTDC_DISABLE_IT (&hLtdcHandler, LTDC_IT_FU);
-        __HAL_LTDC_CLEAR_FLAG (&hLtdcHandler, LTDC_FLAG_FU);
-        }
+    if ((LTDC->ISR &  LTDC_FLAG_FU) != RESET)
+      LTDC->ICR = LTDC_FLAG_FU;
     }
   //}}}
   //{{{
@@ -153,7 +141,7 @@ void cLcd::init() {
   HAL_GPIO_Init (LCD_BL_CTRL_GPIO_PORT, &gpio_init_structure);
   //}}}
   BSP_SDRAM_Init();
-  //{{{  init hLtdcHandler, ltdc
+  //{{{  ltdc init
   //{{{  original
   // RK043FN48H LCD clock configuration
   // PLLSAI_VCO Input  = HSE_VALUE/PLLM              - 1 Mhz
@@ -199,71 +187,39 @@ void cLcd::init() {
   HAL_RCCEx_PeriphCLKConfig (&clockConfig);
   __HAL_RCC_LTDC_CLK_ENABLE();
 
-  hLtdcHandler.Instance = LTDC;
-  hLtdcHandler.LayerCfg->ImageWidth = getWidth();
-  hLtdcHandler.LayerCfg->ImageHeight = getHeight();
-  hLtdcHandler.Init.HorizontalSync = (RK043FN48H_HSYNC - 1);
-  hLtdcHandler.Init.VerticalSync = (RK043FN48H_VSYNC - 1);
-  hLtdcHandler.Init.AccumulatedHBP = (RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
-  hLtdcHandler.Init.AccumulatedVBP = (RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
-  hLtdcHandler.Init.AccumulatedActiveH = (getHeight() + RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
-  hLtdcHandler.Init.AccumulatedActiveW = (getWidth() + RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
-  hLtdcHandler.Init.TotalHeigh = (getHeight() + RK043FN48H_VSYNC + RK043FN48H_VBP + RK043FN48H_VFP - 1);
-  hLtdcHandler.Init.TotalWidth = (getWidth() + RK043FN48H_HSYNC + RK043FN48H_HBP + RK043FN48H_HFP - 1);
-  hLtdcHandler.Init.Backcolor.Blue = 0;
-  hLtdcHandler.Init.Backcolor.Green = 0;
-  hLtdcHandler.Init.Backcolor.Red = 0;
-  hLtdcHandler.Init.HSPolarity = LTDC_HSPOLARITY_AL;
-  hLtdcHandler.Init.VSPolarity = LTDC_VSPOLARITY_AL;
-  hLtdcHandler.Init.DEPolarity = LTDC_DEPOLARITY_AL;
-  hLtdcHandler.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
-
   // config the HS, VS, DE and PC polarity
-  LTDC->GCR &= ~(LTDC_GCR_HSPOL | LTDC_GCR_VSPOL | LTDC_GCR_DEPOL | LTDC_GCR_PCPOL);
-  LTDC->GCR |=  (uint32_t)(hLtdcHandler.Init.HSPolarity | hLtdcHandler.Init.VSPolarity |
-                           hLtdcHandler.Init.DEPolarity | hLtdcHandler.Init.PCPolarity);
+  LTDC->GCR =  LTDC_HSPOLARITY_AL | LTDC_VSPOLARITY_AL | LTDC_DEPOLARITY_AL | LTDC_PCPOLARITY_IPC;
+
   // set Synchronization size
-  LTDC->SSCR &= ~(LTDC_SSCR_VSH | LTDC_SSCR_HSW);
-  uint32_t tmp = (hLtdcHandler.Init.HorizontalSync << 16);
-  LTDC->SSCR |= (tmp | hLtdcHandler.Init.VerticalSync);
+  LTDC->SSCR = ((RK043FN48H_HSYNC - 1) << 16) | (RK043FN48H_VSYNC - 1);
 
   // set Accumulated Back porch
-  LTDC->BPCR &= ~(LTDC_BPCR_AVBP | LTDC_BPCR_AHBP);
-  tmp = (hLtdcHandler.Init.AccumulatedHBP << 16);
-  LTDC->BPCR |= (tmp | hLtdcHandler.Init.AccumulatedVBP);
+  LTDC->BPCR = ((RK043FN48H_HSYNC + RK043FN48H_HBP - 1) << 16) | (RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
 
   // set Accumulated Active Width
-  LTDC->AWCR &= ~(LTDC_AWCR_AAH | LTDC_AWCR_AAW);
-  tmp = (hLtdcHandler.Init.AccumulatedActiveW << 16);
-  LTDC->AWCR |= (tmp | hLtdcHandler.Init.AccumulatedActiveH);
+  LTDC->AWCR = ((getWidth() + RK043FN48H_HSYNC + RK043FN48H_HBP - 1) << 16) |
+                 (getHeight() + RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
 
   // set Total Width
-  LTDC->TWCR &= ~(LTDC_TWCR_TOTALH | LTDC_TWCR_TOTALW);
-  tmp = (hLtdcHandler.Init.TotalWidth << 16);
-  LTDC->TWCR |= (tmp | hLtdcHandler.Init.TotalHeigh);
+  LTDC->TWCR = ((getWidth() + RK043FN48H_HSYNC + RK043FN48H_HBP + RK043FN48H_HFP - 1) << 16) |
+                 (getHeight() + RK043FN48H_VSYNC + RK043FN48H_VBP + RK043FN48H_VFP - 1);
 
   // set background color value
-  tmp = ((uint32_t)(hLtdcHandler.Init.Backcolor.Green) << 8);
-  uint32_t tmp1 = ((uint32_t)(hLtdcHandler.Init.Backcolor.Red) << 16);
-  LTDC->BCCR &= ~(LTDC_BCCR_BCBLUE | LTDC_BCCR_BCGREEN | LTDC_BCCR_BCRED);
-  LTDC->BCCR |= (tmp1 | tmp | hLtdcHandler.Init.Backcolor.Blue);
+  LTDC->BCCR = 0;
 
   // set line interupt line number
   LTDC->LIPCR = 0;
   mFrameWait = false;
 
-  vSemaphoreCreateBinary (mFrameSem);
+  // clear interrupts
+  LTDC->IER = LTDC_IT_TE | LTDC_IT_FU | LTDC_IT_LI;
 
-  // enable transferError,fifoUnderrun interrupt
-  __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_TE);
-  __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_FU);
-  __HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_IT_LI);
-  //__HAL_LTDC_ENABLE_IT (&hLtdcHandler, LTDC_FLAG_RR);
+  vSemaphoreCreateBinary (mFrameSem);
 
   HAL_NVIC_SetPriority (LTDC_IRQn, 0xE, 0);
   HAL_NVIC_EnableIRQ (LTDC_IRQn);
   //}}}
-  //{{{  layer 1 init
+  //{{{  ltdc layer 1 init
   // config color frame buffer start address
   LTDC_Layer1->CFBAR = (uint32_t)gFrameBuf;
 
@@ -1668,7 +1624,7 @@ void cLcd::drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint
 //{{{
 void cLcd::displayOn() {
 
-  __HAL_LTDC_ENABLE (&hLtdcHandler);
+  LTDC->GCR |= LTDC_GCR_LTDCEN;
   HAL_GPIO_WritePin (LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_SET);        // Assert LCD_DISP pin
   HAL_GPIO_WritePin (LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, GPIO_PIN_SET);  // Assert LCD_BL_CTRL pin
   }
@@ -1676,7 +1632,7 @@ void cLcd::displayOn() {
 //{{{
 void cLcd::displayOff() {
 
-  __HAL_LTDC_DISABLE (&hLtdcHandler);
+  LTDC->GCR &= ~LTDC_GCR_LTDCEN;
   HAL_GPIO_WritePin (LCD_DISP_GPIO_PORT, LCD_DISP_PIN, GPIO_PIN_RESET);      // De-assert LCD_DISP pin
   HAL_GPIO_WritePin (LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, GPIO_PIN_RESET);// De-assert LCD_BL_CTRL pin
   }
