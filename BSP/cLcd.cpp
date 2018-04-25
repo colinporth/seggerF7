@@ -32,11 +32,9 @@ extern const sFONT gFont16;
 LTDC_HandleTypeDef hLtdcHandler;
 
 cLcd* cLcd::mLcd = nullptr;
-
 bool cLcd::mFrameWait = false;
 SemaphoreHandle_t cLcd::mFrameSem;
 SemaphoreHandle_t cLcd::mDma2dSem;
-
 bool mDma2dWait = false;
 
 extern "C" {
@@ -289,7 +287,6 @@ void cLcd::init() {
   HAL_NVIC_EnableIRQ (DMA2D_IRQn);
 
   layerInit (SDRAM_DEVICE_ADDR);
-  //clear (LCD_COLOR_BLACK);
 
   displayOn();
   }
@@ -411,7 +408,7 @@ void cLcd::present() {
   auto buffer = getWriteBuffer();
   mFlip = !mFlip;
 
-  SetAddress (buffer, getWriteBuffer());
+  setAddress (buffer, getWriteBuffer());
   }
 //}}}
 
@@ -463,30 +460,6 @@ void cLcd::debug (uint32_t colour, const char* format, ... ) {
 void cLcd::clearDebug() {
 
   mDebugLine = 0;
-  }
-//}}}
-
-//{{{
-void cLcd::SetTransparency (uint8_t Transparency) {
-
-  // change layer Alpha
-  hLtdcHandler.LayerCfg[0].Alpha = Transparency;
-  LTDC->SRCR = LTDC_SRCR_VBR;
-  }
-//}}}
-//{{{
-void cLcd::SetAddress (uint16_t* address, uint16_t* writeAddress) {
-
-  // change layer addresses
-  hLtdcHandler.LayerCfg[0].FBStartAdress = (uint32_t)address;
-  hLtdcHandler.LayerCfg[0].FBStartAdressWrite = (uint32_t)writeAddress;
-
-  // Configure the LTDC Layer
-  auto layerConfig = &hLtdcHandler.LayerCfg[0];
-  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR &= ~(LTDC_LxCFBAR_CFBADD);
-  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR = (layerConfig->FBStartAdress);
-
-  LTDC->SRCR = LTDC_SRCR_VBR;
   }
 //}}}
 
@@ -597,7 +570,8 @@ void cLcd::clearStringLine (uint16_t color, uint16_t line) {
 
 //{{{
 void cLcd::clear (uint16_t color) {
-  fillBuffer (color, getWriteBuffer(), getWidth(), getHeight());
+  cRect rect (getSize());
+  fillRect (color, rect);
   }
 //}}}
 //{{{
@@ -621,7 +595,22 @@ void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uin
 //{{{
 void cLcd::fillRect (uint16_t color, cRect& rect) {
 
-  fillBuffer (color, getWriteBuffer() + rect.top*getWidth() + rect.left, rect.getWidth(), rect.getHeight());
+  ready();
+  DMA2D->OCOLR = color;
+  DMA2D->OOR = getWidth() - rect.getWidth();
+  DMA2D->OMAR = (uint32_t)(getWriteBuffer() + rect.top*getWidth() + rect.left);
+  DMA2D->NLR = (rect.getWidth() << 16) |  rect.getHeight();
+
+  // start transfer
+  DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE;
+  mDma2dWait = true;
+  }
+//}}}
+//{{{
+void cLcd::fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+
+  cRect rect (x, y, x+width, y+height);
+  fillRect (color, rect);
   }
 //}}}
 //{{{
@@ -636,12 +625,6 @@ void cLcd::fillRectCpu (uint16_t color, cRect& rect) {
       *dst++ = color;
     dst += pitch;
     }
-  }
-//}}}
-//{{{
-void cLcd::fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
-
-  fillBuffer (color, getWriteBuffer() + y*getWidth() + x, width, height);
   }
 //}}}
 
@@ -891,8 +874,10 @@ void cLcd::drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint
 //{{{
 void cLcd::zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRect, float zoomx, float zoomy) {
 
-  int srcX = -srcCentre.x;
-  int srcY = -srcCentre.y;
+  //int srcX = -srcCentre.x + srcSize.x/2;
+  //int srcY = -srcCentre.y + srcSize.y/2;;
+  int srcX = 0;
+  int srcY = 0;
   int srcPitch = srcSize.x;
 
   uint32_t xStep16 = uint32_t(0x10000 / zoomx);
@@ -1857,17 +1842,18 @@ void cLcd::ready() {
 //}}}
 
 //{{{
-void cLcd::fillBuffer (uint16_t color, uint16_t* dst, uint16_t xsize, uint16_t ysize) {
+void cLcd::setAddress (uint16_t* address, uint16_t* writeAddress) {
 
-  ready();
-  DMA2D->OCOLR = color;
-  DMA2D->OOR = getWidth() - xsize;
-  DMA2D->OMAR = (uint32_t)dst;
-  DMA2D->NLR = (xsize << 16) | ysize;
+  // change layer addresses
+  hLtdcHandler.LayerCfg[0].FBStartAdress = (uint32_t)address;
+  hLtdcHandler.LayerCfg[0].FBStartAdressWrite = (uint32_t)writeAddress;
 
-  // start transfer
-  DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE;
-  mDma2dWait = true;
+  // Configure the LTDC Layer
+  auto layerConfig = &hLtdcHandler.LayerCfg[0];
+  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR &= ~(LTDC_LxCFBAR_CFBADD);
+  LTDC_LAYER (&hLtdcHandler, 0)->CFBAR = (layerConfig->FBStartAdress);
+
+  LTDC->SRCR = LTDC_SRCR_VBR;
   }
 //}}}
 //{{{

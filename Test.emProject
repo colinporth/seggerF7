@@ -463,6 +463,7 @@
         <file file_name="../common/system.h" />
         <file file_name="../common/usbd.h" />
         <file file_name="../common/cPs2.h" />
+        <file file_name="../common/cPointRect.h" />
       </folder>
     </folder>
   </project>

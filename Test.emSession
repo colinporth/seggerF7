@@ -1,16 +1,15 @@
 <!DOCTYPE CrossStudio_Session_File>
 <session>
  <Bookmarks>
-  <BookmarkItem objectName="" line="60" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="3" extra="} while (fno.fname[j++]);" color="5"/>
-  <BookmarkItem objectName="" line="45" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="bool mButton = false;" color="5"/>
-  <BookmarkItem objectName="" line="46" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="char path[] = &quot;/&quot;;" color="5"/>
-  <BookmarkItem objectName="" line="50" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="path[i++] = '/';" color="5"/>
-  <BookmarkItem objectName="" line="62" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="mButton = BSP_PB_GetState (BUTTON_KEY);" color="5"/>
+  <BookmarkItem objectName="" line="65" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="mButton = BSP_PB_GetState (BUTTON_KEY);" color="5"/>
+  <BookmarkItem objectName="" line="48" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="bool mButton = false;" color="5"/>
+  <BookmarkItem objectName="" line="49" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="1" extra="char path[] = &quot;/&quot;;" color="5"/>
+  <BookmarkItem objectName="" line="53" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="2" extra="path[i++] = '/';" color="5"/>
+  <BookmarkItem objectName="" line="63" column="-1" path="C:/projects/segger/usbMsc/main.cpp" number="3" extra="} while (fno.fname[j++]);" color="5"/>
  </Bookmarks>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
   <BreakpointListItem trigger="" line="322" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="BSP/cLcd.cpp" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="518" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="BSP/cLcd.cpp" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="11" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="BSP/cLcd.h" useHWbreakpoint="false"/>
+  <BreakpointListItem trigger="" line="12" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="BSP/cLcd.h" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="2294" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="Drivers/CMSIS/Include./core_cm7.h" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="139" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="common/cPointRect.h" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="3255" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="FatFs/ff.c" useHWbreakpoint="false"/>
@@ -52,13 +51,9 @@
   <ProjectSessionItem path="usb"/>
   <ProjectSessionItem path="usb;usbMsc"/>
   <ProjectSessionItem path="usb;usbMsc;bsp_drivers"/>
-  <ProjectSessionItem path="usb;usbMsc;bsp_drivers;includes"/>
   <ProjectSessionItem path="usb;usbMsc;common"/>
-  <ProjectSessionItem path="usb;usbMsc;FreeRTOS"/>
-  <ProjectSessionItem path="usb;usbMsc;FreeRTOS;portable"/>
+  <ProjectSessionItem path="usb;usbMsc;common;includes"/>
   <ProjectSessionItem path="usb;usbMsc;main"/>
-  <ProjectSessionItem path="usb;usbMsc;main;includes"/>
-  <ProjectSessionItem path="usb;usbMsc;system"/>
  </Project>
  <Register1>
   <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/msp;CPU/psp;CPU/cfbp" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="Hello" decimalNodes="" octalNodes="" unsignedNodes=""/>

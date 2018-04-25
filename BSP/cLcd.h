@@ -49,9 +49,6 @@ public:
   void debug (uint32_t colour, const char* format, ... );
 
   // drawing
-  void SetTransparency (uint8_t Transparency);
-  void SetAddress (uint16_t* address, uint16_t* writeAddress);
-
   uint16_t readPix (uint16_t x, uint16_t y);
   void drawPix (uint16_t color, uint16_t x, uint16_t y);
 
@@ -97,7 +94,7 @@ private:
   uint16_t* getWriteBuffer();
 
   void ready();
-  void fillBuffer (uint16_t color, uint16_t* dst, uint16_t xsize, uint16_t ysize);
+  void setAddress (uint16_t* address, uint16_t* writeAddress);
   void fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
 
   static const int kMaxStrSize = 40;

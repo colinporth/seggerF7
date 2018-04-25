@@ -28,8 +28,7 @@
 
 #include "ethernetif.h"
 //}}}
-const char kVersion[] = "WebCam 24/4/18";
-//{{{  const
+const char kVersion[] = "WebCam 25/4/18";
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0080000;
 uint8_t*  kCamBufEnd =  (uint8_t*)0xc0700000;
 uint16_t* kRgb565Buf = (uint16_t*)kCamBufEnd;
@@ -80,7 +79,6 @@ const char kHtmlBody[] =
       "</svg>"
     "</body>"
   "</html>\r\n";
-//}}}
 //}}}
 
 //{{{
@@ -323,8 +321,8 @@ public:
   virtual ~cCameraBox() {}
 
   bool onPress (cPoint pos, uint8_t z)  {
-    mZoom = 1.0f;
-    mZoomCentre = {0,0};
+    mZoom = 1.f;
+    mZoomCentre = mCam->getSize() / 2;
     return true;
     }
 
