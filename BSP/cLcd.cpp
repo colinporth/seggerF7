@@ -406,21 +406,21 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRe
   int srcPitch = srcSize.x;
 
   int32_t inc16x = int32_t (0x10000 / zoomx);
-  int32_t src16X = (srcSize.x * 0x8000) - ((dstRect.getWidth() * inc16x) / 2);
+  int32_t src16x = (srcSize.x * 0x8000) - ((dstRect.getWidth() * inc16x) / 2);
 
   int32_t inc16y = int32_t (0x10000 / zoomy);
   int32_t src16y = (srcSize.y * 0x8000) - ((dstRect.getHeight() * inc16y) / 2);
 
-  // frame
   uint16_t* dst = gFrameBuf + (dstRect.top * getWidth()) + dstRect.left;
   for (uint16_t dsty = 0; dsty < dstRect.getHeight(); dsty++) {
     // line
-    uint16_t* srcBasey = src + ((src16y / 0x10000) * srcPitch);
+    int32_t srcy = src16y / 0x10000;
+    uint16_t* srcPtr = src + (srcy * srcPitch);
 
-    int32_t x16 = src16X;
+    int32_t x16 = src16x;
     for (uint16_t dstx = 0; dstx < dstRect.getWidth(); dstx++) {
-      int32_t x = x16 / 0x10000;
-      *dst++ = ((x < 0) || (x >= srcSize.x)) ? 0 : *(srcBasey + x);
+      int32_t srcx = x16 / 0x10000;
+      *dst++ = ((srcx < 0) || (srcx >= srcSize.x)) ? 0 : *(srcPtr + srcx);
       x16 += inc16x;
       }
 
