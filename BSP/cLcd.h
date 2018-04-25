@@ -34,7 +34,6 @@ public:
   uint16_t GetTextHeight();
 
   // flipped display
-  void start();
   void drawInfo (uint16_t color, uint16_t column, const char* format, ... );
   void drawDebug();
   void present();

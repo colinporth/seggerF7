@@ -291,12 +291,6 @@ void cLcd::init() {
 uint16_t cLcd::GetTextHeight() { return gFont16.mHeight; }
 
 //{{{
-void cLcd::start() {
-  mFrameWait = true;
-  xSemaphoreTake (mFrameSem, 100);
-  }
-//}}}
-//{{{
 void cLcd::drawInfo (uint16_t color, uint16_t column, const char* format, ... ) {
 
   char str[kMaxStrSize];
@@ -332,6 +326,9 @@ void cLcd::present() {
   LTDC_Layer1->CFBAR = (uint32_t)gFrameBuf;
   LTDC->SRCR = LTDC_SRCR_VBR;
   gFrameBuf = (uint16_t*)(((uint32_t)gFrameBuf == SDRAM_DEVICE_ADDR) ? SDRAM_DEVICE_ADDR + 0x40000 : SDRAM_DEVICE_ADDR);
+
+  mFrameWait = true;
+  xSemaphoreTake (mFrameSem, 100);
   }
 //}}}
 

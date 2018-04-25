@@ -685,7 +685,6 @@ void cApp::run() {
       //}}}
 
     // draw
-    mLcd->start();
     for (auto box : mBoxes) box->onDraw (mLcd);
     mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
     mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%d",
