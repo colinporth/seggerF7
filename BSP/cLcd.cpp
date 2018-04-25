@@ -887,12 +887,12 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcCentre, cPoint srcSize, cRect dstRe
   uint16_t* dst = getWriteBuffer() + (dstRect.top * getWidth()) + dstRect.left;
 
   // frame
-  for (uint32_t y16 = (srcY << 16); y16 < ((srcY + dstRect.getHeight()) * yStep16); y16 += yStep16) {
+  for (uint32_t y16 = (srcY<<16); y16 < ((srcY + dstRect.getHeight()) * yStep16); y16 += yStep16) {
     // line
-    uint16_t* srcy1x1 = srcBase + (y16 >> 16) * srcPitch;
-    for (uint32_t x16 = srcX << 16; x16 < (srcX + dstRect.getWidth()) * xStep16; x16 += xStep16) {
+    uint16_t* srcy1x1 = srcBase + (y16>>16) * srcPitch;
+    for (uint32_t x16 = srcX<<16; x16 < (srcX + dstRect.getWidth()) * xStep16; x16 += xStep16) {
       // pixel
-      *dst++ = *(srcy1x1 + (x16 >> 16));
+      *dst++ = *(srcy1x1 + (x16>>16));
       }
     dst += getWidth() - dstRect.getWidth();
     }

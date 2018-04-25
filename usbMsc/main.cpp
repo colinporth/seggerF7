@@ -327,6 +327,7 @@ public:
     }
 
   bool onMove (cPoint pos, cPoint inc, uint8_t z)  {
+    //mZoom +=  inc.x / 8.f;
     mZoomCentre += inc;
     return true;
     }
