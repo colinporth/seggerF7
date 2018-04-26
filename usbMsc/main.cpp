@@ -11,7 +11,7 @@
 #include "../FatFs/ff.h"
 #include "../FatFs/diskio.h"
 
-#include "stm32746g_discovery_sd.h"
+#include "sd.h"
 #include "cCamera.h"
 
 #include "jpeglib.h"

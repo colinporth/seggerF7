@@ -7,7 +7,7 @@
 
 #include "../common/system.h"
 
-#include "stm32746g_discovery_sd.h"
+//#include "sd.h"
 #include "stm32746g_discovery_sdram.h"
 
 #include "font.h"

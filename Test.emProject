@@ -68,7 +68,6 @@
         <file file_name="usbd.h" />
       </folder>
       <file file_name="../BSP/stm32746g_discovery.c" />
-      <file file_name="../BSP/stm32746g_discovery_sd.c" />
       <file file_name="../BSP/stm32746g_discovery_sdram.c" />
       <file file_name="../BSP/stm32746g_discovery_ts.c" />
       <file file_name="../BSP/ft5336.cpp" />
@@ -77,7 +76,7 @@
       <file file_name="../BSP/cLcd.cpp" />
       <file file_name="../BSP/stm32f7xx_hal_timebase_tim.c" />
       <file file_name="../BSP/ethernetIf.cpp" />
-      <file file_name="../BSP/sdDiskioDmaRtos.cpp" />
+      <file file_name="../BSP/sd.cpp" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />

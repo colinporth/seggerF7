@@ -6,10 +6,6 @@
 #endif
 //}}}
 
-extern SD_HandleTypeDef uSdHandle;
-
-#define BSP_SD_CardInfo HAL_SD_CardInfoTypeDef
-
 #define MSD_OK                    ((uint8_t)0x00)
 #define MSD_ERROR                 ((uint8_t)0x01)
 #define MSD_ERROR_SD_NOT_PRESENT  ((uint8_t)0x02)
@@ -51,10 +47,6 @@ uint8_t BSP_SD_Erase (uint32_t StartAddr, uint32_t EndAddr);
 void    BSP_SD_MspInit (SD_HandleTypeDef *hsd, void *Params);
 void    BSP_SD_Detect_MspInit (SD_HandleTypeDef *hsd, void *Params);
 void    BSP_SD_MspDeInit (SD_HandleTypeDef *hsd, void *Params);
-
-void    BSP_SD_AbortCallback();
-void    BSP_SD_WriteCpltCallback();
-void    BSP_SD_ReadCpltCallback();
 
 //{{{
 #ifdef __cplusplus
