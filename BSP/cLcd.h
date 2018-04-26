@@ -10,6 +10,7 @@
 #define LCD_COLOR_BLUE       0x001F
 #define LCD_COLOR_GREEN      0x07D0
 #define LCD_COLOR_RED        0xF800
+
 #define LCD_COLOR_YELLOW     0xFFD0
 #define LCD_COLOR_MAGENTA    0xF81F
 #define LCD_COLOR_CYAN       0x07FF

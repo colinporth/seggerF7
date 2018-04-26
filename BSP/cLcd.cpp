@@ -299,18 +299,17 @@ void cLcd::drawInfo (uint16_t color, eTextAlign textAlign, const char* format, .
 //{{{
 void cLcd::drawDebug() {
 
-  if (!BSP_PB_GetState (BUTTON_KEY))
-    for (auto displayLine = 0u; (displayLine < mDebugLine) && ((int)displayLine < mDisplayLines); displayLine++) {
-      int debugLine = ((int)mDebugLine < mDisplayLines) ?
-        displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
+  for (auto displayLine = 0u; (displayLine < mDebugLine) && ((int)displayLine < mDisplayLines); displayLine++) {
+    int debugLine = ((int)mDebugLine < mDisplayLines) ?
+      displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
 
-      char tickStr[20];
-      auto ticks = mLines[debugLine].mTicks;
-      sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
-      displayStringColumnLine (LCD_COLOR_WHITE, 0, 1+displayLine, tickStr);
+    char tickStr[10];
+    auto ticks = mLines[debugLine].mTicks;
+    sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
+    displayStringColumnLine (LCD_COLOR_WHITE, 0, 1+displayLine, tickStr);
 
-      displayStringColumnLine (mLines[debugLine].mColour, 7, 1+displayLine, mLines[debugLine].mStr);
-      }
+    displayStringColumnLine (mLines[debugLine].mColour, 7, 1+displayLine, mLines[debugLine].mStr);
+    }
   }
 //}}}
 //{{{

@@ -631,7 +631,7 @@ void cApp::run() {
       auto frame = mCam->getNextFrame (frameLen, jpeg);
       if (frame) {
         if (jpeg) {
-          if (mTakeChanged) {
+          if (BSP_PB_GetState (BUTTON_KEY) || mTakeChanged) {
             //{{{  save JFIF jpeg
             mTakeChanged = false;
 
@@ -663,7 +663,7 @@ void cApp::run() {
             }
             //}}}
           }
-        else if (mTakeChanged) {
+        else if (BSP_PB_GetState (BUTTON_KEY) || mTakeChanged) {
           //{{{  save rgb565 bmp
           mTakeChanged = false;
 
@@ -676,11 +676,15 @@ void cApp::run() {
       }
 
     // draw
-    for (auto box : mBoxes) box->onDraw (mLcd);
-    mLcd->drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, kVersion);
-    mLcd->drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%dfree %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
-    if (mDebugValue)
-      mLcd->drawDebug();
+    if (BSP_PB_GetState (BUTTON_KEY)) 
+      mBoxes.front()->onDraw (mLcd);
+    else {
+      for (auto box : mBoxes) box->onDraw (mLcd);
+      mLcd->drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, kVersion);
+      mLcd->drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%dfree %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
+      if (mDebugValue)
+        mLcd->drawDebug();
+      }
     mLcd->present();
     }
   }
