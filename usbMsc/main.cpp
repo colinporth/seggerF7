@@ -334,7 +334,7 @@ public:
 
   bool onPress (cPoint pos, uint8_t z)  {
     //cLcd:: mLcd->debug (LCD_COLOR_WHITE, "press %d %d %f", pos.x, pos.y, mZoom);
-    mZoomCentre = (getCentre() - pos);
+    mZoomCentre = getCentre() - pos;
     mZoom = 1.f;
     return true;
     }
@@ -351,16 +351,18 @@ public:
     }
 
   void onDraw (cLcd* lcd) {
-    uint32_t frameLen;
-    bool jpeg;
     uint32_t frameId;
-    auto frame = mCam->getLastFrame (frameLen, jpeg, frameId);
+    auto frame = mCam->getLastFrame (mLastFrameLen, mLastJpeg, frameId);
     if (frame) {
-      if (!jpeg) // simple rgb565 from cam
+      if (!mLastJpeg) {
+        // simple rgb565 from cam
         mLastFrameSize =  mCam->getSize();
+        mSrcZoom = 1.f;
+        }
       else if (frameId != mLastFrameId) {
         //{{{  new jpeg frame, jpegDecode it
-        //auto header = !frameNum++ ? mCam->getFullJpgHeader (6, headerLen) : mCam->getSmallJpgHeader (6, headerLen);
+        mSrcZoom = 2.f;
+
         uint32_t headerLen;
         auto header = mCam->getFullJpgHeader (6, headerLen);
         jpeg_mem_src (&mCinfo, header, headerLen);
@@ -372,7 +374,7 @@ public:
         mCinfo.dct_method = JDCT_FLOAT;
         mCinfo.out_color_space = JCS_RGB;
 
-        jpeg_mem_src (&mCinfo, frame, frameLen);
+        jpeg_mem_src (&mCinfo, frame, mLastFrameLen);
         jpeg_start_decompress (&mCinfo);
         uint8_t buf[mCinfo.output_width * 3];
         uint8_t* bufArray = buf;
@@ -388,7 +390,7 @@ public:
         mLastFrameId = frameId;
         }
         //}}}
-      lcd->zoom565 ((uint16_t*)frame, mZoomCentre, mLastFrameSize, cRect(lcd->getSize()), mZoom, mZoom);
+      lcd->zoom565 ((uint16_t*)frame, mZoomCentre, mLastFrameSize, cRect(lcd->getSize()), mZoom * mSrcZoom, mZoom * mSrcZoom);
       }
     else
       lcd->clear (LCD_COLOR_BLACK);
@@ -397,10 +399,13 @@ public:
 private:
   cCamera* mCam;
 
+  uint32_t mLastFrameLen = 0;
+  bool mLastJpeg = false;
   uint32_t mLastFrameId = 0;
   cPoint mLastFrameSize = {0,0};
 
   float mZoom = 0.5f;
+  float mSrcZoom = 1.0f;
   cPoint mZoomCentre = {0,0};
 
   struct jpeg_error_mgr jerr;

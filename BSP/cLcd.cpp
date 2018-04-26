@@ -312,6 +312,7 @@ void cLcd::drawDebug() {
 //}}}
 //{{{
 void cLcd::present() {
+// show frameBuffer, frame wait, flip it
 
   LTDC_Layer1->CFBAR = (uint32_t)mFrameBuf;
   LTDC->SRCR = LTDC_SRCR_VBR;
@@ -354,10 +355,10 @@ void cLcd::debug (uint32_t colour, const char* format, ... ) {
 //}}}
 
 //{{{
-uint16_t cLcd::readPix (uint16_t x, uint16_t y) {
+uint16_t cLcd::readPix (cPoint p) {
 
   ready();
-  return *(mFrameBuf + y*getWidth() + x);
+  return *(mFrameBuf + p.y*getWidth() + p.x);
   }
 //}}}
 
@@ -1288,7 +1289,7 @@ void cLcd::convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
 //}}}
 
 //{{{
-void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
+void cLcd::displayChar (uint16_t color, cPoint p, uint8_t ascii) {
 
   if ((ascii >= 0x20) && (ascii <= 0x7f)) {
     auto width = gFont16.mWidth;
@@ -1296,7 +1297,7 @@ void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
     auto offset = (8 * byteAlignedWidth) - width - 1;
     auto fontChar = &gFont16.mTable [(ascii - ' ') * gFont16.mHeight * byteAlignedWidth];
 
-    auto dst = mFrameBuf + (pos.y * getWidth()) + pos.x;
+    auto dst = mFrameBuf + (p.y * getWidth()) + p.x;
 
     ready();
     for (auto fontLine = 0u; fontLine < gFont16.mHeight; fontLine++) {
@@ -1322,7 +1323,7 @@ void cLcd::displayChar (uint16_t color, cPoint pos, uint8_t ascii) {
   }
 //}}}
 //{{{
-void cLcd::displayString (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign) {
+void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign textAlign) {
 
   switch (textAlign) {
     case eTextLeft:
@@ -1335,7 +1336,7 @@ void cLcd::displayString (uint16_t color, cPoint pos, const char* str, eTextAlig
         size++;
 
       uint16_t xSize = getWidth() / gFont16.mWidth;
-      pos.x += ((xSize - size) * gFont16.mWidth) / 2;
+      p.x += ((xSize - size) * gFont16.mWidth) / 2;
       break;
       }
 
@@ -1347,17 +1348,17 @@ void cLcd::displayString (uint16_t color, cPoint pos, const char* str, eTextAlig
 
       uint16_t xSize = getWidth() / gFont16.mWidth;
       auto width = (xSize - size) * gFont16.mWidth;
-      pos.x = width > pos.x ? 0 : pos.x - width;
+      p.x = width > p.x ? 0 : p.x - width;
       break;
       }
     }
 
-  if (pos.x >= getWidth())
-    pos.x = 0;
+  if (p.x >= getWidth())
+    p.x = 0;
 
-  while (*str && (pos.x + gFont16.mWidth < getWidth())) {
-    displayChar (color, pos, *str++);
-    pos.x += gFont16.mWidth;
+  while (*str && (p.x + gFont16.mWidth < getWidth())) {
+    displayChar (color, p, *str++);
+    p.x += gFont16.mWidth;
     }
   }
 //}}}

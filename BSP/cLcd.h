@@ -66,7 +66,7 @@ public:
   void debug (uint32_t colour, const char* format, ... );
 
   // drawing
-  uint16_t readPix (uint16_t x, uint16_t y);
+  uint16_t readPix (cPoint p);
 
   void zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect, float zoomx, float zoomy);
   void rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ysize);
@@ -74,8 +74,8 @@ public:
   void convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                         uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
 
-  void displayChar (uint16_t color, cPoint pos, uint8_t ascii);
-  void displayString (uint16_t color, cPoint pos, const char* str, eTextAlign textAlign);
+  void displayChar (uint16_t color, cPoint p, uint8_t ascii);
+  void displayString (uint16_t color, cPoint p, const char* str, eTextAlign textAlign);
   //{{{
   void displayStringLine (uint16_t color, uint16_t line, const char* str) {
     displayString (color, cPoint(0, line * getTextHeight()), str, eTextLeft);
@@ -111,7 +111,7 @@ public:
   void drawCircle (uint16_t color, cPoint centre, uint16_t radius);
   void fillCircle (uint16_t color, cPoint centre, uint16_t radius);
   void drawEllipse (uint16_t color, cPoint centre, cPoint radius);
-  void fillEllipse (uint16_t color, cPoint centre,  cPoint radius);
+  void fillEllipse (uint16_t color, cPoint centre, cPoint radius);
   void drawPolygon (uint16_t color, cPoint* points, uint16_t pointCount);
   void fillPolygon (uint16_t color, cPoint* points, uint16_t pPointCount);
   void drawLine (uint16_t color, cPoint p1, cPoint p2);
