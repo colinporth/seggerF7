@@ -124,7 +124,6 @@ public:
   static bool mFrameWait;
   static SemaphoreHandle_t mFrameSem;
   static SemaphoreHandle_t mDma2dSem;
-  static uint16_t* gFrameBuf;
 
 private:
   void layerInit();
@@ -132,7 +131,7 @@ private:
   uint16_t* getWriteBuffer();
 
   void ready();
-  void drawPix (uint16_t color, uint16_t x, uint16_t y) { *(gFrameBuf + y*getWidth() + x) = color; }
+  void drawPix (uint16_t color, uint16_t x, uint16_t y) { *(mFrameBuf + y*getWidth() + x) = color; }
   void fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3);
 
   static const int kMaxStrSize = 40;
@@ -148,6 +147,8 @@ private:
     uint32_t mColour = 0;
     };
   //}}}
+
+  uint16_t* mFrameBuf;
 
   uint16_t mDisplayLines;
   unsigned mDebugLine = 0;
