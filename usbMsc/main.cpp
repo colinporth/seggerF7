@@ -226,10 +226,10 @@ public:
     }
   //}}}
   //{{{
-  cBox* addRight (cBox* box) {
-    auto lastBox = mBoxes.back();
+  cBox* add (cBox* box) {
+    auto lastBox = mBoxes.empty() ? nullptr : mBoxes.back();
     mBoxes.push_back (box);
-    box->setPos (lastBox->getTR() + cPoint(2,0));
+    box->setPos (lastBox ? lastBox->getTR() + cPoint(2,0) : cPoint(0,0));
     return box;
     }
   //}}}
@@ -593,11 +593,11 @@ void cApp::run() {
   mCam->init (kCamBuf, kCamBufEnd);
 
   // define menu
-  add (new cCameraBox (getWidth(), getHeight(), mCam), 0,0);
+  add (new cCameraBox (getWidth(), getHeight(), mCam));
   add (new cToggleBox (kBoxWidth,kBoxHeight, "jpeg", mJpeg, mJpegChanged), 0,getHeight()-kBoxHeight);
-  addRight (new cToggleBox (kBoxWidth,kBoxHeight, "debug", mDebugValue, mDebugChanged));
-  addRight (new cInstantBox (kBoxWidth,kBoxHeight, "clear", mClearDebugChanged));
-  addRight (new cValueBox (kBoxWidth,kBoxHeight, "f", 0,254, mFocus, mFocusChanged));
+  add (new cToggleBox (kBoxWidth,kBoxHeight, "info", mDebugValue, mDebugChanged));
+  add (new cInstantBox (kBoxWidth,kBoxHeight, "clear", mClearDebugChanged));
+  add (new cValueBox (kBoxWidth,kBoxHeight, "f", 0,254, mFocus, mFocusChanged));
 
   if (mounted) {
     //{{{  mounted, load splash piccy, make buttons
@@ -611,9 +611,9 @@ void cApp::run() {
     mLcd->debug (LCD_COLOR_WHITE, "- files %d", numFiles);
 
     if (mCam) {
-      addRight (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
-      addRight (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
-      addRight (new cInstantBox (kBoxWidth,kBoxHeight, "format", mFormatChanged));
+      add (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
+      add (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
+      add (new cInstantBox (kBoxWidth,kBoxHeight, "format", mFormatChanged));
       }
     }
     //}}}
