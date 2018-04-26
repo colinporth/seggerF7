@@ -375,17 +375,34 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect,
   int32_t inc16y = int32_t (0x10000 / zoomy);
   int32_t src16y = -(srcPos.y << 16) + (srcSize.y << 15) - ((dstRect.getHeight() * inc16y) >> 1);
 
+  ready();
+  DMA2D->OCOLR = 0;
+  DMA2D->OOR = getWidth() - dstRect.getWidth();
+  DMA2D->NLR = (dstRect.getWidth() << 16) |  1;
+
   uint16_t* dst = gFrameBuf + (dstRect.top * getWidth()) + dstRect.left;
   for (uint16_t dsty = 0; dsty < dstRect.getHeight(); dsty++) {
-    uint16_t* srcPtr = src + ((src16y >> 16) * srcPitch);
-
-    int32_t x16 = src16x;
-    for (uint16_t dstx = 0; dstx < dstRect.getWidth(); dstx++) {
-      *dst++ = ((x16 >= 0) && (x16 < srcSize16x)) ? *(srcPtr + (x16 >> 16)) : 0;
-      x16 += inc16x;
+    // draw line by line, leading and trailing clears could be combined
+    if ((src16y < 0) && (src16y >= srcSize16y)) {
+      //{{{  outside src
+      ready();
+      DMA2D->OMAR = (uint32_t)dst;
+      DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE;
+      mDma2dWait = true;
+      dst += getWidth();
       }
-
-    dst += getWidth() - dstRect.getWidth();
+      //}}}
+    else {
+      //{{{  inside src
+      uint16_t* srcPtr = src + ((src16y >> 16) * srcPitch);
+      int32_t x16 = src16x;
+      for (uint16_t dstx = 0; dstx < dstRect.getWidth(); dstx++) {
+        *dst++ = ((x16 >= 0) && (x16 < srcSize16x)) ? *(srcPtr + (x16 >> 16)) : 0;
+        x16 += inc16x;
+        }
+      dst += getWidth() - dstRect.getWidth();
+      }
+      //}}}
     src16y += inc16y;
     }
   }
