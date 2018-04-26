@@ -22,11 +22,12 @@
 
 class cLcd {
 public:
-  enum eTextAlign { eTextLeft, eTextCentreXY, eTextCentreX, eTextRightX };
+  enum eTextAlign { eTextLeft, eTextCentreBox, eTextCentre, eTextBottomRight, eTextRight };
 
   static uint32_t getWidth() { return 480; }
   static uint32_t getHeight() { return 272; }
   static cPoint getSize() { return cPoint(480,272); }
+  static cRect getRect() { return cRect (0,0,480,272); }
 
   cLcd (uint16_t displayLines);
   void init();
@@ -35,7 +36,7 @@ public:
   uint16_t getTextHeight();
 
   // flipped display
-  void drawInfo (uint16_t color, uint16_t column, const char* format, ... );
+  void drawInfo (uint16_t color, eTextAlign textAlign, const char* format, ... );
   void drawDebug();
   void present();
 
@@ -75,6 +76,8 @@ public:
 
   void displayChar (uint16_t color, cPoint p, uint8_t ascii);
   void displayString (uint16_t color, cPoint p, const char* str, eTextAlign textAlign);
+  void displayStringShadow (uint16_t color, cPoint p, const char* str, eTextAlign textAlign);
+
   //{{{
   void displayStringLine (uint16_t color, uint16_t line, const char* str) {
     displayString (color, cPoint(0, line * getTextHeight()), str, eTextLeft);

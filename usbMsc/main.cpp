@@ -158,7 +158,7 @@ public:
     //{{{
     virtual void onDraw (cLcd* lcd) {
       lcd->fillRect (mColor, mRect);
-      lcd->displayString (mTextColor, mRect.getCentre(), mName, cLcd::eTextCentreXY);
+      lcd->displayString (mTextColor, mRect.getCentre(), mName, cLcd::eTextCentreBox);
       }
     //}}}
 
@@ -333,6 +333,7 @@ public:
     jpeg_create_decompress (&mCinfo);
 
     mZoom = height / (float)mCam->getHeight();
+    mTextColor = LCD_COLOR_YELLOW;
     }
   //}}}
   virtual ~cCameraBox() {
@@ -401,6 +402,10 @@ public:
       }
     else
       lcd->clear (LCD_COLOR_BLACK);
+
+    char str[20];
+    sprintf (str, "%d:%x:%2d %dfps", mCam->getFrameLen(), mCam->getStatus(), mCam->getDmaCount(), mCam->getFps());
+    lcd->displayStringShadow (mTextColor, mRect.getBR(), str, cLcd::eTextBottomRight);
     }
 
 private:
@@ -544,7 +549,7 @@ public:
 
     char str[40];
     sprintf (str, "%s %d", mName, mValue);
-    lcd->displayString (mTextColor, mRect.getCentre(), str, cLcd::eTextCentreXY);
+    lcd->displayString (mTextColor, mRect.getCentre(), str, cLcd::eTextCentreBox);
 
     if (mProxed)
       lcd->drawRect (LCD_COLOR_WHITE, mRect, mThickness < 10 ? 1 : mThickness / 10 );
@@ -672,10 +677,8 @@ void cApp::run() {
 
     // draw
     for (auto box : mBoxes) box->onDraw (mLcd);
-    mLcd->drawInfo (LCD_COLOR_WHITE, 0, kVersion);
-    mLcd->drawInfo (LCD_COLOR_YELLOW, 15, "%d:%d:%dfps %d:%x:%d",
-                                          osGetCPUUsage(), xPortGetFreeHeapSize(), mCam->getFps(),
-                                          mCam->getFrameLen(), mCam->getStatus(), mCam->getDmaCount());
+    mLcd->drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, kVersion);
+    mLcd->drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%dfree %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
     if (mDebugValue)
       mLcd->drawDebug();
     mLcd->present();

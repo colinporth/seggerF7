@@ -283,7 +283,7 @@ uint16_t cLcd::getCharWidth() { return gFont16.mWidth; }
 uint16_t cLcd::getTextHeight() { return gFont16.mHeight; }
 
 //{{{
-void cLcd::drawInfo (uint16_t color, uint16_t column, const char* format, ... ) {
+void cLcd::drawInfo (uint16_t color, eTextAlign textAlign, const char* format, ... ) {
 
   char str[kMaxStrSize];
 
@@ -292,7 +292,8 @@ void cLcd::drawInfo (uint16_t color, uint16_t column, const char* format, ... ) 
   vsnprintf (str, kMaxStrSize-1, format, args);
   va_end (args);
 
-  displayStringColumnLine (color, column, 0, str);
+  displayStringShadow (color, getRect().getTR(), str, textAlign);
+
   }
 //}}}
 //{{{
@@ -1331,9 +1332,9 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
     case eTextLeft:
       break;
 
-    case eTextCentreXY:
+    case eTextCentreBox:
       p.y -= gFont16.mHeight/2;
-    case eTextCentreX:  {
+    case eTextCentre:  {
       uint16_t size = 0;
       auto ptr = str;
       while (*ptr++)
@@ -1341,8 +1342,9 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
       p.x -= size/2;
       break;
       }
-
-    case eTextRightX: {
+    case eTextBottomRight :
+      p.y -= gFont16.mHeight;
+    case eTextRight: {
       uint16_t size = 0;
       auto ptr = str;
       while (*ptr++)
@@ -1355,10 +1357,17 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
   if (p.x >= getWidth())
     p.x = 0;
 
-  while (*str && (p.x + gFont16.mWidth < getWidth())) {
+  while (*str && (p.x + gFont16.mWidth <= getWidth())) {
     displayChar (color, p, *str++);
     p.x += gFont16.mWidth;
     }
+  }
+//}}}
+//{{{
+void cLcd::displayStringShadow (uint16_t color, cPoint p, const char* str, eTextAlign textAlign) {
+
+  displayString (LCD_COLOR_BLACK, p + cPoint(1,1), str, textAlign);
+  displayString (color, p, str, textAlign);
   }
 //}}}
 
