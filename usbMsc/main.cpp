@@ -993,16 +993,9 @@ void cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
 
   debug (LCD_COLOR_WHITE, "%s %d bytes", fileName, (int)(filInfo.fsize));
   debug (LCD_COLOR_WHITE, "- %u/%02u/%02u %02u:%02u %c%c%c%c%c",
-                                (filInfo.fdate >> 9) + 1980,
-                                (filInfo.fdate >> 5) & 15,
-                                (filInfo.fdate) & 31,
-                                (filInfo.ftime >> 11),
-                                (filInfo.ftime >> 5) & 63,
-                                (filInfo.fattrib & AM_DIR) ? 'D' : '-',
-                                (filInfo.fattrib & AM_RDO) ? 'R' : '-',
-                                (filInfo.fattrib & AM_HID) ? 'H' : '-',
-                                (filInfo.fattrib & AM_SYS) ? 'S' : '-',
-                                (filInfo.fattrib & AM_ARC) ? 'A' : '-');
+    (filInfo.fdate >> 9) + 1980, (filInfo.fdate>>5) & 15, (filInfo.fdate) & 31, (filInfo.ftime>>11), (filInfo.ftime>>5) & 63,
+    (filInfo.fattrib & AM_DIR) ? 'D' : '-', (filInfo.fattrib & AM_RDO) ? 'R' : '-', (filInfo.fattrib & AM_HID) ? 'H' : '-', 
+    (filInfo.fattrib & AM_SYS) ? 'S' : '-', (filInfo.fattrib & AM_ARC) ? 'A' : '-');
 
   if (f_open (&gFile, fileName, FA_READ)) {
     debug (LCD_COLOR_RED, "%s not read", fileName);
