@@ -1,4 +1,4 @@
-// main.cpp - msc class usb
+// main.cpp - webcam
 //{{{  includes
 #include <deque>
 
@@ -620,7 +620,6 @@ void cApp::run() {
     //  onKey (ch & 0xFF, ch & 0x100);
     //  }
     //}}}
-
     if (mounted) {
       uint32_t frameLen;
       bool jpeg;

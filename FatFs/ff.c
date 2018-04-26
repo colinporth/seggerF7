@@ -3123,7 +3123,6 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
 //{{{
 FRESULT f_setlabel (const char* label) {
 
-  BYTE dirvn[22];
   UINT i, j, slen;
   WCHAR w;
 
@@ -3133,34 +3132,37 @@ FRESULT f_setlabel (const char* label) {
   FATFS* fs;
   FRESULT result = find_volume (&label, &fs, FA_WRITE);
   if (result != FR_OK)
-    LEAVE_FF(fs, result);
+    LEAVE_FF (fs, result);
 
   DIR dj;
   dj.obj.fs = fs;
 
-  // Get length of given volume label */
+  // Get length of given volume label
+  BYTE dirvn[22];
   for (slen = 0; (UINT)label[slen] >= ' '; slen++);
   if (fs->fs_type == FS_EXFAT) {
-    //{{{  On the exFAT volume
+    //{{{  exFAT volume
     for (i = j = 0; i < slen; ) {
-      /* Create volume label in directory form */
+      // Create volume label in directory form
       w = label[i++];
       w = convert(w, 1);
       if (w == 0 || chk_chr(badchr, w) || j == 22) {
-        /* Check validity check validity of the volume label */
-        LEAVE_FF(fs, FR_INVALID_NAME);
+        // Check validity check validity of the volume label
+        LEAVE_FF (fs, FR_INVALID_NAME);
         }
-      st_word(dirvn + j, w); j += 2;
+      st_word (dirvn + j, w); 
+      j += 2;
       }
     slen = j;
     }
     //}}}
   else {
-    //{{{  On the FAT12/16/32 volume
+    //{{{  FAT12/16/32 volume
     for ( ; slen && label[slen - 1] == ' '; slen--) ; /* Remove trailing spaces */
     if (slen) {
       /* Is there a volume label to be set? */
-      dirvn[0] = 0; i = j = 0;  /* Create volume label in directory form */
+      dirvn[0] = 0; 
+      i = j = 0;  /* Create volume label in directory form */
       do {
         w = (BYTE)label[i++];
         w = convert (wtoupper (convert(w, 1)), 0);
@@ -3180,30 +3182,33 @@ FRESULT f_setlabel (const char* label) {
     }
     //}}}
 
-  // Set volume label - Open root directory
+  // open root directory
   dj.obj.sclust = 0;
   result = dir_sdi (&dj, 0);
   if (result == FR_OK) {
-    //{{{  Get volume label entry
+    // fet volume label entry
     result = dir_read (&dj, 1);
     if (result == FR_OK) {
       if (_FS_EXFAT && fs->fs_type == FS_EXFAT) {
-        /* Change the volume label */
+        //{{{  change volume label
         dj.dir[XDIR_NumLabel] = (BYTE)(slen / 2);
         memcpy (dj.dir + XDIR_Label, dirvn, slen);
         }
-      else {
-        if (slen)
-          memcpy (dj.dir, dirvn, 11); /* Change the volume label */
-        else
-          dj.dir[DIR_Name] = DDEM;  /* Remove the volume label */
-        }
+        //}}}
+      else if (slen)
+        //{{{  change volume label
+        memcpy (dj.dir, dirvn, 11); 
+        //}}}
+      else
+        //{{{  remove volume label
+        dj.dir[DIR_Name] = DDEM;  
+
+        //}}}
       fs->wflag = 1;
-      result = sync_fs(fs);
+      result = sync_fs (fs);
       }
-    //}}}
     else {
-      //{{{  No volume label entry is found or error
+      //{{{  no volume label entry is found or error
       if (result == FR_NO_FILE) {
         result = FR_OK;
         if (slen) {
