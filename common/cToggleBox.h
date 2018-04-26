@@ -1,3 +1,0 @@
-// cToggleBox.h
-#pragma once
-

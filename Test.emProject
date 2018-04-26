@@ -350,7 +350,9 @@
         <file file_name="../common/usbd.h" />
         <file file_name="../common/cPs2.h" />
         <file file_name="../common/cPointRect.h" />
+        <file file_name="../common/utils.h" />
       </folder>
+      <file file_name="../common/utils.cpp" />
     </folder>
   </project>
 </solution>

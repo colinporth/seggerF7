@@ -1,3 +1,0 @@
-// cInstantBox.h
-#pragma once
-

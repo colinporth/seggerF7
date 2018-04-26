@@ -6,6 +6,7 @@
 #include "semphr.h"
 
 #include "../common/system.h"
+
 #include "stm32746g_discovery_sd.h"
 #include "stm32746g_discovery_sdram.h"
 
@@ -193,11 +194,11 @@ void cLcd::init() {
   LTDC->GCR = LTDC_HSPOLARITY_AL | LTDC_VSPOLARITY_AL | LTDC_DEPOLARITY_AL | LTDC_PCPOLARITY_IPC;
 
   // set Synchronization size
-  LTDC->SSCR = ((RK043FN48H_HSYNC - 1) << 16) | 
+  LTDC->SSCR = ((RK043FN48H_HSYNC - 1) << 16) |
                 (RK043FN48H_VSYNC - 1);
 
   // set Accumulated Back porch
-  LTDC->BPCR = ((RK043FN48H_HSYNC + RK043FN48H_HBP - 1) << 16) | 
+  LTDC->BPCR = ((RK043FN48H_HSYNC + RK043FN48H_HBP - 1) << 16) |
                 (RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
 
   // set Accumulated Active Width
@@ -235,7 +236,7 @@ void cLcd::init() {
                        ((getWidth() + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16)) << 16);
 
   // config vertical start and stop position
-  LTDC_Layer1->WVPCR  = ((LTDC->BPCR & LTDC_BPCR_AVBP) + 1) | 
+  LTDC_Layer1->WVPCR  = ((LTDC->BPCR & LTDC_BPCR_AVBP) + 1) |
                         ((getHeight() + (LTDC->BPCR & LTDC_BPCR_AVBP)) << 16);
 
   // config default color values
@@ -248,7 +249,7 @@ void cLcd::init() {
   LTDC_Layer1->BFCR = LTDC_BLENDING_FACTOR1_PAxCA | LTDC_BLENDING_FACTOR2_PAxCA;
 
   // config color frame buffer pitch in byte
-  LTDC_Layer1->CFBLR = ((getWidth() * 2) << 16) | 
+  LTDC_Layer1->CFBLR = ((getWidth() * 2) << 16) |
                        ((getWidth() * 2) + 3);
 
   // config frame buffer line number
@@ -341,6 +342,21 @@ void cLcd::incScrollValue (int inc) {
     mScroll = 0;
   else if (getScrollLines() >  mDebugLine - mDisplayLines)
     mScroll = (mDebugLine - mDisplayLines) * getScrollScale();
+  }
+//}}}
+//{{{
+void cLcd::debug (uint32_t colour, const std::string& str) {
+
+  auto line = mDebugLine % kDebugMaxLines;
+
+  if (!mLines[line].mStr)
+    mLines[line].mStr = (char*)malloc (kMaxStrSize);
+
+  memcpy (mLines[line].mStr, str.c_str(), str.size());
+
+  mLines[line].mTicks = HAL_GetTick();
+  mLines[line].mColour = colour;
+  mDebugLine++;
   }
 //}}}
 //{{{
@@ -468,7 +484,7 @@ void cLcd::rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t
 //}}}
 //{{{
 void cLcd::convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
-                              uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize) {
+                            uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize) {
 
   //{{{
   static const uint32_t yTable [256] = {

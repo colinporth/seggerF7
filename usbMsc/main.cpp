@@ -1,9 +1,8 @@
 // main.cpp - webcam
 //{{{  includes
 #include <deque>
-#include <string>
-
 #include "../common/system.h"
+#include "../common/utils.h"
 #include "cLcd.h"
 #include "../common/cTouch.h"
 #include "../common/cPs2.h"
@@ -91,13 +90,13 @@ public:
   class cBox {
   public:
     //{{{
-    cBox (const char* name, uint16_t width, uint16_t height)
+    cBox (const std::string& name, uint16_t width, uint16_t height)
         : mName(name), mLayoutWidth(width), mLayoutHeight(height) {}
     //}}}
     virtual ~cBox() {}
 
     // gets
-    const char* getName() const { return mName; }
+    std::string getName() const { return mName; }
 
     bool getEnabled() { return mEnabled; }
     bool getProxed() { return mProxed; }
@@ -159,12 +158,12 @@ public:
     //{{{
     virtual void onDraw (cLcd* lcd) {
       lcd->fillRect (mColor, mRect);
-      lcd->displayString (mTextColor, mRect.getCentre(), mName, cLcd::eTextCentreBox);
+      lcd->displayString (mTextColor, mRect.getCentre(), mName.c_str(), cLcd::eTextCentreBox);
       }
     //}}}
 
   protected:
-    const char* mName;
+    std::string mName;
 
     bool mEnabled = true;
     bool mProxed = false;
@@ -277,10 +276,10 @@ private:
   void reportFree();
   void reportLabel();
 
-  void loadFile (std::string fileName, uint8_t* buf, uint16_t* rgb565Buf);
-  void saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen);
-  void saveNumFile (const char* name, int num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
-  void createNumFile (const char* name, int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
+  void loadFile (const std::string& fileName, uint8_t* buf, uint16_t* rgb565Buf);
+  void saveNumFile (const std::string& fileName, uint8_t* buf, int bufLen);
+  void saveNumFile (const std::string& fileName, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
+  void createNumFile (const std::string& fileName, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void appendFile (int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void closeFile();
 
@@ -426,7 +425,7 @@ private:
 class cToggleBox : public cApp::cBox {
 public:
   //{{{
-  cToggleBox (float width, float height, const char* name, bool& value, bool& changed)
+  cToggleBox (float width, float height, const std::string& name, bool& value, bool& changed)
       : cBox(name, width, height), mValue(value), mChanged(changed) {
     mChanged = false;
     }
@@ -467,7 +466,7 @@ private:
 class cInstantBox : public cApp::cBox {
 public:
   //{{{
-  cInstantBox (float width, float height, const char* name, bool& changed)
+  cInstantBox (float width, float height, const std::string& name, bool& changed)
       : cBox(name, width, height), mChanged(changed) {
     mChanged = false;
     }
@@ -506,7 +505,7 @@ private:
 class cValueBox : public cApp::cBox {
 public:
   //{{{
-  cValueBox (float width, float height, const char* name, int min, int max, int& value, bool& changed)
+  cValueBox (float width, float height, const std::string& name, int min, int max, int& value, bool& changed)
       : cBox(name, width, height), mMin(min), mMax(max), mValue(value), mChanged(changed) {
     mChanged = false;
     mColor = LCD_COLOR_GREEN;
@@ -633,7 +632,7 @@ void cApp::run() {
 
             uint32_t headerLen;
             auto header = mCam->getFullJpgHeader (6, headerLen);
-            saveNumFile ("save", jpgFrameNum++, "jpg", header, headerLen, frame, frameLen);
+            saveNumFile ("save" + dec(jpgFrameNum++, 3) + ".jpg", header, headerLen, frame, frameLen);
             }
             //}}}
           else if (mTakeMovieChanged) {
@@ -642,7 +641,7 @@ void cApp::run() {
               mjpgFrameNum++;
               uint32_t headerLen;
               auto header = mCam->getFullJpgHeader (6, headerLen);
-              createNumFile ("save", mjpgFileNum++, header, headerLen, frame, frameLen);
+              createNumFile ("save" + dec(mjpgFileNum++,3) + ".mjpeg", header, headerLen, frame, frameLen);
               }
               //}}}
             else if (mjpgFrameNum < 500) {
@@ -668,7 +667,7 @@ void cApp::run() {
 
           uint32_t headerLen;
           auto header = mCam->getBmpHeader (headerLen);
-          saveNumFile ("save", bmpFrameNum++, "bmp", header, headerLen, frame, frameLen);
+          saveNumFile ("save" + dec(bmpFrameNum++, 3) + ".bmp", header, headerLen, frame, frameLen);
           }
           //}}}
         }
@@ -679,7 +678,7 @@ void cApp::run() {
       mBoxes.front()->onDraw (mLcd);
     else {
       for (auto box : mBoxes) box->onDraw (mLcd);
-      drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, kVersion.c_str());
+      drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, (kVersion + (mounted ? " mounted" : "")).c_str());
       drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%dfree %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
       if (mDebugValue)
         drawDebug();
@@ -983,7 +982,7 @@ void cApp::reportFree() {
 //}}}
 
 //{{{
-void cApp::loadFile (std::string fileName, uint8_t* buf, uint16_t* rgb565Buf) {
+void cApp::loadFile (const std::string& fileName, uint8_t* buf, uint16_t* rgb565Buf) {
 
   FILINFO filInfo;
   if (f_stat (fileName.c_str(), &filInfo)) {
@@ -993,10 +992,10 @@ void cApp::loadFile (std::string fileName, uint8_t* buf, uint16_t* rgb565Buf) {
 
   debug (LCD_COLOR_WHITE, "%s %d bytes", fileName.c_str(), (int)(filInfo.fsize));
   debug (LCD_COLOR_WHITE, "- %u/%02u/%02u %02u:%02u %c%c%c%c%c",
-    (filInfo.fdate >> 9) + 1980, (filInfo.fdate >> 5) & 15, 
+    (filInfo.fdate >> 9) + 1980, (filInfo.fdate >> 5) & 15,
     (filInfo.fdate) & 31, (filInfo.ftime >> 11), (filInfo.ftime >> 5) & 63,
-    (filInfo.fattrib & AM_DIR) ? 'D' : '-', (filInfo.fattrib & AM_RDO) ? 'R' : '-', 
-    (filInfo.fattrib & AM_HID) ? 'H' : '-', (filInfo.fattrib & AM_SYS) ? 'S' : '-', 
+    (filInfo.fattrib & AM_DIR) ? 'D' : '-', (filInfo.fattrib & AM_RDO) ? 'R' : '-',
+    (filInfo.fattrib & AM_HID) ? 'H' : '-', (filInfo.fattrib & AM_SYS) ? 'S' : '-',
     (filInfo.fattrib & AM_ARC) ? 'A' : '-');
 
   if (f_open (&gFile, fileName.c_str(), FA_READ)) {
@@ -1034,52 +1033,43 @@ void cApp::loadFile (std::string fileName, uint8_t* buf, uint16_t* rgb565Buf) {
   }
 //}}}
 //{{{
-void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen) {
+void cApp::saveNumFile (const std::string& fileName,  uint8_t* buf, int bufLen) {
 
-  char fileName[40];
-  sprintf (fileName, "%s%03d.%s", name, num, ext);
-
-  if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
-    debug (LCD_COLOR_RED, "saveNumFile %s fail", fileName);
+  if (f_open (&gFile, fileName.c_str(), FA_WRITE | FA_CREATE_ALWAYS))
+    debug (LCD_COLOR_RED, "saveNumFile %s fail", fileName.c_str());
 
   else {
     UINT bytesWritten;
     f_write (&gFile, buf, (bufLen + 3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&gFile);
-    debug (LCD_COLOR_YELLOW, "saveNumFile %s %d:%d", fileName, bufLen, bytesWritten);
+    debug (LCD_COLOR_YELLOW, "saveNumFile %s %d:%d", fileName.c_str(), bufLen, bytesWritten);
     }
    }
 //}}}
 //{{{
-void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
+void cApp::saveNumFile (const std::string& fileName, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
-  char fileName[40];
-  sprintf (fileName, "%s%03d.%s", name, num, ext);
-
-  if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
+  if (f_open (&gFile, fileName.c_str(), FA_WRITE | FA_CREATE_ALWAYS))
     debug (LCD_COLOR_RED, "saveNumFile %s fail", fileName);
 
   else {
     if (headerLen & 0x03)
-      debug (LCD_COLOR_RED, "saveNumFile align %s %d", name, headerLen);
+      debug (LCD_COLOR_RED, "saveNumFile align %s %d", fileName.c_str(), headerLen);
 
     UINT bytesWritten;
     f_write (&gFile, header, headerLen, &bytesWritten);
     f_write (&gFile, frame, (frameLen + 3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&gFile);
 
-    debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName,  headerLen,frameLen, bytesWritten);
+    debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName.c_str(), headerLen,frameLen, bytesWritten);
     }
   }
 //}}}
 //{{{
-void cApp::createNumFile (const char* name, int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
+void cApp::createNumFile (const std::string& fileName, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
-  char fileName[40];
-  sprintf (fileName, "%s%d.mjpg", name, num);
-
-  if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
-    debug (LCD_COLOR_RED, "createFile %s fail", name);
+  if (f_open (&gFile, fileName.c_str(), FA_WRITE | FA_CREATE_ALWAYS))
+    debug (LCD_COLOR_RED, "createFile %s fail", fileName.c_str());
 
   else {
     if (headerLen & 0x03)
@@ -1089,7 +1079,7 @@ void cApp::createNumFile (const char* name, int num, uint8_t* header, int header
     f_write (&gFile, header, headerLen, &bytesWritten);
     f_write (&gFile, frame, (frameLen + 3) & 0xFFFFFFFC, &bytesWritten);
 
-    debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName, headerLen,frameLen, bytesWritten);
+    debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName.c_str(), headerLen,frameLen, bytesWritten);
     }
    }
 //}}}

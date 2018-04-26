@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../common/cPointRect.h"
+#include "../common/utils.h"
 
 #include "cmsis_os.h"
 //}}}
@@ -64,6 +65,7 @@ public:
     mDebugLine = 0;
     }
   //}}}
+  void debug (uint32_t colour, const std::string& str);
   void debug (uint32_t colour, const char* format, ... );
 
   // drawing
