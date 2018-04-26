@@ -1366,32 +1366,28 @@ void cLcd::drawRect (uint16_t color, const cRect& rect, uint16_t thickness) {
 //{{{
 void cLcd::drawCircle (uint16_t color, cPoint centre, uint16_t radius) {
 
-  int32_t decision;    // Decision Variable
-  uint32_t current_x;   // Current X Value
-  uint32_t current_y;   // Current Y Value
-
-  decision = 3 - (radius << 1);
-  current_x = 0;
-  current_y = radius;
+  int32_t decision = 3 - (radius << 1);
+  cPoint p = {0, radius};
 
   ready();
-  while (current_x <= current_y) {
-    drawPix (color, centre.x + current_x, centre.y - current_y);
-    drawPix (color, centre.x - current_x, centre.y - current_y);
-    drawPix (color, centre.x + current_y, centre.y - current_x);
-    drawPix (color, centre.x - current_y, centre.y - current_x);
-    drawPix (color, centre.x + current_x, centre.y + current_y);
-    drawPix (color, centre.x - current_x, centre.y + current_y);
-    drawPix (color, centre.x + current_y, centre.y + current_x);
-    drawPix (color, centre.x - current_y, centre.y + current_x);
+  while (p.x <= p.y) {
+    drawPix (color, centre.x + p.x, centre.y - p.y);
+    drawPix (color, centre.x - p.x, centre.y - p.y);
+    drawPix (color, centre.x + p.y, centre.y - p.x);
+    drawPix (color, centre.x - p.y, centre.y - p.x);
+    drawPix (color, centre.x + p.x, centre.y + p.y);
+    drawPix (color, centre.x - p.x, centre.y + p.y);
+    drawPix (color, centre.x + p.y, centre.y + p.x);
+    drawPix (color, centre.x - p.y, centre.y + p.x);
 
     if (decision < 0)
-      decision += (current_x << 2) + 6;
+      decision += (p.x << 2) + 6;
     else {
-      decision += ((current_x - current_y) << 2) + 10;
-      current_y--;
+      decision += ((p.x - p.y) << 2) + 10;
+      p.y--;
       }
-    current_x++;
+
+    p.x++;
     }
   }
 //}}}
