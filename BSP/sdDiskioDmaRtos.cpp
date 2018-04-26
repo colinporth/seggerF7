@@ -44,10 +44,10 @@ DSTATUS diskInit() {
     auto result = BSP_SD_Init();
     if (result == MSD_OK) {
       gStat = checkStatus();
-      cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskInit %d", gStat);
+      //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskInit %d", gStat);
       }
     else
-      cLcd::mLcd->debug (LCD_COLOR_RED, "diskInit bspSdInit failed %d", result);
+      cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "diskInit failed %d", result);
 
     if (gStat != STA_NOINIT) {
       osMessageQDef (sdQueue, QUEUE_SIZE, uint16_t);
