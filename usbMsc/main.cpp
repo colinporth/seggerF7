@@ -610,11 +610,9 @@ void cApp::run() {
     auto numFiles = getCountFiles (path);
     mLcd->debug (LCD_COLOR_WHITE, "- files %d", numFiles);
 
-    if (mCam) {
-      add (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
-      add (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
-      add (new cInstantBox (kBoxWidth,kBoxHeight, "format", mFormatChanged));
-      }
+    add (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
+    add (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
+    add (new cInstantBox (kBoxWidth,kBoxHeight, "format", mFormatChanged));
     }
     //}}}
 
@@ -632,7 +630,7 @@ void cApp::run() {
       if (frame) {
         if (jpeg) {
           if (BSP_PB_GetState (BUTTON_KEY) || mTakeChanged) {
-            //{{{  save JFIF jpeg
+            //{{{  save JFIF .jpg
             mTakeChanged = false;
 
             uint32_t headerLen;
@@ -640,31 +638,34 @@ void cApp::run() {
             saveNumFile ("save", jpgFrameNum++, "jpg", header, headerLen, frame, frameLen);
             }
             //}}}
-          else if (mTakeMovieChanged && !mjpgFrameNum) {
-            //{{{  save mjpeg first frame
-            mjpgFrameNum++;
-            uint32_t headerLen;
-            auto header = mCam->getFullJpgHeader (6, headerLen);
-            createNumFile ("save", mjpgFileNum++, header, headerLen, frame, frameLen);
+          else if (mTakeMovieChanged) {
+            if (!mjpgFrameNum) {
+              //{{{  create .mjpeg 
+              mjpgFrameNum++;
+              uint32_t headerLen;
+              auto header = mCam->getFullJpgHeader (6, headerLen);
+              createNumFile ("save", mjpgFileNum++, header, headerLen, frame, frameLen);
+              }
+              //}}}
+            else if (mjpgFrameNum < 500) {
+              //{{{  append .mjpeg frame
+              uint32_t headerLen;
+              auto header = mCam->getSmallJpgHeader (6, headerLen);
+              appendFile (mjpgFrameNum++, header, headerLen, frame, frameLen);
+              }
+              //}}}
+            else  {
+              //{{{  close .mjpeg
+              mTakeMovieChanged = false;
+
+              mjpgFrameNum++;
+              closeFile();
+              }
+              //}}}
             }
-            //}}}
-          else if (mTakeMovieChanged && (mjpgFrameNum < 500)) {
-            //{{{  add mjpeg frame
-            uint32_t headerLen;
-            auto header = mCam->getSmallJpgHeader (6, headerLen);
-            appendFile (mjpgFrameNum++, header, headerLen, frame, frameLen);
-            }
-            //}}}
-          else if (mTakeMovieChanged && mjpgFrameNum == 500) {
-            //{{{  close mjpeg
-            mTakeMovieChanged = false;
-            mjpgFrameNum++;
-            closeFile();
-            }
-            //}}}
           }
         else if (BSP_PB_GetState (BUTTON_KEY) || mTakeChanged) {
-          //{{{  save rgb565 bmp
+          //{{{  save rgb565 .bmp
           mTakeChanged = false;
 
           uint32_t headerLen;
@@ -787,27 +788,25 @@ void cApp::serverThread (void* arg) {
                   //}}}
                 else if (!strncmp (buf, "GET /cam.jpg", 12)) {
                   //{{{  cam.jpg
-                  if (mCam) {
-                    uint32_t frameLen;
-                    bool jpeg;
-                    uint32_t frameId;
-                    auto frame = mCam->getLastFrame (frameLen, jpeg, frameId);
-                    if (frame) {
-                      // send http response header
-                      netconn_write (request,
-                                     jpeg ? kJpegResponseHeader : kBmpResponseHeader,
-                                     jpeg ? sizeof(kJpegResponseHeader)-1 : sizeof(kBmpResponseHeader)-1,
-                                     NETCONN_NOCOPY);
+                  uint32_t frameLen;
+                  bool jpeg;
+                  uint32_t frameId;
+                  auto frame = mCam->getLastFrame (frameLen, jpeg, frameId);
+                  if (frame) {
+                    // send http response header
+                    netconn_write (request,
+                                   jpeg ? kJpegResponseHeader : kBmpResponseHeader,
+                                   jpeg ? sizeof(kJpegResponseHeader)-1 : sizeof(kBmpResponseHeader)-1,
+                                   NETCONN_NOCOPY);
 
-                      // send imageFile format header
-                      uint32_t headerLen;
-                      auto header = jpeg ? mCam->getFullJpgHeader (6, headerLen) : mCam->getBmpHeader (headerLen);
-                      netconn_write (request, header, headerLen, NETCONN_NOCOPY);
+                    // send imageFile format header
+                    uint32_t headerLen;
+                    auto header = jpeg ? mCam->getFullJpgHeader (6, headerLen) : mCam->getBmpHeader (headerLen);
+                    netconn_write (request, header, headerLen, NETCONN_NOCOPY);
 
-                      // send imageFile body
-                      netconn_write (request, frame, frameLen, NETCONN_NOCOPY);
-                      ok = true;
-                      }
+                    // send imageFile body
+                    netconn_write (request, frame, frameLen, NETCONN_NOCOPY);
+                    ok = true;
                     }
                   }
                   //}}}
