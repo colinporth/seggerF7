@@ -1354,23 +1354,12 @@ void cLcd::fillRect (uint16_t color, const cRect& rect) {
   }
 //}}}
 //{{{
-//}}}
-//{{{
-void cLcd::drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t thickness) {
+void cLcd::drawRect (uint16_t color, const cRect& rect, uint16_t thickness) {
 
-  // draw horizontal lines
-  fillRect (color, x, y, width, thickness);
-  fillRect (color, x, (y + height)-thickness, width, thickness);
-
-  // draw vertical lines
-  fillRect (color, x, y, thickness, height);
-  fillRect (color, (x + width)-thickness, y, thickness, height);
-  }
-//}}}
-//{{{
-void cLcd::drawRect (uint16_t color, cRect& rect, uint16_t thickness) {
-
-  drawRect (color, rect.left, rect.top, rect.getWidth(), rect.getHeight(), thickness);
+  fillRect (color, cRect (rect.left, rect.top, rect.right, rect.top+thickness));
+  fillRect (color, cRect (rect.left, rect.bottom-thickness, rect.right, rect.bottom));
+  fillRect (color, cRect (rect.left, rect.top, rect.left+thickness, rect.bottom));
+  fillRect (color, cRect (rect.right-thickness, rect.top, rect.right, rect.bottom));
   }
 //}}}
 
@@ -1648,40 +1637,40 @@ void cLcd::fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3) {
   int16_t deltay = ABS(p2.y - p1.y);        // The difference between the y's
   cPoint p = p1;
 
-  int16_t xinc1 = 0, xinc2 = 0;
-  int16_t yinc1 = 0, yinc2 = 0;
+  cPoint inc1 = {0,0};
+  cPoint inc2 = {0,0};
 
   if (p2.x >= p1.x) {
     //{{{  x-values are increasing
-    xinc1 = 1;
-    xinc2 = 1;
+    inc1.x = 1;
+    inc2.x = 1;
     }
     //}}}
   else {
     //{{{  x-values are decreasing
-    xinc1 = -1;
-    xinc2 = -1;
+    inc1.x = -1;
+    inc2.x = -1;
     }
     //}}}
 
   if (p2.y >= p1.y) {
     //{{{  y-values are increasing
-    yinc1 = 1;
-    yinc2 = 1;
+    inc1.y = 1;
+    inc2.y = 1;
     }
     //}}}
   else {
     //{{{  y-values are decreasing
-    yinc1 = -1;
-    yinc2 = -1;
+    inc1.y = -1;
+    inc2.y = -1;
     }
     //}}}
 
   int16_t den = 0, num = 0, num_add = 0, num_pixels = 0;
   if (deltax >= deltay) {
     //{{{  at least one x-value for every y-value
-    xinc1 = 0;           // Don't change the x when numerator >= denominator
-    yinc2 = 0;           // Don't change the y for every iteration
+    inc1.x = 0;           // Don't change the x when numerator >= denominator
+    inc2.y = 0;           // Don't change the y for every iteration
 
     den = deltax;
     num = deltax / 2;
@@ -1691,8 +1680,8 @@ void cLcd::fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3) {
     //}}}
   else {
     //{{{  There is at least one y-value for every x-value
-    xinc2 = 0;           // Don't change the x for every iteration
-    yinc1 = 0;           // Don't change the y when numerator >= denominator
+    inc2.x = 0;           // Don't change the x for every iteration
+    inc1.y = 0;           // Don't change the y when numerator >= denominator
 
     den = deltay;
     num = deltay / 2;
@@ -1706,12 +1695,10 @@ void cLcd::fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3) {
     num += num_add;     // Increase the numerator by the top of the fraction
     if (num >= den)  {  // Check if numerator >= denominator
       num -= den;       // Calculate the new numerator value
-      p.x += xinc1;       // Change the x as appropriate
-      p.y += yinc1;       // Change the y as appropriate
+      p += inc1;       // Change the x as appropriate
       }
 
-    p.x += xinc2;         // Change the x as appropriate
-    p.y += yinc2;         // Change the y as appropriate
+    p += inc2;         // Change the x as appropriate
     }
   }
 //}}}
