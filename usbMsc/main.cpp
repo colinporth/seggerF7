@@ -11,7 +11,6 @@
 #include "../FatFs/ff.h"
 #include "../FatFs/diskio.h"
 
-#include "sd.h"
 #include "cCamera.h"
 
 #include "jpeglib.h"
