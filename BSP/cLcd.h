@@ -39,7 +39,6 @@ public:
   void drawDebug();
   void present();
 
-
   //{{{
   int getScrollScale() {
     return 4;
@@ -86,15 +85,14 @@ public:
     displayString (color, cPoint(column * getCharWidth(), line * getTextHeight()), str, cLcd::eTextLeft);
     }
   //}}}
-
   //{{{
   void clearStringLine (uint16_t color, uint16_t line) {
     fillRect (color, cRect (0, line * getTextHeight(), getWidth(), (line + 1) * getTextHeight()));
     }
   //}}}
 
-  void fillRectCpu (uint16_t color, const cRect& rect);
   void fillRect (uint16_t color, const cRect& rect);
+  void fillRectCpu (uint16_t color, const cRect& rect);
   //{{{
   void fillRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
     fillRect (color, cRect (x, y, x+width, y+height));
@@ -120,9 +118,9 @@ public:
   void displayOn();
 
   static cLcd* mLcd;
-
   static bool mFrameWait;
   static SemaphoreHandle_t mFrameSem;
+  static bool mDma2dWait;
   static SemaphoreHandle_t mDma2dSem;
 
 private:

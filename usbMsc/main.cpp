@@ -28,7 +28,7 @@
 
 #include "ethernetif.h"
 //}}}
-const char kVersion[] = "WebCam 25/4/18";
+const char kVersion[] = "WebCam 26/4/18";
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0080000;
 uint8_t*  kCamBufEnd =  (uint8_t*)0xc0700000;
 uint16_t* kRgb565Buf = (uint16_t*)kCamBufEnd;
@@ -84,7 +84,7 @@ const char kHtmlBody[] =
 //{{{
 class cApp : public cTouch {
 public:
-  const uint16_t kBoxWidth = 80;
+  const uint16_t kBoxWidth = 65;
   const uint16_t kBoxHeight = 36;
   //{{{
   class cBox {
@@ -262,6 +262,7 @@ public:
   //}}}
 
   void onPs2Irq() { mPs2->onIrq(); }
+  void touchThread();
 
 protected:
   virtual void onTouchProx (cPoint pos, uint8_t z);
@@ -277,9 +278,9 @@ private:
   void reportLabel();
 
   void loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf);
-  void saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t* buf, int bufLen);
-  void saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
-  void createNumFile (const char* name, uint32_t num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
+  void saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen);
+  void saveNumFile (const char* name, int num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
+  void createNumFile (const char* name, int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void appendFile (int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void closeFile();
 
@@ -295,6 +296,9 @@ private:
   DWORD mVsn = 0;
   int mFiles = 0;
 
+  struct jpeg_error_mgr jerr;
+  struct jpeg_decompress_struct mCinfo;
+
   bool mJpegChanged = false;
   bool mJpeg = false;
 
@@ -302,6 +306,7 @@ private:
   bool mDebugValue = true;
 
   bool mClearDebugChanged = false;
+  bool mFormatChanged = false;
 
   bool mFocusChanged = false;
   int mFocus = 0;
@@ -309,8 +314,10 @@ private:
   bool mTakeChanged = false;
   bool mTakeMovieChanged = false;
 
-  struct jpeg_error_mgr jerr;
-  struct jpeg_decompress_struct mCinfo;
+  int bmpFrameNum = 0;
+  int jpgFrameNum = 0;
+  int mjpgFrameNum = 0;
+  int mjpgFileNum = 1;
   //}}}
   };
 //}}}
@@ -563,7 +570,7 @@ private:
   };
 //}}}
 
-FATFS gFatFs;  // encourges allocation in lower DTCM SRAM
+FATFS gFatFs = { 0 };  // encourges allocation in lower DTCM SRAM
 FIL   gFile = { 0 };
 cApp* gApp = { 0 };
 
@@ -601,12 +608,11 @@ void cApp::run() {
     if (mCam) {
       addRight (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
       addRight (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
+      addRight (new cInstantBox (kBoxWidth,kBoxHeight, "format", mFormatChanged));
       }
     }
     //}}}
 
-  uint32_t fileNum = 1;
-  uint32_t frameNum = 0;
   while (true) {
     //{{{  removed
     //while (mPs2->hasChar()) {
@@ -627,31 +633,28 @@ void cApp::run() {
 
             uint32_t headerLen;
             auto header = mCam->getFullJpgHeader (6, headerLen);
-            saveNumFile ("save", frameNum, "jpg", header, headerLen, frame, frameLen);
-
-            frameNum++;
+            saveNumFile ("save", jpgFrameNum++, "jpg", header, headerLen, frame, frameLen);
             }
             //}}}
-          else if (mTakeMovieChanged && !frameNum) {
+          else if (mTakeMovieChanged && !mjpgFrameNum) {
             //{{{  save mjpeg first frame
-            frameNum++;
-
+            mjpgFrameNum++;
             uint32_t headerLen;
             auto header = mCam->getFullJpgHeader (6, headerLen);
-            createNumFile ("save", fileNum, header, headerLen, frame, frameLen);
+            createNumFile ("save", mjpgFileNum++, header, headerLen, frame, frameLen);
             }
             //}}}
-          else if (mTakeMovieChanged && (frameNum < 500)) {
+          else if (mTakeMovieChanged && (mjpgFrameNum < 500)) {
             //{{{  add mjpeg frame
             uint32_t headerLen;
             auto header = mCam->getSmallJpgHeader (6, headerLen);
-            appendFile (frameNum++, header, headerLen, frame, frameLen);
+            appendFile (mjpgFrameNum++, header, headerLen, frame, frameLen);
             }
             //}}}
-          else if (mTakeMovieChanged && frameNum == 500) {
+          else if (mTakeMovieChanged && mjpgFrameNum == 500) {
             //{{{  close mjpeg
             mTakeMovieChanged = false;
-            frameNum++;
+            mjpgFrameNum++;
             closeFile();
             }
             //}}}
@@ -662,35 +665,11 @@ void cApp::run() {
 
           uint32_t headerLen;
           auto header = mCam->getBmpHeader (headerLen);
-          saveNumFile ("save", frameNum, "bmp", header, headerLen, frame, frameLen);
-
-          frameNum++;
+          saveNumFile ("save", bmpFrameNum++, "bmp", header, headerLen, frame, frameLen);
           }
           //}}}
         }
       }
-
-    if (mJpegChanged) {
-      //{{{  jpeg
-      mJpegChanged = false;
-      mJpeg ? mCam->capture() : mCam->preview();
-
-      fileNum++;
-      frameNum = 0;
-      }
-      //}}}
-    if (mClearDebugChanged) {
-      //{{{  clearDebug
-      mClearDebugChanged = false;
-      mLcd->clearDebug();
-      }
-      //}}}
-    if (mFocusChanged) {
-      //{{{  changeFocus
-      mFocusChanged = false;
-      mCam->setFocus (mFocus);
-      }
-      //}}}
 
     // draw
     for (auto box : mBoxes) box->onDraw (mLcd);
@@ -701,6 +680,53 @@ void cApp::run() {
     if (mDebugValue)
       mLcd->drawDebug();
     mLcd->present();
+    }
+  }
+//}}}
+//{{{
+void cApp::touchThread() {
+
+  while (true) {
+    gApp->pollTouch();
+
+    if (mJpegChanged) {
+      //{{{  jpeg
+      mJpegChanged = false;
+      mJpeg ? mCam->capture() : mCam->preview();
+      mjpgFrameNum = 0;
+      }
+      //}}}
+    if (mFocusChanged) {
+      //{{{  changeFocus
+      mFocusChanged = false;
+      mCam->setFocus (mFocus);
+      }
+      //}}}
+    if (mClearDebugChanged) {
+      //{{{  clearDebug
+      mClearDebugChanged = false;
+      mLcd->clearDebug();
+      }
+      //}}}
+    if (mFormatChanged) {
+      //{{{  format sdCard
+      mFormatChanged = false;
+      mLcd->debug (LCD_COLOR_YELLOW, "formatting sdCard");
+
+      // Create FAT volume
+      BYTE work[_MAX_SS];
+      f_mkfs ("", FM_ANY, 0, work, sizeof (work));
+      mLcd->debug (LCD_COLOR_YELLOW, "formated sdCard");
+
+      f_setlabel ("webcam");
+      mLcd->debug (LCD_COLOR_YELLOW, "set sdCard label WEBCAM");
+
+      f_mount (&gFatFs, "", 1);
+      mLcd->debug (LCD_COLOR_YELLOW, "WEBCAM mounted");
+      }
+      //}}}
+
+    osDelay (10);
     }
   }
 //}}}
@@ -920,7 +946,7 @@ void cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
   }
 //}}}
 //{{{
-void cApp::saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t* buf, int bufLen) {
+void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen) {
 
   char fileName[40];
   sprintf (fileName, "%s%03d.%s", name, num, ext);
@@ -937,7 +963,7 @@ void cApp::saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t
    }
 //}}}
 //{{{
-void cApp::saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
+void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
   char fileName[40];
   sprintf (fileName, "%s%03d.%s", name, num, ext);
@@ -959,7 +985,7 @@ void cApp::saveNumFile (const char* name, uint32_t num, const char* ext, uint8_t
   }
 //}}}
 //{{{
-void cApp::createNumFile (const char* name, uint32_t num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
+void cApp::createNumFile (const char* name, int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
   char fileName[40];
   sprintf (fileName, "%s%d.mjpg", name, num);
@@ -999,10 +1025,7 @@ void cApp::closeFile() {
 //{{{
 void touchThread (void* arg) {
 
-  while (true) {
-    gApp->pollTouch();
-    osDelay (10);
-    }
+  gApp->touchThread();
   }
 //}}}
 //{{{

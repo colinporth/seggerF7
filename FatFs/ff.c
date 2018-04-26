@@ -2592,70 +2592,6 @@ static FRESULT validate (_FDID* obj, FATFS** fs) {
 
 // external
 //{{{
-FRESULT f_fdisk (const DWORD* szt, void* work) {
-
-  UINT i, n, sz_cyl, tot_cyl, b_cyl, e_cyl, p_cyl;
-  BYTE s_hd, e_hd, *p, *buf = (BYTE*)work;
-  DWORD sz_disk, sz_part, s_part;
-
-  DSTATUS stat = diskInit();
-  if (stat & STA_NOINIT)
-    return FR_NOT_READY;
-  if (stat & STA_PROTECT)
-    return FR_WRITE_PROTECTED;
-  if (diskIoctl (GET_SECTOR_COUNT, &sz_disk))
-    return FR_DISK_ERR;
-
-  // Determine the CHS without any consideration of the drive geometry
-  for (n = 16; n < 256 && sz_disk / n / 63 > 1024; n *= 2) ;
-  if (n == 256)
-    n--;
-  e_hd = n - 1;
-  sz_cyl = 63 * n;
-  tot_cyl = sz_disk / sz_cyl;
-
-  // Create partition table
-  memset (buf, 0, _MAX_SS);
-  p = buf + MBR_Table; b_cyl = 0;
-  for (i = 0; i < 4; i++, p += SZ_PTE) {
-    p_cyl = (szt[i] <= 100U) ? (DWORD)tot_cyl * szt[i] / 100 : szt[i] / sz_cyl;
-    if (!p_cyl)
-      continue;
-    s_part = (DWORD)sz_cyl * b_cyl;
-    sz_part = (DWORD)sz_cyl * p_cyl;
-    if (i == 0) {
-      // Exclude first track of cylinder 0
-      s_hd = 1;
-      s_part += 63; sz_part -= 63;
-      }
-    else
-      s_hd = 0;
-    e_cyl = b_cyl + p_cyl - 1;  // End cylinder
-    if (e_cyl >= tot_cyl)
-      return FR_INVALID_PARAMETER;
-
-    // Set partition table
-    p[1] = s_hd;                      // Start head
-    p[2] = (BYTE)((b_cyl >> 2) + 1);  // Start sector
-    p[3] = (BYTE)b_cyl;               // Start cylinder
-    p[4] = 0x07;                      // System type (temporary setting)
-    p[5] = e_hd;                      // End head
-    p[6] = (BYTE)((e_cyl >> 2) + 63); // End sector
-    p[7] = (BYTE)e_cyl;               // End cylinder
-    st_dword (p + 8, s_part);         // Start sector in LBA
-    st_dword (p + 12, sz_part);       // Number of sectors
-
-    // Next partition
-    b_cyl += p_cyl;
-    }
-
-  st_word (p, 0xAA55);
-
-  // Write it to the MBR
-  return ((diskWrite (buf, 0, 1) != RES_OK) || (diskIoctl (CTRL_SYNC, 0) != RES_OK)) ? FR_DISK_ERR : FR_OK;
-  }
-//}}}
-//{{{
 FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
 
   const UINT n_fats = 1;      // Number of FATs for FAT12/16/32 volume (1 or 2) */
@@ -2857,7 +2793,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
         i += 4;
         cl++;
         }
-      do {   
+      do {
         // Create chains of bitmap, up-case and root dir */
         while (nb && i < szb_buf) {     /* Create a chain */
           st_dword(buf + i, (nb > 1) ? cl + 1 : 0xFFFFFFFF);
@@ -2885,7 +2821,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     st_dword (buf + SZDIRE * 2 + 20, 2 + tbl[0]);
     st_dword (buf + SZDIRE * 2 + 24, szb_case);
     sect = b_data + au * (tbl[0] + tbl[1]); nsect = au; /* Start of the root directory and number of sectors */
-    do {  
+    do {
       // Fill root directory sectors */
       n = (nsect > sz_buf) ? sz_buf : nsect;
       if (diskWrite (buf, sect, n) != RES_OK)

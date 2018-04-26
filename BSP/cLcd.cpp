@@ -27,12 +27,12 @@ extern const sFONT gFont16;
 #define LCD_BL_CTRL_GPIO_CLK_ENABLE()    __HAL_RCC_GPIOK_CLK_ENABLE()
 #define LCD_BL_CTRL_GPIO_CLK_DISABLE()   __HAL_RCC_GPIOK_CLK_DISABLE()
 //}}}
+
 cLcd* cLcd::mLcd = nullptr;
 bool cLcd::mFrameWait = false;
 SemaphoreHandle_t cLcd::mFrameSem;
+bool cLcd::mDma2dWait = false;
 SemaphoreHandle_t cLcd::mDma2dSem;
-
-bool mDma2dWait = false;
 
 extern "C" {
   //{{{
@@ -383,7 +383,7 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect,
   uint16_t* dst = mFrameBuf + (dstRect.top * getWidth()) + dstRect.left;
 
   if (src16y < 0) {
-    //{{{  before valid src 
+    //{{{  before valid src
     dsty = 1 - src16y/inc16y;
 
     DMA2D->OMAR = (uint32_t)dst;
@@ -419,7 +419,7 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect,
     }
 
   if (dsty < dstRect.getHeight()) {
-    //{{{  after valid src 
+    //{{{  after valid src
     int trail = dstRect.getHeight() - dsty;
 
     ready();
@@ -1364,6 +1364,21 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
 //}}}
 
 //{{{
+void cLcd::fillRect (uint16_t color, const cRect& rect) {
+
+  ready();
+
+  DMA2D->OCOLR = color;
+  DMA2D->OOR = getWidth() - rect.getWidth();
+  DMA2D->OMAR = (uint32_t)(mFrameBuf + rect.top*getWidth() + rect.left);
+  DMA2D->NLR = (rect.getWidth() << 16) |  rect.getHeight();
+
+  // start transfer
+  DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE;
+  mDma2dWait = true;
+  }
+//}}}
+//{{{
 void cLcd::fillRectCpu (uint16_t color, const cRect& rect) {
 // dma2d hogs bandwidth
 
@@ -1380,27 +1395,12 @@ void cLcd::fillRectCpu (uint16_t color, const cRect& rect) {
   }
 //}}}
 //{{{
-void cLcd::fillRect (uint16_t color, const cRect& rect) {
-
-  ready();
-
-  DMA2D->OCOLR = color;
-  DMA2D->OOR = getWidth() - rect.getWidth();
-  DMA2D->OMAR = (uint32_t)(mFrameBuf + rect.top*getWidth() + rect.left);
-  DMA2D->NLR = (rect.getWidth() << 16) |  rect.getHeight();
-
-  // start transfer
-  DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE;
-  mDma2dWait = true;
-  }
-//}}}
-//{{{
 void cLcd::drawRect (uint16_t color, const cRect& rect, uint16_t thickness) {
 
-  fillRect (color, cRect (rect.left, rect.top, rect.right, rect.top+thickness));
-  fillRect (color, cRect (rect.left, rect.bottom-thickness, rect.right, rect.bottom));
-  fillRect (color, cRect (rect.left, rect.top, rect.left+thickness, rect.bottom));
-  fillRect (color, cRect (rect.right-thickness, rect.top, rect.right, rect.bottom));
+  fillRect (color, cRect (rect.left, rect.top, rect.right, rect.top + thickness));
+  fillRect (color, cRect (rect.left, rect.bottom - thickness, rect.right, rect.bottom));
+  fillRect (color, cRect (rect.left, rect.top, rect.left + thickness, rect.bottom));
+  fillRect (color, cRect (rect.right - thickness, rect.top, rect.right, rect.bottom));
   }
 //}}}
 
