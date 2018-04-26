@@ -190,32 +190,34 @@ void cLcd::init() {
   __HAL_RCC_LTDC_CLK_ENABLE();
 
   // config the HS, VS, DE and PC polarity
-  LTDC->GCR =  LTDC_HSPOLARITY_AL | LTDC_VSPOLARITY_AL | LTDC_DEPOLARITY_AL | LTDC_PCPOLARITY_IPC;
+  LTDC->GCR = LTDC_HSPOLARITY_AL | LTDC_VSPOLARITY_AL | LTDC_DEPOLARITY_AL | LTDC_PCPOLARITY_IPC;
 
   // set Synchronization size
-  LTDC->SSCR = ((RK043FN48H_HSYNC - 1) << 16) | (RK043FN48H_VSYNC - 1);
+  LTDC->SSCR = ((RK043FN48H_HSYNC - 1) << 16) | 
+                (RK043FN48H_VSYNC - 1);
 
   // set Accumulated Back porch
-  LTDC->BPCR = ((RK043FN48H_HSYNC + RK043FN48H_HBP - 1) << 16) | (RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
+  LTDC->BPCR = ((RK043FN48H_HSYNC + RK043FN48H_HBP - 1) << 16) | 
+                (RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
 
   // set Accumulated Active Width
   LTDC->AWCR = ((getWidth() + RK043FN48H_HSYNC + RK043FN48H_HBP - 1) << 16) |
-                 (getHeight() + RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
+                (getHeight() + RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
 
   // set Total Width
   LTDC->TWCR = ((getWidth() + RK043FN48H_HSYNC + RK043FN48H_HBP + RK043FN48H_HFP - 1) << 16) |
-                 (getHeight() + RK043FN48H_VSYNC + RK043FN48H_VBP + RK043FN48H_VFP - 1);
+                (getHeight() + RK043FN48H_VSYNC + RK043FN48H_VBP + RK043FN48H_VFP - 1);
 
   // set background color value
   LTDC->BCCR = 0;
 
   // set line interupt line number
   LTDC->LIPCR = 0;
-  mFrameWait = false;
 
   // clear interrupts
   LTDC->IER = LTDC_IT_TE | LTDC_IT_FU | LTDC_IT_LI;
 
+  mFrameWait = false;
   vSemaphoreCreateBinary (mFrameSem);
 
   HAL_NVIC_SetPriority (LTDC_IRQn, 0xE, 0);
@@ -233,7 +235,8 @@ void cLcd::init() {
                        ((getWidth() + ((LTDC->BPCR & LTDC_BPCR_AHBP) >> 16)) << 16);
 
   // config vertical start and stop position
-  LTDC_Layer1->WVPCR  = ((LTDC->BPCR & LTDC_BPCR_AVBP) + 1) | ((getHeight() + (LTDC->BPCR & LTDC_BPCR_AVBP)) << 16);
+  LTDC_Layer1->WVPCR  = ((LTDC->BPCR & LTDC_BPCR_AVBP) + 1) | 
+                        ((getHeight() + (LTDC->BPCR & LTDC_BPCR_AVBP)) << 16);
 
   // config default color values
   LTDC_Layer1->DCCR = 0;
@@ -245,7 +248,8 @@ void cLcd::init() {
   LTDC_Layer1->BFCR = LTDC_BLENDING_FACTOR1_PAxCA | LTDC_BLENDING_FACTOR2_PAxCA;
 
   // config color frame buffer pitch in byte
-  LTDC_Layer1->CFBLR = ((getWidth() * 2) << 16) | ((getWidth() * 2) + 3);
+  LTDC_Layer1->CFBLR = ((getWidth() * 2) << 16) | 
+                       ((getWidth() * 2) + 3);
 
   // config frame buffer line number
   LTDC_Layer1->CFBLNR = getHeight();

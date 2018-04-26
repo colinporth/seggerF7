@@ -1,9 +1,6 @@
 // system.c
-//includes
 #include "system.h"
 #include "cmsis_os.h"
-#include "stm32f7xx.h"
-#include "stm32f7xx_hal.h"
 
 // common handlers
 void NMI_Handler() {}

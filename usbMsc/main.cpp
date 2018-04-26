@@ -1,6 +1,7 @@
 // main.cpp - webcam
 //{{{  includes
 #include <deque>
+#include <string>
 
 #include "../common/system.h"
 #include "cLcd.h"
@@ -28,7 +29,7 @@
 
 #include "ethernetif.h"
 //}}}
-const char kVersion[] = "WebCam 26/4/18";
+std::string kVersion = "WebCam 26/4/18";
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0080000;
 uint8_t*  kCamBufEnd =  (uint8_t*)0xc0700000;
 uint16_t* kRgb565Buf = (uint16_t*)kCamBufEnd;
@@ -276,7 +277,7 @@ private:
   void reportFree();
   void reportLabel();
 
-  void loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf);
+  void loadFile (std::string fileName, uint8_t* buf, uint16_t* rgb565Buf);
   void saveNumFile (const char* name, int num, const char* ext, uint8_t* buf, int bufLen);
   void saveNumFile (const char* name, int num, const char* ext, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
   void createNumFile (const char* name, int num, uint8_t* header, int headerLen, uint8_t* frame, int frameLen);
@@ -678,7 +679,7 @@ void cApp::run() {
       mBoxes.front()->onDraw (mLcd);
     else {
       for (auto box : mBoxes) box->onDraw (mLcd);
-      drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, kVersion);
+      drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, kVersion.c_str());
       drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%dfree %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
       if (mDebugValue)
         drawDebug();
@@ -982,21 +983,23 @@ void cApp::reportFree() {
 //}}}
 
 //{{{
-void cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
+void cApp::loadFile (std::string fileName, uint8_t* buf, uint16_t* rgb565Buf) {
 
   FILINFO filInfo;
-  if (f_stat (fileName, &filInfo)) {
+  if (f_stat (fileName.c_str(), &filInfo)) {
     debug (LCD_COLOR_RED, "%s not found", fileName);
     return;
     }
 
-  debug (LCD_COLOR_WHITE, "%s %d bytes", fileName, (int)(filInfo.fsize));
+  debug (LCD_COLOR_WHITE, "%s %d bytes", fileName.c_str(), (int)(filInfo.fsize));
   debug (LCD_COLOR_WHITE, "- %u/%02u/%02u %02u:%02u %c%c%c%c%c",
-    (filInfo.fdate >> 9) + 1980, (filInfo.fdate>>5) & 15, (filInfo.fdate) & 31, (filInfo.ftime>>11), (filInfo.ftime>>5) & 63,
-    (filInfo.fattrib & AM_DIR) ? 'D' : '-', (filInfo.fattrib & AM_RDO) ? 'R' : '-', (filInfo.fattrib & AM_HID) ? 'H' : '-',
-    (filInfo.fattrib & AM_SYS) ? 'S' : '-', (filInfo.fattrib & AM_ARC) ? 'A' : '-');
+    (filInfo.fdate >> 9) + 1980, (filInfo.fdate >> 5) & 15, 
+    (filInfo.fdate) & 31, (filInfo.ftime >> 11), (filInfo.ftime >> 5) & 63,
+    (filInfo.fattrib & AM_DIR) ? 'D' : '-', (filInfo.fattrib & AM_RDO) ? 'R' : '-', 
+    (filInfo.fattrib & AM_HID) ? 'H' : '-', (filInfo.fattrib & AM_SYS) ? 'S' : '-', 
+    (filInfo.fattrib & AM_ARC) ? 'A' : '-');
 
-  if (f_open (&gFile, fileName, FA_READ)) {
+  if (f_open (&gFile, fileName.c_str(), FA_READ)) {
     debug (LCD_COLOR_RED, "%s not read", fileName);
     return;
     }
