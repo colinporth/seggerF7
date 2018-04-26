@@ -363,11 +363,11 @@ uint16_t cLcd::readPix (uint16_t x, uint16_t y) {
 
 //{{{
 void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect, float zoomx, float zoomy) {
-// srcCentre is offset from srcCentre to dstCentre
+// srcPos is offset from srcCentre to dstCentre
 
   uint32_t srcPitch = srcSize.x;
-  uint32_t srcSize16x = srcSize.x << 16;
-  uint32_t srcSize16y = srcSize.y << 16;
+  int32_t srcSize16x = srcSize.x << 16;
+  int32_t srcSize16y = srcSize.y << 16;
 
   int32_t inc16x = int32_t (0x10000 / zoomx);
   int32_t src16x = -(srcPos.x << 16) + (srcSize.x << 15) - ((dstRect.getWidth() * inc16x) >> 1);
@@ -375,25 +375,37 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect,
   int32_t inc16y = int32_t (0x10000 / zoomy);
   int32_t src16y = -(srcPos.y << 16) + (srcSize.y << 15) - ((dstRect.getHeight() * inc16y) >> 1);
 
+  // set dma2d common regs
   ready();
   DMA2D->OCOLR = 0;
   DMA2D->OOR = getWidth() - dstRect.getWidth();
-  DMA2D->NLR = (dstRect.getWidth() << 16) |  1;
 
+  int32_t dsty = 0;
   uint16_t* dst = gFrameBuf + (dstRect.top * getWidth()) + dstRect.left;
-  for (uint16_t dsty = 0; dsty < dstRect.getHeight(); dsty++) {
-    // draw line by line, leading and trailing clears could be combined
-    if ((src16y < 0) && (src16y >= srcSize16y)) {
-      //{{{  outside src
-      ready();
-      DMA2D->OMAR = (uint32_t)dst;
-      DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE;
-      mDma2dWait = true;
-      dst += getWidth();
-      }
-      //}}}
-    else {
-      //{{{  inside src
+  if (src16y < 0) {
+    //{{{  before valid src blacks
+    dsty = 1 - src16y/inc16y;
+
+    DMA2D->OMAR = (uint32_t)dst;
+    DMA2D->NLR = (dstRect.getWidth() << 16) |  dsty;
+    DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE;
+    mDma2dWait = true;
+
+    src16y += dsty * inc16y;
+    dst += dsty * getWidth();
+
+    ready();
+    }
+    //}}}
+
+  if (src16y < srcSize16y) {
+    // in valid src
+    int16_t lastSrcDsty = dsty + (srcSize16y / inc16y);
+    if (lastSrcDsty > dstRect.getHeight())
+      lastSrcDsty = dstRect.getHeight();
+
+    // draw valid src lines
+    while (dsty < lastSrcDsty) {
       uint16_t* srcPtr = src + ((src16y >> 16) * srcPitch);
       int32_t x16 = src16x;
       for (uint16_t dstx = 0; dstx < dstRect.getWidth(); dstx++) {
@@ -401,10 +413,22 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect,
         x16 += inc16x;
         }
       dst += getWidth() - dstRect.getWidth();
+      src16y += inc16y;
+      dsty++;
       }
-      //}}}
-    src16y += inc16y;
     }
+
+  if (dsty < dstRect.getHeight()) {
+    //{{{  after valid src black
+    int trail = dstRect.getHeight() - dsty;
+
+    ready();
+    DMA2D->OMAR = (uint32_t)dst;
+    DMA2D->NLR = (dstRect.getWidth() << 16) |  trail;
+    DMA2D->CR = DMA2D_CR_START | DMA2D_R2M | DMA2D_CR_TCIE;
+    mDma2dWait = true;
+    }
+    //}}}
   }
 //}}}
 //{{{
