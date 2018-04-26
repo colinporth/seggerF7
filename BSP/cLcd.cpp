@@ -357,7 +357,6 @@ void cLcd::debug (uint32_t colour, const char* format, ... ) {
 //{{{
 uint16_t cLcd::readPix (cPoint p) {
 
-  ready();
   return *(mFrameBuf + p.y*getWidth() + p.x);
   }
 //}}}
@@ -382,8 +381,9 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect,
 
   int32_t dsty = 0;
   uint16_t* dst = mFrameBuf + (dstRect.top * getWidth()) + dstRect.left;
+
   if (src16y < 0) {
-    //{{{  before valid src blacks
+    //{{{  before valid src 
     dsty = 1 - src16y/inc16y;
 
     DMA2D->OMAR = (uint32_t)dst;
@@ -399,7 +399,7 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect,
     //}}}
 
   if (src16y < srcSize16y) {
-    // in valid src
+    // valid src
     int16_t lastSrcDsty = dsty + (srcSize16y / inc16y);
     if (lastSrcDsty > dstRect.getHeight())
       lastSrcDsty = dstRect.getHeight();
@@ -419,7 +419,7 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect,
     }
 
   if (dsty < dstRect.getHeight()) {
-    //{{{  after valid src black
+    //{{{  after valid src 
     int trail = dstRect.getHeight() - dsty;
 
     ready();
