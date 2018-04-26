@@ -388,8 +388,7 @@ public:
         uint8_t* bufArray = buf;
         while (mCinfo.output_scanline < mCinfo.output_height) {
           jpeg_read_scanlines (&mCinfo, &bufArray, 1);
-          //mLcd->rgb888to565 (bufArray[0], kRgb565Buffer + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width);
-          lcd->rgb888to565 (bufArray, kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width, 1);
+          lcd->rgb888to565cpu (bufArray, kRgb565Buf + mCinfo.output_scanline * mCinfo.output_width, mCinfo.output_width, 1);
           }
         jpeg_finish_decompress (&mCinfo);
 
@@ -676,7 +675,7 @@ void cApp::run() {
       }
 
     // draw
-    if (BSP_PB_GetState (BUTTON_KEY)) 
+    if (BSP_PB_GetState (BUTTON_KEY))
       mBoxes.front()->onDraw (mLcd);
     else {
       for (auto box : mBoxes) box->onDraw (mLcd);

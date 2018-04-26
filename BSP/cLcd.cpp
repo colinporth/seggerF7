@@ -264,12 +264,14 @@ void cLcd::init() {
   // dma2d init
   __HAL_RCC_DMA2D_CLK_ENABLE();
 
-  const int kDeadTime = 10;
-  DMA2D->AMTCR = (kDeadTime << 8) | 0x0001;
-
+  DMA2D->FGPFCCR = DMA2D_INPUT_RGB888;
+  DMA2D->FGOR = 0;
   DMA2D->BGPFCCR = DMA2D_OUTPUT_RGB888;
   DMA2D->BGOR = 0;
   DMA2D->OPFCCR = DMA2D_OUTPUT_RGB565;
+
+  const int kDeadTime = 10;
+  DMA2D->AMTCR = (kDeadTime << 8) | 0x0001;
 
   vSemaphoreCreateBinary (mDma2dSem);
   HAL_NVIC_SetPriority (DMA2D_IRQn, 0x0F, 0);
@@ -437,8 +439,7 @@ void cLcd::zoom565 (uint16_t* src, cPoint srcPos, cPoint srcSize, cRect dstRect,
 void cLcd::rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ysize) {
 
   ready();
-  DMA2D->FGPFCCR = DMA2D_INPUT_RGB888;
-  DMA2D->FGOR = 0;
+
   DMA2D->FGMAR = (uint32_t)src;
   DMA2D->OMAR = (uint32_t)dst;
   DMA2D->NLR = (xsize << 16) | ysize;
@@ -450,10 +451,10 @@ void cLcd::rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ys
   }
 //}}}
 //{{{
-void cLcd::rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t size) {
+void cLcd::rgb888to565cpu (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ysize) {
 
   ready();
-  for (uint16_t x = 0; x < size; x++) {
+  for (uint16_t x = 0; x < xsize; x++) {
     uint8_t b = (*src++) & 0xF8;
     uint8_t g = (*src++) & 0xFC;
     uint8_t r = (*src++) & 0xF8;
@@ -1675,40 +1676,41 @@ void cLcd::ready() {
 //{{{
 void cLcd::fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3) {
 
-  int16_t deltax = ABS(p2.x - p1.x);        // The difference between the x's
-  int16_t deltay = ABS(p2.y - p1.y);        // The difference between the y's
-  cPoint p = p1;
-
   cPoint inc1 = {0,0};
   cPoint inc2 = {0,0};
-
   if (p2.x >= p1.x) {
-    //{{{  x-values are increasing
+    //{{{  x increasing
     inc1.x = 1;
     inc2.x = 1;
     }
     //}}}
   else {
-    //{{{  x-values are decreasing
+    //{{{  x decreasing
     inc1.x = -1;
     inc2.x = -1;
     }
     //}}}
 
   if (p2.y >= p1.y) {
-    //{{{  y-values are increasing
+    //{{{  y increasing
     inc1.y = 1;
     inc2.y = 1;
     }
     //}}}
   else {
-    //{{{  y-values are decreasing
+    //{{{  y decreasing
     inc1.y = -1;
     inc2.y = -1;
     }
     //}}}
 
-  int16_t den = 0, num = 0, num_add = 0, num_pixels = 0;
+  int16_t den;
+  int16_t num;
+  int16_t num_add;
+  int16_t num_pixels;
+
+  int16_t deltax = ABS(p2.x - p1.x);        // The difference between the x's
+  int16_t deltay = ABS(p2.y - p1.y);        // The difference between the y's
   if (deltax >= deltay) {
     //{{{  at least one x-value for every y-value
     inc1.x = 0;           // Don't change the x when numerator >= denominator
@@ -1721,7 +1723,7 @@ void cLcd::fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3) {
     }
     //}}}
   else {
-    //{{{  There is at least one y-value for every x-value
+    //{{{  at least one y-value for every x-value
     inc2.x = 0;           // Don't change the x for every iteration
     inc1.y = 0;           // Don't change the y when numerator >= denominator
 
@@ -1732,6 +1734,7 @@ void cLcd::fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3) {
     }
     //}}}
 
+  cPoint p = p1;
   for (int16_t curpixel = 0; curpixel <= num_pixels; curpixel++) {
     drawLine (color, p, p3);
     num += num_add;     // Increase the numerator by the top of the fraction
