@@ -291,8 +291,6 @@ private:
   std::deque <cBox*> mBoxes;
   cBox* mPressedBox = nullptr;
 
-  char mLabel[40];
-  DWORD mVsn = 0;
   int mFiles = 0;
 
   struct jpeg_error_mgr jerr;
@@ -334,28 +332,34 @@ public:
     mTextColor = LCD_COLOR_YELLOW;
     }
   //}}}
+  //{{{
   virtual ~cCameraBox() {
     jpeg_destroy_decompress (&mCinfo);
     }
+  //}}}
 
+  //{{{
   bool onPress (cPoint pos, uint8_t z)  {
     //cLcd::mLcd->debug (LCD_COLOR_WHITE, "press %d %d %f", pos.x, pos.y, mZoom);
     mZoomCentre = getCentre() - pos;
     mZoom = 1.f;
     return true;
     }
-
+  //}}}
+  //{{{
   bool onMove (cPoint pos, cPoint inc, uint8_t z)  {
     mZoomCentre += inc;
     return true;
     }
-
+  //}}}
+  //{{{
   bool onRelease (cPoint pos, uint8_t z)  {
     mZoomCentre = {0,0};
     mZoom = getHeight() / (float)mCam->getHeight();
     return true;
     }
-
+  //}}}
+  //{{{
   void onDraw (cLcd* lcd) {
     uint32_t frameId;
     auto frame = mCam->getLastFrame (mLastFrameLen, mLastJpeg, frameId);
@@ -404,6 +408,7 @@ public:
     sprintf (str, "%d:%x:%2d %dfps", mCam->getFrameLen(), mCam->getStatus(), mCam->getDmaCount(), mCam->getFps());
     lcd->displayStringShadow (mTextColor, mRect.getBR(), str, cLcd::eTextBottomRight);
     }
+  //}}}
 
 private:
   cCamera* mCam;
@@ -432,22 +437,26 @@ public:
   //}}}
   virtual ~cToggleBox() {}
 
+  //{{{
   bool onProx (cPoint pos) {
     return true;
     }
-
+  //}}}
+  //{{{
   bool onPress (cPoint pos, uint8_t z)  {
     mValue = !mValue;
     mThickness = z;
     mChanged = true;
     return true;
     }
-
+  //}}}
+  //{{{
   bool onMove (cPoint pos, cPoint inc, uint8_t z)  {
     mThickness = z;
     return true;
     }
-
+  //}}}
+  //{{{
   void onDraw (cLcd* lcd) {
     mColor = mValue ? LCD_COLOR_YELLOW : LCD_COLOR_LIGHT_GREY;
     mTextColor = mValue ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
@@ -455,6 +464,7 @@ public:
     if (mProxed)
       lcd->drawRect (LCD_COLOR_WHITE, mRect, mThickness < 10 ? 1 : mThickness / 10 );
     }
+  //}}}
 
 private:
   bool& mChanged;
@@ -473,21 +483,25 @@ public:
   //}}}
   virtual ~cInstantBox() {}
 
+  //{{{
   bool onProx (cPoint pos) {
     return true;
     }
-
+  //}}}
+  //{{{
   bool onPress (cPoint pos, uint8_t z)  {
     mThickness = z;
     mChanged = true;
     return true;
     }
-
+  //}}}
+  //{{{
   bool onMove (cPoint pos, cPoint inc, uint8_t z)  {
     mThickness = z;
     return true;
     }
-
+  //}}}
+  //{{{
   void onDraw (cLcd* lcd) {
     mColor = mPressed ? LCD_COLOR_YELLOW : LCD_COLOR_LIGHT_GREY;
     mTextColor = mPressed ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
@@ -495,6 +509,7 @@ public:
     if (mProxed)
       lcd->drawRect (LCD_COLOR_WHITE, mRect, mThickness < 10 ? 1 : mThickness / 10 );
     }
+  //}}}
 
 private:
   bool& mChanged;
@@ -598,14 +613,16 @@ void cApp::run() {
 
   if (mounted) {
     //{{{  mounted, load splash piccy, make buttons
-    f_getlabel ("", mLabel, &mVsn);
-    debug (LCD_COLOR_WHITE, "sdCard ok - %s ", mLabel);
+    char label[40] = {0};
+    DWORD vsn = 0;
+    f_getlabel ("", label, &vsn);
+    debug (LCD_COLOR_WHITE, "sdCard ok - <%s> ", label);
 
     loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
     char path[40] = "/";
 
-    auto numFiles = getCountFiles (path);
-    debug (LCD_COLOR_WHITE, "- files %d", numFiles);
+    //auto numFiles = getCountFiles (path);
+    //debug (LCD_COLOR_WHITE, "- files %d", numFiles);
 
     add (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
     add (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
@@ -999,7 +1016,7 @@ void cApp::loadFile (const std::string& fileName, uint8_t* buf, uint16_t* rgb565
     (filInfo.fattrib & AM_ARC) ? 'A' : '-');
 
   if (f_open (&gFile, fileName.c_str(), FA_READ)) {
-    debug (LCD_COLOR_RED, "%s not read", fileName);
+    debug (LCD_COLOR_RED, "%s not read", fileName.c_str());
     return;
     }
 

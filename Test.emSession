@@ -14,7 +14,6 @@
   <BreakpointListItem trigger="" line="3255" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="FatFs/ff.c" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="517" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="52" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="632" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="usbMsc/main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="682" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="main.cpp" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="126" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="4" filename="BSP/sdDiskioDmaRtos.cpp" useHWbreakpoint="false"/>
  </Breakpoints>
@@ -49,7 +48,6 @@
  <Project>
   <ProjectSessionItem path="usb"/>
   <ProjectSessionItem path="usb;usbMsc"/>
-  <ProjectSessionItem path="usb;usbMsc;FatFs"/>
   <ProjectSessionItem path="usb;usbMsc;main"/>
   <ProjectSessionItem path="usb;usbMsc;system"/>
  </Project>

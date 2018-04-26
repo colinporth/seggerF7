@@ -37,7 +37,6 @@ public:
   uint16_t getCharWidth();
   uint16_t getTextHeight();
 
-  // flipped display
   void drawInfo (uint16_t color, eTextAlign textAlign, const char* format, ... );
   void drawDebug();
   void present();
@@ -59,14 +58,14 @@ public:
   //}}}
   void incScrollValue (int inc);
 
+  void debug (uint32_t colour, const std::string& str);
+  void debug (uint32_t colour, const char* format, ... );
   //{{{
   void clearDebug() {
 
     mDebugLine = 0;
     }
   //}}}
-  void debug (uint32_t colour, const std::string& str);
-  void debug (uint32_t colour, const char* format, ... );
 
   // drawing
   uint16_t readPix (cPoint p);
@@ -131,8 +130,7 @@ public:
 
 private:
   void layerInit();
-  uint16_t* getWriteBuffer() { return mFrameBuf; }
-
+ 
   void ready();
   void drawPix (uint16_t color, uint16_t x, uint16_t y) { *(mFrameBuf + y*getWidth() + x) = color; }
   void fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3);
