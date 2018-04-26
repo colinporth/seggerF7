@@ -109,13 +109,13 @@ public:
   void drawRect (uint16_t color, cRect& rect, uint16_t thickness);
   void drawRect (uint16_t color, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t thickness);
 
-  void drawCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius);
-  void fillCircle (uint16_t color, uint16_t x, uint16_t y, uint16_t radius);
-  void drawEllipse (uint16_t color, uint16_t xCentre, uint16_t yCentre, uint16_t xRadius, uint16_t yRadius);
-  void fillEllipse (uint16_t color, uint16_t xCentre, uint16_t yCentre, uint16_t xRadius, uint16_t yRadius);
+  void drawCircle (uint16_t color, cPoint centre, uint16_t radius);
+  void fillCircle (uint16_t color, cPoint centre, uint16_t radius);
+  void drawEllipse (uint16_t color, cPoint centre, cPoint radius);
+  void fillEllipse (uint16_t color, cPoint centre,  cPoint radius);
   void drawPolygon (uint16_t color, cPoint* points, uint16_t pointCount);
   void fillPolygon (uint16_t color, cPoint* points, uint16_t pPointCount);
-  void drawLine (uint16_t color, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+  void drawLine (uint16_t color, cPoint p1, cPoint p2);
 
   void displayOff();
   void displayOn();
@@ -134,7 +134,7 @@ private:
 
   void ready();
   void drawPix (uint16_t color, uint16_t x, uint16_t y) { *(gFrameBuf + y*getWidth() + x) = color; }
-  void fillTriangle (uint16_t color, uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3);
+  void fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3);
 
   static const int kMaxStrSize = 40;
   static const int kDebugMaxLines = 100;

@@ -44,6 +44,11 @@ public:
     }
   //}}}
   //{{{
+  cPoint operator / (const int s) const {
+    return cPoint (x / s, y / s);
+    }
+  //}}}
+  //{{{
   cPoint operator / (const int16_t s) const {
     return cPoint (x / s, y / s);
     }
