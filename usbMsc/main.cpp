@@ -597,6 +597,7 @@ extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 //{{{
 void cApp::run() {
 
+  diskDebugEnable();
   bool mounted = !f_mount (&gFatFs, "", 1);
   if (!mounted)
     debug (LCD_COLOR_GREEN, "sdCard not mounted");
@@ -629,6 +630,7 @@ void cApp::run() {
     add (new cInstantBox (kBoxWidth,kBoxHeight, "format", mFormatChanged));
     }
     //}}}
+  diskDebugDisable();
 
   while (true) {
     //{{{  removed
@@ -1014,6 +1016,7 @@ void cApp::loadFile (const std::string& fileName, uint8_t* buf, uint16_t* rgb565
     (filInfo.fattrib & AM_DIR) ? 'D' : '-', (filInfo.fattrib & AM_RDO) ? 'R' : '-',
     (filInfo.fattrib & AM_HID) ? 'H' : '-', (filInfo.fattrib & AM_SYS) ? 'S' : '-',
     (filInfo.fattrib & AM_ARC) ? 'A' : '-');
+  return;
 
   if (f_open (&gFile, fileName.c_str(), FA_READ)) {
     debug (LCD_COLOR_RED, "%s not read", fileName.c_str());
@@ -1030,22 +1033,20 @@ void cApp::loadFile (const std::string& fileName, uint8_t* buf, uint16_t* rgb565
     jpeg_read_header (&mCinfo, TRUE);
     debug (LCD_COLOR_WHITE, "- image %dx%d", mCinfo.image_width, mCinfo.image_height);
 
-    if (false) {
-      mCinfo.dct_method = JDCT_FLOAT;
-      mCinfo.out_color_space = JCS_RGB;
-      mCinfo.scale_num = 1;
-      mCinfo.scale_denom = 4;
-      uint8_t* bufArray = (uint8_t*)malloc (mCinfo.output_width * 3);
-      jpeg_start_decompress (&mCinfo);
-      while (mCinfo.output_scanline < mCinfo.output_height) {
-        jpeg_read_scanlines (&mCinfo, &bufArray, 1);
-        rgb888to565 (bufArray, rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width,1);
-        }
-      free (bufArray);
-      jpeg_finish_decompress (&mCinfo);
-
-      debug (LCD_COLOR_WHITE, "- load  %dx%d scale %d", mCinfo.output_width, mCinfo.output_height, 4);
+    mCinfo.dct_method = JDCT_FLOAT;
+    mCinfo.out_color_space = JCS_RGB;
+    mCinfo.scale_num = 1;
+    mCinfo.scale_denom = 4;
+    uint8_t* bufArray = (uint8_t*)malloc (mCinfo.output_width * 3);
+    jpeg_start_decompress (&mCinfo);
+    while (mCinfo.output_scanline < mCinfo.output_height) {
+      jpeg_read_scanlines (&mCinfo, &bufArray, 1);
+      rgb888to565 (bufArray, rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width,1);
       }
+    free (bufArray);
+    jpeg_finish_decompress (&mCinfo);
+
+    debug (LCD_COLOR_WHITE, "- load  %dx%d scale %d", mCinfo.output_width, mCinfo.output_height, 4);
     }
   }
 //}}}

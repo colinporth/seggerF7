@@ -14,6 +14,7 @@
 
 #define SD_TIMEOUT      2*1000
 
+bool gDebug = false;
 volatile DSTATUS gStat = STA_NOINIT;
 osMessageQId gSdQueueId;
 
@@ -99,10 +100,11 @@ DRESULT diskIoctl (BYTE cmd, void* buf) {
 //{{{
 DRESULT diskRead (const BYTE* buf, uint32_t sector, uint32_t numSectors) {
 
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_read %p %d %d", buf, sector, numSectors);
+  if (gDebug)
+    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskRead %p %d %d", buf, sector, numSectors);
 
   if ((uint32_t)buf & 0x3) {
-    cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_read %p align fail", buf);
+    cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "diskRead %p align fail", buf);
     return RES_ERROR;
     }
 
@@ -125,16 +127,18 @@ DRESULT diskRead (const BYTE* buf, uint32_t sector, uint32_t numSectors) {
       }
     }
 
-  cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_read %d:%d fail", sector, numSectors);
+  cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "diskRead %d:%d fail", sector, numSectors);
   return RES_ERROR;
   }
 //}}}
 //{{{
 DRESULT diskWrite (const BYTE* buf, uint32_t sector, uint32_t numSectors) {
 
-  //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_write %p %d %d", buf, sector, numSectors);
+  if (gDebug)
+    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskWrite %p %d %d", buf, sector, numSectors);
+
   if ((uint32_t)buf & 0x3) {
-    cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_write %p align fail", buf);
+    cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "diskWrite %p align fail", buf);
     return RES_ERROR;
     }
 
@@ -152,7 +156,7 @@ DRESULT diskWrite (const BYTE* buf, uint32_t sector, uint32_t numSectors) {
             auto writeTime = ticks2 - ticks1;
             auto okTime = osKernelSysTick() - ticks2;
             if ((writeTime > 200) || (okTime > 200))
-              cLcd::mLcd->debug (LCD_COLOR_YELLOW, "disk_write %7d:%2d %d:%d", sector, numSectors, writeTime, okTime);
+              cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskWrite %7d:%2d %d:%d", sector, numSectors, writeTime, okTime);
             return  RES_OK;
             }
           osDelay (1);
@@ -161,7 +165,18 @@ DRESULT diskWrite (const BYTE* buf, uint32_t sector, uint32_t numSectors) {
       }
     }
 
-  cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "disk_write %d:%d fail", sector, numSectors);
+  cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "diskWrite %d:%d fail", sector, numSectors);
   return RES_ERROR;
+  }
+//}}}
+
+//{{{
+void diskDebugEnable() {
+  gDebug = true;
+  }
+//}}}
+//{{{
+void diskDebugDisable() {
+  gDebug = false;
   }
 //}}}
