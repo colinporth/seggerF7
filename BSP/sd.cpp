@@ -4,8 +4,9 @@
 #include "../FatFs/diskio.h"
 
 #include "cmsis_os.h"
-#include "cLcd.h"
 #include "stm32746g_discovery.h"
+
+#include "cLcd.h"
 //}}}
 //{{{  defines
 #define QUEUE_SIZE      10
@@ -14,17 +15,17 @@
 #define SD_TIMEOUT      2*1000
 
 #define __DMAx_TxRx_CLK_ENABLE       __HAL_RCC_DMA2_CLK_ENABLE
+
 #define SD_DMAx_Tx_CHANNEL           DMA_CHANNEL_4
 #define SD_DMAx_Rx_CHANNEL           DMA_CHANNEL_4
 #define SD_DMAx_Tx_STREAM            DMA2_Stream6
 #define SD_DMAx_Rx_STREAM            DMA2_Stream3
 #define SD_DMAx_Tx_IRQn              DMA2_Stream6_IRQn
 #define SD_DMAx_Rx_IRQn              DMA2_Stream3_IRQn
+
 #define BSP_SDMMC_IRQHandler         SDMMC1_IRQHandler
 #define BSP_SDMMC_DMA_Tx_IRQHandler  DMA2_Stream6_IRQHandler
 #define BSP_SDMMC_DMA_Rx_IRQHandler  DMA2_Stream3_IRQHandler
-
-#define SD_DetectIRQHandler()        HAL_GPIO_EXTI_IRQHandler(SD_DETECT_PIN)
 
 #define SD_DATATIMEOUT  ((uint32_t)100000000)
 
@@ -54,40 +55,7 @@ extern "C" {
   }
 
 //{{{
-uint8_t ITConfig() {
-
-  GPIO_InitTypeDef gpio_init_structure;
-
-  // Configure Interrupt mode for SD detection pin
-  gpio_init_structure.Pin = SD_DETECT_PIN;
-  gpio_init_structure.Pull = GPIO_PULLUP;
-  gpio_init_structure.Speed = GPIO_SPEED_FAST;
-  gpio_init_structure.Mode = GPIO_MODE_IT_RISING_FALLING;
-  HAL_GPIO_Init(SD_DETECT_GPIO_PORT, &gpio_init_structure);
-
-  /* Enable and set SD detect EXTI Interrupt to the lowest priority */
-  HAL_NVIC_SetPriority((IRQn_Type)(SD_DETECT_EXTI_IRQn), 0x0F, 0x00);
-  HAL_NVIC_EnableIRQ((IRQn_Type)(SD_DETECT_EXTI_IRQn));
-
-  return MSD_OK;
-  }
-//}}}
-//{{{
-uint8_t IsDetected() {
-
-  __IO uint8_t status = SD_PRESENT;
-
-  /* Check SD card detect pin */
-  if (HAL_GPIO_ReadPin(SD_DETECT_GPIO_PORT, SD_DETECT_PIN) == GPIO_PIN_SET)
-    status = SD_NOT_PRESENT;
-
-  return status;
-  }
-//}}}
-
-// raw sdCard interface
-//{{{
-uint8_t Init() {
+bool init() {
 
   // uSD device interface configuration
   uSdHandle.Instance = SDMMC1;
@@ -99,7 +67,7 @@ uint8_t Init() {
   uSdHandle.Init.ClockDiv            = SDMMC_TRANSFER_CLK_DIV;
 
   // card inserted
-  //{{{  GPIO configuration in input for uSD_Detect signal */
+  //{{{  GPIO configuration in input for uSD_Detect signal
   SD_DETECT_GPIO_CLK_ENABLE();
 
   GPIO_InitTypeDef  gpio_init_structure;
@@ -109,9 +77,11 @@ uint8_t Init() {
   gpio_init_structure.Speed     = GPIO_SPEED_HIGH;
   HAL_GPIO_Init (SD_DETECT_GPIO_PORT, &gpio_init_structure);
   //}}}
-  if (IsDetected() != SD_PRESENT)
-    return MSD_ERROR_SD_NOT_PRESENT;
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "present");
+  if (HAL_GPIO_ReadPin(SD_DETECT_GPIO_PORT, SD_DETECT_PIN) == GPIO_PIN_SET) {
+    cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sdCard not present");
+    return false;
+    }
+  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sdCard present");
 
   // card init
   __HAL_RCC_SDMMC1_CLK_ENABLE();
@@ -173,64 +143,36 @@ uint8_t Init() {
   //}}}
 
   // NVIC configuration for DMA transfer complete interrupt
-  HAL_NVIC_SetPriority(SD_DMAx_Rx_IRQn, 0x0F, 0);
-  HAL_NVIC_EnableIRQ(SD_DMAx_Rx_IRQn);
+  HAL_NVIC_SetPriority (SD_DMAx_Rx_IRQn, 0x0F, 0);
+  HAL_NVIC_EnableIRQ (SD_DMAx_Rx_IRQn);
 
   // NVIC configuration for DMA transfer complete interrupt
-  HAL_NVIC_SetPriority(SD_DMAx_Tx_IRQn, 0x0F, 0);
-  HAL_NVIC_EnableIRQ(SD_DMAx_Tx_IRQn);
+  HAL_NVIC_SetPriority (SD_DMAx_Tx_IRQn, 0x0F, 0);
+  HAL_NVIC_EnableIRQ (SD_DMAx_Tx_IRQn);
 
   // NVIC configuration for SDIO interrupts
-  HAL_NVIC_SetPriority(SDMMC1_IRQn, 0x0E, 0);
-  HAL_NVIC_EnableIRQ(SDMMC1_IRQn);
+  HAL_NVIC_SetPriority (SDMMC1_IRQn, 0x0E, 0);
+  HAL_NVIC_EnableIRQ (SDMMC1_IRQn);
 
   if (HAL_SD_Init (&uSdHandle) != HAL_OK)
-    return MSD_ERROR;
+    return false;
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "mspinit");
 
   // Enable wide operation
   auto result = HAL_SD_ConfigWideBusOperation (&uSdHandle, SDMMC_BUS_WIDE_4B);
   cLcd::mLcd->debug (LCD_COLOR_YELLOW, "wide result %d", result);
 
-  return (result == HAL_OK) ? MSD_OK : MSD_ERROR;
+  return result == HAL_OK;
   }
 //}}}
 
 //{{{
-uint8_t GetCardState() {
-
-  return((HAL_SD_GetCardState(&uSdHandle) == HAL_SD_CARD_TRANSFER ) ? SD_TRANSFER_OK : SD_TRANSFER_BUSY);
-  }
-//}}}
-
-//{{{
-uint8_t ReadBlocks_DMA (uint32_t *pData, uint32_t ReadAddr, uint32_t NumOfBlocks) {
-
-  /* Read block(s) in DMA transfer mode */
-  if (HAL_SD_ReadBlocks_DMA(&uSdHandle, (uint8_t *)pData, ReadAddr, NumOfBlocks) != HAL_OK)
-    return MSD_ERROR;
-  else
-    return MSD_OK;
-  }
-//}}}
-//{{{
-uint8_t WriteBlocks_DMA (uint32_t *pData, uint32_t WriteAddr, uint32_t NumOfBlocks) {
-
-  /* Write block(s) in DMA transfer mode */
-  if (HAL_SD_WriteBlocks_DMA (&uSdHandle, (uint8_t*)pData, WriteAddr, NumOfBlocks) != HAL_OK)
-    return MSD_ERROR;
-  else
-    return MSD_OK;
-  }
-//}}}
-
-//{{{
-void HAL_SD_TxCpltCallback (SD_HandleTypeDef *hsd) {
+void HAL_SD_TxCpltCallback (SD_HandleTypeDef* hsd) {
   osMessagePut (gSdQueueId, WRITE_CPLT_MSG, osWaitForever);
   }
 //}}}
 //{{{
-void HAL_SD_RxCpltCallback (SD_HandleTypeDef *hsd) {
+void HAL_SD_RxCpltCallback (SD_HandleTypeDef* hsd) {
   osMessagePut (gSdQueueId, READ_CPLT_MSG, osWaitForever);
   }
 //}}}
@@ -240,8 +182,7 @@ void HAL_SD_RxCpltCallback (SD_HandleTypeDef *hsd) {
 DSTATUS checkStatus() {
 
   gStat = STA_NOINIT;
-
-  if (GetCardState() == MSD_OK)
+  if (HAL_SD_GetCardState (&uSdHandle) == HAL_SD_CARD_TRANSFER)
     gStat &= ~STA_NOINIT;
 
   return gStat;
@@ -256,13 +197,10 @@ DSTATUS diskInit() {
   gStat = STA_NOINIT;
 
   if (osKernelRunning()) {
-    auto result = Init();
-    if (result == MSD_OK) {
+    if (init())
       gStat = checkStatus();
-      //cLcd::mLcd->debug (LCD_COLOR_YELLOW, "diskInit %d", gStat);
-      }
     else
-      cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "diskInit failed %d", result);
+      cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "diskInit failed");
 
     if (gStat != STA_NOINIT) {
       osMessageQDef (sdQueue, QUEUE_SIZE, uint16_t);
@@ -322,13 +260,13 @@ DRESULT diskRead (const BYTE* buf, uint32_t sector, uint32_t numSectors) {
     return RES_ERROR;
     }
 
-  if (ReadBlocks_DMA ((uint32_t*)buf, sector, numSectors) == MSD_OK) {
+  if (HAL_SD_ReadBlocks_DMA (&uSdHandle, (uint8_t*)buf, sector, numSectors) == HAL_OK) {
     osEvent event = osMessageGet (gSdQueueId, SD_TIMEOUT);
     if (event.status == osEventMessage) {
       if (event.value.v == READ_CPLT_MSG) {
         uint32_t timer = osKernelSysTick();
         while (timer < osKernelSysTick() + SD_TIMEOUT) {
-          if (GetCardState() == SD_TRANSFER_OK) {
+          if (HAL_SD_GetCardState (&uSdHandle) == HAL_SD_CARD_TRANSFER) {
             if (buf + (numSectors * 512) >= (uint8_t*)0x20010000) {
               uint32_t alignedAddr = (uint32_t)buf & ~0x1F;
               SCB_InvalidateDCache_by_Addr ((uint32_t*)alignedAddr, numSectors * 512 + ((uint32_t)buf - alignedAddr));
@@ -360,13 +298,13 @@ DRESULT diskWrite (const BYTE* buf, uint32_t sector, uint32_t numSectors) {
   SCB_CleanDCache_by_Addr ((uint32_t*)alignedAddr, (numSectors * 512) + ((uint32_t)buf - alignedAddr));
 
   auto ticks1 = osKernelSysTick();
-  if (WriteBlocks_DMA ((uint32_t*)buf, sector, numSectors) == MSD_OK) {
+  if (HAL_SD_WriteBlocks_DMA (&uSdHandle, (uint8_t*)buf, sector, numSectors) == HAL_OK) {
     auto event = osMessageGet (gSdQueueId, SD_TIMEOUT);
     if (event.status == osEventMessage) {
       if (event.value.v == WRITE_CPLT_MSG) {
         auto ticks2 = osKernelSysTick();
         while (ticks2 < osKernelSysTick() + SD_TIMEOUT) {
-          if (GetCardState() == SD_TRANSFER_OK) {
+          if (HAL_SD_GetCardState (&uSdHandle) == HAL_SD_CARD_TRANSFER) {
             auto writeTime = ticks2 - ticks1;
             auto okTime = osKernelSysTick() - ticks2;
             if ((writeTime > 200) || (okTime > 200))
