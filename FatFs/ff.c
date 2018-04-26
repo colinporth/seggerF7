@@ -660,7 +660,188 @@ static void clear_lock (FATFS *fs) {
   }
 //}}}
 //}}}
+//{{{  lfn
+// Offset of LFN characters in the directory entry
+static const BYTE LfnOfs[] = {1,3,5,7,9,14,16,18,20,22,24,28,30};
 
+//{{{
+static int cmp_lfn (const WCHAR* lfnbuf, BYTE* dir) {
+
+  if (ld_word (dir + LDIR_FstClusLO) != 0)
+    return 0; /* Check LDIR_FstClusLO */
+
+  UINT i = ((dir[LDIR_Ord] & 0x3F) - 1) * 13;  /* Offset in the LFN buffer */
+
+  UINT s;
+  WCHAR wc, uc;
+  for (wc = 1, s = 0; s < 13; s++) {    /* Process all characters in the entry */
+    uc = ld_word (dir + LfnOfs[s]);    /* Pick an LFN character */
+    if (wc) {
+      if (i >= _MAX_LFN || wtoupper(uc) != wtoupper(lfnbuf[i++])) /* Compare it */
+        return 0;         /* Not matched */
+      wc = uc;
+      }
+    else {
+      if (uc != 0xFFFF)
+        return 0;   /* Check filler */
+      }
+    }
+
+  if ((dir[LDIR_Ord] & LLEF) && wc && lfnbuf[i])
+    return 0;  /* Last segment matched but different length */
+
+  return 1; /* The part of LFN matched */
+  }
+//}}}
+//{{{
+static int pick_lfn (WCHAR* lfnbuf, BYTE* dir) {
+
+  if (ld_word(dir + LDIR_FstClusLO) != 0)
+    return 0; /* Check LDIR_FstClusLO is 0 */
+
+  UINT i = ((dir[LDIR_Ord] & ~LLEF) - 1) * 13; /* Offset in the LFN buffer */
+
+  UINT s;
+  WCHAR wc, uc;
+  for (wc = 1, s = 0; s < 13; s++) {    /* Process all characters in the entry */
+    uc = ld_word (dir + LfnOfs[s]);    /* Pick an LFN character */
+    if (wc) {
+      if (i >= _MAX_LFN)
+        return 0;  /* Buffer overflow? */
+      lfnbuf[i++] = wc = uc;      /* Store it */
+      }
+    else {
+      if (uc != 0xFFFF)
+        return 0;   /* Check filler */
+      }
+    }
+
+  if (dir[LDIR_Ord] & LLEF) {       /* Put terminator if it is the last LFN part */
+    if (i >= _MAX_LFN)
+      return 0;    /* Buffer overflow? */
+    lfnbuf[i] = 0;
+    }
+
+  return 1;   /* The part of LFN is valid */
+  }
+//}}}
+//{{{
+static void put_lfn (const WCHAR* lfn, BYTE* dir, BYTE ord, BYTE sum) {
+
+  dir[LDIR_Chksum] = sum;     /* Set checksum */
+  dir[LDIR_Attr] = AM_LFN;    /* Set attribute. LFN entry */
+  dir[LDIR_Type] = 0;
+  st_word (dir + LDIR_FstClusLO, 0);
+
+  UINT i = (ord - 1) * 13;       /* Get offset in the LFN working buffer */
+  UINT s = 0;
+  WCHAR wc = 0;
+  do {
+    if (wc != 0xFFFF)
+      wc = lfn[i++];  /* Get an effective character */
+    st_word (dir + LfnOfs[s], wc);   /* Put it */
+    if (wc == 0)
+      wc = 0xFFFF;   /* Padding characters for left locations */
+    } while (++s < 13);
+
+  if (wc == 0xFFFF || !lfn[i])
+    ord |= LLEF; /* Last LFN part is the start of LFN sequence */
+
+  dir[LDIR_Ord] = ord;      /* Set the LFN order */
+  }
+//}}}
+
+//{{{
+static void gen_numname (BYTE* dst, const BYTE* src, const WCHAR* lfn, UINT seq) {
+
+  memcpy (dst, src, 11);
+
+  if (seq > 5) {
+    // In case of many collisions, generate a hash number instead of sequential number
+    DWORD sr = seq;
+    while (*lfn) {
+      // Create a CRC
+      WCHAR wc = *lfn++;
+      for (UINT i = 0; i < 16; i++) {
+        sr = (sr << 1) + (wc & 1);
+        wc >>= 1;
+        if (sr & 0x10000)
+          sr ^= 0x11021;
+        }
+      }
+    seq = (UINT)sr;
+    }
+
+  // itoa (hexdecimal)
+  UINT i = 7;
+  BYTE ns[8];
+  do {
+    BYTE c = (BYTE)((seq % 16) + '0');
+    if (c > '9')
+      c += 7;
+    ns[i--] = c;
+    seq /= 16;
+    } while (seq);
+  ns[i] = '~';
+
+  // Append the number
+  UINT j;
+  for (j = 0; j < i && dst[j] != ' '; j++) {}
+  do {
+    dst[j++] = (i < 8) ? ns[i++] : ' ';
+    } while (j < 8);
+  }
+//}}}
+
+//{{{
+static BYTE sum_sfn (const BYTE* dir) {
+
+  BYTE sum = 0;
+  UINT n = 11;
+  do {
+    sum = (sum >> 1) + (sum << 7) + *dir++;
+    } while (--n);
+
+  return sum;
+  }
+//}}}
+//{{{
+static WORD xdir_sum (const BYTE* dir) {
+
+  WORD sum;
+  UINT szblk = (dir[XDIR_NumSec] + 1) * SZDIRE;
+  for (UINT i = sum = 0; i < szblk; i++)
+    if (i == XDIR_SetSum)  /* Skip sum field */
+      i++;
+    else
+      sum = ((sum & 1) ? 0x8000 : 0) + (sum >> 1) + dir[i];
+
+  return sum;
+  }
+//}}}
+//{{{
+static WORD xname_sum (const WCHAR* name) {
+
+  WORD sum = 0;
+  WCHAR chr;
+  while ((chr = *name++) != 0) {
+    chr = wtoupper (chr);   /* File name needs to be ignored case */
+    sum = ((sum & 1) ? 0x8000 : 0) + (sum >> 1) + (chr & 0xFF);
+    sum = ((sum & 1) ? 0x8000 : 0) + (sum >> 1) + (chr >> 8);
+    }
+
+  return sum;
+  }
+//}}}
+//{{{
+static DWORD xsum32 (BYTE  dat, DWORD sum) {
+
+  sum = ((sum & 1) ? 0x80000000 : 0) + (sum >> 1) + dat;
+  return sum;
+  }
+//}}}
+//}}}
+//{{{  window, bitmap, cluster
 //{{{
 static FRESULT sync_window (FATFS* fs) {
 
@@ -741,7 +922,6 @@ static FRESULT sync_fs (FATFS* fs) {
   }
 //}}}
 
-//{{{  bitmap, cluster
 //{{{
 static DWORD clust2sect (FATFS* fs, DWORD clst) {
 
@@ -1344,187 +1524,6 @@ static void st_clust (FATFS* fs, BYTE* dir, DWORD cl) {
   st_word (dir + DIR_FstClusLO, (WORD)cl);
   if (fs->fs_type == FS_FAT32)
     st_word (dir + DIR_FstClusHI, (WORD)(cl >> 16));
-  }
-//}}}
-//}}}
-//{{{  lfn
-/* Offset of LFN characters in the directory entry */
-static const BYTE LfnOfs[] = {1,3,5,7,9,14,16,18,20,22,24,28,30};
-
-//{{{
-static int cmp_lfn (const WCHAR* lfnbuf, BYTE* dir) {
-
-  if (ld_word (dir + LDIR_FstClusLO) != 0)
-    return 0; /* Check LDIR_FstClusLO */
-
-  UINT i = ((dir[LDIR_Ord] & 0x3F) - 1) * 13;  /* Offset in the LFN buffer */
-
-  UINT s;
-  WCHAR wc, uc;
-  for (wc = 1, s = 0; s < 13; s++) {    /* Process all characters in the entry */
-    uc = ld_word (dir + LfnOfs[s]);    /* Pick an LFN character */
-    if (wc) {
-      if (i >= _MAX_LFN || wtoupper(uc) != wtoupper(lfnbuf[i++])) /* Compare it */
-        return 0;         /* Not matched */
-      wc = uc;
-      }
-    else {
-      if (uc != 0xFFFF)
-        return 0;   /* Check filler */
-      }
-    }
-
-  if ((dir[LDIR_Ord] & LLEF) && wc && lfnbuf[i])
-    return 0;  /* Last segment matched but different length */
-
-  return 1; /* The part of LFN matched */
-  }
-//}}}
-//{{{
-static int pick_lfn (WCHAR* lfnbuf, BYTE* dir) {
-
-  if (ld_word(dir + LDIR_FstClusLO) != 0)
-    return 0; /* Check LDIR_FstClusLO is 0 */
-
-  UINT i = ((dir[LDIR_Ord] & ~LLEF) - 1) * 13; /* Offset in the LFN buffer */
-
-  UINT s;
-  WCHAR wc, uc;
-  for (wc = 1, s = 0; s < 13; s++) {    /* Process all characters in the entry */
-    uc = ld_word (dir + LfnOfs[s]);    /* Pick an LFN character */
-    if (wc) {
-      if (i >= _MAX_LFN)
-        return 0;  /* Buffer overflow? */
-      lfnbuf[i++] = wc = uc;      /* Store it */
-      }
-    else {
-      if (uc != 0xFFFF)
-        return 0;   /* Check filler */
-      }
-    }
-
-  if (dir[LDIR_Ord] & LLEF) {       /* Put terminator if it is the last LFN part */
-    if (i >= _MAX_LFN)
-      return 0;    /* Buffer overflow? */
-    lfnbuf[i] = 0;
-    }
-
-  return 1;   /* The part of LFN is valid */
-  }
-//}}}
-//{{{
-static void put_lfn (const WCHAR* lfn, BYTE* dir, BYTE ord, BYTE sum) {
-
-  dir[LDIR_Chksum] = sum;     /* Set checksum */
-  dir[LDIR_Attr] = AM_LFN;    /* Set attribute. LFN entry */
-  dir[LDIR_Type] = 0;
-  st_word (dir + LDIR_FstClusLO, 0);
-
-  UINT i = (ord - 1) * 13;       /* Get offset in the LFN working buffer */
-  UINT s = 0;
-  WCHAR wc = 0;
-  do {
-    if (wc != 0xFFFF)
-      wc = lfn[i++];  /* Get an effective character */
-    st_word (dir + LfnOfs[s], wc);   /* Put it */
-    if (wc == 0)
-      wc = 0xFFFF;   /* Padding characters for left locations */
-    } while (++s < 13);
-
-  if (wc == 0xFFFF || !lfn[i])
-    ord |= LLEF; /* Last LFN part is the start of LFN sequence */
-
-  dir[LDIR_Ord] = ord;      /* Set the LFN order */
-  }
-//}}}
-
-//{{{
-static void gen_numname (BYTE* dst, const BYTE* src, const WCHAR* lfn, UINT seq) {
-
-  memcpy (dst, src, 11);
-
-  if (seq > 5) {
-    // In case of many collisions, generate a hash number instead of sequential number
-    DWORD sr = seq;
-    while (*lfn) {
-      // Create a CRC
-      WCHAR wc = *lfn++;
-      for (UINT i = 0; i < 16; i++) {
-        sr = (sr << 1) + (wc & 1);
-        wc >>= 1;
-        if (sr & 0x10000)
-          sr ^= 0x11021;
-        }
-      }
-    seq = (UINT)sr;
-    }
-
-  // itoa (hexdecimal)
-  UINT i = 7;
-  BYTE ns[8];
-  do {
-    BYTE c = (BYTE)((seq % 16) + '0');
-    if (c > '9')
-      c += 7;
-    ns[i--] = c;
-    seq /= 16;
-    } while (seq);
-  ns[i] = '~';
-
-  // Append the number
-  UINT j;
-  for (j = 0; j < i && dst[j] != ' '; j++) {}
-  do {
-    dst[j++] = (i < 8) ? ns[i++] : ' ';
-    } while (j < 8);
-  }
-//}}}
-
-//{{{
-static BYTE sum_sfn (const BYTE* dir) {
-
-  BYTE sum = 0;
-  UINT n = 11;
-  do {
-    sum = (sum >> 1) + (sum << 7) + *dir++;
-    } while (--n);
-
-  return sum;
-  }
-//}}}
-//{{{
-static WORD xdir_sum (const BYTE* dir) {
-
-  WORD sum;
-  UINT szblk = (dir[XDIR_NumSec] + 1) * SZDIRE;
-  for (UINT i = sum = 0; i < szblk; i++)
-    if (i == XDIR_SetSum)  /* Skip sum field */
-      i++;
-    else
-      sum = ((sum & 1) ? 0x8000 : 0) + (sum >> 1) + dir[i];
-
-  return sum;
-  }
-//}}}
-//{{{
-static WORD xname_sum (const WCHAR* name) {
-
-  WORD sum = 0;
-  WCHAR chr;
-  while ((chr = *name++) != 0) {
-    chr = wtoupper (chr);   /* File name needs to be ignored case */
-    sum = ((sum & 1) ? 0x8000 : 0) + (sum >> 1) + (chr & 0xFF);
-    sum = ((sum & 1) ? 0x8000 : 0) + (sum >> 1) + (chr >> 8);
-    }
-
-  return sum;
-  }
-//}}}
-//{{{
-static DWORD xsum32 (BYTE  dat, DWORD sum) {
-
-  sum = ((sum & 1) ? 0x80000000 : 0) + (sum >> 1) + dat;
-  return sum;
   }
 //}}}
 //}}}
@@ -3150,7 +3149,7 @@ FRESULT f_setlabel (const char* label) {
         // Check validity check validity of the volume label
         LEAVE_FF (fs, FR_INVALID_NAME);
         }
-      st_word (dirvn + j, w); 
+      st_word (dirvn + j, w);
       j += 2;
       }
     slen = j;
@@ -3161,7 +3160,7 @@ FRESULT f_setlabel (const char* label) {
     for ( ; slen && label[slen - 1] == ' '; slen--) ; /* Remove trailing spaces */
     if (slen) {
       /* Is there a volume label to be set? */
-      dirvn[0] = 0; 
+      dirvn[0] = 0;
       i = j = 0;  /* Create volume label in directory form */
       do {
         w = (BYTE)label[i++];
@@ -3197,11 +3196,11 @@ FRESULT f_setlabel (const char* label) {
         //}}}
       else if (slen)
         //{{{  change volume label
-        memcpy (dj.dir, dirvn, 11); 
+        memcpy (dj.dir, dirvn, 11);
         //}}}
       else
         //{{{  remove volume label
-        dj.dir[DIR_Name] = DDEM;  
+        dj.dir[DIR_Name] = DDEM;
 
         //}}}
       fs->wflag = 1;

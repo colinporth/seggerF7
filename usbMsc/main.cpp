@@ -158,7 +158,7 @@ public:
     //{{{
     virtual void onDraw (cLcd* lcd) {
       lcd->fillRect (mColor, mRect);
-      lcd->displayString (mTextColor, mRect.getTL(), mName, cLcd::eTextLeft);
+      lcd->displayString (mTextColor, mRect.getCentre(), mName, cLcd::eTextCentreXY);
       }
     //}}}
 
@@ -544,7 +544,7 @@ public:
 
     char str[40];
     sprintf (str, "%s %d", mName, mValue);
-    lcd->displayString (mTextColor, mRect.getTL(), str, cLcd::eTextLeft);
+    lcd->displayString (mTextColor, mRect.getCentre(), str, cLcd::eTextCentreXY);
 
     if (mProxed)
       lcd->drawRect (LCD_COLOR_WHITE, mRect, mThickness < 10 ? 1 : mThickness / 10 );

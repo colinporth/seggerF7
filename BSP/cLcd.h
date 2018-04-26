@@ -22,7 +22,7 @@
 
 class cLcd {
 public:
-  enum eTextAlign { eTextLeft, eTextCentre, eTextRight };
+  enum eTextAlign { eTextLeft, eTextCentreXY, eTextCentreX, eTextRightX };
 
   static uint32_t getWidth() { return 480; }
   static uint32_t getHeight() { return 272; }
@@ -125,8 +125,7 @@ public:
 
 private:
   void layerInit();
-
-  uint16_t* getWriteBuffer();
+  uint16_t* getWriteBuffer() { return mFrameBuf; }
 
   void ready();
   void drawPix (uint16_t color, uint16_t x, uint16_t y) { *(mFrameBuf + y*getWidth() + x) = color; }

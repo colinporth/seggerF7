@@ -28,11 +28,13 @@ extern const sFONT gFont16;
 #define LCD_BL_CTRL_GPIO_CLK_DISABLE()   __HAL_RCC_GPIOK_CLK_DISABLE()
 //}}}
 
+//{{{  cLcd static inits
 cLcd* cLcd::mLcd = nullptr;
 bool cLcd::mFrameWait = false;
 SemaphoreHandle_t cLcd::mFrameSem;
 bool cLcd::mDma2dWait = false;
 SemaphoreHandle_t cLcd::mDma2dSem;
+//}}}
 
 extern "C" {
   //{{{
@@ -1329,26 +1331,23 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
     case eTextLeft:
       break;
 
-    case eTextCentre:  {
+    case eTextCentreXY:
+      p.y -= gFont16.mHeight/2;
+    case eTextCentreX:  {
       uint16_t size = 0;
       auto ptr = str;
       while (*ptr++)
-        size++;
-
-      uint16_t xSize = getWidth() / gFont16.mWidth;
-      p.x += ((xSize - size) * gFont16.mWidth) / 2;
+        size += gFont16.mWidth;
+      p.x -= size/2;
       break;
       }
 
-    case eTextRight: {
+    case eTextRightX: {
       uint16_t size = 0;
       auto ptr = str;
       while (*ptr++)
-        size++;
-
-      uint16_t xSize = getWidth() / gFont16.mWidth;
-      auto width = (xSize - size) * gFont16.mWidth;
-      p.x = width > p.x ? 0 : p.x - width;
+        size += gFont16.mWidth;
+      p.x -= size;
       break;
       }
     }
@@ -1655,8 +1654,6 @@ void cLcd::displayOff() {
 //}}}
 
 // private
-uint16_t* cLcd::getWriteBuffer() { return mFrameBuf; }
-
 //{{{
 void cLcd::ready() {
 
