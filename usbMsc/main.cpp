@@ -82,7 +82,7 @@ const char kHtmlBody[] =
 //}}}
 
 //{{{
-class cApp : public cTouch {
+class cApp : public cTouch, public cLcd {
 public:
   const uint16_t kBoxWidth = 65;
   const uint16_t kBoxHeight = 36;
@@ -183,10 +183,10 @@ public:
   //}}}
 
   //{{{
-  cApp (int x, int y) : cTouch (x,y) {
+  cApp (int x, int y) : cTouch(x,y), cLcd(14) {
 
-    mLcd = new cLcd (14);
-    mLcd->init();
+    mLcd = this;
+    init();
 
     //mPs2 = new cPs2 (mLcd);
     //mPs2->initKeyboard();
@@ -216,8 +216,6 @@ public:
     }
   //}}}
 
-  uint16_t getWidth() { return mLcd->getWidth(); }
-  uint16_t getHeight() { return mLcd->getHeight(); }
   //{{{
   cBox* add (cBox* box, uint16_t x, uint16_t y) {
     mBoxes.push_back (box);
@@ -342,7 +340,7 @@ public:
     }
 
   bool onPress (cPoint pos, uint8_t z)  {
-    //cLcd:: mLcd->debug (LCD_COLOR_WHITE, "press %d %d %f", pos.x, pos.y, mZoom);
+    //cLcd::mLcd->debug (LCD_COLOR_WHITE, "press %d %d %f", pos.x, pos.y, mZoom);
     mZoomCentre = getCentre() - pos;
     mZoom = 1.f;
     return true;
@@ -587,7 +585,7 @@ void cApp::run() {
 
   bool mounted = !f_mount (&gFatFs, "", 1);
   if (!mounted)
-    mLcd->debug (LCD_COLOR_GREEN, "sdCard not mounted");
+    debug (LCD_COLOR_GREEN, "sdCard not mounted");
 
   mCam = new cCamera();
   mCam->init (kCamBuf, kCamBufEnd);
@@ -602,13 +600,13 @@ void cApp::run() {
   if (mounted) {
     //{{{  mounted, load splash piccy, make buttons
     f_getlabel ("", mLabel, &mVsn);
-    mLcd->debug (LCD_COLOR_WHITE, "sdCard ok - %s ", mLabel);
+    debug (LCD_COLOR_WHITE, "sdCard ok - %s ", mLabel);
 
     loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
     char path[40] = "/";
 
     auto numFiles = getCountFiles (path);
-    mLcd->debug (LCD_COLOR_WHITE, "- files %d", numFiles);
+    debug (LCD_COLOR_WHITE, "- files %d", numFiles);
 
     add (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
     add (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
@@ -640,7 +638,7 @@ void cApp::run() {
             //}}}
           else if (mTakeMovieChanged) {
             if (!mjpgFrameNum) {
-              //{{{  create .mjpeg 
+              //{{{  create .mjpeg
               mjpgFrameNum++;
               uint32_t headerLen;
               auto header = mCam->getFullJpgHeader (6, headerLen);
@@ -681,12 +679,12 @@ void cApp::run() {
       mBoxes.front()->onDraw (mLcd);
     else {
       for (auto box : mBoxes) box->onDraw (mLcd);
-      mLcd->drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, kVersion);
-      mLcd->drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%dfree %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
+      drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, kVersion);
+      drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%dfree %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
       if (mDebugValue)
-        mLcd->drawDebug();
+        drawDebug();
       }
-    mLcd->present();
+    present();
     }
   }
 //}}}
@@ -712,24 +710,24 @@ void cApp::touchThread() {
     else if (mClearDebugChanged) {
       //{{{  clearDebug
       mClearDebugChanged = false;
-      mLcd->clearDebug();
+      clearDebug();
       }
       //}}}
     else if (mFormatChanged) {
       //{{{  format sdCard
       mFormatChanged = false;
-      mLcd->debug (LCD_COLOR_YELLOW, "formatting sdCard");
+      debug (LCD_COLOR_YELLOW, "formatting sdCard");
 
       // Create FAT volume
       BYTE work[_MAX_SS];
       f_mkfs ("", FM_ANY, 0, work, sizeof (work));
-      mLcd->debug (LCD_COLOR_YELLOW, "formated sdCard");
+      debug (LCD_COLOR_YELLOW, "formated sdCard");
 
       f_setlabel ("webcam");
-      mLcd->debug (LCD_COLOR_YELLOW, "set sdCard label WEBCAM");
+      debug (LCD_COLOR_YELLOW, "set sdCard label WEBCAM");
 
       f_mount (&gFatFs, "", 1);
-      mLcd->debug (LCD_COLOR_YELLOW, "WEBCAM mounted");
+      debug (LCD_COLOR_YELLOW, "WEBCAM mounted");
       }
       //}}}
     else
@@ -773,7 +771,7 @@ void cApp::serverThread (void* arg) {
               // terminate str
               str[dst] = 0;
 
-              cLcd::mLcd->debug (LCD_COLOR_YELLOW, str);
+              debug (LCD_COLOR_YELLOW, str);
               //}}}
 
               // simple HTTP GET command parser
@@ -886,15 +884,15 @@ void cApp::onTouchRelease (cPoint pos, uint8_t z) {
 //{{{
 void cApp::onKey (uint8_t ch, bool release) {
 
-  //mLcd->debug (LCD_COLOR_GREEN, "onKey %x %s", ch, release ? "release" : "press");
+  //debug (LCD_COLOR_GREEN, "onKey %x %s", ch, release ? "release" : "press");
   if (ch == 0x51) // down arrow
-    mLcd->incScrollIndex (-1);
+    incScrollIndex (-1);
   else if (ch == 0x52) // up arrow
-    mLcd->incScrollIndex (1);
+    incScrollIndex (1);
   else if (ch == 0x4e) // pagedown
-    mLcd->incScrollIndex (-16);
+    incScrollIndex (-16);
   else if (ch == 0x4b) // pageup
-    mLcd->incScrollIndex (16);
+    incScrollIndex (16);
   }
 //}}}
 
@@ -923,11 +921,11 @@ void cApp::readDirectory (char* path) {
         } while (fno.fname[j++]);
 
       if (fno.fattrib & AM_DIR) {
-        mLcd->debug (LCD_COLOR_GREEN, "%s", path);
+        debug (LCD_COLOR_GREEN, "%s", path);
         readDirectory (path);
         }
       else
-        mLcd->debug (LCD_COLOR_WHITE, "%s", path);
+        debug (LCD_COLOR_WHITE, "%s", path);
       }
 
     path[--i] = '\0';
@@ -975,11 +973,11 @@ void cApp::reportFree() {
   DWORD freeClusters;
   FATFS* fatFs;
   if (f_getfree ("0:", &freeClusters, &fatFs) != FR_OK)
-    mLcd->debug (LCD_COLOR_WHITE, "f_getfree failed");
+    debug (LCD_COLOR_WHITE, "f_getfree failed");
   else {
     int freeSectors = freeClusters * fatFs->csize;
     int totalSectors = (fatFs->n_fatent - 2) * fatFs->csize;
-    mLcd->debug (LCD_COLOR_WHITE, "%d free of %d total", freeSectors/2, totalSectors/2);
+    debug (LCD_COLOR_WHITE, "%d free of %d total", freeSectors/2, totalSectors/2);
     }
   }
 //}}}
@@ -989,12 +987,12 @@ void cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
 
   FILINFO filInfo;
   if (f_stat (fileName, &filInfo)) {
-    mLcd->debug (LCD_COLOR_RED, "%s not found", fileName);
+    debug (LCD_COLOR_RED, "%s not found", fileName);
     return;
     }
 
-  mLcd->debug (LCD_COLOR_WHITE, "%s %d bytes", fileName, (int)(filInfo.fsize));
-  mLcd->debug (LCD_COLOR_WHITE, "- %u/%02u/%02u %02u:%02u %c%c%c%c%c",
+  debug (LCD_COLOR_WHITE, "%s %d bytes", fileName, (int)(filInfo.fsize));
+  debug (LCD_COLOR_WHITE, "- %u/%02u/%02u %02u:%02u %c%c%c%c%c",
                                 (filInfo.fdate >> 9) + 1980,
                                 (filInfo.fdate >> 5) & 15,
                                 (filInfo.fdate) & 31,
@@ -1007,19 +1005,19 @@ void cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
                                 (filInfo.fattrib & AM_ARC) ? 'A' : '-');
 
   if (f_open (&gFile, fileName, FA_READ)) {
-    mLcd->debug (LCD_COLOR_RED, "%s not read", fileName);
+    debug (LCD_COLOR_RED, "%s not read", fileName);
     return;
     }
 
   UINT bytesRead;
   f_read (&gFile, (void*)buf, (UINT)filInfo.fsize, &bytesRead);
-  mLcd->debug (LCD_COLOR_WHITE, "- read  %d bytes", bytesRead);
+  debug (LCD_COLOR_WHITE, "- read  %d bytes", bytesRead);
   f_close (&gFile);
 
   if (bytesRead > 0) {
     jpeg_mem_src (&mCinfo, buf, bytesRead);
     jpeg_read_header (&mCinfo, TRUE);
-    mLcd->debug (LCD_COLOR_WHITE, "- image %dx%d", mCinfo.image_width, mCinfo.image_height);
+    debug (LCD_COLOR_WHITE, "- image %dx%d", mCinfo.image_width, mCinfo.image_height);
 
     if (false) {
       mCinfo.dct_method = JDCT_FLOAT;
@@ -1030,12 +1028,12 @@ void cApp::loadFile (const char* fileName, uint8_t* buf, uint16_t* rgb565Buf) {
       jpeg_start_decompress (&mCinfo);
       while (mCinfo.output_scanline < mCinfo.output_height) {
         jpeg_read_scanlines (&mCinfo, &bufArray, 1);
-        mLcd->rgb888to565 (bufArray, rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width,1);
+        rgb888to565 (bufArray, rgb565Buf + (mCinfo.output_scanline * mCinfo.output_width), mCinfo.output_width,1);
         }
       free (bufArray);
       jpeg_finish_decompress (&mCinfo);
 
-      mLcd->debug (LCD_COLOR_WHITE, "- load  %dx%d scale %d", mCinfo.output_width, mCinfo.output_height, 4);
+      debug (LCD_COLOR_WHITE, "- load  %dx%d scale %d", mCinfo.output_width, mCinfo.output_height, 4);
       }
     }
   }
@@ -1047,13 +1045,13 @@ void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* buf
   sprintf (fileName, "%s%03d.%s", name, num, ext);
 
   if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
-    mLcd->debug (LCD_COLOR_RED, "saveNumFile %s fail", fileName);
+    debug (LCD_COLOR_RED, "saveNumFile %s fail", fileName);
 
   else {
     UINT bytesWritten;
     f_write (&gFile, buf, (bufLen + 3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&gFile);
-    mLcd->debug (LCD_COLOR_YELLOW, "saveNumFile %s %d:%d", fileName, bufLen, bytesWritten);
+    debug (LCD_COLOR_YELLOW, "saveNumFile %s %d:%d", fileName, bufLen, bytesWritten);
     }
    }
 //}}}
@@ -1064,18 +1062,18 @@ void cApp::saveNumFile (const char* name, int num, const char* ext, uint8_t* hea
   sprintf (fileName, "%s%03d.%s", name, num, ext);
 
   if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
-    mLcd->debug (LCD_COLOR_RED, "saveNumFile %s fail", fileName);
+    debug (LCD_COLOR_RED, "saveNumFile %s fail", fileName);
 
   else {
     if (headerLen & 0x03)
-      mLcd->debug (LCD_COLOR_RED, "saveNumFile align %s %d", name, headerLen);
+      debug (LCD_COLOR_RED, "saveNumFile align %s %d", name, headerLen);
 
     UINT bytesWritten;
     f_write (&gFile, header, headerLen, &bytesWritten);
     f_write (&gFile, frame, (frameLen + 3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&gFile);
 
-    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName,  headerLen,frameLen, bytesWritten);
+    debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName,  headerLen,frameLen, bytesWritten);
     }
   }
 //}}}
@@ -1086,17 +1084,17 @@ void cApp::createNumFile (const char* name, int num, uint8_t* header, int header
   sprintf (fileName, "%s%d.mjpg", name, num);
 
   if (f_open (&gFile, fileName, FA_WRITE | FA_CREATE_ALWAYS))
-    mLcd->debug (LCD_COLOR_RED, "createFile %s fail", name);
+    debug (LCD_COLOR_RED, "createFile %s fail", name);
 
   else {
     if (headerLen & 0x03)
-      mLcd->debug (LCD_COLOR_RED, "createFile align %s %d", fileName, headerLen);
+      debug (LCD_COLOR_RED, "createFile align %s %d", fileName, headerLen);
 
     UINT bytesWritten;
     f_write (&gFile, header, headerLen, &bytesWritten);
     f_write (&gFile, frame, (frameLen + 3) & 0xFFFFFFFC, &bytesWritten);
 
-    mLcd->debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName, headerLen,frameLen, bytesWritten);
+    debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName, headerLen,frameLen, bytesWritten);
     }
    }
 //}}}
@@ -1107,7 +1105,7 @@ void cApp::appendFile (int num, uint8_t* header, int headerLen, uint8_t* frame, 
   f_write (&gFile, header, headerLen, &bytesWritten);
   f_write (&gFile, frame, (frameLen + 3) & 0xFFFFFFFC, &bytesWritten);
 
-  mLcd->debug (LCD_COLOR_YELLOW, "append %d %d:%d:%d ok", num, headerLen,frameLen, bytesWritten);
+  debug (LCD_COLOR_YELLOW, "append %d %d:%d:%d ok", num, headerLen,frameLen, bytesWritten);
   }
 //}}}
 //{{{
