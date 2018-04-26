@@ -114,8 +114,8 @@ public:
   void fillCircle (uint16_t color, cPoint centre, uint16_t radius);
   void drawEllipse (uint16_t color, cPoint centre, cPoint radius);
   void fillEllipse (uint16_t color, cPoint centre, cPoint radius);
-  void drawPolygon (uint16_t color, cPoint* points, uint16_t pointCount);
-  void fillPolygon (uint16_t color, cPoint* points, uint16_t pPointCount);
+  void drawPolygon (uint16_t color, cPoint* points, uint16_t numPoints);
+  void fillPolygon (uint16_t color, cPoint* points, uint16_t numPoints);
   void drawLine (uint16_t color, cPoint p1, cPoint p2);
 
   void displayOff();

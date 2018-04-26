@@ -1519,33 +1519,33 @@ void cLcd::fillEllipse (uint16_t color, cPoint centre, cPoint radius) {
   }
 //}}}
 //{{{
-void cLcd::drawPolygon (uint16_t color, cPoint* points, uint16_t pointCount) {
+void cLcd::drawPolygon (uint16_t color, cPoint* points, uint16_t numPoints) {
 
   int16_t x = 0, y = 0;
 
-  if (pointCount < 2)
+  if (numPoints < 2)
     return;
 
-  drawLine (color, *points, *(points + pointCount-1));
+  drawLine (color, *points, *(points + numPoints-1));
 
-  while (--pointCount) {
+  while (--numPoints) {
     cPoint point = *points++;
     drawLine (color, point, *points);
     }
   }
 //}}}
 //{{{
-void cLcd::fillPolygon (uint16_t color, cPoint* points, uint16_t pointCount) {
+void cLcd::fillPolygon (uint16_t color, cPoint* points, uint16_t numPoints) {
 
   cPoint tl = *points;
   cPoint br = *points;
 
   cPoint pixel;
-  for (int16_t counter = 1; counter < pointCount; counter++) {
+  for (int16_t counter = 1; counter < numPoints; counter++) {
     pixel.x = POLY_X (counter);
     if (pixel.x < tl.x)
       tl.x = pixel.x;
-    if(pixel.x > br.x)
+    if (pixel.x > br.x)
       br.x = pixel.x;
 
     pixel.y = POLY_Y(counter);
@@ -1555,17 +1555,16 @@ void cLcd::fillPolygon (uint16_t color, cPoint* points, uint16_t pointCount) {
       br.y = pixel.y;
     }
 
-  if (pointCount < 2)
+  if (numPoints < 2)
     return;
 
   cPoint centre = (tl + br) / 2;
   cPoint first = *points;
 
   ready();
-  cPoint p1;
   cPoint p2;
-  while (--pointCount) {
-    p1 = *points;
+  while (--numPoints) {
+    cPoint p1 = *points;
     points++;
     p2 = *points;
 

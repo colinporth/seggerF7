@@ -263,6 +263,7 @@ public:
 
   void onPs2Irq() { mPs2->onIrq(); }
   void touchThread();
+  void serverThread (void* arg);
 
 protected:
   virtual void onTouchProx (cPoint pos, uint8_t z);
@@ -692,7 +693,7 @@ void cApp::run() {
 void cApp::touchThread() {
 
   while (true) {
-    gApp->pollTouch();
+    pollTouch();
 
     if (mJpegChanged) {
       //{{{  jpeg
@@ -701,19 +702,19 @@ void cApp::touchThread() {
       mjpgFrameNum = 0;
       }
       //}}}
-    if (mFocusChanged) {
+    else if (mFocusChanged) {
       //{{{  changeFocus
       mFocusChanged = false;
       mCam->setFocus (mFocus);
       }
       //}}}
-    if (mClearDebugChanged) {
+    else if (mClearDebugChanged) {
       //{{{  clearDebug
       mClearDebugChanged = false;
       mLcd->clearDebug();
       }
       //}}}
-    if (mFormatChanged) {
+    else if (mFormatChanged) {
       //{{{  format sdCard
       mFormatChanged = false;
       mLcd->debug (LCD_COLOR_YELLOW, "formatting sdCard");
@@ -730,8 +731,98 @@ void cApp::touchThread() {
       mLcd->debug (LCD_COLOR_YELLOW, "WEBCAM mounted");
       }
       //}}}
+    else
+      osDelay (10);
+    }
+  }
+//}}}
+//{{{
+void cApp::serverThread (void* arg) {
+// minimal http server
 
-    osDelay (10);
+  // create a new TCP connection handle
+  struct netconn* connection = netconn_new (NETCONN_TCP);
+  if (connection != NULL) {
+    // bind to port 80 (HTTP) with default IP address
+    if (netconn_bind (connection, NULL, 80) == ERR_OK) {
+      netconn_listen (connection);
+      while (true) {
+        struct netconn* request;
+        if (netconn_accept (connection, &request) == ERR_OK) {
+          struct netbuf* requestNetBuf;
+          if (netconn_recv (request, &requestNetBuf) == ERR_OK) {
+            if (netconn_err (request) == ERR_OK) {
+              char* buf;
+              u16_t bufLen;
+              netbuf_data (requestNetBuf, (void**)&buf, &bufLen);
+
+              //{{{  debug request buf
+              char str[40];
+              int src = 0;
+              int dst = 0;
+
+              // copy till return
+              while ((src < bufLen) && (buf[src] != 0x0d)) {
+                if (buf[src] == 0x0a) // skip lineFeed
+                  src++;
+                else if (dst < 39)
+                  str[dst++] = buf[src++];
+                }
+
+              // terminate str
+              str[dst] = 0;
+
+              cLcd::mLcd->debug (LCD_COLOR_YELLOW, str);
+              //}}}
+
+              // simple HTTP GET command parser
+              bool ok = false;
+              if ((bufLen >= 5) && !strncmp (buf, "GET /", 5)) {
+                if (!strncmp (buf, "GET / ", 6)) {
+                  //{{{  html
+                  netconn_write (request, kHtmlResponseHeader, sizeof(kHtmlResponseHeader)-1, NETCONN_NOCOPY);
+                  netconn_write (request, kHtmlBody, sizeof(kHtmlBody)-1, NETCONN_NOCOPY);
+                  ok = true;
+                  }
+                  //}}}
+                else if (!strncmp (buf, "GET /cam.jpg", 12)) {
+                  //{{{  cam.jpg
+                  if (mCam) {
+                    uint32_t frameLen;
+                    bool jpeg;
+                    uint32_t frameId;
+                    auto frame = mCam->getLastFrame (frameLen, jpeg, frameId);
+                    if (frame) {
+                      // send http response header
+                      netconn_write (request,
+                                     jpeg ? kJpegResponseHeader : kBmpResponseHeader,
+                                     jpeg ? sizeof(kJpegResponseHeader)-1 : sizeof(kBmpResponseHeader)-1,
+                                     NETCONN_NOCOPY);
+
+                      // send imageFile format header
+                      uint32_t headerLen;
+                      auto header = jpeg ? mCam->getFullJpgHeader (6, headerLen) : mCam->getBmpHeader (headerLen);
+                      netconn_write (request, header, headerLen, NETCONN_NOCOPY);
+
+                      // send imageFile body
+                      netconn_write (request, frame, frameLen, NETCONN_NOCOPY);
+                      ok = true;
+                      }
+                    }
+                  }
+                  //}}}
+                if (!ok)
+                  netconn_write (request, k404Response, sizeof(k404Response)-1, NETCONN_NOCOPY);
+                }
+              }
+            }
+
+          netconn_close (request);
+          netbuf_delete (requestNetBuf);
+          netconn_delete (request);
+          }
+        }
+      }
     }
   }
 //}}}
@@ -1041,92 +1132,7 @@ void appThread (void* arg) {
 //}}}
 //{{{
 void serverThread (void* arg) {
-// minimal http server
-
-  // create a new TCP connection handle
-  struct netconn* connection = netconn_new (NETCONN_TCP);
-  if (connection != NULL) {
-    // bind to port 80 (HTTP) with default IP address
-    if (netconn_bind (connection, NULL, 80) == ERR_OK) {
-      netconn_listen (connection);
-      while (true) {
-        struct netconn* request;
-        if (netconn_accept (connection, &request) == ERR_OK) {
-          struct netbuf* requestNetBuf;
-          if (netconn_recv (request, &requestNetBuf) == ERR_OK) {
-            if (netconn_err (request) == ERR_OK) {
-              char* buf;
-              u16_t bufLen;
-              netbuf_data (requestNetBuf, (void**)&buf, &bufLen);
-
-              //{{{  debug request buf
-              char str[40];
-              int src = 0;
-              int dst = 0;
-
-              // copy till return
-              while ((src < bufLen) && (buf[src] != 0x0d)) {
-                if (buf[src] == 0x0a) // skip lineFeed
-                  src++;
-                else if (dst < 39)
-                  str[dst++] = buf[src++];
-                }
-
-              // terminate str
-              str[dst] = 0;
-
-              cLcd::mLcd->debug (LCD_COLOR_YELLOW, str);
-              //}}}
-
-              // simple HTTP GET command parser
-              bool ok = false;
-              if ((bufLen >= 5) && !strncmp (buf, "GET /", 5)) {
-                if (!strncmp (buf, "GET / ", 6)) {
-                  //{{{  html
-                  netconn_write (request, kHtmlResponseHeader, sizeof(kHtmlResponseHeader)-1, NETCONN_NOCOPY);
-                  netconn_write (request, kHtmlBody, sizeof(kHtmlBody)-1, NETCONN_NOCOPY);
-                  ok = true;
-                  }
-                  //}}}
-                else if (!strncmp (buf, "GET /cam.jpg", 12)) {
-                  //{{{  cam.jpg
-                  if (gApp->getCam()) {
-                    uint32_t frameLen;
-                    bool jpeg;
-                    uint32_t frameId;
-                    auto frame = gApp->getCam()->getLastFrame (frameLen, jpeg, frameId);
-                    if (frame) {
-                      // send http response header
-                      netconn_write (request,
-                                     jpeg ? kJpegResponseHeader : kBmpResponseHeader,
-                                     jpeg ? sizeof(kJpegResponseHeader)-1 : sizeof(kBmpResponseHeader)-1,
-                                     NETCONN_NOCOPY);
-
-                      // send imageFile format header
-                      uint32_t headerLen;
-                      auto header = jpeg ? gApp->getCam()->getFullJpgHeader (6, headerLen) : gApp->getCam()->getBmpHeader (headerLen);
-                      netconn_write (request, header, headerLen, NETCONN_NOCOPY);
-
-                      // send imageFile body
-                      netconn_write (request, frame, frameLen, NETCONN_NOCOPY);
-                      ok = true;
-                      }
-                    }
-                  }
-                  //}}}
-                if (!ok)
-                  netconn_write (request, k404Response, sizeof(k404Response)-1, NETCONN_NOCOPY);
-                }
-              }
-            }
-
-          netconn_close (request);
-          netbuf_delete (requestNetBuf);
-          netconn_delete (request);
-          }
-        }
-      }
-    }
+  gApp->serverThread (arg);
   }
 //}}}
 //{{{
