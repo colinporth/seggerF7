@@ -271,8 +271,8 @@ protected:
   virtual void onKey (uint8_t ch, bool release);
 
 private:
-  void readDirectory (std::string& dirPath);
-  void countFiles (std::string& dirPath);
+  void readDirectory (const std::string& dirPath);
+  void countFiles (const std::string& dirPath);
   void reportFree();
   void reportLabel();
 
@@ -619,7 +619,7 @@ void cApp::run() {
     f_getlabel ("", label, &vsn);
     debug (LCD_COLOR_WHITE, "sdCard ok - <%s> ", label);
 
-    std::string path1 = "/";
+    std::string path1 = "";
     readDirectory (path1);
 
     loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
@@ -923,23 +923,19 @@ void cApp::onKey (uint8_t ch, bool release) {
 
 // private
 //{{{
-void cApp::readDirectory (std::string& dirPath) {
+void cApp::readDirectory (const std::string& dirPath) {
 
   DIR dir;
-  auto result = f_opendir (&dir, dirPath.c_str());
-  if (result == FR_OK) {
-    dirPath += '/';
-
+  if (f_opendir (&dir, dirPath.c_str()) == FR_OK) {
     while (true) {
-      FILINFO fno;
-      auto result = f_readdir (&dir, &fno);
-      if (result != FR_OK || !fno.fname[0])
+      FILINFO filinfo;
+      if (f_readdir (&dir, &filinfo) != FR_OK || !filinfo.fname[0])
         break;
-      if (fno.fname[0] == '.')
+      if (filinfo.fname[0] == '.')
         continue;
 
-      std::string filePath = dirPath + fno.fname;
-      if (fno.fattrib & AM_DIR) {
+      std::string filePath = dirPath + "/" + filinfo.fname;
+      if (filinfo.fattrib & AM_DIR) {
         debug (LCD_COLOR_GREEN, filePath);
         readDirectory (filePath);
         }
@@ -952,24 +948,19 @@ void cApp::readDirectory (std::string& dirPath) {
   }
 //}}}
 //{{{
-void cApp::countFiles (std::string& dirPath) {
+void cApp::countFiles (const std::string& dirPath) {
 
   DIR dir;
-  auto result = f_opendir (&dir, dirPath.c_str());
-  if (result == FR_OK) {
-    dirPath += '/';
-
+  if (f_opendir (&dir, dirPath.c_str()) == FR_OK) {
     while (true) {
-      FILINFO fno;
-      auto result = f_readdir (&dir, &fno);
-      if (result != FR_OK || !fno.fname[0])
+      FILINFO filinfo;
+      if (f_readdir (&dir, &filinfo) != FR_OK || !filinfo.fname[0])
         break;
-      if (fno.fname[0] == '.')
+      if (filinfo.fname[0] == '.')
         continue;
 
-      std::string filePath = dirPath + fno.fname;
-      if (fno.fattrib & AM_DIR)
-        countFiles (filePath);
+      if (filinfo.fattrib & AM_DIR)
+        countFiles (dirPath + "/" + filinfo.fname);
       else
         mFiles++;
       }
