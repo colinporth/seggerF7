@@ -221,14 +221,14 @@ static sFILESEM Files[_FS_LOCK]; // Open object lock semaphores
 //{{{  unicode conversion
 // Upper conversion table for SBCS extended characters
 static const BYTE ExCvt[] = {
-  0x43,0x55,0x45,0x41,0x41,0x41,0x41,0x43,0x45,0x45,0x45,0x49,0x49,0x49,0x41,0x41,
-  0x45,0x92,0x92,0x4F,0x4F,0x4F,0x55,0x55,0x59,0x4F,0x55,0x4F,0x9C,0x4F,0x9E,0x9F,
-  0x41,0x49,0x4F,0x55,0xA5,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,
-  0xB0,0xB1,0xB2,0xB3,0xB4,0x41,0x41,0x41,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF,
-  0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0x41,0x41,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,
-  0xD1,0xD1,0x45,0x45,0x45,0x49,0x49,0x49,0x49,0xD9,0xDA,0xDB,0xDC,0xDD,0x49,0xDF,
-  0x4F,0xE1,0x4F,0x4F,0x4F,0x4F,0xE6,0xE8,0xE8,0x55,0x55,0x55,0x59,0x59,0xEE,0xEF,
-  0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF
+  0x43,0x55,0x45,0x41,0x41,0x41,0x41,0x43, 0x45,0x45,0x45,0x49,0x49,0x49,0x41,0x41,
+  0x45,0x92,0x92,0x4F,0x4F,0x4F,0x55,0x55, 0x59,0x4F,0x55,0x4F,0x9C,0x4F,0x9E,0x9F,
+  0x41,0x49,0x4F,0x55,0xA5,0xA5,0xA6,0xA7, 0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,
+  0xB0,0xB1,0xB2,0xB3,0xB4,0x41,0x41,0x41, 0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF,
+  0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0x41,0x41, 0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,
+  0xD1,0xD1,0x45,0x45,0x45,0x49,0x49,0x49, 0x49,0xD9,0xDA,0xDB,0xDC,0xDD,0x49,0xDF,
+  0x4F,0xE1,0x4F,0x4F,0x4F,0x4F,0xE6,0xE8, 0xE8,0x55,0x55,0x55,0x59,0x59,0xEE,0xEF,
+  0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7, 0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF
   };
 
 #define IsUpper(c) (((c)>='A')&&((c)<='Z'))
@@ -236,26 +236,35 @@ static const BYTE ExCvt[] = {
 #define IsDigit(c) (((c)>='0')&&((c)<='9'))
 
 static const WCHAR kTable[] = {
-  0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7, 0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
-  0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9, 0x00FF, 0x00D6, 0x00DC, 0x00F8, 0x00A3, 0x00D8, 0x00D7, 0x0192,
-  0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1, 0x00AA, 0x00BA, 0x00BF, 0x00AE, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB,
-  0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x00C1, 0x00C2, 0x00C0, 0x00A9, 0x2563, 0x2551, 0x2557, 0x255D, 0x00A2, 0x00A5, 0x2510,
-  0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x00E3, 0x00C3, 0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x00A4,
-  0x00F0, 0x00D0, 0x00CA, 0x00CB, 0x00C8, 0x0131, 0x00CD, 0x00CE, 0x00CF, 0x2518, 0x250C, 0x2588, 0x2584, 0x00A6, 0x00CC, 0x2580,
-  0x00D3, 0x00DF, 0x00D4, 0x00D2, 0x00F5, 0x00D5, 0x00B5, 0x00FE, 0x00DE, 0x00DA, 0x00DB, 0x00D9, 0x00FD, 0x00DD, 0x00AF, 0x00B4,
-  0x00AD, 0x00B1, 0x2017, 0x00BE, 0x00B6, 0x00A7, 0x00F7, 0x00B8, 0x00B0, 0x00A8, 0x00B7, 0x00B9, 0x00B3, 0x00B2, 0x25A0, 0x00A0
+  0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7,
+  0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
+  0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9,
+  0x00FF, 0x00D6, 0x00DC, 0x00F8, 0x00A3, 0x00D8, 0x00D7, 0x0192,
+  0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1, 0x00AA, 0x00BA,
+  0x00BF, 0x00AE, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB,
+  0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x00C1, 0x00C2, 0x00C0,
+  0x00A9, 0x2563, 0x2551, 0x2557, 0x255D, 0x00A2, 0x00A5, 0x2510,
+  0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x00E3, 0x00C3,
+  0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x00A4,
+  0x00F0, 0x00D0, 0x00CA, 0x00CB, 0x00C8, 0x0131, 0x00CD, 0x00CE,
+  0x00CF, 0x2518, 0x250C, 0x2588, 0x2584, 0x00A6, 0x00CC, 0x2580,
+  0x00D3, 0x00DF, 0x00D4, 0x00D2, 0x00F5, 0x00D5, 0x00B5, 0x00FE,
+  0x00DE, 0x00DA, 0x00DB, 0x00D9, 0x00FD, 0x00DD, 0x00AF, 0x00B4,
+  0x00AD, 0x00B1, 0x2017, 0x00BE, 0x00B6, 0x00A7, 0x00F7, 0x00B8,
+  0x00B0, 0x00A8, 0x00B7, 0x00B9, 0x00B3, 0x00B2, 0x25A0, 0x00A0
   };
 
 //{{{
 WCHAR convert (WCHAR chr, UINT dir) {
 
   WCHAR c;
-  if (chr < 0x80) /* ASCII */
+  if (chr < 0x80) // ASCII
     c = chr;
   else {
-    if (dir)     /* OEM code to Unicode */
+    if (dir) // OEM code to Unicode
       c = (chr >= 0x100) ? 0 : kTable[chr - 0x80];
-    else {    /* Unicode to OEM code */
+    else {
+      // Unicode to OEM code
       for (c = 0; c < 0x80; c++) {
         if (chr == kTable[c])
           break;
@@ -270,9 +279,9 @@ WCHAR convert (WCHAR chr, UINT dir) {
 //{{{
 WCHAR wtoupper (WCHAR chr) {
 
-  /* Compressed upper conversion table */
+  // Compressed upper conversion table
   //{{{
-  static const WCHAR cvt1[] = { /* U+0000 - U+0FFF */
+  static const WCHAR cvt1[] = { // U+0000 - U+0FFF
     /* Basic Latin */
     0x0061,0x031A,
     /* Latin-1 Supplement */
@@ -298,7 +307,7 @@ WCHAR wtoupper (WCHAR chr) {
   };
   //}}}
   //{{{
-  static const WCHAR cvt2[] = { /* U+1000 - U+FFFF */
+  static const WCHAR cvt2[] = { // U+1000 - U+FFFF
     /* Phonetic Extensions */
     0x1D7D,0x0001,0x2C63,
     /* Latin Extended Additional */
@@ -330,25 +339,25 @@ WCHAR wtoupper (WCHAR chr) {
 
   const WCHAR* p = chr < 0x1000 ? cvt1 : cvt2;
   for (;;) {
-    WCHAR bc = *p++;                /* Get block base */
+    WCHAR bc = *p++;  // Get block base
     if (!bc || chr < bc)
       break;
 
     WCHAR nc = *p++;
     WCHAR cmd = nc >> 8;
-    nc &= 0xFF; /* Get processing command and block size */
+    nc &= 0xFF; // Get processing command and block size
     if (chr < bc + nc) {
-      /* In the block? */
+      // In the block?
       switch (cmd) {
-        case 0: chr = p[chr - bc]; break; /* Table conversion */
-        case 1: chr -= (chr - bc) & 1; break; /* Case pairs */
-        case 2: chr -= 16; break;         /* Shift -16 */
-        case 3: chr -= 32; break;         /* Shift -32 */
-        case 4: chr -= 48; break;         /* Shift -48 */
-        case 5: chr -= 26; break;         /* Shift -26 */
-        case 6: chr += 8; break;          /* Shift +8 */
-        case 7: chr -= 80; break;         /* Shift -80 */
-        case 8: chr -= 0x1C60; break;     /* Shift -0x1C60 */
+        case 0: chr = p[chr - bc]; break;     // Table conversion
+        case 1: chr -= (chr - bc) & 1; break; // Case pairs
+        case 2: chr -= 16; break;             // Shift -16
+        case 3: chr -= 32; break;             // Shift -32
+        case 4: chr -= 48; break;             // Shift -48
+        case 5: chr -= 26; break;             // Shift -26
+        case 6: chr += 8; break;              // Shift +8
+        case 7: chr -= 80; break;             // Shift -80
+        case 8: chr -= 0x1C60; break;         // Shift -0x1C60
         }
       break;
       }
@@ -560,7 +569,7 @@ static void unlock_fs (FATFS* fs, FRESULT result) {
 //}}}
 
 //{{{
-static FRESULT chk_lock (DIR* dp, int acc) {
+static FRESULT chkLock (DIR* dp, int acc) {
 // Check if the file can be accessed
 
   // Search file semaphore table
@@ -586,7 +595,7 @@ static FRESULT chk_lock (DIR* dp, int acc) {
   }
 //}}}
 //{{{
-static int enq_lock() {
+static int enqLock() {
 /* Check if an entry is available for a new object */
 
   UINT i;
@@ -595,7 +604,7 @@ static int enq_lock() {
   }
 //}}}
 //{{{
-static UINT inc_lock (DIR* dp, int acc) {
+static UINT incLock (DIR* dp, int acc) {
 /* Increment object open counter and returns its index (0:Internal error) */
 
   UINT i;
@@ -627,7 +636,7 @@ static UINT inc_lock (DIR* dp, int acc) {
   }
 //}}}
 //{{{
-static FRESULT dec_lock (UINT i) {
+static FRESULT decLock (UINT i) {
 /* Decrement object open counter */
 
   if (--i < _FS_LOCK) {
@@ -647,7 +656,7 @@ static FRESULT dec_lock (UINT i) {
   }
 //}}}
 //{{{
-static void clear_lock (FATFS *fs) {
+static void clearLock (FATFS *fs) {
 
   for (UINT i = 0; i < _FS_LOCK; i++)
     if (Files[i].fs == fs)
@@ -2643,7 +2652,7 @@ static FRESULT findVolume (const char** path, FATFS** fatFs, BYTE mode) {
   fs->id = ++Fsid;   // File system mount ID
   fs->fs_type = fmt; // FAT sub-type
   fs->cdir = 0;      // Initialize current directory
-  clear_lock (fs);
+  clearLock (fs);
 
   return FR_OK;
   }
@@ -2770,19 +2779,18 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
 
   if (fmt == FS_EXFAT) {
     //{{{  create an exFAT volume
-    DWORD szb_bit, szb_case, sum, nb, cl;
-    WCHAR ch, si;
-    UINT j, st;
-    BYTE b;
-
-    if (sz_vol < 0x1000)
-      //* Too small volume?
+    if (sz_vol < 0x1000) // Too small volume?
       return FR_MKFS_ABORTED;
 
     // Inform the device the volume area may be erased
     tbl[0] = b_vol;
     tbl[1] = b_vol + sz_vol - 1;
     diskIoctl (CTRL_TRIM, tbl);
+
+    DWORD szb_bit, szb_case, sum, nb, cl;
+    WCHAR ch, si;
+    UINT j, st;
+    BYTE b;
 
     //{{{  determine FAT location, data location and number of clusters
     if (!au) {
@@ -2796,6 +2804,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
 
     // FAT start at offset 32
     b_fat = b_vol + 32;
+
     // Number of FAT sectors
     sz_fat = ((sz_vol / au + 2) * 4 + ss - 1) / ss;
 
@@ -2818,46 +2827,55 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     tbl[0] = (szb_bit + au * ss - 1) / (au * ss);
     //}}}
     //{{{  create a compressed up-case table
-    sect = b_data + au * tbl[0];  /* Table start sector */
-    sum = 0;            /* Table checksum to be stored in the 82 entry */
+    sect = b_data + au * tbl[0];  // Table start sector
+    sum = 0;                      // Table checksum to be stored in the 82 entry
 
     st = si = i = j = szb_case = 0;
     do {
       switch (st) {
         case 0:
-          ch = wtoupper(si); /* Get an up-case char */
-          if (ch != si)
-            si++; break;    /* Store the up-case char if exist */
-          for (j = 1; (WCHAR)(si + j) && (WCHAR)(si + j) == wtoupper((WCHAR)(si + j)); j++) ;  /* Get run length of no-case block */
+          ch = wtoupper(si);
+          if (ch != si) {
+            si++;
+            break;    // Store the up-case char if exist
+            }
+
+          // Get run length of no-case block */
+          for (j = 1; (WCHAR)(si + j) && (WCHAR)(si + j) == wtoupper((WCHAR)(si + j)); j++) {};
           if (j >= 128) {
             ch = 0xFFFF; st = 2;
-            break; /* Compress the no-case block if run is >= 128 */
+            break; // Compress the no-case block if run is >= 128
             }
-          st = 1;     /* Do not compress short run */
-          /* go to next case */
+          st = 1;     // Do not compress short run
+          // go to next case */
+
         case 1:
-          ch = si++;    /* Fill the short run */
+          ch = si++;    // Fill the short run
           if (--j == 0)
             st = 0;
           break;
 
         default:
           ch = (WCHAR)j;
-          si += j; /* Number of chars to skip */
+          si += j; // Number of chars to skip
           st = 0;
         }
-      sum = xsum32(buf[i + 0] = (BYTE)ch, sum);   /* Put it into the write buffer */
+
+      // Put it into the write buffer
+      sum = xsum32(buf[i + 0] = (BYTE)ch, sum);
       sum = xsum32(buf[i + 1] = (BYTE)(ch >> 8), sum);
       i += 2; szb_case += 2;
-      if (!si || i == szb_buf) {    /* Write buffered data when buffer full or end of process */
+      if (!si || i == szb_buf) {
+        // Write buffered data when buffer full or end of process
         n = (i + ss - 1) / ss;
-        if (diskWrite (buf, sect, n) != RES_OK) return FR_DISK_ERR;
+        if (diskWrite (buf, sect, n) != RES_OK)
+          return FR_DISK_ERR;
         sect += n; i = 0;
         }
       } while (si);
 
-    tbl[1] = (szb_case + au * ss - 1) / (au * ss);  /* Number of up-case table clusters */
-    tbl[2] = 1;                   /* Number of root dir clusters */
+    tbl[1] = (szb_case + au * ss - 1) / (au * ss);  // Number of up-case table clusters
+    tbl[2] = 1;                                     // Number of root dir clusters
     //}}}
     //{{{  inite the allocation bitmap
     sect = b_data; nsect = (szb_bit + ss - 1) / ss; /* Start of bitmap and number of sectors */
@@ -2868,8 +2886,10 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
       for (i = 0; nb >= 8 && i < szb_buf; buf[i++] = 0xFF, nb -= 8) ;
       for (b = 1; nb && i < szb_buf; buf[i] |= b, b <<= 1, nb--) ;
       n = (nsect > sz_buf) ? sz_buf : nsect;    /* Write the buffered data */
+
       if (diskWrite (buf, sect, n) != RES_OK)
         return FR_DISK_ERR;
+
       sect += n;
       nsect -= n;
       } while (nsect);
@@ -3010,31 +3030,35 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
           for (i = 0, pau = 1; cst32[i] && cst32[i] <= n; i++, pau <<= 1) ; /* Get from table */
           }
           //}}}
+
         n_clst = sz_vol / pau;  /* Number of clusters */
         sz_fat = (n_clst * 4 + 8 + ss - 1) / ss;  /* FAT size [sector] */
         sz_rsv = 32;  /* Number of reserved sectors */
         sz_dir = 0;   /* No static directory */
+
         if (n_clst <= MAX_FAT16 || n_clst > MAX_FAT32)
           return FR_MKFS_ABORTED;
         }
         //}}}
       else {
         //{{{  FAT12/16 volume
-        if (!pau) { /* au auto-selection */
-          n = sz_vol / 0x1000;  /* Volume size in unit of 4KS */
-          for (i = 0, pau = 1; cst[i] && cst[i] <= n; i++, pau <<= 1) ; /* Get from table */
+        if (!pau) {
+          // au auto-selection
+          n = sz_vol / 0x1000;  // Volume size in unit of 4KS
+          for (i = 0, pau = 1; cst[i] && cst[i] <= n; i++, pau <<= 1) {} // Get from table
           }
+
         n_clst = sz_vol / pau;
-        if (n_clst > MAX_FAT12) {
-          n = n_clst * 2 + 4;   /* FAT size [byte] */
-          }
+        if (n_clst > MAX_FAT12)
+          n = n_clst * 2 + 4;   // FAT size [byte]
         else {
           fmt = FS_FAT12;
-          n = (n_clst * 3 + 1) / 2 + 3; /* FAT size [byte] */
+          n = (n_clst * 3 + 1) / 2 + 3; // FAT size [byte]
           }
-        sz_fat = (n + ss - 1) / ss;   /* FAT size [sector] */
-        sz_rsv = 1;           /* Number of reserved sectors */
-        sz_dir = (DWORD)n_rootdir * SZDIRE / ss;  /* Rootdir size [sector] */
+
+        sz_fat = (n + ss - 1) / ss;               // FAT size [sector]
+        sz_rsv = 1;                               // Number of reserved sectors
+        sz_dir = (DWORD)n_rootdir * SZDIRE / ss;  // Rootdir size [sector]
         }
         //}}}
 
@@ -3044,7 +3068,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
       // Data base
       b_data = b_fat + sz_fat * n_fats + sz_dir;
 
-      //{{{  Align data base to erase block boundary (for flash memory media)
+      //{{{  align data base to erase block boundary (for flash memory media)
       n = ((b_data + sz_blk - 1) & ~(sz_blk - 1)) - b_data; /* Next nearest erase block from current data base */
 
       if (fmt == FS_FAT32) {
@@ -3056,9 +3080,8 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
         // FAT12/16: Expand FAT size
         sz_fat += n / n_fats;
       //}}}
-      //{{{  Determine number of clusters and final check of validity of the FAT sub-type
-      if (sz_vol < b_data + pau * 16 - b_vol)
-        // Too small volume
+      //{{{  determine number of clusters and final check of validity of the FAT sub-type
+      if (sz_vol < b_data + pau * 16 - b_vol) // Too small volume
         return FR_MKFS_ABORTED;
 
       n_clst = (sz_vol - sz_rsv - sz_fat * n_fats - sz_dir) / pau;
@@ -3066,8 +3089,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
       if (fmt == FS_FAT32) {
         if (n_clst <= MAX_FAT16) {
           // Too few clusters for FAT32
-          if (!au && (au = pau / 2) != 0)
-            // Adjust cluster size and retry
+          if (!au && (au = pau / 2) != 0) // Adjust cluster size and retry
             continue;
 
           return FR_MKFS_ABORTED;
@@ -3108,62 +3130,62 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
 
     //{{{  create FAT VBR
     memset (buf, 0, ss);
-    memcpy (buf + BS_JmpBoot, "\xEB\xFE\x90" "MSDOS5.0", 11);/* Boot jump code (x86), OEM name */
+    memcpy (buf + BS_JmpBoot, "\xEB\xFE\x90" "MSDOS5.0", 11); // Boot jump code (x86), OEM name
 
-    st_word (buf + BPB_BytsPerSec, ss);        /* Sector size [byte] */
-    buf[BPB_SecPerClus] = (BYTE)pau;        /* Cluster size [sector] */
-    st_word (buf + BPB_RsvdSecCnt, (WORD)sz_rsv);  /* Size of reserved area */
-    buf[BPB_NumFATs] = (BYTE)n_fats;        /* Number of FATs */
-    st_word (buf + BPB_RootEntCnt, (WORD)((fmt == FS_FAT32) ? 0 : n_rootdir)); /* Number of root directory entries */
+    st_word (buf + BPB_BytsPerSec, ss);           // Sector size [byte]
+    buf[BPB_SecPerClus] = (BYTE)pau;              // Cluster size [sector]
+    st_word (buf + BPB_RsvdSecCnt, (WORD)sz_rsv); // Size of reserved area
+    buf[BPB_NumFATs] = (BYTE)n_fats;              // Number of FATs
+    st_word (buf + BPB_RootEntCnt, (WORD)((fmt == FS_FAT32) ? 0 : n_rootdir)); // Number of root directory entries
     if (sz_vol < 0x10000)
-      st_word (buf + BPB_TotSec16, (WORD)sz_vol);  /* Volume size in 16-bit LBA */
-     else
-      st_dword (buf + BPB_TotSec32, sz_vol);   /* Volume size in 32-bit LBA */
+      st_word (buf + BPB_TotSec16, (WORD)sz_vol); // Volume size in 16-bit LBA
+    else
+     st_dword (buf + BPB_TotSec32, sz_vol);       // Volume size in 32-bit LBA
 
-    buf[BPB_Media] = 0xF8;              /* Media descriptor byte */
-    st_word (buf + BPB_SecPerTrk, 63);       /* Number of sectors per track (for int13) */
-    st_word (buf + BPB_NumHeads, 255);       /* Number of heads (for int13) */
-    st_dword (buf + BPB_HiddSec, b_vol);       /* Volume offset in the physical drive [sector] */
+    buf[BPB_Media] = 0xF8;                        // Media descriptor byte
+    st_word (buf + BPB_SecPerTrk, 63);            // Number of sectors per track (for int13)
+    st_word (buf + BPB_NumHeads, 255);            // Number of heads (for int13)
+    st_dword (buf + BPB_HiddSec, b_vol);          // Volume offset in the physical drive [sector]
+
     if (fmt == FS_FAT32) {
-      st_dword (buf + BS_VolID32, getFatTime());  /* VSN */
-      st_dword (buf + BPB_FATSz32, sz_fat);    /* FAT size [sector] */
-      st_dword (buf + BPB_RootClus32, 2);      /* Root directory cluster # (2) */
-      st_word (buf + BPB_FSInfo32, 1);       /* Offset of FSINFO sector (VBR + 1) */
-      st_word (buf + BPB_BkBootSec32, 6);      /* Offset of backup VBR (VBR + 6) */
-      buf[BS_DrvNum32] = 0x80;          /* Drive number (for int13) */
-      buf[BS_BootSig32] = 0x29;         /* Extended boot signature */
-      memcpy (buf + BS_VolLab32, "NO NAME    " "FAT32   ", 19); /* Volume label, FAT signature */
+      st_dword (buf + BS_VolID32, getFatTime());  // VSN
+      st_dword (buf + BPB_FATSz32, sz_fat);       // FAT size [sector]
+      st_dword (buf + BPB_RootClus32, 2);         // Root directory cluster # (2)
+      st_word (buf + BPB_FSInfo32, 1);            // Offset of FSINFO sector (VBR + 1)
+      st_word (buf + BPB_BkBootSec32, 6);         // Offset of backup VBR (VBR + 6)
+      buf[BS_DrvNum32] = 0x80;                    // Drive number (for int13)
+      buf[BS_BootSig32] = 0x29;                   // Extended boot signature
+      memcpy (buf + BS_VolLab32, "NO NAME    " "FAT32   ", 19); // Volume label, FAT signature
       }
-
     else {
-      st_dword (buf + BS_VolID, getFatTime());  /* VSN */
-      st_word (buf + BPB_FATSz16, (WORD)sz_fat); /* FAT size [sector] */
-      buf[BS_DrvNum] = 0x80;            /* Drive number (for int13) */
-      buf[BS_BootSig] = 0x29;           /* Extended boot signature */
-      memcpy (buf + BS_VolLab, "NO NAME    " "FAT     ", 19); /* Volume label, FAT signature */
+      st_dword (buf + BS_VolID, getFatTime());    // VSN
+      st_word (buf + BPB_FATSz16, (WORD)sz_fat);  // FAT size [sector]
+      buf[BS_DrvNum] = 0x80;                      // Drive number (for int13)
+      buf[BS_BootSig] = 0x29;                     // Extended boot signature
+      memcpy (buf + BS_VolLab, "NO NAME    " "FAT     ", 19); // Volume label, FAT signature
       }
 
-    st_word (buf + BS_55AA, 0xAA55);         /* Signature (offset is fixed here regardless of sector size) */
+    st_word (buf + BS_55AA, 0xAA55);              // Signature (offset is fixed here regardless of sector size)
     if (diskWrite (buf, b_vol, 1) != RES_OK)
-      return FR_DISK_ERR;  /* Write it to the VBR sector */
+      return FR_DISK_ERR;
     //}}}
     //{{{  create FSINFO record if needed
     if (fmt == FS_FAT32) {
-      diskWrite (buf, b_vol + 6, 1);    /* Write backup VBR (VBR + 6) */
+      diskWrite (buf, b_vol + 6, 1);  // Write backup VBR (VBR + 6)
 
       memset (buf, 0, ss);
       st_dword (buf + FSI_LeadSig, 0x41615252);
       st_dword (buf + FSI_StrucSig, 0x61417272);
-      st_dword (buf + FSI_Free_Count, n_clst - 1); /* Number of free clusters */
-      st_dword (buf + FSI_Nxt_Free, 2);      /* Last allocated cluster# */
+      st_dword (buf + FSI_Free_Count, n_clst - 1); // Number of free clusters
+      st_dword (buf + FSI_Nxt_Free, 2);            // Last allocated cluster#
       st_word (buf + BS_55AA, 0xAA55);
 
-      diskWrite (buf, b_vol + 7, 1);    /* Write backup FSINFO (VBR + 7) */
-      diskWrite (buf, b_vol + 1, 1);    /* Write original FSINFO (VBR + 1) */
+      diskWrite (buf, b_vol + 7, 1);  // Write backup FSINFO (VBR + 7)
+      diskWrite (buf, b_vol + 1, 1);  // Write original FSINFO (VBR + 1)
       }
     //}}}
     //{{{  init FAT area
-    memset(buf, 0, (UINT)szb_buf);
+    memset (buf, 0, (UINT)szb_buf);
 
     // FAT start sector
     sect = b_fat;
@@ -3194,6 +3216,7 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     //{{{  init root directory (fill with zero)
     // Number of root directory sectors
     nsect = (fmt == FS_FAT32) ? pau : sz_dir;
+
     do {
       n = (nsect > sz_buf) ? sz_buf : nsect;
       if (diskWrite (buf, sect, (UINT)n) != RES_OK)
@@ -3373,7 +3396,7 @@ FRESULT f_mount (FATFS* fs, const char* path, BYTE opt) {
   // Pointer to fs object
   FATFS* cfs = FatFs;
   if (cfs) {
-    clear_lock(cfs);
+    clearLock(cfs);
   #if _FS_REENTRANT
     // Discard sync object of the current volume
     if (!ff_del_syncobj (cfs->sobj))
@@ -3635,7 +3658,7 @@ FRESULT f_open (FIL* fp, const char* path, BYTE mode) {
       if (dj.fn[NSFLAG] & NS_NONAME)
         result = FR_INVALID_NAME;
       else
-        result = chk_lock(&dj, (mode & ~FA_READ) ? 1 : 0);
+        result = chkLock(&dj, (mode & ~FA_READ) ? 1 : 0);
       }
 
     // create,open file
@@ -3643,7 +3666,7 @@ FRESULT f_open (FIL* fp, const char* path, BYTE mode) {
       if (result != FR_OK) {
         //{{{  no file, create new
         if (result == FR_NO_FILE)
-          result = enq_lock() ? dirRegister (&dj) : FR_TOO_MANY_OPEN_FILES;
+          result = enqLock() ? dirRegister (&dj) : FR_TOO_MANY_OPEN_FILES;
 
         // file created
         mode |= FA_CREATE_ALWAYS;
@@ -3752,7 +3775,7 @@ FRESULT f_open (FIL* fp, const char* path, BYTE mode) {
       // Pointer to the directory entry
       fp->dir_sect = fs->winsect;
       fp->dir_ptr = dj.dir;
-      fp->obj.lockid = inc_lock (&dj, (mode & ~FA_READ) ? 1 : 0);
+      fp->obj.lockid = incLock (&dj, (mode & ~FA_READ) ? 1 : 0);
       if (!fp->obj.lockid)
         result = FR_INT_ERR;
       }
@@ -4304,7 +4327,7 @@ FRESULT f_close (FIL* fp) {
   if (res == FR_OK) {
     res = validate(&fp->obj, &fs);  /* Lock volume */
     if (res == FR_OK) {
-      res = dec_lock(fp->obj.lockid); /* Decrement file open counter */
+      res = decLock(fp->obj.lockid); /* Decrement file open counter */
       if (res == FR_OK)
         fp->obj.fs = 0;     /* Invalidate file object */
 #if _FS_REENTRANT
@@ -4483,7 +4506,7 @@ FRESULT f_opendir (DIR* dp, const char* path) {
         if (result == FR_OK) {
           if (obj->sclust) {
             /* Lock the sub directory */
-            obj->lockid = inc_lock (dp, 0);
+            obj->lockid = incLock (dp, 0);
             if (!obj->lockid)
               result = FR_TOO_MANY_OPEN_FILES;
             }
@@ -4571,7 +4594,7 @@ FRESULT f_closedir (DIR *dp) {
   if (result == FR_OK) {
     if (dp->obj.lockid)
       /* Decrement sub-directory open counter */
-      result = dec_lock (dp->obj.lockid);
+      result = decLock (dp->obj.lockid);
     if (result == FR_OK)
       dp->obj.fs = 0;     /* Invalidate directory object */
   #if _FS_REENTRANT
@@ -4705,7 +4728,7 @@ FRESULT f_unlink (const char* path) {
     if (_FS_RPATH && result == FR_OK && (dj.fn[NSFLAG] & NS_DOT))
       result = FR_INVALID_NAME;  /* Cannot remove dot entry */
     if (result == FR_OK)
-      result = chk_lock(&dj, 2); /* Check if it is an open object */
+      result = chkLock(&dj, 2); /* Check if it is an open object */
     if (result == FR_OK) {
       // The object is accessible
       if (dj.fn[NSFLAG] & NS_NONAME)
@@ -4783,7 +4806,7 @@ FRESULT f_rename (const char* path_old, const char* path_new) {
     if (result == FR_OK && (djo.fn[NSFLAG] & (NS_DOT | NS_NONAME)))
       result = FR_INVALID_NAME;
     if (result == FR_OK) {
-      result = chk_lock(&djo, 2);
+      result = chkLock (&djo, 2);
     }
     if (result == FR_OK) {
       /* Object to be renamed is found */
