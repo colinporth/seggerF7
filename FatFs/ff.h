@@ -87,7 +87,6 @@ typedef enum {
 //{{{  struct FATFS
 typedef struct {
   BYTE  fs_type;    /* File system type (0:N/A) */
-  BYTE  drv;        /* Physical drive number */
   BYTE  n_fats;     /* Number of FATs (1 or 2) */
   BYTE  wflag;      /* win[] flag (b0:dirty) */
   BYTE  fsi_flag;   /* FSINFO flags (b7:disabled, b0:dirty) */

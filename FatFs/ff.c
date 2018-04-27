@@ -2429,24 +2429,22 @@ static BYTE checkFs (FATFS* fs, DWORD sect) {
   }
 //}}}
 //{{{
-static FRESULT findVolume (const char** path, FATFS** rfs, BYTE mode) {
+static FRESULT findVolume (const char** path, FATFS** fatFs, BYTE mode) {
 
   // Check if the file system object is valid. Get pointer
-  *rfs = NULL;
+  *fatFs = FatFs;
   if (!FatFs)
     return FR_NOT_ENABLED;
 
-  *rfs = FatFs;
-  FATFS* fs = FatFs;
-
   // Lock the volume
+  FATFS* fs = FatFs;
   ENTER_FF(fs);
 
   // desired access mode, write access or not
   mode &= (BYTE)~FA_READ;
   if (fs->fs_type) {
     // volume has been mounted
-    DSTATUS stat = diskStatus (fs->drv);
+    DSTATUS stat = diskStatus();
     if (!(stat & STA_NOINIT)) {
       // and the physical drive is kept initialized
       if (mode && (stat & STA_PROTECT))
@@ -2456,8 +2454,7 @@ static FRESULT findVolume (const char** path, FATFS** rfs, BYTE mode) {
     }
 
   // file system object not valid, mount volume, analyze BPB and init fs object
-  fs->fs_type = 0;       // Clear file system object
-  fs->drv = 0;
+  fs->fs_type = 0; // Clear file system object
 
   DSTATUS stat = diskInit();
   if (stat & STA_NOINIT)
@@ -2654,8 +2651,7 @@ static FRESULT findVolume (const char** path, FATFS** rfs, BYTE mode) {
 //{{{
 static FRESULT validate (_FDID* obj, FATFS** fs) {
 
-  if (!obj || !obj->fs || !obj->fs->fs_type || obj->fs->id != obj->id ||
-      (diskStatus (obj->fs->drv) & STA_NOINIT)) {
+  if (!obj || !obj->fs || !obj->fs->fs_type || obj->fs->id != obj->id || (diskStatus() & STA_NOINIT)) {
     *fs = 0;
     return FR_INVALID_OBJECT;  /* The object is invalid */
     }
@@ -4324,7 +4320,7 @@ FRESULT f_close (FIL* fp) {
 //{{{
 FRESULT f_chdir (const char* path) {
 
-  FATFS *fs;
+  FATFS* fs;
   FRESULT result = findVolume (&path, &fs, 0);
   if (result == FR_OK) {
     DIR dj;
@@ -4452,9 +4448,8 @@ FRESULT f_opendir (DIR* dp, const char* path) {
   if (!dp)
     return FR_INVALID_OBJECT;
 
-  /* Get logical drive */
   _FDID* obj = &dp->obj;
-  FATFS *fs;
+  FATFS* fs;
   FRESULT result = findVolume (&path, &fs, 0);
   if (result == FR_OK) {
     obj->fs = fs;
@@ -4773,12 +4768,11 @@ FRESULT f_unlink (const char* path) {
 FRESULT f_rename (const char* path_old, const char* path_new) {
 
   DIR djo, djn;
-  FATFS *fs;
   BYTE buf[_FS_EXFAT ? SZDIRE * 2 : 24], *dir;
   DWORD dw;
   WCHAR *lfn;
 
-  // Get logical drive of the old object
+  FATFS *fs;
   FRESULT result = findVolume (&path_old, &fs, FA_WRITE);
   if (result == FR_OK) {
     djo.obj.fs = fs;
