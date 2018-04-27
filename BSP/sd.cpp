@@ -12,24 +12,8 @@
 #define QUEUE_SIZE      10
 #define READ_CPLT_MSG   1
 #define WRITE_CPLT_MSG  2
+
 #define SD_TIMEOUT      2*1000
-
-#define __DMAx_TxRx_CLK_ENABLE       __HAL_RCC_DMA2_CLK_ENABLE
-
-#define SD_DMAx_Tx_CHANNEL           DMA_CHANNEL_4
-#define SD_DMAx_Rx_CHANNEL           DMA_CHANNEL_4
-#define SD_DMAx_Tx_STREAM            DMA2_Stream6
-#define SD_DMAx_Rx_STREAM            DMA2_Stream3
-#define SD_DMAx_Tx_IRQn              DMA2_Stream6_IRQn
-#define SD_DMAx_Rx_IRQn              DMA2_Stream3_IRQn
-
-#define SD_DATATIMEOUT  ((uint32_t)100000000)
-
-#define SD_TRANSFER_OK    ((uint8_t)0x00)
-#define SD_TRANSFER_BUSY  ((uint8_t)0x01)
-
-#define SD_PRESENT      ((uint8_t)0x01)
-#define SD_NOT_PRESENT  ((uint8_t)0x00)
 //}}}
 
 bool gDebug = false;
@@ -77,7 +61,7 @@ bool init() {
 
   // card init
   __HAL_RCC_SDMMC1_CLK_ENABLE();
-  __DMAx_TxRx_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
   //{{{  enable GPIOs
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
@@ -98,8 +82,8 @@ bool init() {
   //}}}
 
   //{{{  Configure DMA Rx parameters
-  gDmaRxHandle.Instance = SD_DMAx_Rx_STREAM;
-  gDmaRxHandle.Init.Channel             = SD_DMAx_Rx_CHANNEL;
+  gDmaRxHandle.Instance = DMA2_Stream3;
+  gDmaRxHandle.Init.Channel             = DMA_CHANNEL_4;
   gDmaRxHandle.Init.Direction           = DMA_PERIPH_TO_MEMORY;
   gDmaRxHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
   gDmaRxHandle.Init.MemInc              = DMA_MINC_ENABLE;
@@ -115,8 +99,8 @@ bool init() {
   HAL_DMA_Init (&gDmaRxHandle);
   //}}}
   //{{{  Configure DMA Tx parameters
-  gDmaTxHandle.Instance = SD_DMAx_Tx_STREAM;
-  gDmaTxHandle.Init.Channel             = SD_DMAx_Tx_CHANNEL;
+  gDmaTxHandle.Instance = DMA2_Stream6;
+  gDmaTxHandle.Init.Channel             = DMA_CHANNEL_4;
   gDmaTxHandle.Init.Direction           = DMA_MEMORY_TO_PERIPH;
   gDmaTxHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
   gDmaTxHandle.Init.MemInc              = DMA_MINC_ENABLE;
@@ -133,12 +117,12 @@ bool init() {
   //}}}
 
   // NVIC configuration for DMA transfer complete interrupt
-  HAL_NVIC_SetPriority (SD_DMAx_Rx_IRQn, 0x0F, 0);
-  HAL_NVIC_EnableIRQ (SD_DMAx_Rx_IRQn);
+  HAL_NVIC_SetPriority (DMA2_Stream3_IRQn, 0x0F, 0);
+  HAL_NVIC_EnableIRQ (DMA2_Stream3_IRQn);
 
   // NVIC configuration for DMA transfer complete interrupt
-  HAL_NVIC_SetPriority (SD_DMAx_Tx_IRQn, 0x0F, 0);
-  HAL_NVIC_EnableIRQ (SD_DMAx_Tx_IRQn);
+  HAL_NVIC_SetPriority (DMA2_Stream6_IRQn, 0x0F, 0);
+  HAL_NVIC_EnableIRQ (DMA2_Stream6_IRQn);
 
   // NVIC configuration for SDIO interrupts
   HAL_NVIC_SetPriority (SDMMC1_IRQn, 0x0E, 0);
@@ -168,19 +152,17 @@ void HAL_SD_RxCpltCallback (SD_HandleTypeDef* hsd) {
 //}}}
 
 // fatfs interface
+DWORD getFatTime() {}
 //{{{
-DSTATUS checkStatus() {
+DSTATUS diskStatus() { 
 
   gStat = STA_NOINIT;
   if (HAL_SD_GetCardState (&gSdHandle) == HAL_SD_CARD_TRANSFER)
     gStat &= ~STA_NOINIT;
 
   return gStat;
-  }
+  }          
 //}}}
-
-DWORD getFatTime() {}
-DSTATUS diskStatus() { return checkStatus(); }
 //{{{
 DSTATUS diskInit() {
 
@@ -188,7 +170,7 @@ DSTATUS diskInit() {
 
   if (osKernelRunning()) {
     if (init())
-      gStat = checkStatus();
+      gStat = diskStatus();
     else
       cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "diskInit failed");
 

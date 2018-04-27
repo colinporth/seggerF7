@@ -748,7 +748,7 @@ void cApp::touchThread() {
       f_mkfs ("", FM_EXFAT, 0, work, sizeof (work));
       debug (LCD_COLOR_YELLOW, "formated sdCard");
 
-      f_setlabel ("webcam");
+      f_setlabel ("exfat");
       debug (LCD_COLOR_YELLOW, "set sdCard label WEBCAM");
 
       f_mount (&gFatFs, "", 1);
