@@ -42,9 +42,7 @@ typedef unsigned long long QWORD;
 
 #define _FS_RPATH 2
 
-#define _VOLUMES          2
-#define _STR_VOLUME_ID    0
-#define _VOLUME_STRS  "RAM","NAND","CF","SD","SD2","USB","USB2","USB3"
+#define _VOLUMES          1
 
 #define _MIN_SS   512
 #define _MAX_SS   4096
