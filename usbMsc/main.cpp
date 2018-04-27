@@ -739,20 +739,16 @@ void cApp::touchThread() {
       mFormatChanged = false;
       debug (LCD_COLOR_YELLOW, "formatting sdCard");
 
-      // Create FAT volume
-      //#define FM_FAT    0x01
-      //#define FM_FAT32  0x02
-      //#define FM_EXFAT  0x04
-      //#define FM_ANY    0x07
-      BYTE work[_MAX_SS];
-      f_mkfs ("", FM_EXFAT, 0, work, sizeof (work));
+      void* work = malloc (0x10000);
+      f_mkfs ("", FM_EXFAT, 0, work, 0x10000);
+      free (work);
       debug (LCD_COLOR_YELLOW, "formated sdCard");
 
       f_setlabel ("exfat");
-      debug (LCD_COLOR_YELLOW, "set sdCard label WEBCAM");
+      debug (LCD_COLOR_YELLOW, "sdCard set label");
 
       f_mount (&gFatFs, "", 1);
-      debug (LCD_COLOR_YELLOW, "WEBCAM mounted");
+      debug (LCD_COLOR_YELLOW, "sdCard remounted");
       }
       //}}}
     else

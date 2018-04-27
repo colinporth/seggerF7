@@ -33,7 +33,7 @@ extern "C" {
 //{{{
 bool init() {
 
-  // uSD device interface configuration
+  // SD device interface configuration
   gSdHandle.Instance = SDMMC1;
   gSdHandle.Init.ClockEdge           = SDMMC_CLOCK_EDGE_RISING;
   gSdHandle.Init.ClockBypass         = SDMMC_CLOCK_BYPASS_DISABLE;
@@ -43,7 +43,7 @@ bool init() {
   gSdHandle.Init.ClockDiv            = SDMMC_TRANSFER_CLK_DIV;
 
   // card inserted
-  //{{{  GPIO configuration in input for uSD_Detect signal
+  //{{{  GPIO configuration in input for SD_Detect signal
   SD_DETECT_GPIO_CLK_ENABLE();
 
   GPIO_InitTypeDef  gpio_init_structure;
@@ -81,7 +81,7 @@ bool init() {
   HAL_GPIO_Init(GPIOD, &gpio_init_structure);
   //}}}
 
-  //{{{  Configure DMA Rx parameters
+  //{{{  config rxDMA 
   gDmaRxHandle.Instance = DMA2_Stream3;
   gDmaRxHandle.Init.Channel             = DMA_CHANNEL_4;
   gDmaRxHandle.Init.Direction           = DMA_PERIPH_TO_MEMORY;
@@ -98,7 +98,7 @@ bool init() {
   __HAL_LINKDMA (&gSdHandle, hdmarx, gDmaRxHandle);
   HAL_DMA_Init (&gDmaRxHandle);
   //}}}
-  //{{{  Configure DMA Tx parameters
+  //{{{  config txDMA 
   gDmaTxHandle.Instance = DMA2_Stream6;
   gDmaTxHandle.Init.Channel             = DMA_CHANNEL_4;
   gDmaTxHandle.Init.Direction           = DMA_MEMORY_TO_PERIPH;
@@ -116,25 +116,27 @@ bool init() {
   HAL_DMA_Init (&gDmaTxHandle);
   //}}}
 
-  // NVIC configuration for DMA transfer complete interrupt
+  // NVIC config for DMA transfer complete interrupt
   HAL_NVIC_SetPriority (DMA2_Stream3_IRQn, 0x0F, 0);
   HAL_NVIC_EnableIRQ (DMA2_Stream3_IRQn);
 
-  // NVIC configuration for DMA transfer complete interrupt
+  // NVIC config for DMA transfer complete interrupt
   HAL_NVIC_SetPriority (DMA2_Stream6_IRQn, 0x0F, 0);
   HAL_NVIC_EnableIRQ (DMA2_Stream6_IRQn);
 
-  // NVIC configuration for SDIO interrupts
+  // NVIC config for SDIO interrupts
   HAL_NVIC_SetPriority (SDMMC1_IRQn, 0x0E, 0);
   HAL_NVIC_EnableIRQ (SDMMC1_IRQn);
 
   if (HAL_SD_Init (&gSdHandle) != HAL_OK)
     return false;
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "mspinit");
 
-  // Enable wide operation
+  // enable wide operation
   auto result = HAL_SD_ConfigWideBusOperation (&gSdHandle, SDMMC_BUS_WIDE_4B);
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "wide result %d", result);
+  if (result != HAL_OK) {
+    cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "configWide %d", result);
+    result = HAL_SD_ConfigWideBusOperation (&gSdHandle, SDMMC_BUS_WIDE_4B);
+    }
 
   return result == HAL_OK;
   }
@@ -154,14 +156,14 @@ void HAL_SD_RxCpltCallback (SD_HandleTypeDef* hsd) {
 // fatfs interface
 DWORD getFatTime() {}
 //{{{
-DSTATUS diskStatus() { 
+DSTATUS diskStatus() {
 
   gStat = STA_NOINIT;
   if (HAL_SD_GetCardState (&gSdHandle) == HAL_SD_CARD_TRANSFER)
     gStat &= ~STA_NOINIT;
 
   return gStat;
-  }          
+  }
 //}}}
 //{{{
 DSTATUS diskInit() {

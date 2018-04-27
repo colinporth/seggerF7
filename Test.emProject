@@ -202,7 +202,7 @@
         <file file_name="../FatFs/diskio.h" />
         <file file_name="../FatFs/ff.h" />
       </folder>
-      <file file_name="../FatFs/ff.c" />
+      <file file_name="../FatFs/ff.cpp" />
     </folder>
     <folder Name="libJpeg">
       <folder Name="includes">

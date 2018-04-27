@@ -190,7 +190,7 @@ int ff_del_syncobj (_SYNC_t sobj);             // Delete a sync object
 #define MAXDIRB(nc) ((nc + 44U) / 15 * SZDIRE)
 
 #define INIT_NAMBUF(fs) { \
-  lfn = malloc ((_MAX_LFN+1)*2 + MAXDIRB(_MAX_LFN));   \
+  lfn = (WCHAR*)malloc ((_MAX_LFN+1)*2 + MAXDIRB(_MAX_LFN));   \
   if (!lfn)                                            \
     LEAVE_FF (fs, FR_NOT_ENOUGH_CORE);                 \
   (fs)->lfnbuf = lfn;                                  \
@@ -214,13 +214,13 @@ typedef struct {
   } sPutBuff;
 //}}}
 
-static WORD Fsid;                // File system mount ID
-static FATFS* FatFs;
-static sFILESEM Files[_FS_LOCK]; // Open object lock semaphores
+FATFS* FatFs;
+WORD Fsid;                // File system mount ID
+sFILESEM Files[_FS_LOCK]; // Open object lock semaphores
 
 //{{{  unicode conversion
 // Upper conversion table for SBCS extended characters
-static const BYTE ExCvt[] = {
+const BYTE ExCvt[] = {
   0x43,0x55,0x45,0x41,0x41,0x41,0x41,0x43, 0x45,0x45,0x45,0x49,0x49,0x49,0x41,0x41,
   0x45,0x92,0x92,0x4F,0x4F,0x4F,0x55,0x55, 0x59,0x4F,0x55,0x4F,0x9C,0x4F,0x9E,0x9F,
   0x41,0x49,0x4F,0x55,0xA5,0xA5,0xA6,0xA7, 0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,
@@ -235,7 +235,7 @@ static const BYTE ExCvt[] = {
 #define IsLower(c) (((c)>='a')&&((c)<='z'))
 #define IsDigit(c) (((c)>='0')&&((c)<='9'))
 
-static const WCHAR kTable[] = {
+const WCHAR kTable[] = {
   0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7,
   0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
   0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9,
@@ -372,8 +372,8 @@ WCHAR wtoupper (WCHAR chr) {
 //}}}
 //{{{  utils
 //{{{
-static WORD ld_word (const BYTE* ptr) {
-/*   Load a 2-byte little-endian word */
+WORD ld_word (const BYTE* ptr) {
+// Load a 2-byte little-endian word
 
   WORD rv;
   rv = ptr[1];
@@ -382,8 +382,8 @@ static WORD ld_word (const BYTE* ptr) {
   }
 //}}}
 //{{{
-static DWORD ld_dword (const BYTE* ptr) {
-/* Load a 4-byte little-endian word */
+DWORD ld_dword (const BYTE* ptr) {
+// Load a 4-byte little-endian word
 
   DWORD rv;
   rv = ptr[3];
@@ -394,8 +394,8 @@ static DWORD ld_dword (const BYTE* ptr) {
   }
 //}}}
 //{{{
-static QWORD ld_qword (const BYTE* ptr) {
-/* Load an 8-byte little-endian word */
+QWORD ld_qword (const BYTE* ptr) {
+// Load an 8-byte little-endian word
 
   QWORD rv;
   rv = ptr[7];
@@ -411,7 +411,7 @@ static QWORD ld_qword (const BYTE* ptr) {
 //}}}
 
 //{{{
-static void st_word (BYTE* ptr, WORD val) {
+void st_word (BYTE* ptr, WORD val) {
 
   *ptr++ = (BYTE)val;
   val >>= 8;
@@ -419,7 +419,7 @@ static void st_word (BYTE* ptr, WORD val) {
   }
 //}}}
 //{{{
-static void st_dword (BYTE* ptr, DWORD val) {
+void st_dword (BYTE* ptr, DWORD val) {
 /* Store a 4-byte word in little-endian */
 
   *ptr++ = (BYTE)val;
@@ -432,7 +432,7 @@ static void st_dword (BYTE* ptr, DWORD val) {
   }
 //}}}
 //{{{
-static void st_qword (BYTE* ptr, QWORD val) {
+void st_qword (BYTE* ptr, QWORD val) {
 /* Store an 8-byte word in little-endian */
 
   *ptr++ = (BYTE)val;
@@ -454,8 +454,8 @@ static void st_qword (BYTE* ptr, QWORD val) {
 //}}}
 
 //{{{
-static int chk_chr (const char* str, int chr) {
-/* Check if chr is contained in the string */
+int chk_chr (const char* str, int chr) {
+// Check if chr is contained in the string
 
   while (*str && *str != chr)
     str++;
@@ -463,59 +463,70 @@ static int chk_chr (const char* str, int chr) {
   }
 //}}}
 //{{{
-static WCHAR get_achar (const char** ptr) {
+WCHAR get_achar (const char** ptr) {
 
-  WCHAR chr = (BYTE)*(*ptr)++;          /* Get a byte */
+  WCHAR chr = (BYTE)*(*ptr)++;
   if (IsLower(chr))
     chr -= 0x20;      /* To upper ASCII char */
   if (chr >= 0x80)
     chr = ExCvt[chr - 0x80]; /* To upper SBCS extended char */
+
   return chr;
   }
 //}}}
 //{{{
-static int pattern_matching (const char* pat, const char* nam, int skip, int inf) {
+int pattern_matching (const char* pat, const char* nam, int skip, int inf) {
 
   const char *pp, *np;
   WCHAR pc, nc;
   int nm, nx;
 
-  while (skip--) {        /* Pre-skip name chars */
-    if (!get_achar(&nam)) return 0; /* Branch mismatched if less name chars */
+  while (skip--) {
+    // Pre-skip name chars
+    if (!get_achar(&nam))
+      return 0; // Branch mismatched if less name chars
     }
-  if (!*pat && inf) return 1;   /* (short circuit) */
+  if (!*pat && inf)
+    return 1;   // (short circuit)
 
   do {
-    pp = pat; np = nam;     /* Top of pattern and name to match */
+    pp = pat;
+    np = nam;  // Top of pattern and name to match
     for (;;) {
-      if (*pp == '?' || *pp == '*') { /* Wildcard? */
+      if (*pp == '?' || *pp == '*') {
+        // Wildcard?
         nm = nx = 0;
-        do {        /* Analyze the wildcard chars */
+        do {
+          // Analyze the wildcard chars
           if (*pp++ == '?')
             nm++;
           else
             nx = 1;
           } while (*pp == '?' || *pp == '*');
+
+        // Test new branch (recurs upto number of wildcard blocks in the pattern)
         if (pattern_matching (pp, np, nm, nx))
-          return 1; /* Test new branch (recurs upto number of wildcard blocks in the pattern) */
-        nc = *np; break;  /* Branch mismatched */
+          return 1;
+        nc = *np; break;  // Branch mismatched
         }
-      pc = get_achar (&pp);  /* Get a pattern char */
-      nc = get_achar (&np);  /* Get a name char */
+
+      pc = get_achar (&pp);  // Get a pattern char
+      nc = get_achar (&np);  // Get a name char
       if (pc != nc)
-        break;  /* Branch mismatched? */
+        break;  // Branch mismatched?
       if (pc == 0)
-        return 1;  /* Branch matched? (matched at end of both strings) */
+        return 1;  // Branch matched? (matched at end of both strings)
       }
-    get_achar(&nam);      /* nam++ */
-    } while (inf && nc);      /* Retry until end of name if infinite search is specified */
+
+    get_achar (&nam);
+    } while (inf && nc);  // Retry until end of name if infinite search is specified
 
   return 0;
   }
 //}}}
 
 //{{{
-static void putc_bfd (sPutBuff* pb, char c) {
+void putc_bfd (sPutBuff* pb, char c) {
 
   UINT bw;
   int i;
@@ -537,7 +548,7 @@ static void putc_bfd (sPutBuff* pb, char c) {
   }
 //}}}
 //{{{
-static int putc_flush (sPutBuff* pb) {
+int putc_flush (sPutBuff* pb) {
 
   UINT nw;
   if ((pb->idx >= 0) && (f_write(pb->fp, pb->buf, (UINT)pb->idx, &nw) == FR_OK) && ((UINT)pb->idx == nw))
@@ -547,7 +558,7 @@ static int putc_flush (sPutBuff* pb) {
   }
 //}}}
 //{{{
-static void putc_init (sPutBuff* pb, FIL* fp) {
+void putc_init (sPutBuff* pb, FIL* fp) {
 
   pb->fp = fp;
   pb->nchr = pb->idx = 0;
@@ -556,12 +567,12 @@ static void putc_init (sPutBuff* pb, FIL* fp) {
 //}}}
 //{{{  lock
 //{{{
-static int lock_fs (FATFS* fs) {
+int lock_fs (FATFS* fs) {
   return (fs && ff_req_grant(fs->sobj)) ? 1 : 0;
   }
 //}}}
 //{{{
-static void unlock_fs (FATFS* fs, FRESULT result) {
+void unlock_fs (FATFS* fs, FRESULT result) {
 
   if (fs && result != FR_NOT_ENABLED && result != FR_INVALID_DRIVE && result != FR_TIMEOUT)
     ff_rel_grant(fs->sobj);
@@ -569,7 +580,7 @@ static void unlock_fs (FATFS* fs, FRESULT result) {
 //}}}
 
 //{{{
-static FRESULT chkLock (DIR* dp, int acc) {
+FRESULT chkLock (DIR* dp, int acc) {
 // Check if the file can be accessed
 
   // Search file semaphore table
@@ -595,7 +606,7 @@ static FRESULT chkLock (DIR* dp, int acc) {
   }
 //}}}
 //{{{
-static int enqLock() {
+int enqLock() {
 /* Check if an entry is available for a new object */
 
   UINT i;
@@ -604,7 +615,7 @@ static int enqLock() {
   }
 //}}}
 //{{{
-static UINT incLock (DIR* dp, int acc) {
+UINT incLock (DIR* dp, int acc) {
 /* Increment object open counter and returns its index (0:Internal error) */
 
   UINT i;
@@ -636,7 +647,7 @@ static UINT incLock (DIR* dp, int acc) {
   }
 //}}}
 //{{{
-static FRESULT decLock (UINT i) {
+FRESULT decLock (UINT i) {
 /* Decrement object open counter */
 
   if (--i < _FS_LOCK) {
@@ -656,7 +667,7 @@ static FRESULT decLock (UINT i) {
   }
 //}}}
 //{{{
-static void clearLock (FATFS *fs) {
+void clearLock (FATFS *fs) {
 
   for (UINT i = 0; i < _FS_LOCK; i++)
     if (Files[i].fs == fs)
@@ -669,7 +680,7 @@ static void clearLock (FATFS *fs) {
 static const BYTE kLfnOffset[] = {1,3,5,7,9,14,16,18,20,22,24,28,30};
 
 //{{{
-static int cmpLfn (const WCHAR* lfnbuf, BYTE* dir) {
+int cmpLfn (const WCHAR* lfnbuf, BYTE* dir) {
 
   if (ld_word (dir + LDIR_FstClusLO) != 0)
     return 0; /* Check LDIR_FstClusLO */
@@ -700,7 +711,7 @@ static int cmpLfn (const WCHAR* lfnbuf, BYTE* dir) {
   }
 //}}}
 //{{{
-static int pickLfn (WCHAR* lfnbuf, BYTE* dir) {
+int pickLfn (WCHAR* lfnbuf, BYTE* dir) {
 
   if (ld_word(dir + LDIR_FstClusLO) != 0)
     return 0;
@@ -736,7 +747,7 @@ static int pickLfn (WCHAR* lfnbuf, BYTE* dir) {
   }
 //}}}
 //{{{
-static void putLfn (const WCHAR* lfn, BYTE* dir, BYTE ord, BYTE sum) {
+void putLfn (const WCHAR* lfn, BYTE* dir, BYTE ord, BYTE sum) {
 
   dir[LDIR_Chksum] = sum;     // Set checksum
   dir[LDIR_Attr] = AM_LFN;    // Set attribute. LFN entry
@@ -762,7 +773,7 @@ static void putLfn (const WCHAR* lfn, BYTE* dir, BYTE ord, BYTE sum) {
 //}}}
 
 //{{{
-static void generateNumName (BYTE* dst, const BYTE* src, const WCHAR* lfn, UINT seq) {
+void generateNumName (BYTE* dst, const BYTE* src, const WCHAR* lfn, UINT seq) {
 
   memcpy (dst, src, 11);
 
@@ -804,7 +815,7 @@ static void generateNumName (BYTE* dst, const BYTE* src, const WCHAR* lfn, UINT 
 //}}}
 
 //{{{
-static BYTE sumSfn (const BYTE* dir) {
+BYTE sumSfn (const BYTE* dir) {
 
   BYTE sum = 0;
   UINT n = 11;
@@ -817,7 +828,7 @@ static BYTE sumSfn (const BYTE* dir) {
 //}}}
 
 //{{{
-static WORD xdirSum (const BYTE* dir) {
+WORD xdirSum (const BYTE* dir) {
 
   WORD sum;
   UINT szblk = (dir[XDIR_NumSec] + 1) * SZDIRE;
@@ -831,7 +842,7 @@ static WORD xdirSum (const BYTE* dir) {
   }
 //}}}
 //{{{
-static WORD xnameSum (const WCHAR* name) {
+WORD xnameSum (const WCHAR* name) {
 
   WORD sum = 0;
   WCHAR chr;
@@ -846,7 +857,7 @@ static WORD xnameSum (const WCHAR* name) {
   }
 //}}}
 //{{{
-static DWORD xsum32 (BYTE  dat, DWORD sum) {
+DWORD xsum32 (BYTE  dat, DWORD sum) {
 
   sum = ((sum & 1) ? 0x80000000 : 0) + (sum >> 1) + dat;
   return sum;
@@ -855,7 +866,7 @@ static DWORD xsum32 (BYTE  dat, DWORD sum) {
 //}}}
 //{{{  window, bitmap, cluster
 //{{{
-static FRESULT syncWindow (FATFS* fs) {
+FRESULT syncWindow (FATFS* fs) {
 
   FRESULT result = FR_OK;
 
@@ -881,7 +892,7 @@ static FRESULT syncWindow (FATFS* fs) {
   }
 //}}}
 //{{{
-static FRESULT moveWindow (FATFS* fs, DWORD sector) {
+FRESULT moveWindow (FATFS* fs, DWORD sector) {
 
   FRESULT result = FR_OK;
 
@@ -905,7 +916,7 @@ static FRESULT moveWindow (FATFS* fs, DWORD sector) {
   }
 //}}}
 //{{{
-static FRESULT sync_fs (FATFS* fs) {
+FRESULT syncFs (FATFS* fs) {
 
   FRESULT result = syncWindow (fs);
   if (result == FR_OK) {
@@ -935,7 +946,7 @@ static FRESULT sync_fs (FATFS* fs) {
 //}}}
 
 //{{{
-static DWORD clust2sect (FATFS* fs, DWORD clst) {
+DWORD clust2sect (FATFS* fs, DWORD clst) {
 
   clst -= 2;
   if (clst >= fs->n_fatent - 2)
@@ -946,7 +957,7 @@ static DWORD clust2sect (FATFS* fs, DWORD clst) {
 //}}}
 
 //{{{
-static DWORD getFat (_FDID* obj, DWORD clst) {
+DWORD getFat (_FDID* obj, DWORD clst) {
 
   UINT wc, bc;
 
@@ -1022,7 +1033,7 @@ static DWORD getFat (_FDID* obj, DWORD clst) {
   }
 //}}}
 //{{{
-static FRESULT putFat (FATFS* fs, DWORD clst, DWORD val) {
+FRESULT putFat (FATFS* fs, DWORD clst, DWORD val) {
 
   UINT bc;
   BYTE* p;
@@ -1077,7 +1088,7 @@ static FRESULT putFat (FATFS* fs, DWORD clst, DWORD val) {
 //}}}
 
 //{{{
-static DWORD find_bitmap (FATFS* fs, DWORD clst, DWORD ncl) {
+DWORD find_bitmap (FATFS* fs, DWORD clst, DWORD ncl) {
 
   BYTE bm, bv;
   UINT i;
@@ -1119,7 +1130,7 @@ static DWORD find_bitmap (FATFS* fs, DWORD clst, DWORD ncl) {
   }
 //}}}
 //{{{
-static FRESULT change_bitmap (FATFS* fs, DWORD clst, DWORD ncl, int bv) {
+FRESULT change_bitmap (FATFS* fs, DWORD clst, DWORD ncl, int bv) {
 
   clst -= 2;  /* The first bit corresponds to cluster #2 */
 
@@ -1145,29 +1156,29 @@ static FRESULT change_bitmap (FATFS* fs, DWORD clst, DWORD ncl, int bv) {
   }
 //}}}
 //{{{
-static FRESULT fill_first_frag (_FDID* obj) {
+FRESULT fillFirstFrag (_FDID* obj) {
 
   DWORD cl, n;
 
   if (obj->stat == 3) {
-    /* Has the object been changed 'fragmented'? */
+    // Has the object been changed 'fragmented'?
     for (cl = obj->sclust, n = obj->n_cont; n; cl++, n--) {
-      /* Create cluster chain on the FAT */
+      // Create cluster chain on the FAT
       FRESULT res = putFat (obj->fs, cl, cl + 1);
       if (res != FR_OK)
         return res;
       }
-    obj->stat = 0;  /* Change status 'FAT chain is valid' */
+    obj->stat = 0;  // Change status 'FAT chain is valid'
     }
 
   return FR_OK;
   }
 //}}}
 //{{{
-static FRESULT fill_last_frag (_FDID* obj, DWORD lcl, DWORD term) {
+FRESULT fillLastFrag (_FDID* obj, DWORD lcl, DWORD term) {
 
   while (obj->n_frag > 0) {
-    /* Create the last chain on the FAT */
+    // Create the last chain on the FAT
     FRESULT res = putFat (obj->fs, lcl - obj->n_frag + 1, (obj->n_frag > 1) ? lcl - obj->n_frag + 2 : term);
     if (res != FR_OK)
       return res;
@@ -1179,7 +1190,7 @@ static FRESULT fill_last_frag (_FDID* obj, DWORD lcl, DWORD term) {
 //}}}
 
 //{{{
-static FRESULT remove_chain (_FDID* obj, DWORD clst, DWORD pclst) {
+FRESULT removeChain (_FDID* obj, DWORD clst, DWORD pclst) {
 
   FRESULT res = FR_OK;
   DWORD nxt;
@@ -1247,7 +1258,7 @@ static FRESULT remove_chain (_FDID* obj, DWORD clst, DWORD pclst) {
   }
 //}}}
 //{{{
-static DWORD create_chain (_FDID* obj, DWORD clst) {
+DWORD createChain (_FDID* obj, DWORD clst) {
 
   DWORD cs, ncl, scl;
   FRESULT res;
@@ -1300,7 +1311,7 @@ static DWORD create_chain (_FDID* obj, DWORD clst) {
         /* New fragment */
         if (obj->n_frag == 0)
           obj->n_frag = 1;
-        res = fill_last_frag (obj, clst, ncl); /* Fill last fragment on the FAT and link it to new one */
+        res = fillLastFrag (obj, clst, ncl); /* Fill last fragment on the FAT and link it to new one */
         if (res == FR_OK)
           obj->n_frag = 1;
         }
@@ -1344,7 +1355,7 @@ static DWORD create_chain (_FDID* obj, DWORD clst) {
 //}}}
 
 //{{{
-static DWORD clmt_clust (FIL* fp, QWORD ofs) {
+DWORD clmtCluster (FIL* fp, QWORD ofs) {
 
   DWORD cl, ncl;
   FATFS* fs = fp->obj.fs;
@@ -1366,7 +1377,7 @@ static DWORD clmt_clust (FIL* fp, QWORD ofs) {
 //}}}
 
 //{{{
-static FRESULT dirSubDirectoryIndex (DIR* dp, DWORD ofs) {
+FRESULT dirSubDirectoryIndex (DIR* dp, DWORD ofs) {
 // directory subDirectory index ?
 
   // Check range of offset and alignment
@@ -1419,7 +1430,7 @@ static FRESULT dirSubDirectoryIndex (DIR* dp, DWORD ofs) {
   }
 //}}}
 //{{{
-static FRESULT dirNext (DIR* dp, int stretch) {
+FRESULT dirNext (DIR* dp, int stretch) {
 
   DWORD ofs, clst;
   UINT n;
@@ -1458,7 +1469,7 @@ static FRESULT dirNext (DIR* dp, int stretch) {
             return FR_NO_FILE;
             }
 
-          clst = create_chain (&dp->obj, dp->clust); /* Allocate a cluster */
+          clst = createChain (&dp->obj, dp->clust); /* Allocate a cluster */
           if (clst == 0)
             return FR_DENIED;      /* No free cluster */
           if (clst == 1)
@@ -1494,7 +1505,7 @@ static FRESULT dirNext (DIR* dp, int stretch) {
   }
 //}}}
 //{{{
-static FRESULT dirAlloc (DIR* dp, UINT nent) {
+FRESULT dirAlloc (DIR* dp, UINT nent) {
 
   UINT n;
   FATFS* fs = dp->obj.fs;
@@ -1524,7 +1535,7 @@ static FRESULT dirAlloc (DIR* dp, UINT nent) {
 //}}}
 
 //{{{
-static DWORD ld_clust (FATFS* fs, const BYTE* dir) {
+DWORD ldCluster (FATFS* fs, const BYTE* dir) {
 
   DWORD cl = ld_word(dir + DIR_FstClusLO);
   if (fs->fs_type == FS_FAT32)
@@ -1534,7 +1545,7 @@ static DWORD ld_clust (FATFS* fs, const BYTE* dir) {
   }
 //}}}
 //{{{
-static void st_clust (FATFS* fs, BYTE* dir, DWORD cl) {
+void stCluster (FATFS* fs, BYTE* dir, DWORD cl) {
 
   st_word (dir + DIR_FstClusLO, (WORD)cl);
   if (fs->fs_type == FS_FAT32)
@@ -1542,46 +1553,14 @@ static void st_clust (FATFS* fs, BYTE* dir, DWORD cl) {
   }
 //}}}
 //}}}
-//{{{  vol, name, dir utils
+//{{{  name, dir utils
 //{{{
-static void get_xdir_info (BYTE* dirb, FILINFO* fno) {
-
-  UINT di, si;
-  WCHAR w;
-  UINT nc;
-
-  /* Get file name */
-  di = 0;
-  for (si = SZDIRE * 2, nc = 0; nc < dirb[XDIR_NumName]; si += 2, nc++) {
-    if ((si % SZDIRE) == 0)
-      si += 2;    /* Skip entry type field */
-    w = convert (ld_word (dirb + si), 0);  /* Get a character and Unicode -> OEM */
-    if (w == 0 || di >= _MAX_LFN) {
-      di = 0;
-      break;
-      }  /* Invalid char or buffer overflow --> inaccessible object name */
-    fno->fname[di++] = (char)w;
-    }
-
-  if (di == 0)
-    fno->fname[di++] = '?';  /* Inaccessible object name? */
-  fno->fname[di] = 0;           /* Terminate file name */
-
-  fno->altname[0] = 0;              /* No SFN */
-  fno->fattrib = dirb[XDIR_Attr];         /* Attribute */
-  fno->fsize = (fno->fattrib & AM_DIR) ? 0 : ld_qword(dirb + XDIR_FileSize);  /* Size */
-  fno->ftime = ld_word(dirb + XDIR_ModTime + 0);  /* Time */
-  fno->fdate = ld_word(dirb + XDIR_ModTime + 2);  /* Date */
-  }
-//}}}
-
-//{{{
-static FRESULT load_xdir (DIR* dp) {
+FRESULT loadXdir (DIR* dp) {
 
   UINT i, sz_ent;
   BYTE* dirb = dp->obj.fs->dirbuf;  /* Pointer to the on-memory direcotry entry block 85+C0+C1s */
 
-  /* Load 85 entry */
+  // Load 85 entry
   FRESULT result = moveWindow (dp->obj.fs, dp->sect);
   if (result != FR_OK)
     return result;
@@ -1593,7 +1572,7 @@ static FRESULT load_xdir (DIR* dp) {
   if (sz_ent < 3 * SZDIRE || sz_ent > 19 * SZDIRE)
     return FR_INT_ERR;
 
-  /* Load C0 entry */
+  // Load C0 entry
   result = dirNext(dp, 0);
   if (result != FR_OK)
     return result;
@@ -1607,7 +1586,7 @@ static FRESULT load_xdir (DIR* dp) {
   if (MAXDIRB(dirb[XDIR_NumName]) > sz_ent)
     return FR_INT_ERR;
 
-  /* Load C1 entries */
+  // Load C1 entries
   i = SZDIRE * 2; /* C1 offset */
   do {
     result = dirNext(dp, 0);
@@ -1632,26 +1611,7 @@ static FRESULT load_xdir (DIR* dp) {
   }
 //}}}
 //{{{
-static FRESULT load_obj_dir (DIR* dp, const _FDID* obj) {
-
-  /* Open object containing directory */
-  dp->obj.fs = obj->fs;
-  dp->obj.sclust = obj->c_scl;
-  dp->obj.stat = (BYTE)obj->c_size;
-  dp->obj.objsize = obj->c_size & 0xFFFFFF00;
-  dp->blk_ofs = obj->c_ofs;
-
-  /* Goto object's entry block */
-  FRESULT result = dirSubDirectoryIndex (dp, dp->blk_ofs);
-  if (result == FR_OK)
-    result = load_xdir (dp);    /* Load the object's entry block */
-
-  return result;
-  }
-//}}}
-
-//{{{
-static FRESULT storeXdir (DIR* dp) {
+FRESULT storeXdir (DIR* dp) {
 
   // Pointer to the direcotry entry block 85+C0+C1s
   BYTE* dirb = dp->obj.fs->dirbuf;
@@ -1660,7 +1620,7 @@ static FRESULT storeXdir (DIR* dp) {
   st_word (dirb + XDIR_SetSum, xdirSum (dirb));
   UINT nent = dirb[XDIR_NumSec] + 1;
 
-  /* Store the set of directory to the volume */
+  // Store the set of directory to the volume
   FRESULT result = dirSubDirectoryIndex (dp, dp->blk_ofs);
   while (result == FR_OK) {
     result = moveWindow (dp->obj.fs, dp->sect);
@@ -1678,7 +1638,7 @@ static FRESULT storeXdir (DIR* dp) {
   }
 //}}}
 //{{{
-static void createXdir (BYTE* dirb, const WCHAR* lfn) {
+void createXdir (BYTE* dirb, const WCHAR* lfn) {
 // Create 85+C0 entry
 
   memset (dirb, 0, 2 * SZDIRE);
@@ -1715,7 +1675,26 @@ static void createXdir (BYTE* dirb, const WCHAR* lfn) {
 //}}}
 
 //{{{
-static FRESULT dirRead (DIR* dp, int vol) {
+FRESULT loadObjDir (DIR* dp, const _FDID* obj) {
+
+  // Open object containing directory
+  dp->obj.fs = obj->fs;
+  dp->obj.sclust = obj->c_scl;
+  dp->obj.stat = (BYTE)obj->c_size;
+  dp->obj.objsize = obj->c_size & 0xFFFFFF00;
+  dp->blk_ofs = obj->c_ofs;
+
+  // Goto object's entry block
+  FRESULT result = dirSubDirectoryIndex (dp, dp->blk_ofs);
+  if (result == FR_OK)
+    result = loadXdir (dp);    /* Load the object's entry block */
+
+  return result;
+  }
+//}}}
+
+//{{{
+FRESULT dirRead (DIR* dp, int vol) {
 
   FATFS* fs = dp->obj.fs;
   BYTE a;
@@ -1728,12 +1707,15 @@ static FRESULT dirRead (DIR* dp, int vol) {
     result = moveWindow (fs, dp->sect);
     if (result != FR_OK)
       break;
+
     c = dp->dir[DIR_Name];  /* Test for the entry type */
     if (c == 0) {
       result = FR_NO_FILE;
       break; /* Reached to end of the directory */
       }
-    if (fs->fs_type == FS_EXFAT) {  /* On the exFAT volume */
+
+    if (fs->fs_type == FS_EXFAT) {
+      //{{{  FAT32
       if (_USE_LABEL && vol) {
         if (c == 0x83)
           break; /* Volume label entry? */
@@ -1741,15 +1723,16 @@ static FRESULT dirRead (DIR* dp, int vol) {
       else {
         if (c == 0x85) {    /* Start of the file entry block? */
           dp->blk_ofs = dp->dptr; /* Get location of the block */
-          result = load_xdir(dp);  /* Load the entry block */
+          result = loadXdir (dp);  /* Load the entry block */
           if (result == FR_OK)
             dp->obj.attr = fs->dirbuf[XDIR_Attr] & AM_MASK; /* Get attribute */
           break;
           }
         }
       }
+      //}}}
     else {
-      /* On the FAT12/16/32 volume */
+      //{{{  FAT12/16/32 volume
       dp->obj.attr = a = dp->dir[DIR_Attr] & AM_MASK; /* Get attribute */
       if (c == DDEM || c == '.' || (int)((a & ~AM_ARC) == AM_VOL) != vol) { /* An entry without valid data */
         ord = 0xFF;
@@ -1773,7 +1756,9 @@ static FRESULT dirRead (DIR* dp, int vol) {
           }
         }
       }
-    result = dirNext (dp, 0);    /* Next entry */
+      //}}}
+
+    result = dirNext (dp, 0);
     if (result != FR_OK)
       break;
     }
@@ -1785,7 +1770,7 @@ static FRESULT dirRead (DIR* dp, int vol) {
   }
 //}}}
 //{{{
-static FRESULT dirFind (DIR* dp) {
+FRESULT dirFind (DIR* dp) {
 
   // rewind directory object
   FRESULT result = dirSubDirectoryIndex (dp, 0);
@@ -1888,7 +1873,7 @@ static FRESULT dirFind (DIR* dp) {
   }
 //}}}
 //{{{
-static FRESULT dirRegister (DIR* dp) {
+FRESULT dirRegister (DIR* dp) {
 
   FATFS* fs = dp->obj.fs;
 
@@ -1919,18 +1904,18 @@ static FRESULT dirRegister (DIR* dp) {
       dp->obj.objsize += (DWORD)fs->csize * SS(fs);
 
       // Fill first fragment on the FAT if needed
-      result = fill_first_frag (&dp->obj);
+      result = fillFirstFrag (&dp->obj);
       if (result != FR_OK)
         return result;
 
       // Fill last fragment on the FAT if needed
-      result = fill_last_frag (&dp->obj, dp->clust, 0xFFFFFFFF);
+      result = fillLastFrag (&dp->obj, dp->clust, 0xFFFFFFFF);
       if (result != FR_OK)
         return result;
 
       // Load the object status
       DIR dj;
-      result = load_obj_dir (&dj, &dp->obj);
+      result = loadObjDir (&dj, &dp->obj);
       if (result != FR_OK)
         return result;
 
@@ -2020,7 +2005,7 @@ static FRESULT dirRegister (DIR* dp) {
   }
 //}}}
 //{{{
-static FRESULT dirRemove (DIR* dp) {
+FRESULT dirRemove (DIR* dp) {
 
   FATFS *fs = dp->obj.fs;
   DWORD last = dp->dptr;
@@ -2057,28 +2042,51 @@ static FRESULT dirRemove (DIR* dp) {
 //}}}
 
 //{{{
-static void get_fileinfo (DIR* dp, FILINFO* fno) {
+void getFileInfo (DIR* dp, FILINFO* fno) {
 
-  UINT i, j;
-  char c;
   DWORD tm;
   WCHAR w, lfv;
-  FATFS* fs = dp->obj.fs;
 
-  fno->fname[0] = 0;    /* Invaidate file info */
+  // Invaidate file info */
+  fno->fname[0] = 0;
   if (!dp->sect)
     return;  /* Exit if read pointer has reached end of directory */
 
+  FATFS* fs = dp->obj.fs;
   if (fs->fs_type == FS_EXFAT) {
-    //{{{  On the exFAT volume
-    get_xdir_info(fs->dirbuf, fno);
-    return;
+    //{{{  exFAT volume
+    // Get file name
+    UINT si;
+    UINT nc;
+    UINT di = 0;
+    BYTE* dirb = fs->dirbuf;
+    for (si = SZDIRE * 2, nc = 0; nc < dirb[XDIR_NumName]; si += 2, nc++) {
+      if ((si % SZDIRE) == 0)
+        si += 2;    /* Skip entry type field */
+      WCHAR w = convert (ld_word (dirb + si), 0);  /* Get a character and Unicode -> OEM */
+      if (w == 0 || di >= _MAX_LFN) {
+        di = 0;
+        break;
+        }  /* Invalid char or buffer overflow --> inaccessible object name */
+      fno->fname[di++] = (char)w;
+      }
+
+    if (di == 0)
+      fno->fname[di++] = '?';  /* Inaccessible object name? */
+    fno->fname[di] = 0;           /* Terminate file name */
+
+    fno->altname[0] = 0;              /* No SFN */
+    fno->fattrib = dirb[XDIR_Attr];         /* Attribute */
+    fno->fsize = (fno->fattrib & AM_DIR) ? 0 : ld_qword(dirb + XDIR_FileSize);  /* Size */
+    fno->ftime = ld_word(dirb + XDIR_ModTime + 0);  /* Time */
+    fno->fdate = ld_word(dirb + XDIR_ModTime + 2);  /* Date */
     }
     //}}}
   else {
-    //{{{  On the FAT12/16/32 volume
+    //{{{  FAT12/16/32 volume
     if (dp->blk_ofs != 0xFFFFFFFF) {  /* Get LFN if available */
-      i = j = 0;
+      UINT i = 0;
+      UINT j = 0;
       while ((w = fs->lfnbuf[j++]) != 0) {  /* Get an LFN character */
         w = convert (w, 0);   /* Unicode -> OEM */
         if (w == 0) {
@@ -2093,49 +2101,50 @@ static void get_fileinfo (DIR* dp, FILINFO* fno) {
         }
       fno->fname[i] = 0;  /* Terminate the LFN */
       }
+
+    UINT i = 0;
+    UINT j = 0;
+    lfv = fno->fname[i];  /* LFN is exist if non-zero */
+    while (i < 11) {    /* Copy name body and extension */
+      char c = (char)dp->dir[i++];
+      if (c == ' ')
+        continue;       /* Skip padding spaces */
+      if (c == RDDEM)
+        c = (char)DDEM;  /* Restore replaced DDEM character */
+      if (i == 9) {           /* Insert a . if extension is exist */
+        if (!lfv)
+          fno->fname[j] = '.';
+        fno->altname[j++] = '.';
+        }
+      fno->altname[j] = c;
+      if (!lfv) {
+        if (IsUpper(c) && (dp->dir[DIR_NTres] & ((i >= 9) ? NS_EXT : NS_BODY))) {
+          c += 0x20;      /* To lower */
+          }
+        fno->fname[j] = c;
+        }
+      j++;
+      }
+
+    if (!lfv) {
+      fno->fname[j] = 0;
+      if (!dp->dir[DIR_NTres])
+        j = 0; /* Altname is no longer needed if neither LFN nor case info is exist. */
+      }
+    fno->altname[j] = 0;  /* Terminate the SFN */
+
+    fno->fattrib = dp->dir[DIR_Attr];       /* Attribute */
+    fno->fsize = ld_dword (dp->dir + DIR_FileSize);  /* Size */
+    tm = ld_dword (dp->dir + DIR_ModTime);     /* Timestamp */
+    fno->ftime = (WORD)tm;
+    fno->fdate = (WORD)(tm >> 16);
     }
     //}}}
-
-  i = j = 0;
-  lfv = fno->fname[i];  /* LFN is exist if non-zero */
-  while (i < 11) {    /* Copy name body and extension */
-    c = (char)dp->dir[i++];
-    if (c == ' ')
-      continue;       /* Skip padding spaces */
-    if (c == RDDEM)
-      c = (char)DDEM;  /* Restore replaced DDEM character */
-    if (i == 9) {           /* Insert a . if extension is exist */
-      if (!lfv)
-        fno->fname[j] = '.';
-      fno->altname[j++] = '.';
-      }
-    fno->altname[j] = c;
-    if (!lfv) {
-      if (IsUpper(c) && (dp->dir[DIR_NTres] & ((i >= 9) ? NS_EXT : NS_BODY))) {
-        c += 0x20;      /* To lower */
-        }
-      fno->fname[j] = c;
-      }
-    j++;
-    }
-
-  if (!lfv) {
-    fno->fname[j] = 0;
-    if (!dp->dir[DIR_NTres])
-      j = 0; /* Altname is no longer needed if neither LFN nor case info is exist. */
-    }
-  fno->altname[j] = 0;  /* Terminate the SFN */
-
-  fno->fattrib = dp->dir[DIR_Attr];       /* Attribute */
-  fno->fsize = ld_dword (dp->dir + DIR_FileSize);  /* Size */
-  tm = ld_dword (dp->dir + DIR_ModTime);     /* Timestamp */
-  fno->ftime = (WORD)tm;
-  fno->fdate = (WORD)(tm >> 16);
   }
 //}}}
 
 //{{{
-static FRESULT createName (DIR* dp, const char** path) {
+FRESULT createName (DIR* dp, const char** path) {
 
   BYTE b;
   UINT i, ni;
@@ -2301,7 +2310,7 @@ static FRESULT createName (DIR* dp, const char** path) {
   }
 //}}}
 //{{{
-static FRESULT followPath (DIR* dp, const char* path) {
+FRESULT followPath (DIR* dp, const char* path) {
 
   FRESULT result;
   BYTE ns;
@@ -2330,7 +2339,7 @@ static FRESULT followPath (DIR* dp, const char* path) {
     obj->c_size = fs->cdc_size;
     obj->c_ofs = fs->cdc_ofs;
 
-    result = load_obj_dir (&dj, obj);
+    result = loadObjDir (&dj, obj);
     if (result != FR_OK)
       return result;
 
@@ -2397,7 +2406,7 @@ static FRESULT followPath (DIR* dp, const char* path) {
         }
       else
         // open next directory
-        obj->sclust = ld_clust(fs, fs->win + dp->dptr % SS(fs));
+        obj->sclust = ldCluster (fs, fs->win + dp->dptr % SS(fs));
       }
     }
     //}}}
@@ -2407,7 +2416,7 @@ static FRESULT followPath (DIR* dp, const char* path) {
 //}}}
 
 //{{{
-static BYTE checkFs (FATFS* fs, DWORD sect) {
+BYTE checkFs (FATFS* fs, DWORD sect) {
 
   fs->wflag = 0;
 
@@ -2438,7 +2447,7 @@ static BYTE checkFs (FATFS* fs, DWORD sect) {
   }
 //}}}
 //{{{
-static FRESULT findVolume (const char** path, FATFS** fatFs, BYTE mode) {
+FRESULT findVolume (const char** path, FATFS** fatFs, BYTE mode) {
 
   // Check if the file system object is valid. Get pointer
   *fatFs = FatFs;
@@ -2658,7 +2667,7 @@ static FRESULT findVolume (const char** path, FATFS** fatFs, BYTE mode) {
   }
 //}}}
 //{{{
-static FRESULT validate (_FDID* obj, FATFS** fs) {
+FRESULT validate (_FDID* obj, FATFS** fs) {
 
   if (!obj || !obj->fs || !obj->fs->fs_type || obj->fs->id != obj->id || (diskStatus() & STA_NOINIT)) {
     *fs = 0;
@@ -2830,7 +2839,11 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
     sect = b_data + au * tbl[0];  // Table start sector
     sum = 0;                      // Table checksum to be stored in the 82 entry
 
-    st = si = i = j = szb_case = 0;
+    st = 0;
+    si = 0;
+    i = 0;
+    j = 0;
+    szb_case = 0;
     do {
       switch (st) {
         case 0:
@@ -2843,7 +2856,8 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
           // Get run length of no-case block */
           for (j = 1; (WCHAR)(si + j) && (WCHAR)(si + j) == wtoupper((WCHAR)(si + j)); j++) {};
           if (j >= 128) {
-            ch = 0xFFFF; st = 2;
+            ch = 0xFFFF; 
+            st = 2;
             break; // Compress the no-case block if run is >= 128
             }
           st = 1;     // Do not compress short run
@@ -2862,15 +2876,17 @@ FRESULT f_mkfs (const char* path, BYTE opt, DWORD au, void* work, UINT len) {
         }
 
       // Put it into the write buffer
-      sum = xsum32(buf[i + 0] = (BYTE)ch, sum);
-      sum = xsum32(buf[i + 1] = (BYTE)(ch >> 8), sum);
-      i += 2; szb_case += 2;
+      sum = xsum32 (buf[i + 0] = (BYTE)ch, sum);
+      sum = xsum32 (buf[i + 1] = (BYTE)(ch >> 8), sum);
+      i += 2; 
+      szb_case += 2;
       if (!si || i == szb_buf) {
         // Write buffered data when buffer full or end of process
         n = (i + ss - 1) / ss;
         if (diskWrite (buf, sect, n) != RES_OK)
           return FR_DISK_ERR;
-        sect += n; i = 0;
+        sect += n; 
+        i = 0;
         }
       } while (si);
 
@@ -3349,7 +3365,7 @@ FRESULT f_setlabel (const char* label) {
         dj.dir[DIR_Name] = DDEM;
 
       fs->wflag = 1;
-      result = sync_fs (fs);
+      result = syncFs (fs);
       }
     else {
       //{{{  no volume label entry is found or error
@@ -3375,7 +3391,7 @@ FRESULT f_setlabel (const char* label) {
               }
 
             fs->wflag = 1;
-            result = sync_fs (fs);
+            result = syncFs (fs);
             }
           }
         }
@@ -3624,7 +3640,7 @@ FRESULT f_stat (const char* path, FILINFO* fno) {
       if (dj.fn[NSFLAG] & NS_NONAME) // It is origin directory
         result = FR_INVALID_NAME;
       else if (fno)
-        get_fileinfo (&dj, fno);
+        getFileInfo (&dj, fno);
       }
 
     free (lfn);
@@ -3716,7 +3732,7 @@ FRESULT f_open (FIL* fp, const char* path, BYTE mode) {
           result = storeXdir (&dj);
           if (result == FR_OK && fp->obj.sclust) {
             // remove the cluster chain if exist
-            result = remove_chain (&fp->obj, fp->obj.sclust, 0);
+            result = removeChain (&fp->obj, fp->obj.sclust, 0);
 
             // reuse the cluster hole
             fs->last_clst = fp->obj.sclust - 1;
@@ -3735,17 +3751,17 @@ FRESULT f_open (FIL* fp, const char* path, BYTE mode) {
           dj.dir[DIR_Attr] = AM_ARC;
 
           // Get cluster chain
-          cl = ld_clust (fs, dj.dir);
+          cl = ldCluster (fs, dj.dir);
 
           // Reset file allocation info
-          st_clust (fs, dj.dir, 0);
+          stCluster (fs, dj.dir, 0);
           st_dword (dj.dir + DIR_FileSize, 0);
           fs->wflag = 1;
 
           if (cl) {
             // Remove the cluster chain if exist
             dw = fs->winsect;
-            result = remove_chain (&dj.obj, cl, 0);
+            result = removeChain (&dj.obj, cl, 0);
             if (result == FR_OK) {
               result = moveWindow (fs, dw);
               // Reuse the cluster hole
@@ -3795,7 +3811,7 @@ FRESULT f_open (FIL* fp, const char* path, BYTE mode) {
         //}}}
       else {
         //{{{  get object allocation info
-        fp->obj.sclust = ld_clust (fs, dj.dir);
+        fp->obj.sclust = ldCluster (fs, dj.dir);
         fp->obj.objsize = ld_dword (dj.dir + DIR_FileSize);
         }
         //}}}
@@ -3860,7 +3876,7 @@ FRESULT f_lseek (FIL* fp, QWORD ofs) {
   if (result == FR_OK)
     result = (FRESULT)fp->err;
   if (result == FR_OK && fs->fs_type == FS_EXFAT)
-    result = fill_last_frag (&fp->obj, fp->clust, 0xFFFFFFFF);  /* Fill last fragment on the FAT if needed */
+    result = fillLastFrag (&fp->obj, fp->clust, 0xFFFFFFFF);  /* Fill last fragment on the FAT if needed */
   if (result != FR_OK)
     LEAVE_FF (fs, result);
 
@@ -3908,7 +3924,7 @@ FRESULT f_lseek (FIL* fp, QWORD ofs) {
         ofs = fp->obj.objsize; /* Clip offset at the file size */
       fp->fptr = ofs;       /* Set file pointer */
       if (ofs) {
-        fp->clust = clmt_clust (fp, ofs - 1);
+        fp->clust = clmtCluster (fp, ofs - 1);
         dsc = clust2sect (fs, fp->clust);
         if (!dsc)
           ABORT (fs, FR_INT_ERR);
@@ -3949,7 +3965,7 @@ FRESULT f_lseek (FIL* fp, QWORD ofs) {
       else {                  /* When seek to back cluster, */
         clst = fp->obj.sclust;          /* start from the first cluster */
         if (clst == 0) {            /* If no cluster chain, create a new chain */
-          clst = create_chain (&fp->obj, 0);
+          clst = createChain (&fp->obj, 0);
           if (clst == 1)
             ABORT(fs, FR_INT_ERR);
           if (clst == 0xFFFFFFFF)
@@ -3967,7 +3983,7 @@ FRESULT f_lseek (FIL* fp, QWORD ofs) {
               fp->obj.objsize = fp->fptr;
               fp->flag |= FA_MODIFIED;
               }
-            clst = create_chain (&fp->obj, clst);  /* Follow chain with forceed stretch */
+            clst = createChain (&fp->obj, clst);  /* Follow chain with forceed stretch */
             if (clst == 0)         /* Clip file size in case of disk full */
               ofs = 0; break;
             }
@@ -4052,7 +4068,7 @@ FRESULT f_read (FIL* fp, void* buff, UINT btr, UINT* br) {
         else {
           /* Middle or end of the file */
           if (fp->cltbl) /* Get cluster# from the CLMT */
-            clst = clmt_clust(fp, fp->fptr);
+            clst = clmtCluster (fp, fp->fptr);
           else /* Follow cluster chain on the FAT */
             clst = getFat (&fp->obj, fp->clust);
           }
@@ -4144,14 +4160,14 @@ FRESULT f_write (FIL* fp, const void* buff, UINT btw, UINT* bw) {
           clst = fp->obj.sclust;  /* Follow from the origin */
           if (clst == 0)
             /* If no cluster is allocated, */
-            clst = create_chain (&fp->obj, 0); /* create a new cluster chain */
+            clst = createChain (&fp->obj, 0); /* create a new cluster chain */
           }
         else {
           /* On the middle or end of the file */
           if (fp->cltbl)
-            clst = clmt_clust (fp, fp->fptr);  /* Get cluster# from the CLMT */
+            clst = clmtCluster (fp, fp->fptr);  /* Get cluster# from the CLMT */
          else
-            clst = create_chain (&fp->obj, fp->clust); /* Follow or stretch cluster chain on the FAT */
+            clst = createChain (&fp->obj, fp->clust); /* Follow or stretch cluster chain on the FAT */
           }
         if (clst == 0)
           break;   /* Could not allocate a new cluster (disk full) */
@@ -4218,60 +4234,66 @@ FRESULT f_sync (FIL* fp) {
   WCHAR *lfn;
 
   FATFS *fs;
-  FRESULT result = validate(&fp->obj, &fs);  /* Check validity of the file object */
+  FRESULT result = validate(&fp->obj, &fs);
   if (result == FR_OK) {
-    if (fp->flag & FA_MODIFIED) { /* Is there any change to the file? */
-      if (fp->flag & FA_DIRTY) {  /* Write-back cached data if needed */
+    if (fp->flag & FA_MODIFIED) {
+      // Is there any change to the file?
+      if (fp->flag & FA_DIRTY) {
+        // Write-back cached data if needed
         if (diskWrite (fp->buf, fp->sect, 1) != RES_OK) LEAVE_FF(fs, FR_DISK_ERR);
         fp->flag &= (BYTE)~FA_DIRTY;
-      }
-      /* Update the directory entry */
-      tm = getFatTime();       /* Modified time */
-      if (fs->fs_type == FS_EXFAT) {
-        result = fill_first_frag(&fp->obj);  /* Fill first fragment on the FAT if needed */
-        if (result == FR_OK) {
-          result = fill_last_frag(&fp->obj, fp->clust, 0xFFFFFFFF);  /* Fill last fragment on the FAT if needed */
         }
+
+      // Update the directory entry
+      tm = getFatTime();       // Modified time
+      if (fs->fs_type == FS_EXFAT) {
+        result = fillFirstFrag (&fp->obj);  // Fill first fragment on the FAT if needed
+        if (result == FR_OK)
+          result = fillLastFrag (&fp->obj, fp->clust, 0xFFFFFFFF);  // Fill last fragment on the FAT if needed
+
         if (result == FR_OK) {
           INIT_NAMBUF (fs);
-          result = load_obj_dir (&dj, &fp->obj);  /* Load directory entry block */
+          // Load directory entry block
+          result = loadObjDir (&dj, &fp->obj);
           if (result == FR_OK) {
-            fs->dirbuf[XDIR_Attr] |= AM_ARC;        /* Set archive bit */
-            fs->dirbuf[XDIR_GenFlags] = fp->obj.stat | 1; /* Update file allocation info */
+            fs->dirbuf[XDIR_Attr] |= AM_ARC;              // Set archive bit
+            fs->dirbuf[XDIR_GenFlags] = fp->obj.stat | 1; // Update file allocation info
             st_dword(fs->dirbuf + XDIR_FstClus, fp->obj.sclust);
             st_qword(fs->dirbuf + XDIR_FileSize, fp->obj.objsize);
             st_qword(fs->dirbuf + XDIR_ValidFileSize, fp->obj.objsize);
-            st_dword(fs->dirbuf + XDIR_ModTime, tm);    /* Update modified time */
+            st_dword(fs->dirbuf + XDIR_ModTime, tm);      // Update modified time
             fs->dirbuf[XDIR_ModTime10] = 0;
             st_dword(fs->dirbuf + XDIR_AccTime, 0);
-            result = storeXdir (&dj);  /* Restore it to the directory */
+            result = storeXdir (&dj);  // Restore it to the directory
             if (result == FR_OK) {
-              result = sync_fs(fs);
+              result = syncFs (fs);
               fp->flag &= (BYTE)~FA_MODIFIED;
+              }
             }
+          free(lfn);
           }
-        free(lfn);
         }
-      } else
-      {
+      else {
         result = moveWindow (fs, fp->dir_sect);
         if (result == FR_OK) {
           dir = fp->dir_ptr;
-          dir[DIR_Attr] |= AM_ARC;            /* Set archive bit */
-          st_clust(fp->obj.fs, dir, fp->obj.sclust);    /* Update file allocation info  */
-          st_dword(dir + DIR_FileSize, (DWORD)fp->obj.objsize); /* Update file size */
-          st_dword(dir + DIR_ModTime, tm);        /* Update modified time */
-          st_word(dir + DIR_LstAccDate, 0);
+          dir[DIR_Attr] |= AM_ARC;                               // Set archive bit
+          stCluster (fp->obj.fs, dir, fp->obj.sclust);           // Update file allocation info
+          st_dword (dir + DIR_FileSize, (DWORD)fp->obj.objsize); // Update file size
+          st_dword (dir + DIR_ModTime, tm);                      // Update modified time
+          st_word (dir + DIR_LstAccDate, 0);
           fs->wflag = 1;
-          result = sync_fs(fs);          /* Restore it to the directory */
+
+          // Restore it to the directory
+          result = syncFs (fs);
           fp->flag &= (BYTE)~FA_MODIFIED;
+          }
         }
       }
     }
-  }
 
   LEAVE_FF(fs, result);
-}
+  }
 //}}}
 //{{{
 FRESULT f_truncate (FIL* fp) {
@@ -4287,7 +4309,7 @@ FRESULT f_truncate (FIL* fp) {
     // Process when fptr is not on the eof
     if (fp->fptr == 0) {
       // When set file size to zero, remove entire cluster chain
-      result = remove_chain (&fp->obj, fp->obj.sclust, 0);
+      result = removeChain (&fp->obj, fp->obj.sclust, 0);
       fp->obj.sclust = 0;
       }
     else {
@@ -4299,7 +4321,7 @@ FRESULT f_truncate (FIL* fp) {
       if (ncl == 1)
         result = FR_INT_ERR;
       if ((result == FR_OK) && (ncl < fs->n_fatent)) {
-        result = remove_chain (&fp->obj, ncl, fp->clust);
+        result = removeChain (&fp->obj, ncl, fp->clust);
         }
       }
 
@@ -4371,7 +4393,7 @@ FRESULT f_chdir (const char* path) {
             fs->cdc_ofs = dj.blk_ofs;
             }
           else
-            fs->cdir = ld_clust (fs, dj.dir); /* Sub-directory cluster */
+            fs->cdir = ldCluster (fs, dj.dir); /* Sub-directory cluster */
           }
         else
           result = FR_NO_PATH;  /* Reached but a file */
@@ -4417,7 +4439,7 @@ FRESULT f_getcwd (char* buff, UINT len) {
           break;
 
         /* Goto parent directory */
-        dj.obj.sclust = ld_clust (fs, dj.dir);
+        dj.obj.sclust = ldCluster (fs, dj.dir);
         result = dirSubDirectoryIndex (&dj, 0);
         if (result != FR_OK)
           break;
@@ -4426,7 +4448,7 @@ FRESULT f_getcwd (char* buff, UINT len) {
           result = dirRead (&dj, 0);
           if (result != FR_OK)
             break;
-          if (ccl == ld_clust (fs, dj.dir))
+          if (ccl == ldCluster (fs, dj.dir))
             break; /* Found the entry */
           result = dirNext (&dj, 0);
           } while (result == FR_OK);
@@ -4434,7 +4456,7 @@ FRESULT f_getcwd (char* buff, UINT len) {
           result = FR_INT_ERR;/* It cannot be 'not found'. */
         if (result != FR_OK)
           break;
-        get_fileinfo (&dj, &fno);    /* Get the directory name and push it to the buffer */
+        getFileInfo (&dj, &fno);    /* Get the directory name and push it to the buffer */
         for (n = 0; fno.fname[n]; n++) ;
         if (i < n + 3) {
           result = FR_NOT_ENOUGH_CORE;
@@ -4493,7 +4515,7 @@ FRESULT f_opendir (DIR* dp, const char* path) {
             obj->stat = fs->dirbuf[XDIR_GenFlags] & 2;
             }
           else
-            obj->sclust = ld_clust (fs, dp->dir);  /* Get object allocation info */
+            obj->sclust = ldCluster (fs, dp->dir);  /* Get object allocation info */
           }
         else
           /* This object is a file */
@@ -4543,7 +4565,7 @@ FRESULT f_readdir (DIR* dp, FILINFO* fno) {
         result = FR_OK;
       if (result == FR_OK) {
         // A valid entry is found, Get the object information
-        get_fileinfo (dp, fno);
+        getFileInfo (dp, fno);
         // Increment index for next
         result = dirNext (dp, 0);
         if (result == FR_NO_FILE) // Ignore end of directory now
@@ -4630,7 +4652,7 @@ FRESULT f_mkdir (const char* path) {
 
     if (result == FR_NO_FILE) {
       //{{{  Can create a new directory
-      dcl = create_chain(&dj.obj, 0);   /* Allocate a cluster for the new directory table */
+      dcl = createChain (&dj.obj, 0);   /* Allocate a cluster for the new directory table */
       dj.obj.objsize = (DWORD)fs->csize * SS(fs);
 
       result = FR_OK;
@@ -4655,13 +4677,13 @@ FRESULT f_mkdir (const char* path) {
           memset(dir + DIR_Name, ' ', 11); /* Create "." entry */
           dir[DIR_Name] = '.';
           dir[DIR_Attr] = AM_DIR;
-          st_dword(dir + DIR_ModTime, tm);
-          st_clust(fs, dir, dcl);
+          st_dword (dir + DIR_ModTime, tm);
+          stCluster (fs, dir, dcl);
           memcpy(dir + SZDIRE, dir, SZDIRE);   /* Create ".." entry */
           dir[SZDIRE + 1] = '.'; pcl = dj.obj.sclust;
           if (fs->fs_type == FS_FAT32 && pcl == fs->dirbase)
             pcl = 0;
-          st_clust(fs, dir + SZDIRE, pcl);
+          stCluster (fs, dir + SZDIRE, pcl);
           }
         for (n = fs->csize; n; n--) {
           //{{{  Write dot entries and clear following sectors */
@@ -4693,15 +4715,15 @@ FRESULT f_mkdir (const char* path) {
         else {
           dir = dj.dir;
           st_dword (dir + DIR_ModTime, tm);  /* Created time */
-          st_clust(fs, dir, dcl);       /* Table start cluster */
+          stCluster (fs, dir, dcl);       /* Table start cluster */
           dir[DIR_Attr] = AM_DIR;       /* Attribute */
           fs->wflag = 1;
           }
         if (result == FR_OK)
-          result = sync_fs (fs);
+          result = syncFs (fs);
         }
       else
-        remove_chain (&dj.obj, dcl, 0);    /* Could not register, remove cluster chain */
+        removeChain (&dj.obj, dcl, 0);    /* Could not register, remove cluster chain */
       }
       //}}}
 
@@ -4746,7 +4768,7 @@ FRESULT f_unlink (const char* path) {
           obj.stat = fs->dirbuf[XDIR_GenFlags] & 2;
           }
         else
-          dclst = ld_clust (fs, dj.dir);
+          dclst = ldCluster (fs, dj.dir);
 
         if (dj.obj.attr & AM_DIR) {
           //{{{  Is it a sub-directory?
@@ -4775,9 +4797,9 @@ FRESULT f_unlink (const char* path) {
       if (result == FR_OK) {
         result = dirRemove (&dj); // Remove the directory entry */
         if (result == FR_OK && dclst) // Remove the cluster chain if exist */
-          result = remove_chain (&obj, dclst, 0);
+          result = removeChain (&obj, dclst, 0);
         if (result == FR_OK)
-          result = sync_fs(fs);
+          result = syncFs (fs);
         }
       }
 
@@ -4858,7 +4880,7 @@ FRESULT f_rename (const char* path_old, const char* path_new) {
             fs->wflag = 1;
             if ((dir[DIR_Attr] & AM_DIR) && djo.obj.sclust != djn.obj.sclust) {
               // Update .. entry in the sub-directory if needed
-              dw = clust2sect (fs, ld_clust (fs, dir));
+              dw = clust2sect (fs, ldCluster (fs, dir));
               if (!dw) {
                 result = FR_INT_ERR;
                 }
@@ -4868,7 +4890,7 @@ FRESULT f_rename (const char* path_old, const char* path_new) {
                 // Ptr to .. entry
                 dir = fs->win + SZDIRE * 1;
                 if (result == FR_OK && dir[1] == '.') {
-                  st_clust (fs, dir, djn.obj.sclust);
+                  stCluster (fs, dir, djn.obj.sclust);
                   fs->wflag = 1;
                   }
                 }
@@ -4881,7 +4903,7 @@ FRESULT f_rename (const char* path_old, const char* path_new) {
         /* Remove old entry */
         result = dirRemove (&djo);
         if (result == FR_OK) {
-          result = sync_fs (fs);
+          result = syncFs (fs);
           }
         }
       /* End of the critical section */
@@ -4916,7 +4938,7 @@ FRESULT f_chmod (const char* path, BYTE attr, BYTE mask) {
         fs->wflag = 1;
         }
       if (result == FR_OK)
-        result = sync_fs (fs);
+        result = syncFs (fs);
       }
 
     free (lfn);
@@ -4949,7 +4971,7 @@ FRESULT f_utime (const char* path, const FILINFO* fno) {
         fs->wflag = 1;
         }
       if (result == FR_OK)
-        result = sync_fs (fs);
+        result = syncFs (fs);
       }
 
     free (lfn);
