@@ -261,6 +261,7 @@ public:
 
   void onPs2Irq() { mPs2->onIrq(); }
   void touchThread();
+  void saveThread();
   void serverThread (void* arg);
 
 protected:
@@ -291,6 +292,7 @@ private:
   std::deque <cBox*> mBoxes;
   cBox* mPressedBox = nullptr;
 
+  bool mMounted = false;
   int mFiles = 0;
 
   struct jpeg_error_mgr jerr;
@@ -598,8 +600,8 @@ extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 void cApp::run() {
 
   diskDebugEnable();
-  bool mounted = !f_mount (&gFatFs, "", 1);
-  if (!mounted)
+  mMounted = !f_mount (&gFatFs, "", 1);
+  if (!mMounted)
     debug (LCD_COLOR_GREEN, "sdCard not mounted");
 
   mCam = new cCamera();
@@ -612,7 +614,7 @@ void cApp::run() {
   add (new cInstantBox (kBoxWidth,kBoxHeight, "clear", mClearDebugChanged));
   add (new cValueBox (kBoxWidth,kBoxHeight, "f", 0,254, mFocus, mFocusChanged));
 
-  if (mounted) {
+  if (mMounted) {
     //{{{  mounted, load splash piccy, make buttons
     char label[40] = {0};
     DWORD vsn = 0;
@@ -642,65 +644,12 @@ void cApp::run() {
     //  onKey (ch & 0xFF, ch & 0x100);
     //  }
     //}}}
-    if (mounted) {
-      uint32_t frameLen;
-      bool jpeg;
-      auto frame = mCam->getNextFrame (frameLen, jpeg);
-      if (frame) {
-        if (jpeg) {
-          if (BSP_PB_GetState (BUTTON_KEY) || mTakeChanged) {
-            //{{{  save JFIF .jpg
-            mTakeChanged = false;
-
-            uint32_t headerLen;
-            auto header = mCam->getFullJpgHeader (6, headerLen);
-            saveNumFile ("save" + dec(jpgFrameNum++, 3) + ".jpg", header, headerLen, frame, frameLen);
-            }
-            //}}}
-          else if (mTakeMovieChanged) {
-            if (!mjpgFrameNum) {
-              //{{{  create .mjpeg
-              mjpgFrameNum++;
-              uint32_t headerLen;
-              auto header = mCam->getFullJpgHeader (6, headerLen);
-              createNumFile ("save" + dec(mjpgFileNum++,3) + ".mjpeg", header, headerLen, frame, frameLen);
-              }
-              //}}}
-            else if (mjpgFrameNum < 500) {
-              //{{{  append .mjpeg frame
-              uint32_t headerLen;
-              auto header = mCam->getSmallJpgHeader (6, headerLen);
-              appendFile (mjpgFrameNum++, header, headerLen, frame, frameLen);
-              }
-              //}}}
-            else  {
-              //{{{  close .mjpeg
-              mTakeMovieChanged = false;
-
-              mjpgFrameNum++;
-              closeFile();
-              }
-              //}}}
-            }
-          }
-        else if (BSP_PB_GetState (BUTTON_KEY) || mTakeChanged) {
-          //{{{  save rgb565 .bmp
-          mTakeChanged = false;
-
-          uint32_t headerLen;
-          auto header = mCam->getBmpHeader (headerLen);
-          saveNumFile ("save" + dec(bmpFrameNum++, 3) + ".bmp", header, headerLen, frame, frameLen);
-          }
-          //}}}
-        }
-      }
-
     // draw
     if (BSP_PB_GetState (BUTTON_KEY))
       mBoxes.front()->onDraw (mLcd);
     else {
       for (auto box : mBoxes) box->onDraw (mLcd);
-      drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, (kVersion + (mounted ? " mounted" : "")).c_str());
+      drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, (kVersion + (mMounted ? " mounted" : "")).c_str());
       drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%d %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
       if (mDebugValue)
         drawDebug();
@@ -752,7 +701,68 @@ void cApp::touchThread() {
       }
       //}}}
     else
-      osDelay (10);
+      osDelay (40);
+    }
+  }
+//}}}
+//{{{
+void cApp::saveThread() {
+
+  while (true) {
+    if (mMounted && (mTakeChanged || mTakeMovieChanged) || BSP_PB_GetState (BUTTON_KEY)) {
+      uint32_t frameLen;
+      bool jpeg;
+      auto frame = mCam->getNextFrame (frameLen, jpeg);
+      if (frame) {
+        if (jpeg) {
+          if (BSP_PB_GetState (BUTTON_KEY) || mTakeChanged) {
+            //{{{  save JFIF .jpg
+            mTakeChanged = false;
+
+            uint32_t headerLen;
+            auto header = mCam->getFullJpgHeader (6, headerLen);
+            saveNumFile ("save" + dec(jpgFrameNum++, 3) + ".jpg", header, headerLen, frame, frameLen);
+            }
+            //}}}
+          else if (mTakeMovieChanged) {
+            if (!mjpgFrameNum) {
+              //{{{  create .mjpeg
+              mjpgFrameNum++;
+              uint32_t headerLen;
+              auto header = mCam->getFullJpgHeader (6, headerLen);
+              createNumFile ("save" + dec(mjpgFileNum++,3) + ".mjpeg", header, headerLen, frame, frameLen);
+              }
+              //}}}
+            else if (mjpgFrameNum < 500) {
+              //{{{  append .mjpeg frame
+              uint32_t headerLen;
+              auto header = mCam->getSmallJpgHeader (6, headerLen);
+              appendFile (mjpgFrameNum++, header, headerLen, frame, frameLen);
+              }
+              //}}}
+            else  {
+              //{{{  close .mjpeg
+              mTakeMovieChanged = false;
+
+              mjpgFrameNum++;
+              closeFile();
+              }
+              //}}}
+            }
+          }
+        else if (BSP_PB_GetState (BUTTON_KEY) || mTakeChanged) {
+          //{{{  save rgb565 .bmp
+          mTakeChanged = false;
+
+          uint32_t headerLen;
+          auto header = mCam->getBmpHeader (headerLen);
+          saveNumFile ("save" + dec(bmpFrameNum++, 3) + ".bmp", header, headerLen, frame, frameLen);
+          }
+          //}}}
+        }
+      }
+    else
+      osDelay (20);
     }
   }
 //}}}
@@ -1105,6 +1115,12 @@ void touchThread (void* arg) {
   }
 //}}}
 //{{{
+void saveThread (void* arg) {
+
+  gApp->saveThread();
+  }
+//}}}
+//{{{
 void appThread (void* arg) {
 
   gApp->run();
@@ -1276,7 +1292,8 @@ int main() {
 
   sys_thread_new ("app", appThread, NULL, 10000, osPriorityNormal);
   sys_thread_new ("net", netThread, NULL, 1024, osPriorityNormal);
-  sys_thread_new ("touch", touchThread, NULL, 512, osPriorityNormal);
+  sys_thread_new ("touch", touchThread, NULL, 2048, osPriorityNormal);
+  sys_thread_new ("save", saveThread, NULL, 10000, osPriorityAboveNormal);
 
   osKernelStart();
   }

@@ -81,7 +81,7 @@ bool init() {
   HAL_GPIO_Init(GPIOD, &gpio_init_structure);
   //}}}
 
-  //{{{  config rxDMA 
+  //{{{  config rxDMA
   gDmaRxHandle.Instance = DMA2_Stream3;
   gDmaRxHandle.Init.Channel             = DMA_CHANNEL_4;
   gDmaRxHandle.Init.Direction           = DMA_PERIPH_TO_MEMORY;
@@ -98,7 +98,7 @@ bool init() {
   __HAL_LINKDMA (&gSdHandle, hdmarx, gDmaRxHandle);
   HAL_DMA_Init (&gDmaRxHandle);
   //}}}
-  //{{{  config txDMA 
+  //{{{  config txDMA
   gDmaTxHandle.Instance = DMA2_Stream6;
   gDmaTxHandle.Init.Channel             = DMA_CHANNEL_4;
   gDmaTxHandle.Init.Direction           = DMA_MEMORY_TO_PERIPH;
@@ -133,10 +133,8 @@ bool init() {
 
   // enable wide operation
   auto result = HAL_SD_ConfigWideBusOperation (&gSdHandle, SDMMC_BUS_WIDE_4B);
-  if (result != HAL_OK) {
+  if (result != HAL_OK) 
     cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "configWide %d", result);
-    result = HAL_SD_ConfigWideBusOperation (&gSdHandle, SDMMC_BUS_WIDE_4B);
-    }
 
   return result == HAL_OK;
   }
