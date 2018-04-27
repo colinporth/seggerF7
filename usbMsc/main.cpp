@@ -599,7 +599,7 @@ extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
 //{{{
 void cApp::run() {
 
-  diskDebugEnable();
+  //diskDebugEnable();
   mMounted = !f_mount (&gFatFs, "", 1);
   if (!mMounted)
     debug (LCD_COLOR_GREEN, "sdCard not mounted");
@@ -627,15 +627,12 @@ void cApp::run() {
     loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
     char path[40] = "/";
 
-    //auto numFiles = getCountFiles (path);
-    //debug (LCD_COLOR_WHITE, "- files %d", numFiles);
-
     add (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
     add (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
     add (new cInstantBox (kBoxWidth,kBoxHeight, "format", mFormatChanged));
     }
     //}}}
-  diskDebugDisable();
+  //diskDebugDisable();
 
   while (true) {
     //{{{  removed
@@ -645,15 +642,15 @@ void cApp::run() {
     //  }
     //}}}
     // draw
-    if (BSP_PB_GetState (BUTTON_KEY))
-      mBoxes.front()->onDraw (mLcd);
-    else {
-      for (auto box : mBoxes) box->onDraw (mLcd);
-      drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, (kVersion + (mMounted ? " mounted" : "")).c_str());
-      drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%d %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
-      if (mDebugValue)
-        drawDebug();
-      }
+    //if (BSP_PB_GetState (BUTTON_KEY))
+    //  mBoxes.front()->onDraw (mLcd);
+    //else {
+    for (auto box : mBoxes) box->onDraw (mLcd);
+    drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, (kVersion + (mMounted ? " mounted" : "")).c_str());
+    drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%d %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
+    if (mDebugValue)
+      drawDebug();
+    //  }
     present();
     }
   }
@@ -683,23 +680,6 @@ void cApp::touchThread() {
       clearDebug();
       }
       //}}}
-    else if (mFormatChanged) {
-      //{{{  format sdCard
-      mFormatChanged = false;
-      debug (LCD_COLOR_YELLOW, "formatting sdCard");
-
-      void* work = malloc (0x10000);
-      f_mkfs ("", FM_EXFAT, 0, work, 0x10000);
-      free (work);
-      debug (LCD_COLOR_YELLOW, "formated sdCard");
-
-      f_setlabel ("exfat");
-      debug (LCD_COLOR_YELLOW, "sdCard set label");
-
-      f_mount (&gFatFs, "", 1);
-      debug (LCD_COLOR_YELLOW, "sdCard remounted");
-      }
-      //}}}
     else
       osDelay (40);
     }
@@ -709,13 +689,13 @@ void cApp::touchThread() {
 void cApp::saveThread() {
 
   while (true) {
-    if (mMounted && (mTakeChanged || mTakeMovieChanged) || BSP_PB_GetState (BUTTON_KEY)) {
+    if (mMounted && (mTakeChanged || mTakeMovieChanged || BSP_PB_GetState (BUTTON_KEY))) {
       uint32_t frameLen;
       bool jpeg;
       auto frame = mCam->getNextFrame (frameLen, jpeg);
       if (frame) {
-        if (jpeg) {
-          if (BSP_PB_GetState (BUTTON_KEY) || mTakeChanged) {
+        if (BSP_PB_GetState (BUTTON_KEY) || mTakeChanged) {
+          if (jpeg) {
             //{{{  save JFIF .jpg
             mTakeChanged = false;
 
@@ -724,43 +704,56 @@ void cApp::saveThread() {
             saveNumFile ("save" + dec(jpgFrameNum++, 3) + ".jpg", header, headerLen, frame, frameLen);
             }
             //}}}
-          else if (mTakeMovieChanged) {
-            if (!mjpgFrameNum) {
-              //{{{  create .mjpeg
-              mjpgFrameNum++;
-              uint32_t headerLen;
-              auto header = mCam->getFullJpgHeader (6, headerLen);
-              createNumFile ("save" + dec(mjpgFileNum++,3) + ".mjpeg", header, headerLen, frame, frameLen);
-              }
-              //}}}
-            else if (mjpgFrameNum < 500) {
-              //{{{  append .mjpeg frame
-              uint32_t headerLen;
-              auto header = mCam->getSmallJpgHeader (6, headerLen);
-              appendFile (mjpgFrameNum++, header, headerLen, frame, frameLen);
-              }
-              //}}}
-            else  {
-              //{{{  close .mjpeg
-              mTakeMovieChanged = false;
+          else {
+            //{{{  save rgb565 .bmp
+            mTakeChanged = false;
 
-              mjpgFrameNum++;
-              closeFile();
-              }
-              //}}}
+            uint32_t headerLen;
+            auto header = mCam->getBmpHeader (headerLen);
+            saveNumFile ("save" + dec(bmpFrameNum++, 3) + ".bmp", header, headerLen, frame, frameLen);
             }
+            //}}}
           }
-        else if (BSP_PB_GetState (BUTTON_KEY) || mTakeChanged) {
-          //{{{  save rgb565 .bmp
-          mTakeChanged = false;
-
+        else if (!mjpgFrameNum) {
+          //{{{  create .mjpeg
+          mjpgFrameNum++;
           uint32_t headerLen;
-          auto header = mCam->getBmpHeader (headerLen);
-          saveNumFile ("save" + dec(bmpFrameNum++, 3) + ".bmp", header, headerLen, frame, frameLen);
+          auto header = mCam->getFullJpgHeader (6, headerLen);
+          createNumFile ("save" + dec(mjpgFileNum++,3) + ".mjpeg", header, headerLen, frame, frameLen);
+          }
+          //}}}
+        else if (mjpgFrameNum < 500) {
+          //{{{  append .mjpeg frame
+          uint32_t headerLen;
+          auto header = mCam->getSmallJpgHeader (6, headerLen);
+          appendFile (mjpgFrameNum++, header, headerLen, frame, frameLen);
+          }
+          //}}}
+        else  {
+          //{{{  close .mjpeg
+          mTakeMovieChanged = false;
+
+          mjpgFrameNum++;
+          closeFile();
           }
           //}}}
         }
       }
+    else if (mFormatChanged) {
+      //{{{  format sdCard
+      mFormatChanged = false;
+      debug (LCD_COLOR_YELLOW, "formatting sdCard");
+
+      void* work = malloc (0x10000);
+      f_mkfs ("", FM_EXFAT, 0, work, 0x10000);
+      free (work);
+
+      f_setlabel ("exfat");
+      f_mount (&gFatFs, "", 1);
+
+      debug (LCD_COLOR_YELLOW, "sdCard formatted");
+      }
+      //}}}
     else
       osDelay (20);
     }

@@ -57,7 +57,6 @@ bool init() {
     cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sdCard not present");
     return false;
     }
-  cLcd::mLcd->debug (LCD_COLOR_YELLOW, "sdCard present");
 
   // card init
   __HAL_RCC_SDMMC1_CLK_ENABLE();
@@ -133,7 +132,7 @@ bool init() {
 
   // enable wide operation
   auto result = HAL_SD_ConfigWideBusOperation (&gSdHandle, SDMMC_BUS_WIDE_4B);
-  if (result != HAL_OK) 
+  if (result != HAL_OK)
     cLcd::mLcd->debug (LCD_COLOR_MAGENTA, "configWide %d", result);
 
   return result == HAL_OK;
