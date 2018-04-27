@@ -2431,20 +2431,16 @@ static BYTE checkFs (FATFS* fs, DWORD sect) {
 //{{{
 static FRESULT findVolume (const char** path, FATFS** rfs, BYTE mode) {
 
-  BYTE fmt, *pt;
-  DWORD bsect, fasize, tsect, sysect, nclst, szbfat, br[4];
-  WORD nrsv;
-  UINT i;
-
-  *rfs = 0;
   // Check if the file system object is valid. Get pointer
-  FATFS* fs = FatFs;
-  if (!fs)
+  *rfs = NULL;
+  if (!FatFs)
     return FR_NOT_ENABLED;
+
+  *rfs = FatFs;
+  FATFS* fs = FatFs;
 
   // Lock the volume
   ENTER_FF(fs);
-  *rfs = fs;
 
   // desired access mode, write access or not
   mode &= (BYTE)~FA_READ;
@@ -2478,12 +2474,12 @@ static FRESULT findVolume (const char** path, FATFS** rfs, BYTE mode) {
 #endif
 
   // find FAT partition on the drive
-  bsect = 0;
-  fmt = checkFs (fs, 0);
+  DWORD bsect = 0;
+  BYTE fmt = checkFs (fs, 0);
   if (fmt == 2) {
-    for (i = 0; (fmt >= 2) && (i < 4); i++) {
+    for (int i = 0; (fmt >= 2) && (i < 4); i++) {
       // Get partition offset
-      pt = fs->win + (MBR_Table + i * SZ_PTE);
+      BYTE* pt = fs->win + (MBR_Table + i * SZ_PTE);
       bsect = pt[PTE_System] ? ld_dword(pt + PTE_StLba) : 0;
       fmt = bsect ? checkFs (fs, bsect) : 3;
       }
@@ -2495,6 +2491,7 @@ static FRESULT findVolume (const char** path, FATFS** rfs, BYTE mode) {
     return FR_NO_FILESYSTEM;
   else if (fmt == 1) {
     //{{{  exFAT
+    int i;
     for (i = BPB_ZeroedEx; i < BPB_ZeroedEx + 53 && fs->win[i] == 0; i++) ; /* Check zero filler */
 
     if (i < BPB_ZeroedEx + 53)
@@ -2519,7 +2516,7 @@ static FRESULT findVolume (const char** path, FATFS** rfs, BYTE mode) {
     if (fs->csize == 0)
       return FR_NO_FILESYSTEM;  /* (Must be 1..32768) */
 
-    nclst = ld_dword (fs->win + BPB_NumClusEx);    /* Number of clusters */
+    DWORD nclst = ld_dword (fs->win + BPB_NumClusEx);    /* Number of clusters */
     if (nclst > MAX_EXFAT)
       return FR_NO_FILESYSTEM; /* (Too many clusters) */
 
@@ -2553,7 +2550,7 @@ static FRESULT findVolume (const char** path, FATFS** rfs, BYTE mode) {
     if (ld_word (fs->win + BPB_BytsPerSec) != SS(fs))
       return FR_NO_FILESYSTEM; /* (BPB_BytsPerSec must be equal to the physical sector size) */
 
-    fasize = ld_word (fs->win + BPB_FATSz16);    /* Number of sectors per FAT */
+    DWORD fasize = ld_word (fs->win + BPB_FATSz16);    /* Number of sectors per FAT */
     if (fasize == 0)
       fasize = ld_dword (fs->win + BPB_FATSz32);
     fs->fsize = fasize;
@@ -2571,19 +2568,20 @@ static FRESULT findVolume (const char** path, FATFS** rfs, BYTE mode) {
     if (fs->n_rootdir % (SS(fs) / SZDIRE))
       return FR_NO_FILESYSTEM; /* (Must be sector aligned) */
 
-    tsect = ld_word (fs->win + BPB_TotSec16);    /* Number of sectors on the volume */
+    DWORD tsect = ld_word (fs->win + BPB_TotSec16);    /* Number of sectors on the volume */
     if (tsect == 0)
       tsect = ld_dword (fs->win + BPB_TotSec32);
 
-    nrsv = ld_word (fs->win + BPB_RsvdSecCnt);   /* Number of reserved sectors */
+    WORD nrsv = ld_word (fs->win + BPB_RsvdSecCnt);   /* Number of reserved sectors */
     if (nrsv == 0)
       return FR_NO_FILESYSTEM;     /* (Must not be 0) */
 
     /* Determine the FAT sub type */
-    sysect = nrsv + fasize + fs->n_rootdir / (SS(fs) / SZDIRE); /* RSV + FAT + DIR */
+    DWORD sysect = nrsv + fasize + fs->n_rootdir / (SS(fs) / SZDIRE); /* RSV + FAT + DIR */
     if (tsect < sysect)
       return FR_NO_FILESYSTEM;  /* (Invalid volume size) */
-    nclst = (tsect - sysect) / fs->csize;     /* Number of clusters */
+
+    DWORD nclst = nclst = (tsect - sysect) / fs->csize;     /* Number of clusters */
     if (nclst == 0)
       return FR_NO_FILESYSTEM;    /* (Invalid volume size) */
     fmt = FS_FAT32;
@@ -2598,6 +2596,7 @@ static FRESULT findVolume (const char** path, FATFS** rfs, BYTE mode) {
     fs->fatbase = bsect + nrsv;     // FAT start sector
     fs->database = bsect + sysect;  // Data start sector
 
+    DWORD szbfat;
     if (fmt == FS_FAT32) {
       if (ld_word (fs->win + BPB_FSVer32) != 0)
         return FR_NO_FILESYSTEM; /* (Must be FAT32 revision 0.0) */
@@ -2644,9 +2643,9 @@ static FRESULT findVolume (const char** path, FATFS** rfs, BYTE mode) {
     }
     //}}}
 
-  fs->fs_type = fmt; // FAT sub-type */
-  fs->id = ++Fsid;   // File system mount ID */
-  fs->cdir = 0;      // Initialize current directory */
+  fs->id = ++Fsid;   // File system mount ID
+  fs->fs_type = fmt; // FAT sub-type
+  fs->cdir = 0;      // Initialize current directory
   clear_lock (fs);
 
   return FR_OK;
