@@ -27,7 +27,7 @@
 
 #include "ethernetif.h"
 //}}}
-std::string kVersion = "WebCam 26/4/18";
+std::string kVersion = "WebCam 27/4/18";
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0080000;
 uint8_t*  kCamBufEnd =  (uint8_t*)0xc0700000;
 uint16_t* kRgb565Buf = (uint16_t*)kCamBufEnd;
@@ -208,9 +208,10 @@ public:
   cPs2* getPs2() { return mPs2; }
   cCamera* getCam() { return mCam; }
   //{{{
-  int getCountFiles (char* path) {
+  int getCountFiles (std::string& dirPath) {
+
     mFiles = 0;
-    countFiles (path);
+    countFiles (dirPath);
     return mFiles;
     }
   //}}}
@@ -270,8 +271,8 @@ protected:
   virtual void onKey (uint8_t ch, bool release);
 
 private:
-  void readDirectory (char* path);
-  void countFiles (char* path);
+  void readDirectory (std::string& dirPath);
+  void countFiles (std::string& dirPath);
   void reportFree();
   void reportLabel();
 
@@ -618,6 +619,9 @@ void cApp::run() {
     f_getlabel ("", label, &vsn);
     debug (LCD_COLOR_WHITE, "sdCard ok - <%s> ", label);
 
+    std::string path1 = "/";
+    readDirectory (path1);
+
     loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
     char path[40] = "/";
 
@@ -697,7 +701,7 @@ void cApp::run() {
     else {
       for (auto box : mBoxes) box->onDraw (mLcd);
       drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, (kVersion + (mounted ? " mounted" : "")).c_str());
-      drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%dfree %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
+      drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%d %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
       if (mDebugValue)
         drawDebug();
       }
@@ -736,8 +740,12 @@ void cApp::touchThread() {
       debug (LCD_COLOR_YELLOW, "formatting sdCard");
 
       // Create FAT volume
+      //#define FM_FAT    0x01
+      //#define FM_FAT32  0x02
+      //#define FM_EXFAT  0x04
+      //#define FM_ANY    0x07
       BYTE work[_MAX_SS];
-      f_mkfs ("", FM_ANY, 0, work, sizeof (work));
+      f_mkfs ("", FM_EXFAT, 0, work, sizeof (work));
       debug (LCD_COLOR_YELLOW, "formated sdCard");
 
       f_setlabel ("webcam");
@@ -915,14 +923,12 @@ void cApp::onKey (uint8_t ch, bool release) {
 
 // private
 //{{{
-void cApp::readDirectory (char* path) {
+void cApp::readDirectory (std::string& dirPath) {
 
   DIR dir;
-  auto result = f_opendir (&dir, path);
+  auto result = f_opendir (&dir, dirPath.c_str());
   if (result == FR_OK) {
-    int i;
-    for (i = 0; path[i]; i++);
-    path[i++] = '/';
+    dirPath += '/';
 
     while (true) {
       FILINFO fno;
@@ -932,33 +938,26 @@ void cApp::readDirectory (char* path) {
       if (fno.fname[0] == '.')
         continue;
 
-      int j = 0;
-      do {
-        path[i+j] = fno.fname[j];
-        } while (fno.fname[j++]);
-
+      std::string filePath = dirPath + fno.fname;
       if (fno.fattrib & AM_DIR) {
-        debug (LCD_COLOR_GREEN, "%s", path);
-        readDirectory (path);
+        debug (LCD_COLOR_GREEN, filePath);
+        readDirectory (filePath);
         }
       else
-        debug (LCD_COLOR_WHITE, "%s", path);
+        debug (LCD_COLOR_WHITE, filePath);
       }
 
-    path[--i] = '\0';
     f_closedir (&dir);
     }
   }
 //}}}
 //{{{
-void cApp::countFiles (char* path) {
+void cApp::countFiles (std::string& dirPath) {
 
   DIR dir;
-  auto result = f_opendir (&dir, path);
+  auto result = f_opendir (&dir, dirPath.c_str());
   if (result == FR_OK) {
-    uint16_t i;
-    for (i = 0; path[i]; i++) {}
-    path[i++] = '/';
+    dirPath += '/';
 
     while (true) {
       FILINFO fno;
@@ -968,18 +967,13 @@ void cApp::countFiles (char* path) {
       if (fno.fname[0] == '.')
         continue;
 
-      uint16_t j = 0;
-      do {
-        path[i+j] = fno.fname[j];
-        } while (fno.fname[j++]);
-
+      std::string filePath = dirPath + fno.fname;
       if (fno.fattrib & AM_DIR)
-        countFiles (path);
+        countFiles (filePath);
       else
         mFiles++;
       }
 
-    path[--i] = '\0';
     f_closedir (&dir);
     }
   }
@@ -1018,7 +1012,7 @@ void cApp::loadFile (const std::string& fileName, uint8_t* buf, uint16_t* rgb565
   return;
 
   if (f_open (&gFile, fileName.c_str(), FA_READ)) {
-    debug (LCD_COLOR_RED, "%s not read", fileName.c_str());
+    debug (LCD_COLOR_RED, "%s not read" + fileName);
     return;
     }
 

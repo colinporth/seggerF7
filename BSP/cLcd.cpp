@@ -352,7 +352,9 @@ void cLcd::debug (uint32_t colour, const std::string& str) {
   if (!mLines[line].mStr)
     mLines[line].mStr = (char*)malloc (kMaxStrSize);
 
-  memcpy (mLines[line].mStr, str.c_str(), str.size() < kMaxStrSize ? str.size() : kMaxStrSize);
+  int strSize = str.size() < kMaxStrSize-1 ? str.size() : kMaxStrSize-1;
+  memcpy (mLines[line].mStr, str.c_str(), strSize);
+  mLines[line].mStr[strSize] = 0;
 
   mLines[line].mTicks = HAL_GetTick();
   mLines[line].mColour = colour;
