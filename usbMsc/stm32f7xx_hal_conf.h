@@ -7,6 +7,7 @@
 
 //{{{  module enabled defines
 #define HAL_MODULE_ENABLED
+#define HAL_ADC_MODULE_ENABLED
 #define HAL_DMA_MODULE_ENABLED
 #define HAL_DMA2D_MODULE_ENABLED
 #define HAL_FLASH_MODULE_ENABLED
@@ -170,6 +171,7 @@
 #include "stm32f7xx_hal_usart.h"
 #include "stm32f7xx_hal_pcd.h"
 #include "stm32f7xx_hal_hcd.h"
+#include "stm32f7xx_hal_adc.h"
 //{{{  unused
 //#include "stm32f7xx_hal_adc.h"
 //#include "stm32f7xx_hal_can.h"

@@ -33,6 +33,8 @@
 "Output/usbMsc Release/Obj/stm32f7xx_hal_eth.o"
 "Output/usbMsc Release/Obj/stm32f7xx_hal_tim.o"
 "Output/usbMsc Release/Obj/stm32f7xx_hal_tim_ex.o"
+"Output/usbMsc Release/Obj/stm32f7xx_hal_adc.o"
+"Output/usbMsc Release/Obj/stm32f7xx_hal_adc_ex.o"
 "Output/usbMsc Release/Obj/SEGGER_RTT.o"
 "Output/usbMsc Release/Obj/SEGGER_RTT_Syscalls_SES.o"
 "Output/usbMsc Release/Obj/Cortex_M_Startup.o"

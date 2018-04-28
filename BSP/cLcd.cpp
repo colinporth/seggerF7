@@ -31,8 +31,10 @@ extern const sFONT gFont16;
 
 //{{{  cLcd static inits
 cLcd* cLcd::mLcd = nullptr;
+
 bool cLcd::mFrameWait = false;
 SemaphoreHandle_t cLcd::mFrameSem;
+
 bool cLcd::mDma2dWait = false;
 SemaphoreHandle_t cLcd::mDma2dSem;
 //}}}
@@ -86,7 +88,10 @@ extern "C" {
   //}}}
   }
 
-cLcd::cLcd (uint16_t displayLines) : mDisplayLines(displayLines) {}
+//{{{
+cLcd::cLcd (uint16_t displayLines) 
+  : mDisplayLines(displayLines) {}
+//}}}
 //{{{
 void cLcd::init() {
 
@@ -1697,8 +1702,9 @@ void cLcd::ready() {
 //{{{
 void cLcd::fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3) {
 
-  cPoint inc1 = {0,0};
-  cPoint inc2 = {0,0};
+  cPoint inc1;
+  cPoint inc2;
+
   if (p2.x >= p1.x) {
     //{{{  x increasing
     inc1.x = 1;
@@ -1730,8 +1736,8 @@ void cLcd::fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3) {
   int16_t num_add;
   int16_t num_pixels;
 
-  int16_t deltax = ABS(p2.x - p1.x);        // The difference between the x's
-  int16_t deltay = ABS(p2.y - p1.y);        // The difference between the y's
+  int16_t deltax = ABS (p2.x - p1.x);  // The difference between the x's
+  int16_t deltay = ABS (p2.y - p1.y);  // The difference between the y's
   if (deltax >= deltay) {
     //{{{  at least one x-value for every y-value
     inc1.x = 0;           // Don't change the x when numerator >= denominator

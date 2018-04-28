@@ -5,11 +5,12 @@
 #endif
 //}}}
 #include "stm32f7xx_hal.h"
+
 //{{{  defines
-typedef enum { LED1 = 0, LED_GREEN = LED1, }Led_TypeDef;
-typedef enum { BUTTON_WAKEUP = 0, BUTTON_TAMPER = 1, BUTTON_KEY = 2 }Button_TypeDef;
-typedef enum { BUTTON_MODE_GPIO = 0, BUTTON_MODE_EXTI = 1 }ButtonMode_TypeDef;
-typedef enum { COM1 = 0, COM2 = 1 }COM_TypeDef;
+typedef enum { LED1 = 0, LED_GREEN = LED1 } Led_TypeDef;
+typedef enum { BUTTON_WAKEUP = 0, BUTTON_TAMPER = 1, BUTTON_KEY = 2 } Button_TypeDef;
+typedef enum { BUTTON_MODE_GPIO = 0, BUTTON_MODE_EXTI = 1 } ButtonMode_TypeDef;
+typedef enum { COM1 = 0, COM2 = 1 } COM_TypeDef;
 
 #if !defined (USE_STM32746G_DISCO)
  #define USE_STM32746G_DISCO
@@ -17,10 +18,10 @@ typedef enum { COM1 = 0, COM2 = 1 }COM_TypeDef;
 
 #define LEDn                             ((uint8_t)1)
 
-#define LED1_GPIO_PORT                   GPIOI
-#define LED1_GPIO_CLK_ENABLE()           __HAL_RCC_GPIOI_CLK_ENABLE()
-#define LED1_GPIO_CLK_DISABLE()          __HAL_RCC_GPIOI_CLK_DISABLE()
-#define LED1_PIN                         GPIO_PIN_1
+#define LED1_GPIO_PORT                      GPIOI
+#define LED1_GPIO_CLK_ENABLE()              __HAL_RCC_GPIOI_CLK_ENABLE()
+#define LED1_GPIO_CLK_DISABLE()             __HAL_RCC_GPIOI_CLK_DISABLE()
+#define LED1_PIN                            GPIO_PIN_1
 
 #define BUTTONn                             ((uint8_t)3)
 

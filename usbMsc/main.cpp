@@ -203,6 +203,8 @@ public:
     }
   //}}}
 
+  void adcInit();
+
   void run();
 
   cPs2* getPs2() { return mPs2; }
@@ -263,6 +265,7 @@ public:
   void touchThread();
   void saveThread();
   void serverThread (void* arg);
+  void dhcpThread (void* arg);
 
 protected:
   virtual void onTouchProx (cPoint pos, uint8_t z);
@@ -293,7 +296,10 @@ private:
   cBox* mPressedBox = nullptr;
 
   bool mMounted = false;
+  std::string mLabel;
   int mFiles = 0;
+
+  std::string mIpAddress;
 
   struct jpeg_error_mgr jerr;
   struct jpeg_decompress_struct mCinfo;
@@ -343,8 +349,8 @@ public:
   //{{{
   bool onPress (cPoint pos, uint8_t z)  {
     //cLcd::mLcd->debug (LCD_COLOR_WHITE, "press %d %d %f", pos.x, pos.y, mZoom);
+    mTarget = 1.f;
     mZoomCentre = getCentre() - pos;
-    mZoom = 1.f;
     return true;
     }
   //}}}
@@ -357,15 +363,21 @@ public:
   //{{{
   bool onRelease (cPoint pos, uint8_t z)  {
     mZoomCentre = {0,0};
-    mZoom = getHeight() / (float)mCam->getHeight();
+    mTarget = getHeight() / (float)mCam->getHeight();
     return true;
     }
   //}}}
   //{{{
   void onDraw (cLcd* lcd) {
+
+    mZoom += (mTarget - mZoom) * 0.5f;
+
     uint32_t frameId;
     auto frame = mCam->getLastFrame (mLastFrameLen, mLastJpeg, frameId);
-    if (frame) {
+
+    if (!frame)
+      lcd->clear (LCD_COLOR_BLACK);
+    else {
       if (!mLastJpeg) {
         // simple rgb565 from cam
         mLastFrameSize =  mCam->getSize();
@@ -403,8 +415,6 @@ public:
         //}}}
       lcd->zoom565 ((uint16_t*)frame, mZoomCentre, mLastFrameSize, cRect(lcd->getSize()), mZoom * mSrcZoom, mZoom * mSrcZoom);
       }
-    else
-      lcd->clear (LCD_COLOR_BLACK);
 
     char str[20];
     sprintf (str, "%d:%x:%2d %dfps", mCam->getFrameLen(), mCam->getStatus(), mCam->getDmaCount(), mCam->getFps());
@@ -420,6 +430,7 @@ private:
   uint32_t mLastFrameId = 0;
   cPoint mLastFrameSize = {0,0};
 
+  float mTarget = 0.5f;
   float mZoom = 0.5f;
   float mSrcZoom = 1.0f;
   cPoint mZoomCentre = {0,0};
@@ -589,19 +600,120 @@ private:
   };
 //}}}
 
+//{{{  adc defines
+#define TEMP_REFRESH_PERIOD   1000    /* Internal temperature refresh period */
+#define MAX_CONVERTED_VALUE   4095    /* Max converted value */
+#define AMBIENT_TEMP            25    /* Ambient Temperature */
+#define VSENS_AT_AMBIENT_TEMP  760    /* VSENSE value (mv) at ambient temperature */
+#define AVG_SLOPE               25    /* Avg_Solpe multiply by 10 */
+#define VREF                  3300
+//}}}
+
 FATFS gFatFs = { 0 };  // encourges allocation in lower DTCM SRAM
 FIL   gFile = { 0 };
 cApp* gApp = { 0 };
 
-extern "C" { void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); } }
+ADC_HandleTypeDef AdcHandle;
+__IO int32_t ConvertedValue = 0;
+
+extern "C" {
+  void EXTI9_5_IRQHandler() { gApp->onPs2Irq(); }
+  void DMA2_Stream0_IRQHandler() { HAL_DMA_IRQHandler (AdcHandle.DMA_Handle); }
+  }
+
+//{{{
+void cApp::adcInit() {
+
+  ADC_ChannelConfTypeDef sConfig;
+  AdcHandle.Instance                   = ADC3;
+  AdcHandle.Init.ClockPrescaler        = ADC_CLOCKPRESCALER_PCLK_DIV4;
+  AdcHandle.Init.Resolution            = ADC_RESOLUTION_12B;
+  AdcHandle.Init.ScanConvMode          = DISABLE;  /* Sequencer disabled (ADC conversion on only 1 channel: channel set on rank 1) */
+  AdcHandle.Init.ContinuousConvMode    = ENABLE;   /* Continuous mode enabled to have continuous conversion  */
+  AdcHandle.Init.DiscontinuousConvMode = DISABLE;  /* Parameter discarded because sequencer is disabled */
+  AdcHandle.Init.NbrOfDiscConversion   = 0;
+  AdcHandle.Init.ExternalTrigConvEdge  = ADC_EXTERNALTRIGCONVEDGE_NONE;  /* Conversion start trigged at each external event */
+  AdcHandle.Init.ExternalTrigConv      = ADC_EXTERNALTRIGCONV_T1_CC1;
+  AdcHandle.Init.DataAlign             = ADC_DATAALIGN_RIGHT;
+  AdcHandle.Init.NbrOfConversion       = 1;
+  AdcHandle.Init.DMAContinuousRequests = ENABLE;
+  AdcHandle.Init.EOCSelection          = DISABLE;
+  if (HAL_ADC_Init (&AdcHandle) != HAL_OK)
+    debug (LCD_COLOR_GREEN, "HAL_ADC_Init failed");
+
+  sConfig.Channel      = ADC_CHANNEL_8;
+  sConfig.Rank         = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES; // ADC_SAMPLETIME_3CYCLES;
+  sConfig.Offset       = 0;
+
+  // Configure ADC Temperature Sensor Channel
+  //sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+  //sConfig.Channel = ADC_CHANNEL_VREFINT;
+  //sConfig.Rank = 1;
+  //sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
+  //sConfig.Offset = 0;
+
+  if (HAL_ADC_ConfigChannel (&AdcHandle, &sConfig) != HAL_OK)
+    debug (LCD_COLOR_GREEN, "HAL_ADC_ConfigChannel failed");
+  }
+//}}}
+//{{{
+void HAL_ADC_MspInit (ADC_HandleTypeDef *hadc) {
+
+  static DMA_HandleTypeDef  hdma_adc;
+
+  __HAL_RCC_ADC1_CLK_ENABLE();
+  __HAL_RCC_ADC3_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  // ADC Channel GPIO pin configuration
+  GPIO_InitTypeDef GPIO_InitStruct;
+  GPIO_InitStruct.Pin = GPIO_PIN_10;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+  // Set the parameters to be configured
+  hdma_adc.Instance = DMA2_Stream0;
+  hdma_adc.Init.Channel  = DMA_CHANNEL_2;
+  hdma_adc.Init.Direction = DMA_PERIPH_TO_MEMORY;
+  hdma_adc.Init.PeriphInc = DMA_PINC_DISABLE;
+  hdma_adc.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_adc.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+  hdma_adc.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+  hdma_adc.Init.Mode = DMA_CIRCULAR;
+  hdma_adc.Init.Priority = DMA_PRIORITY_HIGH;
+  hdma_adc.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+  hdma_adc.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_HALFFULL;
+  hdma_adc.Init.MemBurst = DMA_MBURST_SINGLE;
+  hdma_adc.Init.PeriphBurst = DMA_PBURST_SINGLE;
+  HAL_DMA_Init (&hdma_adc);
+  __HAL_LINKDMA (hadc, DMA_Handle, hdma_adc);
+
+  // NVIC configuration for DMA transfer complete interrupt
+  HAL_NVIC_SetPriority (DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ (DMA2_Stream0_IRQn);
+  }
+//}}}
 
 // public
 //{{{
 void cApp::run() {
 
+  adcInit();
+
   //diskDebugEnable();
   mMounted = !f_mount (&gFatFs, "", 1);
-  if (!mMounted)
+  if (mMounted) {
+    //{{{  get label
+    char label[20] = {0};
+    DWORD vsn = 0;
+    f_getlabel ("", label, &vsn);
+    mLabel = label;
+    }
+    //}}}
+  else
     debug (LCD_COLOR_GREEN, "sdCard not mounted");
 
   mCam = new cCamera();
@@ -613,27 +725,27 @@ void cApp::run() {
   add (new cToggleBox (kBoxWidth,kBoxHeight, "info", mDebugValue, mDebugChanged));
   add (new cInstantBox (kBoxWidth,kBoxHeight, "clear", mClearDebugChanged));
   add (new cValueBox (kBoxWidth,kBoxHeight, "f", 0,254, mFocus, mFocusChanged));
-
   if (mMounted) {
-    //{{{  mounted, load splash piccy, make buttons
-    char label[40] = {0};
-    DWORD vsn = 0;
-    f_getlabel ("", label, &vsn);
-    debug (LCD_COLOR_WHITE, "sdCard ok - <%s> ", label);
-
-    std::string path1 = "";
-    readDirectory (path1);
-
-    loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
-    char path[40] = "/";
-
+    //{{{  add boxes
     add (new cInstantBox (kBoxWidth,kBoxHeight, "snap", mTakeChanged));
     add (new cInstantBox (kBoxWidth,kBoxHeight, "movie", mTakeMovieChanged));
     add (new cInstantBox (kBoxWidth,kBoxHeight, "format", mFormatChanged));
     }
     //}}}
+  if (mMounted) {
+    //{{{  load splash piccy
+    std::string path1 = "";
+    readDirectory (path1);
+
+    loadFile ("splash.jpg", kCamBuf, kRgb565Buf);
+    char path[40] = "/";
+    }
+    //}}}
   //diskDebugDisable();
 
+  HAL_ADC_Start_DMA (&AdcHandle, (uint32_t*)&ConvertedValue, 1);
+
+  int32_t avVal = 0;
   while (true) {
     //{{{  removed
     //while (mPs2->hasChar()) {
@@ -645,8 +757,22 @@ void cApp::run() {
     //if (BSP_PB_GetState (BUTTON_KEY))
     //  mBoxes.front()->onDraw (mLcd);
     //else {
+    //if ((osKernelSysTick() % 50) == 0) {
+    //  int32_t JTemp = ((((ConvertedValue * VREF)/MAX_CONVERTED_VALUE) - VSENS_AT_AMBIENT_TEMP) * 10 / AVG_SLOPE) + AMBIENT_TEMP;
+    //  debug (LCD_COLOR_YELLOW, "temp %d %d", ConvertedValue, JTemp);
+    //  }
+
+    if (avVal == 0)
+      avVal = ConvertedValue;
+    else
+      avVal = (avVal*50 + ConvertedValue) / 51;
+    float kScale = ((3.3f * (39.f + 27.f) / 39.f) / 4096.f) * 1000;
+
+    //BSP_LED_Toggle (LED1);
     for (auto box : mBoxes) box->onDraw (mLcd);
-    drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft, (kVersion + (mMounted ? " mounted" : "")).c_str());
+    drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft,
+      (kVersion + " " + (mMounted ? mLabel : "") + " " + mIpAddress + " " +
+       dec(int(avVal*kScale) / 1000) + "." + dec(int(avVal*kScale) % 1000)).c_str());
     drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%d %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
     if (mDebugValue)
       drawDebug();
@@ -847,6 +973,56 @@ void cApp::serverThread (void* arg) {
     }
   }
 //}}}
+//{{{
+void cApp::dhcpThread (void* arg) {
+
+  enum eDhcpState { DHCP_OFF, DHCP_START, DHCP_WAIT_ADDRESS, DHCP_ADDRESS_ASSIGNED, DHCP_TIMEOUT, DHCP_LINK_DOWN };
+
+  auto netif = (struct netif*)arg;
+
+  uint8_t dhcpState = netif_is_up (netif) ? DHCP_START : DHCP_LINK_DOWN;
+  while (true) {
+    switch (dhcpState) {
+      case DHCP_START:
+        ip_addr_set_zero_ip4 (&netif->ip_addr);
+        ip_addr_set_zero_ip4 (&netif->netmask);
+        ip_addr_set_zero_ip4 (&netif->gw);
+        dhcp_start (netif);
+        dhcpState = DHCP_WAIT_ADDRESS;
+        break;
+
+      case DHCP_WAIT_ADDRESS:
+        if (dhcp_supplied_address (netif)) {
+          dhcpState = DHCP_ADDRESS_ASSIGNED;
+          mIpAddress = ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr);
+          cLcd::mLcd->debug (LCD_COLOR_GREEN, "dhcp " + mIpAddress);
+          sntpSetServerName (0, "pool.ntp.org");
+          sntpInit();
+          }
+        else {
+          auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
+          if (dhcp->tries > 4) {
+            dhcpState = DHCP_TIMEOUT;
+            dhcp_stop (netif);
+            cLcd::mLcd->debug (LCD_COLOR_RED, "dhcp timeout");
+            }
+          }
+        break;
+
+      case DHCP_LINK_DOWN:
+        cLcd::mLcd->debug (LCD_COLOR_RED, "dhcp link down");
+        dhcp_stop (netif);
+        dhcpState = DHCP_OFF;
+        break;
+
+      default:
+        break;
+      }
+
+    osDelay (250);
+    }
+  }
+//}}}
 
 // protected
 //{{{
@@ -1037,13 +1213,13 @@ void cApp::loadFile (const std::string& fileName, uint8_t* buf, uint16_t* rgb565
 void cApp::saveNumFile (const std::string& fileName,  uint8_t* buf, int bufLen) {
 
   if (f_open (&gFile, fileName.c_str(), FA_WRITE | FA_CREATE_ALWAYS))
-    debug (LCD_COLOR_RED, "saveNumFile %s fail", fileName.c_str());
+    debug (LCD_COLOR_RED, "save " + fileName);
 
   else {
     UINT bytesWritten;
     f_write (&gFile, buf, (bufLen + 3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&gFile);
-    debug (LCD_COLOR_YELLOW, "saveNumFile %s %d:%d", fileName.c_str(), bufLen, bytesWritten);
+    debug (LCD_COLOR_YELLOW, "save " + fileName + dec(bufLen,0));
     }
    }
 //}}}
@@ -1051,18 +1227,18 @@ void cApp::saveNumFile (const std::string& fileName,  uint8_t* buf, int bufLen) 
 void cApp::saveNumFile (const std::string& fileName, uint8_t* header, int headerLen, uint8_t* frame, int frameLen) {
 
   if (f_open (&gFile, fileName.c_str(), FA_WRITE | FA_CREATE_ALWAYS))
-    debug (LCD_COLOR_RED, "saveNumFile %s fail", fileName);
+    debug (LCD_COLOR_RED, "saveNumFile " + fileName);
 
   else {
     if (headerLen & 0x03)
-      debug (LCD_COLOR_RED, "saveNumFile align %s %d", fileName.c_str(), headerLen);
+      debug (LCD_COLOR_RED, "save align " + fileName + " " + dec(headerLen));
 
     UINT bytesWritten;
     f_write (&gFile, header, headerLen, &bytesWritten);
     f_write (&gFile, frame, (frameLen + 3) & 0xFFFFFFFC, &bytesWritten);
     f_close (&gFile);
 
-    debug (LCD_COLOR_YELLOW, "%s %d:%d:%d ok", fileName.c_str(), headerLen,frameLen, bytesWritten);
+    debug (LCD_COLOR_YELLOW, "save " + fileName + " " + dec(headerLen) + ":" + dec(frameLen,0));
     }
   }
 //}}}
@@ -1126,51 +1302,7 @@ void serverThread (void* arg) {
 //}}}
 //{{{
 void dhcpThread (void* arg) {
-
-  enum eDhcpState { DHCP_OFF, DHCP_START, DHCP_WAIT_ADDRESS, DHCP_ADDRESS_ASSIGNED, DHCP_TIMEOUT, DHCP_LINK_DOWN };
-
-  auto netif = (struct netif*)arg;
-
-  uint8_t dhcpState = netif_is_up (netif) ? DHCP_START : DHCP_LINK_DOWN;
-  while (true) {
-    switch (dhcpState) {
-      case DHCP_START:
-        ip_addr_set_zero_ip4 (&netif->ip_addr);
-        ip_addr_set_zero_ip4 (&netif->netmask);
-        ip_addr_set_zero_ip4 (&netif->gw);
-        dhcp_start (netif);
-        dhcpState = DHCP_WAIT_ADDRESS;
-        break;
-
-      case DHCP_WAIT_ADDRESS:
-        if (dhcp_supplied_address (netif)) {
-          dhcpState = DHCP_ADDRESS_ASSIGNED;
-          cLcd::mLcd->debug (LCD_COLOR_GREEN, "dhcp %s", ip4addr_ntoa ((const ip4_addr_t*)&netif->ip_addr));
-          sntpSetServerName (0, "pool.ntp.org");
-          sntpInit();
-          }
-        else {
-          auto dhcp = (struct dhcp*)netif_get_client_data (netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP);
-          if (dhcp->tries > 4) {
-            dhcpState = DHCP_TIMEOUT;
-            dhcp_stop (netif);
-            cLcd::mLcd->debug (LCD_COLOR_RED, "dhcp timeout");
-            }
-          }
-        break;
-
-      case DHCP_LINK_DOWN:
-        cLcd::mLcd->debug (LCD_COLOR_RED, "dhcp link down");
-        dhcp_stop (netif);
-        dhcpState = DHCP_OFF;
-        break;
-
-      default:
-        break;
-      }
-
-    osDelay (250);
-    }
+  gApp->dhcpThread (arg);
   }
 //}}}
 //{{{
@@ -1233,6 +1365,7 @@ int main() {
   SCB_EnableDCache();
 
   HAL_Init();
+
   //{{{  config system clock
   // System Clock source            = PLL (HSE)
   // SYSCLK(Hz)                     = 216000000
@@ -1280,10 +1413,11 @@ int main() {
     while (true) {}
   //}}}
   BSP_PB_Init (BUTTON_KEY, BUTTON_MODE_GPIO);
+  //BSP_LED_Init (LED1);
 
   gApp = new cApp (cLcd::getWidth(), cLcd::getHeight());
 
-  sys_thread_new ("app", appThread, NULL, 10000, osPriorityNormal);
+  sys_thread_new ("app", appThread, NULL, 2048, osPriorityNormal);
   sys_thread_new ("net", netThread, NULL, 1024, osPriorityNormal);
   sys_thread_new ("touch", touchThread, NULL, 2048, osPriorityNormal);
   sys_thread_new ("save", saveThread, NULL, 10000, osPriorityAboveNormal);
