@@ -1,6 +1,6 @@
 #include "font8.h"
 
-static uint8_t glyphsBase[] = {
+const uint8_t glyphsBase[] = {
 // char:21 "!"
   2, // width
   13, // height
@@ -1757,7 +1757,7 @@ static uint16_t glyphOffsets[] = {
   0x0768, // char 7f -  offset
   };
 
-struct font8_t kFont18 = {
+ const struct font8_t kFont18 = {
   .fixedWidth     = 0,
   .height         = 18,
   .spaceWidth     = 4,

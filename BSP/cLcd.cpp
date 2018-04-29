@@ -1324,40 +1324,20 @@ void cLcd::convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
 void cLcd::displayChar8 (uint16_t color, cPoint p, uint8_t ascii) {
 
   if ((ascii >= kFont18.firstChar) && (ascii <= kFont18.lastChar)) {
-    uint8_t* base = kFont18.glyphsBase;
-    uint8_t* char8 = base + kFont18.glyphOffsets[ascii - kFont18.firstChar];
-    uint8_t charWidth = *base++;
-    uint8_t charHeight = *base++;
-    int8_t charLeft = (int8_t)*base++;
-    uint8_t charTop = *base++;
-    uint8_t charAdvance = *base++;
+    uint8_t* char8 = kFont18.glyphsBase + kFont18.glyphOffsets[ascii - kFont18.firstChar];
+    uint8_t charWidth = *char8++;
+    uint8_t charHeight = *char8++;
+    int8_t charLeft = (int8_t)*char8++;
+    uint8_t charTop = *char8++;
+    uint8_t charAdvance = *char8++;
 
-    auto width = gFont16.mWidth;
-    auto byteAlignedWidth = (width + 7) / 8;
-    auto offset = (8 * byteAlignedWidth) - width - 1;
-    auto fontChar = &gFont16.mTable [(ascii - ' ') * gFont16.mHeight * byteAlignedWidth];
-
-    auto dst = mFrameBuf + (p.y * getWidth()) + p.x;
+    auto dst = mFrameBuf + ((p.y + charTop) * getWidth()) + p.x + charLeft;
 
     ready();
-    for (auto fontLine = 0u; fontLine < gFont16.mHeight; fontLine++) {
-      auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
-      uint16_t fontLineBits = *fontPtr++;
-      if (byteAlignedWidth == 2)
-        fontLineBits = (fontLineBits << 8) | *fontPtr;
-      if (fontLineBits) {
-        uint16_t bit = 1 << (width + offset);
-        auto endPtr = dst + width;
-        while (dst != endPtr) {
-          if (fontLineBits & bit)
-            *dst = color;
-          dst++;
-          bit >>= 1;
-          }
-        dst += getWidth() - width;
-        }
-      else
-        dst += getWidth();
+    for (auto y = 0; y < charHeight; y++) {
+      for (auto x = 0; x < charWidth; x++)
+        *dst++ = *char8++;
+      dst += getWidth() - charWidth;
       }
     }
   }
@@ -1429,7 +1409,7 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
     p.x = 0;
 
   while (*str && (p.x + gFont16.mWidth <= getWidth())) {
-    displayChar (color, p, *str++);
+    displayChar8 (color, p, *str++);
     p.x += gFont16.mWidth;
     }
   }
