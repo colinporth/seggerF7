@@ -344,16 +344,15 @@ void cCamera::dmaIrqHandler() {
   if (isr & (DMA_FLAG_FEIF0_4 << mStreamIndex))
     if (DMA2_Stream1->FCR & DMA_IT_FE) {
       mDmaBaseRegisters->IFCR = DMA_FLAG_FEIF0_4 << mStreamIndex;
-      //cLcd::mLcd->debug (LCD_COLOR_RED, "dmaFifoError");
+      // too many
+      //cLcd::mLcd->debug (LCD_COLOR_RED, "dcmi dma Fifo Irq");
       }
   //}}}
   //{{{  transferError Interrupt
   if (isr & (DMA_FLAG_TEIF0_4 << mStreamIndex)) {
     if (DMA2_Stream1->CR & DMA_IT_TE) {
-      DMA2_Stream1->CR  &= ~DMA_IT_TE;
       mDmaBaseRegisters->IFCR = DMA_FLAG_TEIF0_4 << mStreamIndex;
-
-      cLcd::mLcd->debug (LCD_COLOR_RED, "dmaTransferError");
+      cLcd::mLcd->debug (LCD_COLOR_RED, "dcmi dma transferError Irq");
       }
     }
   //}}}
@@ -361,7 +360,7 @@ void cCamera::dmaIrqHandler() {
   if (isr & (DMA_FLAG_DMEIF0_4 << mStreamIndex))
     if (DMA2_Stream1->CR & DMA_IT_DME) {
       mDmaBaseRegisters->IFCR = DMA_FLAG_DMEIF0_4 << mStreamIndex;
-      cLcd::mLcd->debug (LCD_COLOR_RED, "dmaDirectModeError");
+      cLcd::mLcd->debug (LCD_COLOR_RED, "dcmi dma directModeError IRQ");
       }
   //}}}
 
@@ -516,16 +515,16 @@ void cCamera::dcmiIrqHandler() {
   if ((misr & DCMI_RIS_ERR_RIS) == DCMI_RIS_ERR_RIS) {
     //{{{  synchronizationError interrupt
     DCMI->ICR = DCMI_RIS_ERR_RIS;
-    cLcd::mLcd->debug (LCD_COLOR_RED, "syncIrq");
+    cLcd::mLcd->debug (LCD_COLOR_RED, "DCMI sync Irq");
     }
     //}}}
 
   if ((misr & DCMI_RIS_OVR_RIS) == DCMI_RIS_OVR_RIS) {
     //{{{  overflowError interrupt
     DCMI->ICR = DCMI_RIS_OVR_RIS;
-    // dsiable dma
+    // disible dma
     DMA2_Stream1->CR &= ~DMA_SxCR_EN;
-    cLcd::mLcd->debug (LCD_COLOR_RED, "overflowIrq");
+    cLcd::mLcd->debug (LCD_COLOR_RED, "DCMI overflow Irq");
     }
     //}}}
   }

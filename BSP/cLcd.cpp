@@ -8,7 +8,7 @@
 #include "../common/system.h"
 
 //#include "sd.h"
-#include "stm32746g_discovery_sdram.h"
+#include "sdRam.h"
 
 #include "font.h"
 extern const sFONT gFont16;
@@ -46,7 +46,6 @@ extern "C" {
     // line Interrupt
     if ((LTDC->ISR & LTDC_FLAG_LI) != RESET) {
       LTDC->ICR = LTDC_FLAG_LI;
-
       if (cLcd::mFrameWait) {
         portBASE_TYPE taskWoken = pdFALSE;
         if (xSemaphoreGiveFromISR (cLcd::mFrameSem, &taskWoken) == pdTRUE)
@@ -58,7 +57,7 @@ extern "C" {
     // register reload Interrupt
     if ((LTDC->ISR & LTDC_FLAG_RR) != RESET) {
       LTDC->ICR = LTDC_FLAG_RR;
-      cLcd::mLcd->debug (LCD_COLOR_YELLOW, "cLcd reload IRQ");
+      cLcd::mLcd->debug (LCD_COLOR_YELLOW, "ltdc reload IRQ");
       }
     }
   //}}}
@@ -66,12 +65,16 @@ extern "C" {
   void LTDC_ER_IRQHandler() {
 
     // transfer Error Interrupt
-    if ((LTDC->ISR &  LTDC_FLAG_TE) != RESET)
+    if ((LTDC->ISR &  LTDC_FLAG_TE) != RESET) {
       LTDC->ICR = LTDC_IT_TE;
+      cLcd::mLcd->debug (LCD_COLOR_RED, "ltdc te IRQ");
+      }
 
     // FIFO underrun Interrupt
-    if ((LTDC->ISR &  LTDC_FLAG_FU) != RESET)
+    if ((LTDC->ISR &  LTDC_FLAG_FU) != RESET) {
       LTDC->ICR = LTDC_FLAG_FU;
+      cLcd::mLcd->debug (LCD_COLOR_RED, "ltdc fifoUnderrun IRQ");
+      }
     }
   //}}}
   //{{{
@@ -89,7 +92,7 @@ extern "C" {
   }
 
 //{{{
-cLcd::cLcd (uint16_t displayLines) 
+cLcd::cLcd (uint16_t displayLines)
   : mDisplayLines(displayLines) {}
 //}}}
 //{{{

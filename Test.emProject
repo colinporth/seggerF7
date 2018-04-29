@@ -58,17 +58,16 @@
         <file file_name="../BSP/font.h" />
         <file file_name="../BSP/ft5336.h" />
         <file file_name="../BSP/stm32746g_discovery.h" />
-        <file file_name="../BSP/stm32746g_discovery_sd.h" />
-        <file file_name="../BSP/stm32746g_discovery_sdram.h" />
         <file file_name="../BSP/stm32746g_discovery_ts.h" />
         <file file_name="../BSP/ts.h" />
         <file file_name="../BSP/cCamera.h" />
         <file file_name="../BSP/cLcd.h" />
         <file file_name="../BSP/ethernetif.h" />
         <file file_name="usbd.h" />
+        <file file_name="../BSP/sdRam.h" />
+        <file file_name="../BSP/wm8994.h" />
       </folder>
       <file file_name="../BSP/stm32746g_discovery.c" />
-      <file file_name="../BSP/stm32746g_discovery_sdram.c" />
       <file file_name="../BSP/stm32746g_discovery_ts.c" />
       <file file_name="../BSP/ft5336.cpp" />
       <file file_name="../BSP/mt9d111.cpp" />
@@ -77,6 +76,7 @@
       <file file_name="../BSP/stm32f7xx_hal_timebase_tim.c" />
       <file file_name="../BSP/ethernetIf.cpp" />
       <file file_name="../BSP/sd.cpp" />
+      <file file_name="../BSP/sdRam.cpp" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />
@@ -84,7 +84,6 @@
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_cortex.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_dma.c" />
-      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_dma2d.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_flash.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_flash_ex.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_gpio.c" />
@@ -95,7 +94,6 @@
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc_ex.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sd.c" />
-      <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sdram.c" />
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_sdmmc.c" />
       <folder Name="includes">
         <file file_name="../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_cortex.h" />
