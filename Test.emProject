@@ -77,6 +77,7 @@
       <file file_name="../BSP/ethernetIf.cpp" />
       <file file_name="../BSP/sd.cpp" />
       <file file_name="../BSP/sdRam.cpp" />
+      <file file_name="../BSP/freeSansBold18.c" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />

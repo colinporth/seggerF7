@@ -13,6 +13,8 @@ typedef struct _tFont {
   uint16_t mHeight;
   } sFONT;
 
+extern const sFONT gFont16;
+
 //{{{
 #ifdef __cplusplus
 }

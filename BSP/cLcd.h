@@ -76,6 +76,7 @@ public:
   void convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                         uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
 
+  void displayChar8 (uint16_t color, cPoint p, uint8_t ascii);
   void displayChar (uint16_t color, cPoint p, uint8_t ascii);
   void displayString (uint16_t color, cPoint p, const char* str, eTextAlign textAlign);
   void displayStringShadow (uint16_t color, cPoint p, const char* str, eTextAlign textAlign);
@@ -130,7 +131,7 @@ public:
 
 private:
   void layerInit();
- 
+
   void ready();
   void drawPix (uint16_t color, uint16_t x, uint16_t y) { *(mFrameBuf + y*getWidth() + x) = color; }
   void fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3);

@@ -27,7 +27,7 @@
 
 #include "ethernetif.h"
 //}}}
-std::string kVersion = "WebCam 27/4/18";
+std::string kVersion = "WebCam 29/4/18";
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0080000;
 uint8_t*  kCamBufEnd =  (uint8_t*)0xc0700000;
 uint16_t* kRgb565Buf = (uint16_t*)kCamBufEnd;
@@ -624,15 +624,16 @@ extern "C" {
 //{{{
 void cApp::adcInit() {
 
-  ADC_ChannelConfTypeDef sConfig;
+
+  //AdcHandle.Instance                   = ADC1;
   AdcHandle.Instance                   = ADC3;
   AdcHandle.Init.ClockPrescaler        = ADC_CLOCKPRESCALER_PCLK_DIV4;
   AdcHandle.Init.Resolution            = ADC_RESOLUTION_12B;
-  AdcHandle.Init.ScanConvMode          = DISABLE;  /* Sequencer disabled (ADC conversion on only 1 channel: channel set on rank 1) */
-  AdcHandle.Init.ContinuousConvMode    = ENABLE;   /* Continuous mode enabled to have continuous conversion  */
-  AdcHandle.Init.DiscontinuousConvMode = DISABLE;  /* Parameter discarded because sequencer is disabled */
+  AdcHandle.Init.ScanConvMode          = DISABLE;  // Sequencer disabled - ADC conversion on 1 channel on rank 1
+  AdcHandle.Init.ContinuousConvMode    = ENABLE;   // Continuous mode enabled to have continuous conversion
+  AdcHandle.Init.DiscontinuousConvMode = DISABLE;  // Parameter discarded because sequencer is disabled
   AdcHandle.Init.NbrOfDiscConversion   = 0;
-  AdcHandle.Init.ExternalTrigConvEdge  = ADC_EXTERNALTRIGCONVEDGE_NONE;  /* Conversion start trigged at each external event */
+  AdcHandle.Init.ExternalTrigConvEdge  = ADC_EXTERNALTRIGCONVEDGE_NONE;  // Conversion start trigged at each external event
   AdcHandle.Init.ExternalTrigConv      = ADC_EXTERNALTRIGCONV_T1_CC1;
   AdcHandle.Init.DataAlign             = ADC_DATAALIGN_RIGHT;
   AdcHandle.Init.NbrOfConversion       = 1;
@@ -641,14 +642,16 @@ void cApp::adcInit() {
   if (HAL_ADC_Init (&AdcHandle) != HAL_OK)
     debug (LCD_COLOR_GREEN, "HAL_ADC_Init failed");
 
+  ADC_ChannelConfTypeDef sConfig;
+  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+  sConfig.Channel = ADC_CHANNEL_VBAT;
+  //sConfig.Channel = ADC_CHANNEL_VREFINT;
   sConfig.Channel      = ADC_CHANNEL_8;
   sConfig.Rank         = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES; // ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_144CYCLES; // ADC_SAMPLETIME_3CYCLES;
   sConfig.Offset       = 0;
 
-  // Configure ADC Temperature Sensor Channel
-  //sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-  //sConfig.Channel = ADC_CHANNEL_VREFINT;
+  //Configure ADC Temperature Sensor Channel
   //sConfig.Rank = 1;
   //sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
   //sConfig.Offset = 0;
@@ -743,7 +746,8 @@ void cApp::run() {
     //}}}
   //diskDebugDisable();
 
-  HAL_ADC_Start_DMA (&AdcHandle, (uint32_t*)&ConvertedValue, 1);
+  HAL_ADC_Start (&AdcHandle);
+  //HAL_ADC_StartDMA (&AdcHandle, (uint32_t*)&ConvertedValue, 1);
 
   int32_t avVal = 0;
   while (true) {
@@ -762,17 +766,21 @@ void cApp::run() {
     //  debug (LCD_COLOR_YELLOW, "temp %d %d", ConvertedValue, JTemp);
     //  }
 
+    HAL_ADC_PollForConversion (&AdcHandle, 100);
+    ConvertedValue = HAL_ADC_GetValue (&AdcHandle);
     if (avVal == 0)
       avVal = ConvertedValue;
     else
       avVal = (avVal*50 + ConvertedValue) / 51;
     float kScale = ((3.3f * (39.f + 27.f) / 39.f) / 4096.f) * 1000;
+    //float kScale = (3.3f / 4096.f) * 1000;
+    //float kScale = 3.f * (3.3f / 4096.f) * 1000;
 
     //BSP_LED_Toggle (LED1);
     for (auto box : mBoxes) box->onDraw (mLcd);
     drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft,
-      (kVersion + " " + (mMounted ? mLabel : "") + " " + mIpAddress + " " +
-       dec(int(avVal*kScale) / 1000) + "." + dec(int(avVal*kScale) % 1000)).c_str());
+      (kVersion + " " + (mMounted ? mLabel : "") + " " + mIpAddress + " " + dec(ConvertedValue) + " " +
+       dec(int(avVal*kScale) / 1000) + "." + dec(int(avVal*kScale) % 1000, 3)).c_str());
     drawInfo (LCD_COLOR_YELLOW, cLcd::eTextRight, "%d %d%%", xPortGetFreeHeapSize(), osGetCPUUsage());
     if (mDebugValue)
       drawDebug();

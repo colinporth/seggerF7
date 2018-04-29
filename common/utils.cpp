@@ -1,7 +1,7 @@
 // utils.h
 #include "utils.h"
 
-std::string dec (int num, int width) {
+std::string dec (int num, int width, char fill) {
 
   std::string str;
   while ((width > 0) || num) {

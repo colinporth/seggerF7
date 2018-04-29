@@ -7,11 +7,10 @@
 
 #include "../common/system.h"
 
-//#include "sd.h"
 #include "sdRam.h"
 
 #include "font.h"
-extern const sFONT gFont16;
+#include "font8.h"
 //}}}
 //{{{  defines
 #define POLY_X(Z)  ((int32_t)((points + Z)->x))
@@ -1321,6 +1320,48 @@ void cLcd::convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
   }
 //}}}
 
+//{{{
+void cLcd::displayChar8 (uint16_t color, cPoint p, uint8_t ascii) {
+
+  if ((ascii >= kFont18.firstChar) && (ascii <= kFont18.lastChar)) {
+    uint8_t* base = kFont18.glyphsBase;
+    uint8_t* char8 = base + kFont18.glyphOffsets[ascii - kFont18.firstChar];
+    uint8_t charWidth = *base++;
+    uint8_t charHeight = *base++;
+    int8_t charLeft = (int8_t)*base++;
+    uint8_t charTop = *base++;
+    uint8_t charAdvance = *base++;
+
+    auto width = gFont16.mWidth;
+    auto byteAlignedWidth = (width + 7) / 8;
+    auto offset = (8 * byteAlignedWidth) - width - 1;
+    auto fontChar = &gFont16.mTable [(ascii - ' ') * gFont16.mHeight * byteAlignedWidth];
+
+    auto dst = mFrameBuf + (p.y * getWidth()) + p.x;
+
+    ready();
+    for (auto fontLine = 0u; fontLine < gFont16.mHeight; fontLine++) {
+      auto fontPtr = (uint8_t*)fontChar + byteAlignedWidth * fontLine;
+      uint16_t fontLineBits = *fontPtr++;
+      if (byteAlignedWidth == 2)
+        fontLineBits = (fontLineBits << 8) | *fontPtr;
+      if (fontLineBits) {
+        uint16_t bit = 1 << (width + offset);
+        auto endPtr = dst + width;
+        while (dst != endPtr) {
+          if (fontLineBits & bit)
+            *dst = color;
+          dst++;
+          bit >>= 1;
+          }
+        dst += getWidth() - width;
+        }
+      else
+        dst += getWidth();
+      }
+    }
+  }
+//}}}
 //{{{
 void cLcd::displayChar (uint16_t color, cPoint p, uint8_t ascii) {
 

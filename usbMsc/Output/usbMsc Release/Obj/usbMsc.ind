@@ -11,6 +11,7 @@
 "Output/usbMsc Release/Obj/ethernetIf.o"
 "Output/usbMsc Release/Obj/sd.o"
 "Output/usbMsc Release/Obj/sdRam.o"
+"Output/usbMsc Release/Obj/freeSansBold18.o"
 "Output/usbMsc Release/Obj/stm32f7xx_ll_fmc.o"
 "Output/usbMsc Release/Obj/stm32f7xx_ll_usb.o"
 "Output/usbMsc Release/Obj/stm32f7xx_hal.o"
