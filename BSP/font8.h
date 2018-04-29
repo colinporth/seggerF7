@@ -17,7 +17,7 @@ struct font8_t {
   uint16_t* glyphOffsets;
   };
 
-extern const struct font8_t kFont18;
+extern const struct font8_t kFont16;
 
 //{{{
 #ifdef __cplusplus
