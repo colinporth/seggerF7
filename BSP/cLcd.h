@@ -78,8 +78,8 @@ public:
   int16_t getCharWidth (uint8_t ascii);
   int16_t displayChar (uint16_t color, cPoint p, uint8_t ascii);
   int16_t displayChar8 (uint32_t color, cPoint p, uint8_t ascii);
-  void displayString (uint16_t color, cPoint p, const char* str, eTextAlign textAlign);
-  void displayStringShadow (uint16_t color, cPoint p, const char* str, eTextAlign textAlign);
+  void displayString (uint16_t color, cPoint p, const std::string& str, eTextAlign textAlign);
+  void displayStringShadow (uint16_t color, cPoint p, const std::string& str, eTextAlign textAlign);
 
   void fillRect (uint16_t color, const cRect& rect);
   void fillRectCpu (uint16_t color, const cRect& rect);

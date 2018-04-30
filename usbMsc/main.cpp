@@ -777,7 +777,8 @@ void cApp::run() {
     //float kScale = 3.f * (3.3f / 4096.f) * 1000;
 
     //BSP_LED_Toggle (LED1);
-    for (auto box : mBoxes) box->onDraw (mLcd);
+    for (auto box : mBoxes) 
+      box->onDraw (mLcd);
     drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft,
       (kVersion + " " + (mMounted ? mLabel : "") + " " + mIpAddress + " " + dec(ConvertedValue) + " " +
        dec(int(avVal*kScale) / 1000) + "." + dec(int(avVal*kScale) % 1000, 3)).c_str());

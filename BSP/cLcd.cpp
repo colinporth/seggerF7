@@ -307,17 +307,23 @@ void cLcd::drawInfo (uint16_t color, eTextAlign textAlign, const char* format, .
 //{{{
 void cLcd::drawDebug() {
 
+  auto numWidth = getCharWidth ('0');
   for (auto displayLine = 0u; (displayLine < mDebugLine) && ((int)displayLine < mDisplayLines); displayLine++) {
     int debugLine = ((int)mDebugLine < mDisplayLines) ?
       displayLine : (mDebugLine - mDisplayLines + displayLine - getScrollLines())  % kDebugMaxLines;
 
-    char tickStr[10];
     auto ticks = mLines[debugLine].mTicks;
-    sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
-    auto numWidth = getCharWidth('0');
-    displayString (LCD_COLOR_WHITE, cPoint(0, (1+displayLine) * getTextHeight()), tickStr, eTextLeft);
+    auto secs = (int)ticks / 1000;
 
-    displayString (mLines[debugLine].mColour, cPoint(7 * numWidth, (1+displayLine) * getTextHeight()), mLines[debugLine].mStr, eTextLeft);
+    std::string str = dec(secs) + "." + dec (ticks % 1000, 3);
+    displayString (LCD_COLOR_WHITE, cPoint(0, (displayLine+1) * getTextHeight()), str, eTextLeft);
+
+    auto offset = 5 * numWidth;
+    while (secs > 9) {
+      offset += numWidth;
+      secs / 10;
+      }
+    displayString (mLines[debugLine].mColour, cPoint(offset, (displayLine+1) * getTextHeight()), mLines[debugLine].mStr, eTextLeft);
     }
   }
 //}}}
@@ -1404,7 +1410,7 @@ int16_t cLcd::displayChar8 (uint32_t color, cPoint p, uint8_t ascii) {
   }
 //}}}
 //{{{
-void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign textAlign) {
+void cLcd::displayString (uint16_t color, cPoint p, const std::string& str, eTextAlign textAlign) {
 
   uint32_t color32 = ((color & 0xf800) << 8) | ((color & 0x07d0) << 5) | ((color & 0x001f) << 3);  //a:r:g:b
   switch (textAlign) {
@@ -1415,9 +1421,8 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
       p.y -= gFont16.mHeight/2;
     case eTextCentre:  {
       uint16_t size = 0;
-      auto ptr = str;
-      while (*ptr)
-        size += getCharWidth (*ptr++);
+      for (auto i = 0; i < str.size(); i++)
+        size += getCharWidth (str[i]);
       p.x -= size/2;
       break;
       }
@@ -1425,9 +1430,8 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
       p.y -= gFont16.mHeight;
     case eTextRight: {
       uint16_t size = 0;
-      auto ptr = str;
-      while (*ptr)
-        size += getCharWidth (*ptr++);
+      for (auto i = 0; i < str.size(); i++)
+        size += getCharWidth (str[i]);
       p.x -= size;
       break;
       }
@@ -1436,13 +1440,15 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
   if (p.x >= getWidth())
     p.x = 0;
 
-  while (*str && (p.x + gFont16.mWidth <= getWidth())) {
-    p.x += displayChar8 (color32, p, *str++);
+  for (auto i = 0; i < str.size(); i++) {
+    p.x += displayChar8 (color32, p, str[i]);
+    if (p.x > getWidth())
+      break;
     }
   }
 //}}}
 //{{{
-void cLcd::displayStringShadow (uint16_t color, cPoint p, const char* str, eTextAlign textAlign) {
+void cLcd::displayStringShadow (uint16_t color, cPoint p, const std::string& str, eTextAlign textAlign) {
 
   displayString (LCD_COLOR_BLACK, p + cPoint(1,1), str, textAlign);
   displayString (color, p, str, textAlign);
