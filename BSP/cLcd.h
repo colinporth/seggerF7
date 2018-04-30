@@ -123,7 +123,7 @@ private:
         taskYIELD();
       DMA2D->IFCR = DMA2D_FLAG_TC;
       }
-    else if (mDma2dWait == eWaitIrq) 
+    else if (mDma2dWait == eWaitIrq)
       xSemaphoreTake (mDma2dSem, 100);
 
     mDma2dWait = eWaitNone;
@@ -135,7 +135,7 @@ private:
   void drawPix (uint16_t color, uint16_t x, uint16_t y) { *(mFrameBuf + y*getWidth() + x) = color; }
   void fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3);
 
-  static const int kMaxStrSize = 40;
+  static const int kMaxStrSize = 50;
   static const int kDebugMaxLines = 100;
   //{{{
   class cDebugItem {

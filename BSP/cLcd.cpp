@@ -300,7 +300,7 @@ void cLcd::drawInfo (uint16_t color, eTextAlign textAlign, const char* format, .
   vsnprintf (str, kMaxStrSize-1, format, args);
   va_end (args);
 
-  displayStringShadow (color, getRect().getTR(), str, textAlign);
+  displayString (color, getRect().getTR(), str, textAlign);
 
   }
 //}}}
@@ -1328,13 +1328,8 @@ uint16_t cLcd::getTextHeight() { return kFont16.height; }
 int16_t cLcd::getCharWidth (uint8_t ascii) {
 
   if ((ascii >= kFont16.firstChar) && (ascii <= kFont16.lastChar)) {
-    auto  char8 = (uint8_t*)(kFont16.glyphsBase + kFont16.glyphOffsets[ascii - kFont16.firstChar]);
-    uint8_t width = *char8++;
-    uint8_t height = *char8++;
-    int8_t left = (int8_t)(*char8++);
-    int8_t top = (int8_t)(*char8++);
-    uint8_t advance = *char8++;
-    return advance;
+    auto char8 = (uint8_t*)(kFont16.glyphsBase + kFont16.glyphOffsets[ascii - kFont16.firstChar]);
+    return char8[4];
     }
 
   return kFont16.spaceWidth;
@@ -1670,7 +1665,7 @@ void cLcd::alignPos (cPoint& p, const std::string& str, eTextAlign textAlign) {
 
   switch (textAlign) {
     case eTextCentreBox:
-      p.y -= gFont16.mHeight/2;
+      p.y -= kFont16.height/2;
 
     case eTextCentre:  {
       uint16_t size = 0;
@@ -1681,7 +1676,7 @@ void cLcd::alignPos (cPoint& p, const std::string& str, eTextAlign textAlign) {
       break;
 
     case eTextBottomRight :
-      p.y -= gFont16.mHeight;
+      p.y -= kFont16.height;
     case eTextRight: {
       uint16_t size = 0;
       for (auto ch : str)
@@ -1737,31 +1732,26 @@ int16_t cLcd::displayChar (uint16_t color, cPoint p, uint8_t ascii) {
 int16_t cLcd::displayChar8 (uint32_t color, cPoint p, uint8_t ascii) {
 
   if ((ascii >= kFont16.firstChar) && (ascii <= kFont16.lastChar)) {
-    auto char8 = (uint8_t*)(kFont16.glyphsBase + kFont16.glyphOffsets[ascii - kFont16.firstChar]);
-    uint8_t width = *char8++;
-    uint8_t height = *char8++;
-    uint32_t stride = getWidth() - width;
-    uint32_t nlr = (width << 16) | height;
-    int8_t left = (int8_t)(*char8++);
-    int8_t top = (int8_t)(*char8++);
-    uint32_t address = uint32_t(mFrameBuf + ((p.y + 14 - top) * getWidth()) + p.x + left);
-    uint8_t advance = *char8++;
-    char8 += 3;
+    auto fontChar = (fontChar_t*)(kFont16.glyphsBase + kFont16.glyphOffsets[ascii - kFont16.firstChar]);
+    uint32_t dstStride = getWidth() - fontChar->width;
+    uint32_t nlr = (fontChar->width << 16) | fontChar->height;
+    uint32_t dst = uint32_t(mFrameBuf + ((p.y + 14 - fontChar->top) * getWidth()) + p.x + fontChar->left);
+    uint32_t src = (uint32_t)(fontChar) + sizeof (fontChar_t);
 
     ready();
-    DMA2D->FGPFCCR = DMA2D_INPUT_A8;  // fgnd PFC
-    DMA2D->FGMAR   = (uint32_t)char8; // fgnd start address
+    DMA2D->FGPFCCR = DMA2D_INPUT_A8; // fgnd PFC
+    DMA2D->FGMAR   = src;            // fgnd start address
     DMA2D->FGOR    = 0;
     DMA2D->FGCOLR  = color;
-    DMA2D->BGMAR   = address;         // output start address
-    DMA2D->OMAR    = address;         // output start address
-    DMA2D->BGOR    = stride;          // output stride
-    DMA2D->OOR     = stride;          // output stride
-    DMA2D->NLR     = nlr;             // width:height
-    DMA2D->CR      = DMA2D_CR_START | DMA2D_M2M_BLEND;
-    mDma2dWait = eWaitDone;
+    DMA2D->BGMAR   = dst;            // output start address
+    DMA2D->OMAR    = dst;            // output start address
+    DMA2D->BGOR    = dstStride;      // output stride
+    DMA2D->OOR     = dstStride;      // output stride
+    DMA2D->NLR     = nlr;            // width:height
+    DMA2D->CR      = DMA2D_CR_START | DMA2D_M2M_BLEND | DMA2D_CR_TCIE;;
+    mDma2dWait = eWaitIrq;
 
-    return advance;
+    return fontChar->advance;
     }
 
   return kFont16.spaceWidth;

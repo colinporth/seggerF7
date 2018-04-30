@@ -27,7 +27,7 @@
 
 #include "ethernetif.h"
 //}}}
-std::string kVersion = "WebCam 29/4/18";
+std::string kVersion = "WebCam 30/4/18";
 uint8_t*  kCamBuf    =  (uint8_t*)0xc0080000;
 uint8_t*  kCamBufEnd =  (uint8_t*)0xc0700000;
 uint16_t* kRgb565Buf = (uint16_t*)kCamBufEnd;
@@ -417,7 +417,7 @@ public:
       }
 
     char str[20];
-    sprintf (str, "%d:%x:%2d %dfps", mCam->getFrameLen(), mCam->getStatus(), mCam->getDmaCount(), mCam->getFps());
+    sprintf (str, "%d:%x:%02d %dfps", mCam->getFrameLen(), mCam->getStatus(), mCam->getDmaCount(), mCam->getFps());
     lcd->displayStringShadow (mTextColor, mRect.getBR(), str, cLcd::eTextBottomRight);
     }
   //}}}
@@ -777,7 +777,7 @@ void cApp::run() {
     //float kScale = 3.f * (3.3f / 4096.f) * 1000;
 
     //BSP_LED_Toggle (LED1);
-    for (auto box : mBoxes) 
+    for (auto box : mBoxes)
       box->onDraw (mLcd);
     drawInfo (LCD_COLOR_WHITE, cLcd::eTextLeft,
       (kVersion + " " + (mMounted ? mLabel : "") + " " + mIpAddress + " " + dec(ConvertedValue) + " " +

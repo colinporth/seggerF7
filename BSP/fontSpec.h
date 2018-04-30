@@ -13,6 +13,9 @@ struct fontChar_t {
   int8_t  left;
   int8_t  top;
   uint8_t advance;
+  uint8_t align1;
+  uint8_t align2;
+  uint8_t align3;
   };
 
 struct fontSpec_t {
