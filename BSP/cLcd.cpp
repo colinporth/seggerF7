@@ -1412,36 +1412,11 @@ int16_t cLcd::displayChar8 (uint32_t color, cPoint p, uint8_t ascii) {
 //{{{
 void cLcd::displayString (uint16_t color, cPoint p, const std::string& str, eTextAlign textAlign) {
 
+  alignPos (p, str, textAlign);
   uint32_t color32 = ((color & 0xf800) << 8) | ((color & 0x07d0) << 5) | ((color & 0x001f) << 3);  //a:r:g:b
-  switch (textAlign) {
-    case eTextLeft:
-      break;
 
-    case eTextCentreBox:
-      p.y -= gFont16.mHeight/2;
-    case eTextCentre:  {
-      uint16_t size = 0;
-      for (auto i = 0; i < str.size(); i++)
-        size += getCharWidth (str[i]);
-      p.x -= size/2;
-      break;
-      }
-    case eTextBottomRight :
-      p.y -= gFont16.mHeight;
-    case eTextRight: {
-      uint16_t size = 0;
-      for (auto i = 0; i < str.size(); i++)
-        size += getCharWidth (str[i]);
-      p.x -= size;
-      break;
-      }
-    }
-
-  if (p.x >= getWidth())
-    p.x = 0;
-
-  for (auto i = 0; i < str.size(); i++) {
-    p.x += displayChar8 (color32, p, str[i]);
+  for (auto ch : str) {
+    p.x += displayChar8 (color32, p, ch);
     if (p.x > getWidth())
       break;
     }
@@ -1450,8 +1425,21 @@ void cLcd::displayString (uint16_t color, cPoint p, const std::string& str, eTex
 //{{{
 void cLcd::displayStringShadow (uint16_t color, cPoint p, const std::string& str, eTextAlign textAlign) {
 
-  displayString (LCD_COLOR_BLACK, p + cPoint(1,1), str, textAlign);
-  displayString (color, p, str, textAlign);
+  alignPos (p, str, textAlign);
+  cPoint p1 = p + cPoint (1,1);
+
+  for (auto ch : str) {
+    p1.x += displayChar8 (0, p1, ch);
+    if (p1.x > getWidth())
+      break;
+    }
+
+  uint32_t color32 = ((color & 0xf800) << 8) | ((color & 0x07d0) << 5) | ((color & 0x001f) << 3);  //a:r:g:b
+  for (auto ch : str) {
+    p.x += displayChar8 (color32, p, ch);
+    if (p.x > getWidth())
+      break;
+    }
   }
 //}}}
 
@@ -1747,6 +1735,38 @@ void cLcd::displayOff() {
 
 // private
 //{{{
+void cLcd::alignPos (cPoint& p, const std::string& str, eTextAlign textAlign) {
+
+  switch (textAlign) {
+    case eTextCentreBox:
+      p.y -= gFont16.mHeight/2;
+
+    case eTextCentre:  {
+      uint16_t size = 0;
+      for (auto ch : str)
+        size += getCharWidth (ch);
+      p.x -= size/2;
+      }
+      break;
+
+    case eTextBottomRight :
+      p.y -= gFont16.mHeight;
+    case eTextRight: {
+      uint16_t size = 0;
+      for (auto ch : str)
+        size += getCharWidth (ch);
+      p.x -= size;
+      }
+      break;
+    }
+
+  if (p.x < 0)
+    p.x = 0;
+  else if (p.x >= getWidth())
+    p.x = 0;
+  }
+//}}}
+//{{{
 void cLcd::ready() {
 
   if (mDma2dWait) {
@@ -1755,7 +1775,6 @@ void cLcd::ready() {
     }
   }
 //}}}
-
 //{{{
 void cLcd::fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3) {
 

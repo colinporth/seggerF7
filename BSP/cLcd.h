@@ -116,6 +116,7 @@ public:
 private:
   void layerInit();
 
+  void alignPos (cPoint& p, const std::string& str, eTextAlign textAlign);
   void ready();
   void drawPix (uint16_t color, uint16_t x, uint16_t y) { *(mFrameBuf + y*getWidth() + x) = color; }
   void fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3);
