@@ -7,8 +7,6 @@
 
 #include "../common/system.h"
 
-#include "sdRam.h"
-
 #include "font.h"
 #include "fontSpec.h"
 //}}}
@@ -334,7 +332,7 @@ void cLcd::present() {
   mFrameWait = true;
   xSemaphoreTake (mFrameSem, 100);
 
-  mFrameBuf = (uint16_t*)(((uint32_t)mFrameBuf == SDRAM_DEVICE_ADDR) ? SDRAM_DEVICE_ADDR + 0x40000 : SDRAM_DEVICE_ADDR);
+  mFrameBuf = (mFrameBuf == mFrameBufBase) ? mFrameBufBase + 0x20000 : mFrameBufBase;
   }
 //}}}
 
