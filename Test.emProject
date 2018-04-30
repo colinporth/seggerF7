@@ -66,6 +66,7 @@
         <file file_name="usbd.h" />
         <file file_name="../BSP/sdRam.h" />
         <file file_name="../BSP/wm8994.h" />
+        <file file_name="../BSP/fontSpec.h" />
       </folder>
       <file file_name="../BSP/stm32746g_discovery.c" />
       <file file_name="../BSP/stm32746g_discovery_ts.c" />
@@ -76,8 +77,8 @@
       <file file_name="../BSP/ethernetIf.cpp" />
       <file file_name="../BSP/sd.cpp" />
       <file file_name="../BSP/sdRam.cpp" />
-      <file file_name="../BSP/free16x8.c" />
       <file file_name="../BSP/font16x1.c" />
+      <file file_name="../BSP/font16x8.c" />
     </folder>
     <folder Name="hal_drivers">
       <file file_name="../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c" />

@@ -10,7 +10,7 @@
 #include "sdRam.h"
 
 #include "font.h"
-#include "font8.h"
+#include "fontSpec.h"
 //}}}
 //{{{  defines
 #define POLY_X(Z)  ((int32_t)((points + Z)->x))
@@ -276,14 +276,11 @@ void cLcd::init() {
   // dma2d init
   __HAL_RCC_DMA2D_CLK_ENABLE();
 
-  DMA2D->FGPFCCR = DMA2D_INPUT_RGB888;
-  DMA2D->FGOR = 0;
   DMA2D->BGPFCCR = DMA2D_RGB565;
-  DMA2D->BGOR = 0;
   DMA2D->OPFCCR = DMA2D_RGB565;
 
-  //const int kDeadTime = 5;
-  //DMA2D->AMTCR = (kDeadTime << 8) | 0x0001;
+  const int kDeadTime = 2;
+  DMA2D->AMTCR = (kDeadTime << 8) | 0x0001;
 
   vSemaphoreCreateBinary (mDma2dSem);
   HAL_NVIC_SetPriority (DMA2D_IRQn, 0x0F, 0);
@@ -292,9 +289,6 @@ void cLcd::init() {
   displayOn();
   }
 //}}}
-
-uint16_t cLcd::getCharWidth() { return gFont16.mWidth; }
-uint16_t cLcd::getTextHeight() { return gFont16.mHeight; }
 
 //{{{
 void cLcd::drawInfo (uint16_t color, eTextAlign textAlign, const char* format, ... ) {
@@ -320,9 +314,10 @@ void cLcd::drawDebug() {
     char tickStr[10];
     auto ticks = mLines[debugLine].mTicks;
     sprintf (tickStr, "%2d.%03d", (int)ticks / 1000, (int)ticks % 1000);
-    displayStringColumnLine (LCD_COLOR_WHITE, 0, 1+displayLine, tickStr);
+    auto numWidth = getCharWidth('0');
+    displayString (LCD_COLOR_WHITE, cPoint(0, (1+displayLine) * getTextHeight()), tickStr, eTextLeft);
 
-    displayStringColumnLine (mLines[debugLine].mColour, 7, 1+displayLine, mLines[debugLine].mStr);
+    displayString (mLines[debugLine].mColour, cPoint(7 * numWidth, (1+displayLine) * getTextHeight()), mLines[debugLine].mStr, eTextLeft);
     }
   }
 //}}}
@@ -469,6 +464,8 @@ void cLcd::rgb888to565 (uint8_t* src, uint16_t* dst, uint16_t xsize, uint16_t ys
 
   ready();
 
+  DMA2D->FGPFCCR = DMA2D_INPUT_RGB888;
+  DMA2D->FGOR = 0;
   DMA2D->FGMAR = (uint32_t)src;
   DMA2D->OMAR = (uint32_t)dst;
   DMA2D->NLR = (xsize << 16) | ysize;
@@ -1320,37 +1317,21 @@ void cLcd::convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
   }
 //}}}
 
+uint16_t cLcd::getTextHeight() { return kFont16.height; }
 //{{{
-int16_t cLcd::displayChar8 (uint16_t color, cPoint p, uint8_t ascii) {
+int16_t cLcd::getCharWidth (uint8_t ascii) {
 
   if ((ascii >= kFont16.firstChar) && (ascii <= kFont16.lastChar)) {
-    uint8_t* char8 = kFont16.glyphsBase + kFont16.glyphOffsets[ascii - kFont16.firstChar];
-
+    auto  char8 = (uint8_t*)(kFont16.glyphsBase + kFont16.glyphOffsets[ascii - kFont16.firstChar]);
     uint8_t width = *char8++;
     uint8_t height = *char8++;
-    uint32_t stride = getWidth() - width;
-    uint32_t nlr = (width << 16) | height;
-    int8_t left = (int8_t)*char8++;
-    uint8_t top = *char8++;
-    uint32_t address = uint32_t(mFrameBuf + ((p.y + 14 - top) * getWidth()) + p.x + left);
+    int8_t left = (int8_t)(*char8++);
+    int8_t top = (int8_t)(*char8++);
     uint8_t advance = *char8++;
-
-    ready();
-    DMA2D->FGMAR   = (uint32_t)char8; // fgnd start address
-    DMA2D->BGMAR   = address;         // - repeated to bgnd start addres
-    DMA2D->BGOR    = stride;          // - repeated to bgnd stride
-    DMA2D->FGPFCCR = DMA2D_INPUT_A8;  // fgnd PFC
-    DMA2D->FGCOLR  = color;
-    DMA2D->OMAR    = address;         // output start address
-    DMA2D->OOR     = stride;          // output stride
-    DMA2D->NLR     = nlr;             // width:height
-    DMA2D->CR      = DMA2D_CR_START | DMA2D_M2M_BLEND | DMA2D_CR_TCIE;
-    mDma2dWait = true;
-
     return advance;
     }
 
-  return gFont16.mWidth;
+  return kFont16.spaceWidth;
   }
 //}}}
 //{{{
@@ -1390,8 +1371,42 @@ int16_t cLcd::displayChar (uint16_t color, cPoint p, uint8_t ascii) {
   }
 //}}}
 //{{{
+int16_t cLcd::displayChar8 (uint32_t color, cPoint p, uint8_t ascii) {
+
+  if ((ascii >= kFont16.firstChar) && (ascii <= kFont16.lastChar)) {
+    auto  char8 = (uint8_t*)(kFont16.glyphsBase + kFont16.glyphOffsets[ascii - kFont16.firstChar]);
+    uint8_t width = *char8++;
+    uint8_t height = *char8++;
+    uint32_t stride = getWidth() - width;
+    uint32_t nlr = (width << 16) | height;
+    int8_t left = (int8_t)(*char8++);
+    int8_t top = (int8_t)(*char8++);
+    uint32_t address = uint32_t(mFrameBuf + ((p.y + 14 - top) * getWidth()) + p.x + left);
+    uint8_t advance = *char8++;
+
+    ready();
+    DMA2D->FGPFCCR = DMA2D_INPUT_A8;  // fgnd PFC
+    DMA2D->FGMAR   = (uint32_t)char8; // fgnd start address
+    DMA2D->FGOR    = 0;
+    DMA2D->FGCOLR  = color;
+    DMA2D->BGMAR   = address;         // output start address
+    DMA2D->OMAR    = address;         // output start address
+    DMA2D->BGOR    = stride;          // output stride
+    DMA2D->OOR     = stride;          // output stride
+    DMA2D->NLR     = nlr;             // width:height
+    DMA2D->CR      = DMA2D_CR_START | DMA2D_M2M_BLEND | DMA2D_CR_TCIE;
+    mDma2dWait = true;
+
+    return advance;
+    }
+
+  return kFont16.spaceWidth;
+  }
+//}}}
+//{{{
 void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign textAlign) {
 
+  uint32_t color32 = ((color & 0xf800) << 8) | ((color & 0x07d0) << 5) | ((color & 0x001f) << 3);  //a:r:g:b
   switch (textAlign) {
     case eTextLeft:
       break;
@@ -1401,8 +1416,8 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
     case eTextCentre:  {
       uint16_t size = 0;
       auto ptr = str;
-      while (*ptr++)
-        size += gFont16.mWidth;
+      while (*ptr)
+        size += getCharWidth (*ptr++);
       p.x -= size/2;
       break;
       }
@@ -1411,8 +1426,8 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
     case eTextRight: {
       uint16_t size = 0;
       auto ptr = str;
-      while (*ptr++)
-        size += gFont16.mWidth;
+      while (*ptr)
+        size += getCharWidth (*ptr++);
       p.x -= size;
       break;
       }
@@ -1422,7 +1437,7 @@ void cLcd::displayString (uint16_t color, cPoint p, const char* str, eTextAlign 
     p.x = 0;
 
   while (*str && (p.x + gFont16.mWidth <= getWidth())) {
-    p.x += displayChar8 (color, p, *str++);
+    p.x += displayChar8 (color32, p, *str++);
     }
   }
 //}}}

@@ -34,8 +34,6 @@ public:
   cLcd (uint16_t displayLines);
   void init();
 
-  uint16_t getCharWidth();
-  uint16_t getTextHeight();
 
   void drawInfo (uint16_t color, eTextAlign textAlign, const char* format, ... );
   void drawDebug();
@@ -76,26 +74,12 @@ public:
   void convertFrameYuv (uint8_t* src, uint16_t srcXsize, uint16_t srcYsize,
                         uint8_t* dst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize);
 
-  int16_t displayChar8 (uint16_t color, cPoint p, uint8_t ascii);
+  uint16_t getTextHeight();
+  int16_t getCharWidth (uint8_t ascii);
   int16_t displayChar (uint16_t color, cPoint p, uint8_t ascii);
+  int16_t displayChar8 (uint32_t color, cPoint p, uint8_t ascii);
   void displayString (uint16_t color, cPoint p, const char* str, eTextAlign textAlign);
   void displayStringShadow (uint16_t color, cPoint p, const char* str, eTextAlign textAlign);
-
-  //{{{
-  void displayStringLine (uint16_t color, uint16_t line, const char* str) {
-    displayString (color, cPoint(0, line * getTextHeight()), str, eTextLeft);
-    }
-  //}}}
-  //{{{
-  void displayStringColumnLine (uint16_t color, uint16_t column, uint16_t line, const char* str) {
-    displayString (color, cPoint(column * getCharWidth(), line * getTextHeight()), str, cLcd::eTextLeft);
-    }
-  //}}}
-  //{{{
-  void clearStringLine (uint16_t color, uint16_t line) {
-    fillRect (color, cRect (0, line * getTextHeight(), getWidth(), (line + 1) * getTextHeight()));
-    }
-  //}}}
 
   void fillRect (uint16_t color, const cRect& rect);
   void fillRectCpu (uint16_t color, const cRect& rect);

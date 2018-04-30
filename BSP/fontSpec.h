@@ -7,7 +7,15 @@
 
 #include <stdint.h>
 
-struct font8_t {
+struct fontChar_t {
+  uint8_t width;
+  uint8_t height;
+  int8_t  left;
+  int8_t  top;
+  uint8_t advance;
+  };
+
+struct fontSpec_t {
   uint8_t fixedWidth;
   uint8_t height;
   uint8_t spaceWidth;
