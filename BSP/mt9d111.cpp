@@ -92,10 +92,7 @@ extern "C" {
 
 // public
 //{{{
-void cCamera::init (uint8_t* bufStart, uint8_t* bufEnd) {
-
-  mBufStart = bufStart;
-  mBufEnd = bufEnd;
+void cCamera::init() {
 
   gCamera = this;
   vSemaphoreCreateBinary (mFrameSem);
@@ -479,8 +476,8 @@ void cCamera::dcmiIrqHandler() {
       DMA2_Stream1->CR &= ~DMA_SxCR_EN;
 
       // reset pointers
-      mLastFrameStart = mBufStart;
-      mBufCur = mBufStart;
+      mLastFrameStart = (uint8_t*)mBufStart;
+      mBufCur = (uint8_t*)mBufStart;
       mXferCount = 0;
 
       // clear all dma interrupt flags
@@ -873,8 +870,8 @@ void cCamera::mt9d111Init() {
 //{{{
 void cCamera::start() {
 
-  mBufCur = mBufStart;
-  mLastFrameStart = mBufStart;
+  mBufCur = (uint8_t*)mBufStart;
+  mLastFrameStart = (uint8_t*)mBufStart;
 
   mFrame = nullptr;
   mFrameLen = 0;

@@ -7,7 +7,11 @@
 
 class cCamera {
 public:
-  void init (uint8_t* bufStart, uint8_t* bufEnd);
+  //{{{
+  cCamera (const uint8_t* bufStart, const uint8_t* bufEnd)
+    : mBufStart(bufStart), mBufEnd(bufEnd) {}
+  //}}}
+  void init();
 
   cPoint getSize() { return cPoint (mWidth, mHeight); }
   uint32_t getWidth() { return mWidth; }
@@ -82,8 +86,8 @@ private:
 
   uint32_t mRgb565FrameLen = 0;
 
-  uint8_t* mBufStart = nullptr;
-  uint8_t* mBufEnd = nullptr;
+  const uint8_t* mBufStart;
+  const uint8_t* mBufEnd;
   uint8_t* mBufCur = nullptr;
   uint8_t* mLastFrameStart = nullptr;
 
