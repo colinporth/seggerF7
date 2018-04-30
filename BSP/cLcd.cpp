@@ -1737,7 +1737,7 @@ int16_t cLcd::displayChar (uint16_t color, cPoint p, uint8_t ascii) {
 int16_t cLcd::displayChar8 (uint32_t color, cPoint p, uint8_t ascii) {
 
   if ((ascii >= kFont16.firstChar) && (ascii <= kFont16.lastChar)) {
-    auto  char8 = (uint8_t*)(kFont16.glyphsBase + kFont16.glyphOffsets[ascii - kFont16.firstChar]);
+    auto char8 = (uint8_t*)(kFont16.glyphsBase + kFont16.glyphOffsets[ascii - kFont16.firstChar]);
     uint8_t width = *char8++;
     uint8_t height = *char8++;
     uint32_t stride = getWidth() - width;
@@ -1746,6 +1746,7 @@ int16_t cLcd::displayChar8 (uint32_t color, cPoint p, uint8_t ascii) {
     int8_t top = (int8_t)(*char8++);
     uint32_t address = uint32_t(mFrameBuf + ((p.y + 14 - top) * getWidth()) + p.x + left);
     uint8_t advance = *char8++;
+    char8 += 3;
 
     ready();
     DMA2D->FGPFCCR = DMA2D_INPUT_A8;  // fgnd PFC
@@ -1757,7 +1758,7 @@ int16_t cLcd::displayChar8 (uint32_t color, cPoint p, uint8_t ascii) {
     DMA2D->BGOR    = stride;          // output stride
     DMA2D->OOR     = stride;          // output stride
     DMA2D->NLR     = nlr;             // width:height
-    DMA2D->CR      = DMA2D_CR_START | DMA2D_M2M_BLEND;// | DMA2D_CR_TCIE;
+    DMA2D->CR      = DMA2D_CR_START | DMA2D_M2M_BLEND;
     mDma2dWait = eWaitDone;
 
     return advance;
