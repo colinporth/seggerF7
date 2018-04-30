@@ -91,15 +91,13 @@ extern "C" {
   }
 
 //{{{
-cLcd::cLcd (uint16_t displayLines)
-  : mDisplayLines(displayLines) {}
+cLcd::cLcd (uint16_t* frameBufBase, uint16_t displayLines)
+  : mFrameBufBase(frameBufBase), mFrameBuf(frameBufBase), mDisplayLines(displayLines) {}
 //}}}
 //{{{
 void cLcd::init() {
 
   mLcd = this;
-  mFrameBuf = (uint16_t*)SDRAM_DEVICE_ADDR;
-
   //{{{  gpio config
   // Enable GPIOs clock
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -150,7 +148,6 @@ void cLcd::init() {
   gpio_init_structure.Pin = LCD_BL_CTRL_PIN;  // LCD_BL_CTRL pin has to be manually controlled
   HAL_GPIO_Init (LCD_BL_CTRL_GPIO_PORT, &gpio_init_structure);
   //}}}
-  BSP_SDRAM_Init();
   //{{{  ltdc init
   //{{{  original
   // RK043FN48H LCD clock configuration

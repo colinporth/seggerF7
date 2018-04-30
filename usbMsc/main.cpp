@@ -11,6 +11,7 @@
 #include "../FatFs/ff.h"
 #include "../FatFs/diskio.h"
 
+#include "sdRam.h"
 #include "cCamera.h"
 
 #include "jpeglib.h"
@@ -182,7 +183,7 @@ public:
   //}}}
 
   //{{{
-  cApp (int x, int y) : cTouch(x,y), cLcd(14) {
+  cApp (int x, int y) : cTouch(x,y), cLcd((uint16_t*)SDRAM_DEVICE_ADDR, 14) {
 
     mLcd = this;
     init();
@@ -719,8 +720,8 @@ void cApp::run() {
   else
     debug (LCD_COLOR_GREEN, "sdCard not mounted");
 
-  mCam = new cCamera();
-  mCam->init (kCamBuf, kCamBufEnd);
+  mCam = new cCamera (kCamBuf, kCamBufEnd);
+  mCam->init();
 
   // define menu
   add (new cCameraBox (getWidth(), getHeight(), mCam));
@@ -1421,6 +1422,9 @@ int main() {
   if (HAL_RCC_ClockConfig (&RCC_ClkInitStruct, FLASH_LATENCY_7) != HAL_OK)
     while (true) {}
   //}}}
+  BSP_SDRAM_Init();
+  memset ((void*)SDRAM_DEVICE_ADDR, 0, SDRAM_DEVICE_SIZE);
+
   BSP_PB_Init (BUTTON_KEY, BUTTON_MODE_GPIO);
   //BSP_LED_Init (LED1);
 

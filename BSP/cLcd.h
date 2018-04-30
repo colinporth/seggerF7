@@ -32,7 +32,7 @@ public:
   static cPoint getSize() { return cPoint(480,272); }
   static cRect getRect() { return cRect (0,0,480,272); }
 
-  cLcd (uint16_t displayLines);
+  cLcd (uint16_t* frameBufBase, uint16_t displayLines);
   void init();
 
 
@@ -149,6 +149,7 @@ private:
     };
   //}}}
 
+  uint16_t* mFrameBufBase;
   uint16_t* mFrameBuf;
 
   uint16_t mDisplayLines;
