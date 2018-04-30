@@ -25,6 +25,7 @@
 class cLcd {
 public:
   enum eTextAlign { eTextLeft, eTextCentreBox, eTextCentre, eTextBottomRight, eTextRight };
+  enum eDma2dWait { eWaitNone, eWaitDone, eWaitIrq };
 
   static uint32_t getWidth() { return 480; }
   static uint32_t getHeight() { return 272; }
@@ -76,8 +77,6 @@ public:
 
   uint16_t getTextHeight();
   int16_t getCharWidth (uint8_t ascii);
-  int16_t displayChar (uint16_t color, cPoint p, uint8_t ascii);
-  int16_t displayChar8 (uint32_t color, cPoint p, uint8_t ascii);
   void displayString (uint16_t color, cPoint p, const std::string& str, eTextAlign textAlign);
   void displayStringShadow (uint16_t color, cPoint p, const std::string& str, eTextAlign textAlign);
 
@@ -110,14 +109,29 @@ public:
   static cLcd* mLcd;
   static bool mFrameWait;
   static SemaphoreHandle_t mFrameSem;
-  static bool mDma2dWait;
+  static eDma2dWait mDma2dWait;
   static SemaphoreHandle_t mDma2dSem;
 
 private:
   void layerInit();
 
+  //{{{
+  void ready() {
+
+    if (mDma2dWait == eWaitDone) {
+      while (!(DMA2D->ISR & DMA2D_FLAG_TC))
+        taskYIELD();
+      DMA2D->IFCR = DMA2D_FLAG_TC;
+      }
+    else if (mDma2dWait == eWaitIrq) 
+      xSemaphoreTake (mDma2dSem, 100);
+
+    mDma2dWait = eWaitNone;
+    }
+  //}}}
   void alignPos (cPoint& p, const std::string& str, eTextAlign textAlign);
-  void ready();
+  int16_t displayChar (uint16_t color, cPoint p, uint8_t ascii);
+  int16_t displayChar8 (uint32_t color, cPoint p, uint8_t ascii);
   void drawPix (uint16_t color, uint16_t x, uint16_t y) { *(mFrameBuf + y*getWidth() + x) = color; }
   void fillTriangle (uint16_t color, cPoint p1, cPoint p2, cPoint p3);
 
